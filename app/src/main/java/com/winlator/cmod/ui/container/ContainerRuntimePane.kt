@@ -111,6 +111,8 @@ internal fun ContainerRuntimePane(
     var installing by remember { mutableStateOf<Set<String>>(emptySet()) }
     val scope = rememberCoroutineScope()
     val catalog by produceState<SettingsCatalog?>(null, arm64, revision) {
+        // Saved data first (instant, offline), then refresh from the network in the background.
+        value = loadSettingsCatalog(context, arm64, dxvkVersion, vkd3dVersion, fexVersion, boxVersion, driverVersion, allowNetwork = false)
         value = loadSettingsCatalog(context, arm64, dxvkVersion, vkd3dVersion, fexVersion, boxVersion, driverVersion)
     }
 

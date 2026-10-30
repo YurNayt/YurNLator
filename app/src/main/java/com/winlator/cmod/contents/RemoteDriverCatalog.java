@@ -1,14 +1,11 @@
 package com.winlator.cmod.contents;
 
 import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkCapabilities;
 import android.net.Uri;
 
 import com.winlator.cmod.contentdialog.DriverRepo;
 import com.winlator.cmod.contentdialog.RepositoryManagerDialog;
-import com.winlator.cmod.core.FileUtils;
+import com.winlator.cmod.core.RemoteFetch;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -40,60 +37,22 @@ public final class RemoteDriverCatalog {
         }
     }
 
-    // Short timeouts: the driver list is built together with the rest of the container
-    // settings, so a slow or missing network must never hold the whole screen back.
-    private static OkHttpClient client() {
-        return new OkHttpClient.Builder()
-                .connectTimeout(4, TimeUnit.SECONDS)
-                .readTimeout(8, TimeUnit.SECONDS)
-                .callTimeout(10, TimeUnit.SECONDS)
-                .build();
-    }
-
-    private static boolean isOnline(Context context) {
-        try {
-            ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return true;
-            Network network = cm.getActiveNetwork();
-            if (network == null) return false;
-            NetworkCapabilities caps = cm.getNetworkCapabilities(network);
-            return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
-    private static File cacheFile(Context context, String apiUrl) {
-        File dir = new File(context.getFilesDir(), "driver_catalog_cache");
-        dir.mkdirs();
-        return new File(dir, Integer.toHexString(apiUrl.hashCode()) + ".json");
+    /** Downloadable drivers; refreshes the saved list from the network when allowed. */
+    public static List<Entry> load(Context context) {
+        return load(context, true);
     }
 
     /**
-     * Downloadable drivers from the configured repositories. Online: fetched and cached.
-     * Offline or on error: the last cached list is used, so the menu still shows what
-     * exists (downloading those still needs internet; installed drivers never do).
+     * Downloadable drivers from the configured repositories.
+     * allowNetwork=false: saved list only (instant, offline). Otherwise RemoteFetch decides
+     * (online and not fetched in the last minutes -> download, else the saved copy).
+     * Installing an entry still needs internet; already installed drivers never do.
      */
-    public static List<Entry> load(Context context) {
+    public static List<Entry> load(Context context, boolean allowNetwork) {
         ArrayList<Entry> result = new ArrayList<>();
-        boolean online = isOnline(context);
-        OkHttpClient http = online ? client() : null;
         for (DriverRepo repo : RepositoryManagerDialog.loadDriverRepos(context, 0)) {
             if (repo.apiUrl == null || repo.apiUrl.isEmpty()) continue;
-            File cache = cacheFile(context, repo.apiUrl);
-            String body = null;
-            if (http != null) {
-                try (Response response = http.newCall(new Request.Builder().url(repo.apiUrl).build()).execute()) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        body = response.body().string();
-                        try { FileUtils.writeString(cache, body); } catch (Exception ignored) {}
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-            if (body == null && cache.isFile()) {
-                try { body = FileUtils.readString(cache); } catch (Exception ignored) {}
-            }
+            String body = allowNetwork ? RemoteFetch.get(context, repo.apiUrl) : RemoteFetch.cached(context, repo.apiUrl);
             if (body != null) parseRepo(repo, body, result);
         }
         return result;

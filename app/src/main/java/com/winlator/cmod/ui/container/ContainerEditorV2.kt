@@ -326,6 +326,8 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
     var creating by remember { mutableStateOf(false) }
 
     val runtimeOptions by produceState<List<WineRuntimeOption>>(emptyList(), revision) {
+        // Saved data first (instant, offline), then refresh from the network in the background.
+        value = loadWineRuntimeOptions(context, allowNetwork = false)
         value = loadWineRuntimeOptions(context)
     }
     LaunchedEffect(runtimeOptions, editing?.id) {
@@ -366,6 +368,12 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
     val boxPresets = remember { Box64PresetManager.getPresets("box64", context).associate { it.id to it.name } }
 
     val catalog by produceState<SettingsCatalog?>(null, arm64, revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion) {
+        // Saved data first (instant, offline), then refresh from the network in the background.
+        value = loadSettingsCatalog(
+            context, arm64, state.dxvkVersion, state.vkd3dVersion,
+            state.fexVersion, state.boxVersion, state.driverVersion,
+            allowNetwork = false
+        )
         value = loadSettingsCatalog(
             context, arm64, state.dxvkVersion, state.vkd3dVersion,
             state.fexVersion, state.boxVersion, state.driverVersion

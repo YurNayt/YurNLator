@@ -51,6 +51,7 @@ import androidx.preference.PreferenceManager
 import com.winlator.cmod.R
 import com.winlator.cmod.contents.AdrenotoolsManager
 import com.winlator.cmod.contents.ContentProfile
+import com.winlator.cmod.core.RemoteFetch
 import com.winlator.cmod.contents.ContentsManager
 import com.winlator.cmod.contents.RemoteDriverCatalog
 import com.winlator.cmod.core.DefaultVersion
@@ -98,24 +99,28 @@ internal data class SettingsCatalog(
     val rendererDrivers: Map<String, String>
 )
 
-private suspend fun syncRemoteContents(context: Context, manager: ContentsManager) {
+/**
+ * Adds the downloadable component list to [manager].
+ * allowNetwork=false uses only the saved list (instant, works offline); otherwise
+ * RemoteFetch refreshes it at most every few minutes and falls back to the saved copy.
+ */
+private suspend fun syncRemoteContents(context: Context, manager: ContentsManager, allowNetwork: Boolean = true) {
     withContext(Dispatchers.IO) {
         runCatching {
             manager.syncContents()
             val prefs = PreferenceManager.getDefaultSharedPreferences(context)
             val url = prefs.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES)
                 ?: ContentsManager.REMOTE_PROFILES
-            OkHttpClient().newCall(Request.Builder().url(url).build()).execute().use { response ->
-                if (response.isSuccessful) response.body?.string()?.let(manager::setRemoteProfiles)
-            }
+            val body = if (allowNetwork) RemoteFetch.get(context, url) else RemoteFetch.cached(context, url)
+            body?.let(manager::setRemoteProfiles)
             manager.syncContents()
         }
     }
 }
 
-internal suspend fun loadWineRuntimeOptions(context: Context): List<WineRuntimeOption> = withContext(Dispatchers.IO) {
+internal suspend fun loadWineRuntimeOptions(context: Context, allowNetwork: Boolean = true): List<WineRuntimeOption> = withContext(Dispatchers.IO) {
     val manager = ContentsManager(context)
-    syncRemoteContents(context, manager)
+    syncRemoteContents(context, manager, allowNetwork)
     val out = LinkedHashMap<String, WineRuntimeOption>()
 
     listOf(
@@ -202,10 +207,11 @@ internal suspend fun loadSettingsCatalog(
     selectedVkd3d: String = "",
     selectedFex: String = "",
     selectedBox: String = "",
-    selectedDriver: String = ""
+    selectedDriver: String = "",
+    allowNetwork: Boolean = true
 ): SettingsCatalog = withContext(Dispatchers.IO) {
     val manager = ContentsManager(context)
-    syncRemoteContents(context, manager)
+    syncRemoteContents(context, manager, allowNetwork)
 
     fun versions(
         type: ContentProfile.ContentType,
@@ -246,7 +252,7 @@ internal suspend fun loadSettingsCatalog(
         rendererDrivers[id] = label
         driverOptions[id.lowercase()] = DriverOption(id, label, true)
     }
-    runCatching { RemoteDriverCatalog.load(context) }.getOrNull().orEmpty().forEach { remote ->
+    runCatching { RemoteDriverCatalog.load(context, allowNetwork) }.getOrNull().orEmpty().forEach { remote ->
         val alreadyInstalled = driverOptions.values.any {
             it.id.equals(remote.name, ignoreCase = true) || it.label.equals(remote.name, ignoreCase = true)
         }

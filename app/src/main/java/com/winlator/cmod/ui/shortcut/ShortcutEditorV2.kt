@@ -412,6 +412,8 @@ internal fun ShortcutEditorV2(fragment: Fragment, shortcut: Shortcut, close: () 
     val containers = remember { manager.containers.toList() }
 
     val runtimeOptions by produceState<List<WineRuntimeOption>>(emptyList()) {
+        // Saved data first (instant, offline), then refresh from the network in the background.
+        value = loadWineRuntimeOptions(context, allowNetwork = false)
         value = loadWineRuntimeOptions(context)
     }
     fun environmentLabel(container: Container): String {
@@ -435,6 +437,12 @@ internal fun ShortcutEditorV2(fragment: Fragment, shortcut: Shortcut, close: () 
         }
     }
     val catalog by produceState<SettingsCatalog?>(null, state.arm64, state.revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion) {
+        // Saved data first (instant, offline), then refresh from the network in the background.
+        value = loadSettingsCatalog(
+            context, state.arm64, state.dxvkVersion, state.vkd3dVersion,
+            state.fexVersion, state.boxVersion, state.driverVersion,
+            allowNetwork = false
+        )
         value = loadSettingsCatalog(
             context, state.arm64, state.dxvkVersion, state.vkd3dVersion,
             state.fexVersion, state.boxVersion, state.driverVersion

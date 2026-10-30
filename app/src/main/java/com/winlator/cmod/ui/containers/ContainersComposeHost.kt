@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -113,6 +114,7 @@ private fun ContainersScreen(
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         if (landscape) {
             LandscapeMainNavigation(
@@ -168,7 +170,7 @@ private fun ContainersScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(items = containers, key = { it.id }) { container ->
@@ -176,6 +178,14 @@ private fun ContainersScreen(
                 }
             }
         }
+    }
+    // Portrait has no top bar action, so "Add container" is a floating button.
+    if (!landscape) {
+        FloatingActionButton(
+            onClick = callbacks::onAdd,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp)
+        ) { Icon(Icons.Outlined.Add, "Add container") }
+    }
     }
 }
 
