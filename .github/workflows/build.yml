@@ -1,8 +1,11 @@
 name: Build YurNLator
 
-# - push / pull request: builds only the "standard" variant (fast check)
-# - manual run (Actions -> Build YurNLator -> Run workflow): pick a variant or "all"
-# - tag v* (e.g. v0.1.0): builds every variant and publishes a GitHub Release
+# - push to main: builds "standard" and refreshes the rolling "dev" pre-release
+# - pull request: builds "standard" only (check)
+# - manual run (Actions -> Build YurNLator -> Run workflow):
+#     variant = one variant or "all"; release = a version like v0.1.0 to publish
+#     a release with those APKs (a suffix like v0.1.0-alpha1 makes it a pre-release)
+# - pushing a tag v*: builds every variant and publishes that release
 on:
   push:
     branches: [main]
@@ -13,6 +16,9 @@ on:
       variant:
         description: 'Variant (standard, antutu, antutuAlt, ludashi, genshin, pubg, geekbench6) or all'
         default: 'all'
+      release:
+        description: 'Publish as release (e.g. v0.1.0 or v0.1.0-alpha1). Empty = just build'
+        default: ''
 
 permissions:
   contents: write
@@ -114,17 +120,38 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/')
     needs: build
+    if: >-
+      startsWith(github.ref, 'refs/tags/') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.release != '') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: YurNLator-*
           path: dist
           merge-multiple: true
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.apk
-          generate_release_notes: true
-          # tags like v0.1.0-alpha1 are test builds, v0.1.0 is a normal release
-          prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Rolling dev pre-release (latest build from main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          SHORT="${GITHUB_SHA::7}"
+          for f in dist/*.apk; do mv "$f" "dist/YurNLator-dev-standard.apk"; done
+          gh release delete dev --cleanup-tag -y || true
+          gh release create dev dist/*.apk --prerelease --target "$GITHUB_SHA" \
+            --title "Dev build ($SHORT)" \
+            --notes "Latest automatic build from main, commit $SHORT. For testing; may be unstable."
+
+      - name: Versioned release
+        if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${{ github.event.inputs.release }}"
+          [ -z "$TAG" ] && TAG="${GITHUB_REF_NAME}"
+          PRE=""; [[ "$TAG" == *-* ]] && PRE="--prerelease"
+          for f in dist/*.apk; do mv "$f" "${f/-$GITHUB_REF_NAME-/-$TAG-}" 2>/dev/null || true; done
+          gh release create "$TAG" dist/*.apk $PRE --target "$GITHUB_SHA" \
+            --title "YurNLator $TAG" --generate-notes
