@@ -59,6 +59,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.winlator.cmod.contents.DriverSource
 import com.winlator.cmod.contents.DriverSources
+import com.winlator.cmod.core.DriverNames
+import com.winlator.cmod.core.LocalInstalls
 import com.winlator.cmod.ui.settings.AddDriverSourceDialog
 import com.winlator.cmod.ui.settings.RemoveDriverSourceDialog
 
@@ -72,7 +74,9 @@ data class BrowserItem(
     val author: String?,
     val installed: Boolean,
     val removable: Boolean = installed,
-    val inUse: Boolean = false
+    val inUse: Boolean = false,
+    /** LocalInstalls key ("type|name"): marks items the user installed from their own files. */
+    val localKey: String? = null
 )
 
 /** A section of the browser: one or more internal types under a user-facing name. */
@@ -100,6 +104,7 @@ fun componentTypeTitle(type: String): String =
 
 private const val AUTHOR_ALL = "All"
 private const val AUTHOR_INSTALLED = "Installed"
+private const val AUTHOR_MY_FILES = "My files"
 
 /**
  * Download / manage screen for components.
@@ -234,17 +239,29 @@ private fun TypePage(
     var adding by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<DriverSource?>(null) }
 
-    // Author chips: All, Installed, then publishers. For GPU drivers every known
-    // author is listed even before its list has loaded (or when offline).
+    val localRev = LocalInstalls.revision.intValue
+    val myFiles = remember(items, localRev) {
+        items.filter { it.installed && LocalInstalls.contains(context, it.localKey) }.map { it.id }.toSet()
+    }
+
+    // Selector: GPU drivers have many authors -> All, Installed, authors, My files, + Add.
+    // Other types have one source -> no selector, unless there are own files: All, My files.
     val customSources = remember(sourcesRev) { DriverSources.custom(context) }
-    val authors = remember(items, type.key, sourcesRev) {
-        val names = linkedSetOf<String>()
-        if (type.isGpuDriver) DriverSources.all(context).forEach { names += it.name }
-        items.filter { !it.installed }.mapNotNullTo(names) { it.author }
-        buildList {
-            add(AUTHOR_ALL)
-            if (items.any { it.installed }) add(AUTHOR_INSTALLED)
-            addAll(names)
+    val authors = remember(items, type.key, sourcesRev, myFiles) {
+        if (type.isGpuDriver) {
+            val names = linkedSetOf<String>()
+            DriverSources.all(context).forEach { names += it.name }
+            items.filter { !it.installed }.mapNotNullTo(names) { it.author }
+            buildList {
+                add(AUTHOR_ALL)
+                if (items.any { it.installed }) add(AUTHOR_INSTALLED)
+                addAll(names)
+                if (myFiles.isNotEmpty()) add(AUTHOR_MY_FILES)
+            }
+        } else if (myFiles.isNotEmpty()) {
+            listOf(AUTHOR_ALL, AUTHOR_MY_FILES)
+        } else {
+            emptyList()
         }
     }
     // A removed author or a list that changed falls back to "All" (no state write during composition).
@@ -252,8 +269,11 @@ private fun TypePage(
     val shown = when (selectedAuthor) {
         AUTHOR_ALL -> items.sortedByDescending { it.installed }
         AUTHOR_INSTALLED -> items.filter { it.installed }
+        AUTHOR_MY_FILES -> items.filter { it.id in myFiles }
         else -> items.filter { !it.installed && it.author == selectedAuthor }
     }
+    // Inside one author the author line would only repeat the selection.
+    val showAuthorLine = selectedAuthor == AUTHOR_ALL || selectedAuthor == AUTHOR_INSTALLED
 
     Column(Modifier.fillMaxSize()) {
         // Top bar: menu (switch type) on the left, title, close on the right.
@@ -286,7 +306,7 @@ private fun TypePage(
         }
 
         // Author selector, scrolls sideways.
-        LazyRow(
+        if (authors.isNotEmpty()) LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -321,10 +341,25 @@ private fun TypePage(
             item(key = "header") { header() }
             when {
                 shown.isNotEmpty() -> items(shown, key = { it.id }) { item ->
-                    ItemCard(item, item.id in busyIds, busyIds.isNotEmpty() && item.id !in busyIds, busyLabel, busyProgress, onInstall, onRemove)
+                    ItemCard(
+                        item = item,
+                        gpuDriver = type.isGpuDriver,
+                        fromFile = item.id in myFiles,
+                        showAuthor = showAuthorLine,
+                        busy = item.id in busyIds,
+                        locked = busyIds.isNotEmpty() && item.id !in busyIds,
+                        busyLabel = busyLabel,
+                        busyProgress = busyProgress,
+                        onInstall = onInstall,
+                        onRemove = {
+                            it.localKey?.let { key -> LocalInstalls.forget(context, key) }
+                            onRemove(it)
+                        }
+                    )
                 }
                 loading -> item(key = "loading") { Hint("Loading the list…") }
-                selectedAuthor == AUTHOR_ALL || selectedAuthor == AUTHOR_INSTALLED -> item(key = "empty") { Hint("Nothing here yet.") }
+                selectedAuthor == AUTHOR_ALL || selectedAuthor == AUTHOR_INSTALLED || selectedAuthor == AUTHOR_MY_FILES ->
+                    item(key = "empty") { Hint("Nothing here yet.") }
                 else -> item(key = "empty") {
                     Hint("No saved list from $selectedAuthor yet. Connect to the internet once and it will appear, also offline later.")
                 }
@@ -366,6 +401,9 @@ private fun AuthorChip(
 @Composable
 private fun ItemCard(
     item: BrowserItem,
+    gpuDriver: Boolean,
+    fromFile: Boolean,
+    showAuthor: Boolean,
     busy: Boolean,
     locked: Boolean,
     busyLabel: String?,
@@ -384,15 +422,24 @@ private fun ItemCard(
                 Icon(Icons.Outlined.Extension, null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(item.name, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    // GPU drivers: clean title + what the build is for ("OneUI fix · Adreno 710–720").
+                    val parsed = remember(item.name, gpuDriver) { if (gpuDriver) DriverNames.parse(item.name) else null }
+                    Text(parsed?.title ?: item.name, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    val details = buildList {
+                        parsed?.tags?.let { addAll(it) }
+                        if (fromFile) add("From your files")
+                        if (item.inUse) add("In use")
+                        else if (item.installed && isEmpty()) add("Installed")
+                        if (showAuthor && !item.installed) item.author?.let { add(it) }
+                    }.joinToString(" · ")
                     val status = when {
                         busy && busyProgress >= 0 -> "${busyLabel ?: "Installing"} • $busyProgress%"
                         busy -> busyLabel ?: "Working…"
-                        item.inUse -> "In use"
-                        item.installed -> "Installed"
-                        else -> item.author ?: componentTypeTitle(item.type)
+                        else -> details
                     }
-                    Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (status.isNotEmpty()) {
+                        Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 when {
                     busy -> CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)

@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.onboarding
 
+import com.winlator.cmod.core.LocalInstalls
 import com.winlator.cmod.ui.components.BrowserItem
 import com.winlator.cmod.ui.components.ComponentBrowser
 import com.winlator.cmod.ui.components.componentTypeTitle
@@ -178,7 +179,11 @@ internal fun OnboardingComponentsScreen(
     // author selector). First launch keeps the simple screen below.
     if (managerMode) {
         val browserItems = remember(all) {
-            all.map { BrowserItem(it.id, it.type, it.name, it.author, it.installed, it.removable, it.inUse) }
+            all.map {
+                val localKey = if (it.type == "AdrenoTools") LocalInstalls.key(it.type, it.id.removePrefix("adrenotools:"))
+                else LocalInstalls.key(it.type, it.name)
+                BrowserItem(it.id, it.type, it.name, it.author, it.installed, it.removable, it.inUse, localKey)
+            }
         }
         ComponentBrowser(
             items = browserItems,

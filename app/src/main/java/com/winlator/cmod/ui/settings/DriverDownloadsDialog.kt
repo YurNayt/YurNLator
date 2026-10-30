@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.core.LocalInstalls
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,7 +49,8 @@ internal fun DriverDownloadsDialog(
                 name = o.label,
                 author = o.author,
                 installed = o.installed,
-                removable = false // drivers are removed in Settings > Components, not from an editor
+                removable = false, // drivers are removed in Settings > Components, not from an editor
+                localKey = if (o.installed) LocalInstalls.key(GPU_DRIVER, o.id) else null
             )
         }
     }
@@ -63,7 +65,10 @@ internal fun DriverDownloadsDialog(
                 runCatching { AdrenotoolsManager(context).installDriver(uri) }.getOrDefault("")
             }
             if (id.isBlank()) Toast.makeText(context, "Not a driver archive (.zip with meta.json)", Toast.LENGTH_LONG).show()
-            else onInstall(DriverOption(id, id, true))
+            else {
+                LocalInstalls.mark(context, GPU_DRIVER, id)
+                onInstall(DriverOption(id, id, true))
+            }
         }
     }
 

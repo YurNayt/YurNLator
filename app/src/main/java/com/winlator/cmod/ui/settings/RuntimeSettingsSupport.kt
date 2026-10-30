@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.core.DriverNames
+import com.winlator.cmod.core.LocalInstalls
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -687,6 +689,7 @@ internal fun SettingDriverChoice(
             if (id.isBlank()) {
                 Toast.makeText(context, "Not a driver archive (.zip with meta.json)", Toast.LENGTH_LONG).show()
             } else {
+                LocalInstalls.mark(context, "AdrenoTools", id)
                 Toast.makeText(context, "Installed: $id", Toast.LENGTH_SHORT).show()
                 // Installed option: the caller selects it and reloads the list, no network involved.
                 onInstall(DriverOption(id, id, true))
@@ -750,9 +753,13 @@ internal fun SettingDriverChoice(
                 val busy = "driver:${option.remoteUrl ?: option.id}" in installing
                 DropdownMenuItem(
                     text = {
+                        val parsed = remember(option.label) { DriverNames.parse(option.label) }
                         Column {
-                            Text(option.label, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (option.installed) 1f else .52f))
-                            if (!option.installed) Text(if (busy) "Downloading…" else "Download (needs internet)", style = MaterialTheme.typography.labelSmall)
+                            Text(parsed.title)
+                            if (parsed.tags.isNotEmpty()) {
+                                Text(parsed.tags.joinToString(" · "), style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     },
                     trailingIcon = {

@@ -1,5 +1,6 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.core.LocalInstalls;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -547,6 +548,7 @@ public class OnboardingActivity extends AppCompatActivity {
                     public void onFailed(ContentsManager.InstallFailedReason reason, Exception error) {
                         if (reason == ContentsManager.InstallFailedReason.ERROR_EXIST) {
                             postInstallProgress("Installed " + installedName, 100);
+                            markLocal(uri, extracted);
                             success.run();
                         }
                         else failure.call("Installation failed: " + reason);
@@ -555,11 +557,18 @@ public class OnboardingActivity extends AppCompatActivity {
                     @Override
                     public void onSucceed(ContentProfile installed) {
                         postInstallProgress("Installed " + installedName, 100);
+                        markLocal(uri, extracted);
                         success.run();
                     }
                 });
             }
         });
+    }
+
+    /** A package picked from the user's storage (content://) goes into "My files". */
+    private void markLocal(Uri uri, ContentProfile profile) {
+        if (uri == null || profile == null || !"content".equals(uri.getScheme())) return;
+        LocalInstalls.mark(this, displayType(profile.type), profile.verName);
     }
 
     private boolean download(String url, File out, String displayName) {
@@ -812,6 +821,7 @@ public class OnboardingActivity extends AppCompatActivity {
             composeController.updateInstallProgress("Installing " + localDisplayName(uri), -1);
             io.execute(() -> {
                 String installed = adrenotoolsManager.installDriver(uri);
+                LocalInstalls.mark(this, "AdrenoTools", installed);
                 runOnUiThread(() -> {
                     installBusy = false;
                     composeController.setInstallBusy(null, false);
