@@ -17,7 +17,7 @@ import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.ContainerManager
 import com.winlator.cmod.contents.ContentsManager
 import com.winlator.cmod.core.DefaultVersion
-import com.winlator.cmod.core.GPUInformation
+import com.winlator.cmod.core.GpuProfileManager
 import com.winlator.cmod.core.WineInfo
 import com.winlator.cmod.fexcore.FEXCorePreset
 import com.winlator.cmod.ui.applyAppFullscreen
@@ -157,7 +157,7 @@ object OnboardingComposeHost {
     }
 }
 
-private enum class OnboardingPage { Welcome, Theme, Components, Runtime, Access }
+private enum class OnboardingPage { Welcome, Theme, Gpu, Components, Runtime, Access }
 
 private fun prepareInitialContainer(
     activity: ComponentActivity,
@@ -183,11 +183,7 @@ private fun prepareInitialContainer(
     preparing.value = true
     ready.value = false
     try {
-        val defaultDriver = if (GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, activity)) {
-            DefaultVersion.WRAPPER_ADRENO
-        } else {
-            DefaultVersion.WRAPPER
-        }
+        val defaultDriver = GpuProfileManager.defaultGraphicsDriverVersion(activity)
         val graphicsConfig = Container.DEFAULT_GRAPHICSDRIVERCONFIG.replace(
             ";version=;",
             ";version=$defaultDriver;"
@@ -269,6 +265,11 @@ private fun OnboardingFlow(
         )
 
         OnboardingPage.Theme -> OnboardingThemeScreen(
+            onContinue = { page = OnboardingPage.Gpu }
+        )
+
+        OnboardingPage.Gpu -> OnboardingGpuScreen(
+            onBack = { page = OnboardingPage.Theme },
             onContinue = { page = OnboardingPage.Components }
         )
 
@@ -284,7 +285,7 @@ private fun OnboardingFlow(
             managerMode = managerMode,
             onBack = {
                 if (managerMode) cb.onCloseComponents()
-                else page = OnboardingPage.Theme
+                else page = OnboardingPage.Gpu
             },
             onContinue = {
                 if (managerMode) cb.onCloseComponents()

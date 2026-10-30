@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.view.View
 import androidx.compose.foundation.BorderStroke
+import com.winlator.cmod.ui.gpu.GpuProfilePreferenceCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -182,6 +183,7 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
         ) {
             item("appearance-title") { SectionTitle("APPEARANCE") }
             item("theme") { WinlatorThemePreferenceCard() }
+            item("gpu-profile") { GpuProfilePreferenceCard() }
 
             item("environment-title") { SectionTitle("ENVIRONMENTS") }
             item("containers") {

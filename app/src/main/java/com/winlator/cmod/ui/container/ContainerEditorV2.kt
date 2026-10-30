@@ -2,6 +2,8 @@
 
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.core.GpuProfileManager
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.widget.Toast
@@ -128,9 +130,7 @@ private class ContainerEditorStateV2(
     manager: ContainerManager,
     val editing: Container?
 ) {
-    private val preferredDriver = if (GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, context)) {
-        DefaultVersion.WRAPPER_ADRENO
-    } else DefaultVersion.WRAPPER
+    private val preferredDriver = GpuProfileManager.defaultGraphicsDriverVersion(context)
 
     var runtime by mutableStateOf(editing?.wineVersion.orEmpty())
     var name by mutableStateOf(editing?.name ?: "Container-${manager.nextContainerId}")

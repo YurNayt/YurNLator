@@ -1,5 +1,7 @@
 package com.winlator.cmod.contentdialog;
 
+import com.winlator.cmod.core.GpuProfileManager;
+
 import android.content.Context;
 import android.os.Build;
 import android.util.Log;
@@ -393,7 +395,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
             }
         }
 
-        AppUtils.setSpinnerSelectionFromValue(spinner, GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, getContext()) ? DefaultVersion.WRAPPER_ADRENO : DefaultVersion.WRAPPER);
+        AppUtils.setSpinnerSelectionFromValue(spinner, GpuProfileManager.defaultGraphicsDriverVersion(getContext()));
     }
 
 }

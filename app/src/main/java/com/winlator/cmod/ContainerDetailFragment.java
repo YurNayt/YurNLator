@@ -1,5 +1,7 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.core.GpuProfileManager;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
@@ -723,9 +725,7 @@ public class ContainerDetailFragment extends Fragment implements DXVKConfigDialo
                         .parseGraphicsDriverConfig(graphicsDriverConfig);
                 if (config.get("version").isEmpty()) {
                     config.put("version",
-                            GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, context)
-                                    ? DefaultVersion.WRAPPER_ADRENO
-                                    : DefaultVersion.WRAPPER);
+                            GpuProfileManager.defaultGraphicsDriverVersion(context));
                     graphicsDriverConfig = GraphicsDriverConfigDialog.toGraphicsDriverConfig(config);
                 }
                 String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());

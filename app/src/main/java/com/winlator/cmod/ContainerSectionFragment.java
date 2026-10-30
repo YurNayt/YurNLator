@@ -1,5 +1,7 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.core.GpuProfileManager;
+
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -188,9 +190,7 @@ public class ContainerSectionFragment extends Fragment {
             description = "DirectX wrapper and DXVK/VKD3D options";
         }
 
-        String defaultGraphicsVersion = GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, requireContext())
-                ? DefaultVersion.WRAPPER_ADRENO
-                : DefaultVersion.WRAPPER;
+        String defaultGraphicsVersion = GpuProfileManager.defaultGraphicsDriverVersion(requireContext());
         if (!graphicsVersions.contains(defaultGraphicsVersion)) graphicsVersions.add(defaultGraphicsVersion);
         installedGraphicsVersions.add(defaultGraphicsVersion);
 

@@ -2,6 +2,8 @@
 
 package com.winlator.cmod.ui.shortcut
 
+import com.winlator.cmod.core.GpuProfileManager
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -166,7 +168,7 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     var graphicsDriver by mutableStateOf(StringUtils.parseIdentifier(shortcut.getExtra("graphicsDriver", container.getGraphicsDriver())))
     private val defaultDriverVersion = runCatching {
         val context = container.manager.context
-        if (GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, context)) DefaultVersion.WRAPPER_ADRENO else DefaultVersion.WRAPPER
+        GpuProfileManager.defaultGraphicsDriverVersion(context)
     }.getOrDefault(DefaultVersion.WRAPPER)
     var graphicsConfig by mutableStateOf(
         shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig()).let { raw ->
