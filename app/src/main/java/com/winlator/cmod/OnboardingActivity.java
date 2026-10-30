@@ -432,7 +432,8 @@ public class OnboardingActivity extends AppCompatActivity {
                         item.installed,
                         runtime,
                         inUse,
-                        false
+                        false,
+                        item.installed ? null : (item.packageInfo != null ? "Proton releases" : "Winlator Contents")
                 ));
             }
         }
@@ -450,8 +451,8 @@ public class OnboardingActivity extends AppCompatActivity {
             for (RemoteDriverCatalog.Entry driver : remoteDrivers) {
                 if (existingDrivers.contains(driver.name.toLowerCase(Locale.ENGLISH))) continue;
                 ui.add(new OnboardingComponent(
-                        remoteDriverId(driver), "AdrenoTools", driver.name + " • " + driver.repository,
-                        false, false, false, null, false, false
+                        remoteDriverId(driver), "AdrenoTools", driver.name,
+                        false, false, false, null, false, false, driver.repository
                 ));
             }
         }

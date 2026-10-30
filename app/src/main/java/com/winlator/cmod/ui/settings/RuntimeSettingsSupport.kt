@@ -73,7 +73,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material.icons.outlined.FileOpen
-import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.CloudDownload
 import kotlinx.coroutines.launch
 
 internal data class VersionCatalog(val all: List<String>, val installed: Set<String>)
@@ -670,8 +670,8 @@ internal fun SettingDriverChoice(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
-    var showAuthors by remember { mutableStateOf(false) }
-    if (showAuthors) DriverSourcesDialog(onDismiss = { showAuthors = false })
+    var showDownloads by remember { mutableStateOf(false) }
+    if (showDownloads) DriverDownloadsDialog(options, installing, onInstall, onDismiss = { showDownloads = false })
     val context = LocalContext.current
     val importScope = rememberCoroutineScope()
     val selectedOption = options.firstOrNull { it.id.equals(selected, ignoreCase = true) }
@@ -737,30 +737,16 @@ internal fun SettingDriverChoice(
             DropdownMenuItem(
                 text = {
                     Column {
-                        Text("Driver authors…")
-                        Text("Choose whose drivers are offered for download", style = MaterialTheme.typography.labelSmall)
+                        Text("Download drivers…")
+                        Text("Pick an author, then a driver", style = MaterialTheme.typography.labelSmall)
                     }
                 },
-                leadingIcon = { Icon(Icons.Outlined.People, null) },
-                onClick = { expanded = false; showAuthors = true }
+                leadingIcon = { Icon(Icons.Outlined.CloudDownload, null) },
+                onClick = { expanded = false; showDownloads = true }
             )
             HorizontalDivider()
-            // Installed first, then downloads grouped under their author.
-            val installedOptions = options.filter { it.installed }
-            val downloads = options.filter { !it.installed }.groupBy { it.author ?: "Other" }
-            val rows: List<Pair<String?, DriverOption>> =
-                installedOptions.map { null to it } +
-                    downloads.flatMap { (author, list) -> list.mapIndexed { i, o -> (if (i == 0) author else null) to o } }
-            rows.forEach { (header, option) ->
-                if (header != null) {
-                    Text(
-                        header.uppercase(),
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+            // Only installed drivers here; downloads live in the download screen.
+            options.filter { it.installed }.forEach { option ->
                 val busy = "driver:${option.remoteUrl ?: option.id}" in installing
                 DropdownMenuItem(
                     text = {

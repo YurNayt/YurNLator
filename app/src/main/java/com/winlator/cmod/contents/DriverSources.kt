@@ -31,12 +31,11 @@ data class DriverSource(
 )
 
 /**
- * Driver authors, like Bannerlator's driver sources: built-in authors can be switched
- * off, custom ones (GitHub owner/repo or a JSON link) can be added and removed.
- * Only enabled authors' downloads are listed in the driver picker.
+ * Driver authors, like Bannerlator's driver sources: built-in authors plus custom ones
+ * (GitHub owner/repo or a JSON link) that can be added and removed. The download screen
+ * shows them as a horizontal author selector above the driver list.
  */
 object DriverSources {
-    private const val KEY_DISABLED = "yurn_driver_sources_disabled"
     private const val KEY_CUSTOM = "yurn_driver_sources_custom"
     private const val NIGHTLIES = "https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main"
 
@@ -65,20 +64,6 @@ object DriverSources {
 
     private fun prefs(context: Context) = PreferenceManager.getDefaultSharedPreferences(context)
 
-    private fun disabled(context: Context): Set<String> =
-        prefs(context).getStringSet(KEY_DISABLED, emptySet()).orEmpty()
-
-    @JvmStatic
-    fun isEnabled(context: Context, source: DriverSource) = source.name !in disabled(context)
-
-    @JvmStatic
-    fun setEnabled(context: Context, source: DriverSource, enabled: Boolean) {
-        val set = disabled(context).toMutableSet()
-        if (enabled) set.remove(source.name) else set.add(source.name)
-        prefs(context).edit().putStringSet(KEY_DISABLED, set).apply()
-        revision.intValue++
-    }
-
     @JvmStatic
     fun custom(context: Context): List<DriverSource> {
         val raw = prefs(context).getString(KEY_CUSTOM, "").orEmpty()
@@ -101,9 +86,6 @@ object DriverSources {
     @JvmStatic
     fun all(context: Context): List<DriverSource> = BUILT_IN + custom(context)
 
-    @JvmStatic
-    fun enabled(context: Context): List<DriverSource> = all(context).filter { isEnabled(context, it) }
-
     /** Adds a custom author. Returns an error message, or null on success. */
     fun addCustom(context: Context, name: String, feed: DriverFeed): String? {
         val clean = name.trim()
@@ -116,7 +98,6 @@ object DriverSources {
 
     fun removeCustom(context: Context, source: DriverSource) {
         save(context, custom(context).filterNot { it.name == source.name })
-        setEnabled(context, source, true) // forget its "disabled" flag
     }
 
     private fun save(context: Context, list: List<DriverSource>) {

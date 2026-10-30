@@ -35,7 +35,9 @@ data class OnboardingComponent @JvmOverloads constructor(
     val removable: Boolean,
     val runtimeIdentifier: String? = null,
     val inUse: Boolean = false,
-    val bundled: Boolean = false
+    val bundled: Boolean = false,
+    /** Publisher shown in the download screen's author selector (driver author / content source). */
+    val author: String? = null
 )
 
 interface OnboardingCallbacks {
@@ -249,6 +251,16 @@ private fun OnboardingFlow(
         it.installed && (it.type == "Wine" || it.type == "Proton") && !it.runtimeIdentifier.isNullOrBlank()
     }
 
+    val runtimeReady = ready.value && hasInstalledRuntime
+
+    // First launch only: the components screen is a waiting room while the bundled
+    // runtime installs, and moves on by itself once a Wine/Proton is ready.
+    LaunchedEffect(runtimeReady, page) {
+        if (!managerMode && page == OnboardingPage.Components && runtimeReady) {
+            page = OnboardingPage.Runtime
+        }
+    }
+
     LaunchedEffect(containerReady.value, page) {
         if (!managerMode && page == OnboardingPage.Runtime && containerReady.value) {
             page = OnboardingPage.Access
@@ -270,7 +282,9 @@ private fun OnboardingFlow(
 
         OnboardingPage.Gpu -> OnboardingGpuScreen(
             onBack = { page = OnboardingPage.Theme },
-            onContinue = { page = OnboardingPage.Components }
+            // Downloads are not part of first launch: with a Wine/Proton already installed
+            // (bundled Proton) go straight to the runtime choice.
+            onContinue = { page = if (runtimeReady) OnboardingPage.Runtime else OnboardingPage.Components }
         )
 
         OnboardingPage.Components -> OnboardingComponentsScreen(
@@ -298,7 +312,7 @@ private fun OnboardingFlow(
             components = components.value,
             bundledInstalled = bundledInstalled.value,
             preparing = containerPreparing.value,
-            onBack = { page = OnboardingPage.Components },
+            onBack = { page = if (runtimeReady) OnboardingPage.Gpu else OnboardingPage.Components },
             onContinue = { runtime ->
                 if (ready.value && hasInstalledRuntime && !containerPreparing.value) {
                     cb.onRuntimeSelected(runtime)

@@ -196,7 +196,6 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             item("components") {
                 NavigationRow(Icons.Outlined.Apps, "Components", "Wine, Proton, DXVK, VKD3D and runtimes", callbacks::onOpenComponents)
             }
-            item("driver-authors") { DriverSourcesPreferenceCard() }
 
             item("presets-title") { SectionTitle("PRESETS") }
             item("presets") {

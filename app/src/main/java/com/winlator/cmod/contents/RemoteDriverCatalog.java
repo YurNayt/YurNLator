@@ -45,7 +45,8 @@ public final class RemoteDriverCatalog {
     }
 
     /**
-     * Downloadable drivers from the enabled driver authors (see DriverSources).
+     * Downloadable drivers from all driver authors (see DriverSources); the download
+     * screen filters them by author.
      * allowNetwork=false: saved lists only (instant, offline). Otherwise RemoteFetch decides
      * (online and not fetched in the last minutes -> download, else the saved copy).
      * Entry.repository is the author name. Installing still needs internet;
@@ -54,7 +55,7 @@ public final class RemoteDriverCatalog {
     public static List<Entry> load(Context context, boolean allowNetwork) {
         ArrayList<Entry> result = new ArrayList<>();
         HashSet<String> seenUrls = new HashSet<>();
-        for (DriverSource source : DriverSources.enabled(context)) {
+        for (DriverSource source : DriverSources.all(context)) {
             ArrayList<Entry> fromSource = new ArrayList<>();
             for (DriverFeed feed : source.getFeeds()) {
                 String url = feed instanceof DriverFeed.Github

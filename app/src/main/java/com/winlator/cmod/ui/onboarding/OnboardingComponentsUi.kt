@@ -1,5 +1,8 @@
 package com.winlator.cmod.ui.onboarding
 
+import com.winlator.cmod.ui.components.BrowserItem
+import com.winlator.cmod.ui.components.ComponentBrowser
+import com.winlator.cmod.ui.components.componentTypeTitle
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -54,7 +57,7 @@ private val bundledRuntimeName = ProtonPackageManager.getPackage(ProtonPackageMa
     ?: "Proton 10.0-5 arm64ec"
 
 private val componentCategories = listOf(
-    "Recommended", "Wine & Proton", "DXVK", "VKD3D", "FEXCore", "Box64", "WOWBox64", "AdrenoTools"
+    "Recommended", "Wine & Proton", "DXVK", "VKD3D", "FEXCore", "Box64", "WOWBox64", "GPU driver"
 )
 
 private val latestRecommendedTypes = setOf("DXVK", "VKD3D", "FEXCore", "Box64", "WOWBox64")
@@ -151,7 +154,7 @@ internal fun OnboardingComponentsScreen(
     // First launch: no driver downloads (Wrapper / bundled drivers are enough to start).
     // Drivers are downloaded later in the container editor or in Components.
     val categories = remember(managerMode) {
-        if (managerMode) componentCategories else componentCategories - "AdrenoTools"
+        if (managerMode) componentCategories else componentCategories - "GPU driver"
     }
     val landscape = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
     val recommendedIds = remember(all) { recommendedComponentIds(all) }
@@ -160,6 +163,7 @@ internal fun OnboardingComponentsScreen(
             when (category) {
                 "Recommended" -> it.id in recommendedIds
                 "Wine & Proton" -> it.type == "Wine" || it.type == "Proton"
+                "GPU driver" -> it.type == "AdrenoTools"
                 else -> it.type == category
             }
         }
@@ -169,6 +173,43 @@ internal fun OnboardingComponentsScreen(
     }
     val showBundled = category == "Recommended" || category == "Wine & Proton"
     val showLocalInstallProgress = installing == "local" || installing == "driver-local"
+
+    // Settings > Components: the download browser (types list -> versions with an
+    // author selector). First launch keeps the simple screen below.
+    if (managerMode) {
+        val browserItems = remember(all) {
+            all.map { BrowserItem(it.id, it.type, it.name, it.author, it.installed, it.removable, it.inUse) }
+        }
+        ComponentBrowser(
+            items = browserItems,
+            loading = all.isEmpty(),
+            onClose = onBack,
+            onInstall = { cb.onInstall(it.id) },
+            onRemove = { cb.onRemove(it.id) },
+            onLocalPackage = { type -> if (type.isGpuDriver) cb.onBrowseDriver() else cb.onBrowseLocal() },
+            busyIds = setOfNotNull(installing),
+            busyLabel = installingLabel,
+            busyProgress = installingProgress,
+            typeHeader = { type ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (showLocalInstallProgress) InstallProgressCard(installingLabel, installingProgress)
+                    if (type.key == "wine") {
+                        CoreComponentCard(
+                            ready = ready,
+                            progress = progress,
+                            installed = bundledInstalled.value,
+                            inUse = bundledInUse.value,
+                            busy = installing == bundledRuntimeId,
+                            locked = installing != null,
+                            onInstall = cb::onInstallBundledRuntime,
+                            onRemove = cb::onRemoveBundledRuntime
+                        )
+                    }
+                }
+            }
+        )
+        return
+    }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (landscape) {
@@ -191,7 +232,7 @@ internal fun OnboardingComponentsScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                     CategorySelector(category, categories) { category = it }
-                    if (category == "AdrenoTools") {
+                    if (category == "GPU driver") {
                         Spacer(Modifier.height(10.dp))
                         OutlinedButton(onClick = { cb.onBrowseDriver() }, modifier = Modifier.fillMaxWidth()) {
                             Text("Install local driver")
@@ -251,7 +292,7 @@ internal fun OnboardingComponentsScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     CategorySelector(category, categories) { category = it }
-                    if (category == "AdrenoTools") {
+                    if (category == "GPU driver") {
                         Spacer(Modifier.height(8.dp))
                         OutlinedButton(onClick = { cb.onBrowseDriver() }) { Text("Install local driver") }
                     }
@@ -458,8 +499,8 @@ private fun ComponentCard(
                         busy && installingProgress >= 0 ->
                             "${installingLabel ?: "Installing"} • ${installingProgress}%"
                         busy -> installingLabel ?: "Working…"
-                        item.inUse -> "${item.type} • In use"
-                        else -> item.type
+                        item.inUse -> "${componentTypeTitle(item.type)} • In use"
+                        else -> componentTypeTitle(item.type)
                     }
                     Text(
                         status,
