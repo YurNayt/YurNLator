@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       variant:
-        description: 'Variant (standard, antutu, antutuAlt, ludashi, genshin, pubg, geekbench6) or all'
+        description: 'Variant (standard, antutu, antutuAlt, ludashi, ludashi2, genshin, pubg, geekbench6, vivo) or all'
         default: 'all'
       release:
         description: 'Publish as release (e.g. v0.1.0 or v0.1.0-alpha1). Empty = just build'
@@ -31,7 +31,7 @@ jobs:
     steps:
       - id: pick
         run: |
-          ALL='["standard","antutu","antutuAlt","ludashi","genshin","pubg","geekbench6"]'
+          ALL='["standard","antutu","antutuAlt","ludashi","ludashi2","genshin","pubg","geekbench6","vivo"]'
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then V="$ALL"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             IN="${{ github.event.inputs.variant }}"

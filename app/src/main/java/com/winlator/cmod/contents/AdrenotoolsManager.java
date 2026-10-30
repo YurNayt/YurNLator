@@ -187,45 +187,92 @@ public class AdrenotoolsManager {
         return hasExtracted;
     }
     
+    /**
+     * Installs an adrenotools driver archive (.zip with meta.json) from any Uri:
+     * a local file, a content:// pick from the file manager, or a downloaded file.
+     * Works offline. Returns the installed driver id, or "" when the archive is not a driver.
+     *
+     * YurNLator changes vs. upstream: the temp folder is fully cleaned first (a failed
+     * install no longer leaks files into the next one), archives with the driver inside
+     * a subfolder are accepted, entries can't escape the temp folder (zip-slip), and
+     * installing a driver that is already present returns its id instead of failing.
+     */
     public String installDriver(Uri driverUri) {
         File tmpDir = new File(adrenotoolsContentDir, "tmp");
-        if (tmpDir.exists()) tmpDir.delete();
+        if (tmpDir.exists()) FileUtils.delete(tmpDir);
         tmpDir.mkdirs();
-        ZipInputStream zis;
-        InputStream is;
         String name = "";
-        
-        try {
-            is = mContext.getContentResolver().openInputStream(driverUri);
-            zis = new ZipInputStream(is);
-            ZipEntry entry = zis.getNextEntry();
-            while (entry != null) {
-                File dstFile = new File(tmpDir, entry.getName());
-                Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                entry = zis.getNextEntry();
-            }
-            zis.close();
-            if (new File(tmpDir, "meta.json").exists()) {
-                name = getDriverName(tmpDir.getName());
-                File dst = new File(adrenotoolsContentDir, name);
-                if (!dst.exists() && !name.equals(""))
-                    tmpDir.renameTo(dst);
-                else {
-                    name = "";
-                    FileUtils.delete(tmpDir);
+
+        try (InputStream is = mContext.getContentResolver().openInputStream(driverUri)) {
+            if (is == null) throw new IOException("Cannot open " + driverUri);
+            String tmpRoot = tmpDir.getCanonicalPath() + File.separator;
+            try (ZipInputStream zis = new ZipInputStream(is)) {
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    File dstFile = new File(tmpDir, entry.getName());
+                    if (!dstFile.getCanonicalPath().startsWith(tmpRoot)) continue; // zip-slip
+                    if (entry.isDirectory()) {
+                        dstFile.mkdirs();
+                        continue;
+                    }
+                    File parent = dstFile.getParentFile();
+                    if (parent != null) parent.mkdirs();
+                    Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 }
             }
-            else {
-                Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-                tmpDir.delete();
+
+            File driverRoot = findDriverRoot(tmpDir);
+            if (driverRoot == null) {
+                Log.d("AdrenotoolsManager", "Failed to install driver: no meta.json in the archive");
+                return "";
+            }
+
+            String driverName = readMetaName(driverRoot);
+            if (driverName.isEmpty() || driverName.contains("/") || driverName.equals("tmp")) {
+                Log.d("AdrenotoolsManager", "Failed to install driver: missing or invalid name in meta.json");
+                return "";
+            }
+
+            File dst = new File(adrenotoolsContentDir, driverName);
+            if (dst.exists()) {
+                // Already installed: just report it so the caller can select it.
+                name = driverName;
+            } else if (driverRoot.renameTo(dst)) {
+                name = driverName;
             }
         }
         catch (IOException e) {
-            Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-            tmpDir.delete();
+            Log.d("AdrenotoolsManager", "Failed to install driver: " + e.getMessage());
         }
-        
+        finally {
+            if (tmpDir.exists()) FileUtils.delete(tmpDir);
+        }
+
         return name;
+    }
+
+    /** The folder holding meta.json: the archive root, or a single top-level subfolder. */
+    private static File findDriverRoot(File dir) {
+        if (new File(dir, "meta.json").isFile()) return dir;
+        File[] children = dir.listFiles();
+        if (children == null) return null;
+        File found = null;
+        for (File child : children) {
+            if (child.isDirectory() && new File(child, "meta.json").isFile()) {
+                if (found != null) return null; // ambiguous: several drivers in one archive
+                found = child;
+            }
+        }
+        return found;
+    }
+
+    private static String readMetaName(File driverRoot) {
+        try {
+            JSONObject meta = new JSONObject(FileUtils.readString(new File(driverRoot, "meta.json")));
+            return meta.optString("name", "").trim();
+        } catch (JSONException e) {
+            return "";
+        }
     }
     
     public void setDriverById(EnvVars envVars, ImageFs imagefs, String adrenotoolsDriverId) {

@@ -22,9 +22,11 @@ Each variant is the same app under a different package name and installs separat
 | antutu | `com.antutu.ABenchMark` |
 | antutuAlt | `com.antutu.benchmark.full` |
 | ludashi | `com.ludashi.benchmark` |
+| ludashi2 | `com.ludashi.benchmark2` |
 | genshin | `com.miHoYo.GenshinImpact` |
-| pubg | `com.tencent.ig` |
+| pubg | `com.tencent.ig` (also works for Red Magic game mode) |
 | geekbench6 | `com.primatelabs.geekbench6` |
+| vivo | `com.netease.moba.vivo` (vivo / iQOO built-in frame interpolation) |
 
 ## Building
 APKs are built by GitHub Actions: every push builds `standard`; pushing a tag `v*`

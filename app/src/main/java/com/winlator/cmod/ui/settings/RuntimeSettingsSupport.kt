@@ -67,6 +67,12 @@ import java.io.File
 import java.io.FileOutputStream
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.outlined.FileOpen
+import kotlinx.coroutines.launch
 
 internal data class VersionCatalog(val all: List<String>, val installed: Set<String>)
 internal data class DriverOption(
@@ -654,7 +660,28 @@ internal fun SettingDriverChoice(
     onSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var importing by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val importScope = rememberCoroutineScope()
     val selectedOption = options.firstOrNull { it.id.equals(selected, ignoreCase = true) }
+    // Offline install: pick a driver .zip from storage (Turnip / adrenotools format).
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        importing = true
+        importScope.launch {
+            val id = withContext(Dispatchers.IO) {
+                runCatching { AdrenotoolsManager(context).installDriver(uri) }.getOrDefault("")
+            }
+            importing = false
+            if (id.isBlank()) {
+                Toast.makeText(context, "Not a driver archive (.zip with meta.json)", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, "Installed: $id", Toast.LENGTH_SHORT).show()
+                // Installed option: the caller selects it and reloads the list, no network involved.
+                onInstall(DriverOption(id, id, true))
+            }
+        }
+    }
     Box(Modifier.fillMaxWidth()) {
         Surface(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
             Row(
@@ -679,13 +706,31 @@ internal fun SettingDriverChoice(
             onDismissRequest = { expanded = false },
             modifier = Modifier.widthIn(min = 260.dp, max = 460.dp).heightIn(max = 500.dp)
         ) {
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Install from file…", color = MaterialTheme.colorScheme.primary)
+                        Text("Driver .zip from your storage, works offline", style = MaterialTheme.typography.labelSmall)
+                    }
+                },
+                leadingIcon = {
+                    if (importing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else Icon(Icons.Outlined.FileOpen, null, tint = MaterialTheme.colorScheme.primary)
+                },
+                enabled = !importing,
+                onClick = {
+                    expanded = false
+                    importLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
+                }
+            )
+            HorizontalDivider()
             options.forEach { option ->
                 val busy = "driver:${option.remoteUrl ?: option.id}" in installing
                 DropdownMenuItem(
                     text = {
                         Column {
                             Text(option.label, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (option.installed) 1f else .52f))
-                            if (!option.installed) Text(if (busy) "Downloading…" else "Download", style = MaterialTheme.typography.labelSmall)
+                            if (!option.installed) Text(if (busy) "Downloading…" else "Download (needs internet)", style = MaterialTheme.typography.labelSmall)
                         }
                     },
                     trailingIcon = {
