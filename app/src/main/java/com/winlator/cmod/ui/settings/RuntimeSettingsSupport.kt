@@ -403,7 +403,7 @@ internal fun normalizeResolution(value: String): String =
 private fun settingDisplayLabel(value: String): String =
     if (value == "Lanczos 2 (16-tap)") "Lanczos 2" else value
 
-private fun settingFieldLabel(label: String): String = when (label) {
+internal fun settingFieldLabel(label: String): String = when (label) {
     "Graphics Driver" -> "OpenGL Driver"
     "Driver Version" -> "Vulkan Driver"
     else -> label

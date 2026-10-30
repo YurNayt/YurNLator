@@ -1,5 +1,6 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.contents.WrapperManager;
 import static com.winlator.cmod.core.AppUtils.showToast;
 
 import android.Manifest;
@@ -2393,7 +2394,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         File graphicsRuntimeMarker = new File(rootDir,
                 "usr/lib/.winlator-graphics-runtime-c7474f7e-25b50a11-v2");
+        boolean builtinWrapperExtracted = false;
         if (firstTimeBoot || !graphicsRuntimeMarker.isFile()) {
+            builtinWrapperExtracted = true;
             Log.d("XServerDisplayActivity", "Installing paired Pipetto wrapper and common graphics runtime");
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst",
                     rootDir);
@@ -2403,6 +2406,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             FileUtils.writeString(graphicsRuntimeMarker,
                     "wrapper=c7474f7e;extra_libs=25b50a11;layers=9d57736d;opengl=split-v1");
         }
+
+        // YurNLator: the container / game's chosen Vulkan wrapper ("wrapper=" in the graphics
+        // driver config; built-in when unset). Only re-extracted when it changes.
+        WrapperManager.applySelected(this, rootDir, graphicsDriverConfig.get("wrapper"), builtinWrapperExtracted);
 
         extractOpenGLDriver(rootDir);
 

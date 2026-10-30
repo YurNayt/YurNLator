@@ -95,6 +95,7 @@ import com.winlator.cmod.ui.settings.DxvkAsyncMode
 import com.winlator.cmod.ui.settings.EnvironmentVariablesEditor
 import com.winlator.cmod.ui.settings.SettingChoice
 import com.winlator.cmod.ui.settings.SettingDriverChoice
+import com.winlator.cmod.ui.settings.SettingWrapperChoice
 import com.winlator.cmod.ui.settings.SettingInstallChoice
 import com.winlator.cmod.ui.settings.SettingMappedChoice
 import com.winlator.cmod.ui.settings.SettingText
@@ -830,6 +831,8 @@ private fun ShortcutCategoryV2(
                     SettingDriverChoice("Driver Version", s.driverVersion, c.drivers, s.installing, installDriver) {
                         s.driverVersion = it; s.graphics("version", it)
                     }
+                    SettingsDivider()
+                    SettingWrapperChoice(readConfig(s.graphicsConfig, "wrapper", ';')) { s.graphics("wrapper", it) }
                 }
                 SettingsDivider()
                 ShortcutVulkanExtensionsV2(context, s.driverVersion, s.blacklistedExtensions) {

@@ -28,6 +28,7 @@ import com.winlator.cmod.fexcore.FEXCorePresetManager
 import com.winlator.cmod.ui.settings.DriverOption
 import com.winlator.cmod.ui.settings.SettingChoice
 import com.winlator.cmod.ui.settings.SettingDriverChoice
+import com.winlator.cmod.ui.settings.SettingWrapperChoice
 import com.winlator.cmod.ui.settings.SettingInstallChoice
 import com.winlator.cmod.ui.settings.SettingMappedChoice
 import com.winlator.cmod.ui.settings.SettingText
@@ -208,6 +209,7 @@ internal fun ContainerRuntimePane(
                     SettingsDivider(); SettingDriverChoice("Driver Version", driverVersion, c.drivers, installing, ::installDriver) {
                         driverVersion = it; saveGraphics("version", it)
                     }
+                    SettingsDivider(); SettingWrapperChoice(readConfig(graphicsConfig, "wrapper", ';')) { saveGraphics("wrapper", it) }
                 }
                 SettingsDivider(); SettingChoice("Vulkan Version", vulkanVersion, listOf("1.1", "1.2", "1.3")) { vulkanVersion = it; saveGraphics("vulkanVersion", it) }
                 SettingsDivider(); SettingChoice("Max Device Memory", maxDeviceMemory, listOf("0", "512", "1024", "2048", "4096", "8192", "12288", "16384")) { maxDeviceMemory = it; saveGraphics("maxDeviceMemory", it) }

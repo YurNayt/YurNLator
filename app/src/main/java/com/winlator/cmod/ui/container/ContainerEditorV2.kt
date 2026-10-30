@@ -82,6 +82,7 @@ import com.winlator.cmod.ui.settings.DxvkAsyncMode
 import com.winlator.cmod.ui.settings.EnvironmentVariablesEditor
 import com.winlator.cmod.ui.settings.SettingChoice
 import com.winlator.cmod.ui.settings.SettingDriverChoice
+import com.winlator.cmod.ui.settings.SettingWrapperChoice
 import com.winlator.cmod.ui.settings.SettingInstallChoice
 import com.winlator.cmod.ui.settings.SettingMappedChoice
 import com.winlator.cmod.ui.settings.SettingText
@@ -884,6 +885,8 @@ private fun ContainerCategoryV2(
                         s.driverVersion = it
                         s.graphics("version", it)
                     }
+                    SettingsDivider()
+                    SettingWrapperChoice(readConfig(s.graphicsConfig, "wrapper", ';')) { s.graphics("wrapper", it) }
                     SettingsDivider()
                     ContainerVulkanExtensionsV2(context, s.driverVersion, s.blacklistedExtensions) {
                         s.graphics("blacklistedExtensions", it)

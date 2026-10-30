@@ -4,6 +4,7 @@ import com.winlator.cmod.core.LocalInstalls
 import com.winlator.cmod.ui.components.BrowserItem
 import com.winlator.cmod.ui.components.ComponentBrowser
 import com.winlator.cmod.ui.components.componentTypeTitle
+import com.winlator.cmod.ui.components.rememberWrapperItems
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -185,16 +186,25 @@ internal fun OnboardingComponentsScreen(
                 BrowserItem(it.id, it.type, it.name, it.author, it.installed, it.removable, it.inUse, localKey)
             }
         }
+        // Vulkan wrappers are handled here (WrapperManager), not by the activity.
+        val wrappers = rememberWrapperItems()
+        val wrapperBusy = wrappers.busyIds.isNotEmpty()
         ComponentBrowser(
-            items = browserItems,
+            items = browserItems + wrappers.items,
             loading = all.isEmpty(),
             onClose = onBack,
-            onInstall = { cb.onInstall(it.id) },
-            onRemove = { cb.onRemove(it.id) },
-            onLocalPackage = { type -> if (type.isGpuDriver) cb.onBrowseDriver() else cb.onBrowseLocal() },
-            busyIds = setOfNotNull(installing),
-            busyLabel = installingLabel,
-            busyProgress = installingProgress,
+            onInstall = { if (wrappers.owns(it)) wrappers.install(it) else cb.onInstall(it.id) },
+            onRemove = { if (wrappers.owns(it)) wrappers.remove(it) else cb.onRemove(it.id) },
+            onLocalPackage = { type ->
+                when {
+                    type.isWrapper -> wrappers.importFile()
+                    type.isGpuDriver -> cb.onBrowseDriver()
+                    else -> cb.onBrowseLocal()
+                }
+            },
+            busyIds = setOfNotNull(installing) + wrappers.busyIds,
+            busyLabel = if (wrapperBusy) "Downloading" else installingLabel,
+            busyProgress = if (wrapperBusy) wrappers.progress else installingProgress,
             typeHeader = { type ->
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (showLocalInstallProgress) InstallProgressCard(installingLabel, installingProgress)

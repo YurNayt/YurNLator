@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Menu
@@ -76,19 +77,26 @@ data class BrowserItem(
     val removable: Boolean = installed,
     val inUse: Boolean = false,
     /** LocalInstalls key ("type|name"): marks items the user installed from their own files. */
-    val localKey: String? = null
+    val localKey: String? = null,
+    /** Extra details line pieces, e.g. "Mali / Exynos only" for a wrapper. */
+    val details: List<String> = emptyList()
 )
 
 /** A section of the browser: one or more internal types under a user-facing name. */
 data class ComponentType(val key: String, val title: String, val icon: ImageVector, val types: Set<String>) {
     val isGpuDriver get() = key == GPU_DRIVER
+    val isWrapper get() = key == WRAPPER
+    /** Types with several publishers get the author selector. */
+    val hasAuthors get() = isGpuDriver || isWrapper
     fun matches(item: BrowserItem) = item.type in types
 }
 
 const val GPU_DRIVER = "AdrenoTools"
+const val WRAPPER = "Wrapper"
 
 val ALL_COMPONENT_TYPES = listOf(
     ComponentType(GPU_DRIVER, "GPU driver", Icons.Outlined.DeveloperBoard, setOf(GPU_DRIVER)),
+    ComponentType(WRAPPER, "Wrapper", Icons.Outlined.Hub, setOf(WRAPPER)),
     ComponentType("wine", "Wine & Proton", Icons.Outlined.WineBar, setOf("Wine", "Proton")),
     ComponentType("DXVK", "DXVK", Icons.Outlined.Layers, setOf("DXVK")),
     ComponentType("VKD3D", "VKD3D", Icons.Outlined.Layers, setOf("VKD3D")),
@@ -248,9 +256,9 @@ private fun TypePage(
     // Other types have one source -> no selector, unless there are own files: All, My files.
     val customSources = remember(sourcesRev) { DriverSources.custom(context) }
     val authors = remember(items, type.key, sourcesRev, myFiles) {
-        if (type.isGpuDriver) {
+        if (type.hasAuthors) {
             val names = linkedSetOf<String>()
-            DriverSources.all(context).forEach { names += it.name }
+            if (type.isGpuDriver) DriverSources.all(context).forEach { names += it.name }
             items.filter { !it.installed }.mapNotNullTo(names) { it.author }
             buildList {
                 add(AUTHOR_ALL)
@@ -335,7 +343,13 @@ private fun TypePage(
                 OutlinedButton(onClick = onLocalPackage, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Outlined.FileOpen, null)
                     Spacer(Modifier.width(8.dp))
-                    Text(if (type.isGpuDriver) "Install driver from file (.zip)" else "Install from file")
+                    Text(
+                        when {
+                            type.isGpuDriver -> "Install driver from file (.zip)"
+                            type.isWrapper -> "Install wrapper from file (.tzst)"
+                            else -> "Install from file"
+                        }
+                    )
                 }
             }
             item(key = "header") { header() }
@@ -427,6 +441,7 @@ private fun ItemCard(
                     Text(parsed?.title ?: item.name, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     val details = buildList {
                         parsed?.tags?.let { addAll(it) }
+                        addAll(item.details)
                         if (fromFile) add("From your files")
                         if (item.inUse) add("In use")
                         else if (item.installed && isEmpty()) add("Installed")
