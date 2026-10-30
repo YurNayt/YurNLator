@@ -82,7 +82,24 @@ jobs:
         run: |
           chmod +x gradlew
           V="${{ matrix.variant }}"
-          ./gradlew "assemble${V^}Release"
+          set -o pipefail
+          ./gradlew "assemble${V^}Release" --stacktrace 2>&1 | tee build.log
+
+      - name: Report build errors
+        if: failure()
+        run: |
+          # Surface the real cause as annotations (readable without downloading logs)
+          grep -nE "What went wrong|^e: |error:|Exception|Caused by|FAILED|Could not|> " build.log \
+            | grep -vE "^\S*:\s+at " | head -40 | while IFS= read -r line; do
+              echo "::error::${line:0:900}"
+            done
+          tail -60 build.log > build-tail.txt || true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-log-${{ matrix.variant }}
+          path: build.log
 
       - name: Rename APK
         run: |
