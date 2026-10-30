@@ -102,8 +102,8 @@ android {
         // We’re preserving Winlator’s request to keep targetSdkVersion at 28
         targetSdkVersion 28
 
-        versionCode 20
-        versionName "4.0"
+        versionCode 1
+        versionName "0.1.0"
 
         // External native build from Winlator
         externalNativeBuild {
@@ -132,15 +132,53 @@ android {
         freeCompilerArgs += ['-opt-in=androidx.compose.material3.ExperimentalMaterial3Api']
     }
 
-    // Keep Winlator’s buildTypes
+    // Release signing: a stable key from CI secrets (YURN_KEYSTORE_*), so every new
+    // build installs as an update. Without the secrets the debug key is used.
+    signingConfigs {
+        yurn {
+            def ks = System.getenv("YURN_KEYSTORE_FILE")
+            if (ks != null && new File(ks).exists()) {
+                storeFile file(ks)
+                storePassword System.getenv("YURN_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("YURN_KEY_ALIAS")
+                keyPassword System.getenv("YURN_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             minifyEnabled false
         }
         release {
             minifyEnabled false
-            signingConfig signingConfigs.debug
+            def ks = System.getenv("YURN_KEYSTORE_FILE")
+            signingConfig (ks != null && new File(ks).exists()) ? signingConfigs.yurn : signingConfigs.debug
             crunchPngs false
+        }
+    }
+
+    // Package-name spoof variants. Each one installs as a separate app with its own data.
+    // To add a variant: one line in the table below.
+    //   flavor name     package name (applicationId)       label suffix
+    def spoofs = [
+        standard   : ["com.yurnayt.yurnlator",          ""],
+        antutu     : ["com.antutu.ABenchMark",          " AnTuTu"],
+        antutuAlt  : ["com.antutu.benchmark.full",      " AnTuTu Alt"],
+        ludashi    : ["com.ludashi.benchmark",          " Ludashi"],
+        genshin    : ["com.miHoYo.GenshinImpact",       " Genshin"],
+        pubg       : ["com.tencent.ig",                 " PUBG"],
+        geekbench6 : ["com.primatelabs.geekbench6",     " Geekbench 6"],
+    ]
+
+    flavorDimensions = ["spoof"]
+    productFlavors {
+        spoofs.each { name, cfg ->
+            create(name) {
+                dimension "spoof"
+                applicationId cfg[0]
+                resValue "string", "app_name", "YurNLator" + cfg[1]
+            }
         }
     }
 
