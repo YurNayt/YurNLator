@@ -2,6 +2,7 @@
 
 package com.winlator.cmod.ui.shortcut
 
+import com.winlator.cmod.contents.DriverSources
 import com.winlator.cmod.core.GpuProfileManager
 
 import android.app.Activity
@@ -436,7 +437,7 @@ internal fun ShortcutEditorV2(fragment: Fragment, shortcut: Shortcut, close: () 
             InputControlsManager(context).getProfiles(true).forEach { put(it.id.toString(), it.name) }
         }
     }
-    val catalog by produceState<SettingsCatalog?>(null, state.arm64, state.revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion) {
+    val catalog by produceState<SettingsCatalog?>(null, state.arm64, state.revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion, DriverSources.revision.intValue) {
         // Saved data first (instant, offline), then refresh from the network in the background.
         value = loadSettingsCatalog(
             context, state.arm64, state.dxvkVersion, state.vkd3dVersion,

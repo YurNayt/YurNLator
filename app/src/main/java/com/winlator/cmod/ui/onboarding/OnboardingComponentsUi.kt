@@ -148,6 +148,11 @@ internal fun OnboardingComponentsScreen(
     cb: OnboardingCallbacks
 ) {
     var category by rememberSaveable { mutableStateOf("Recommended") }
+    // First launch: no driver downloads (Wrapper / bundled drivers are enough to start).
+    // Drivers are downloaded later in the container editor or in Components.
+    val categories = remember(managerMode) {
+        if (managerMode) componentCategories else componentCategories - "AdrenoTools"
+    }
     val landscape = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
     val recommendedIds = remember(all) { recommendedComponentIds(all) }
     val visible = remember(all, category, recommendedIds) {
@@ -185,7 +190,7 @@ internal fun OnboardingComponentsScreen(
                         InstallProgressCard(installingLabel, installingProgress)
                     }
                     Spacer(Modifier.height(10.dp))
-                    CategorySelector(category) { category = it }
+                    CategorySelector(category, categories) { category = it }
                     if (category == "AdrenoTools") {
                         Spacer(Modifier.height(10.dp))
                         OutlinedButton(onClick = { cb.onBrowseDriver() }, modifier = Modifier.fillMaxWidth()) {
@@ -245,7 +250,7 @@ internal fun OnboardingComponentsScreen(
                         InstallProgressCard(installingLabel, installingProgress)
                     }
                     Spacer(Modifier.height(12.dp))
-                    CategorySelector(category) { category = it }
+                    CategorySelector(category, categories) { category = it }
                     if (category == "AdrenoTools") {
                         Spacer(Modifier.height(8.dp))
                         OutlinedButton(onClick = { cb.onBrowseDriver() }) { Text("Install local driver") }
@@ -362,12 +367,12 @@ private fun SourcePart(icon: ImageVector, label: String, selected: Boolean, clic
 }
 
 @Composable
-private fun CategorySelector(selected: String, select: (String) -> Unit) {
+private fun CategorySelector(selected: String, categories: List<String>, select: (String) -> Unit) {
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
-        componentCategories.forEach {
+        categories.forEach {
             Surface(
                 onClick = { select(it) },
                 shape = RoundedCornerShape(10.dp),

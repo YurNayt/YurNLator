@@ -73,6 +73,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.People
 import kotlinx.coroutines.launch
 
 internal data class VersionCatalog(val all: List<String>, val installed: Set<String>)
@@ -80,7 +81,9 @@ internal data class DriverOption(
     val id: String,
     val label: String,
     val installed: Boolean,
-    val remoteUrl: String? = null
+    val remoteUrl: String? = null,
+    /** Driver author for downloads (see DriverSources); null for installed drivers. */
+    val author: String? = null
 )
 internal data class WineRuntimeOption(
     val id: String,
@@ -258,7 +261,7 @@ internal suspend fun loadSettingsCatalog(
         }
         if (!alreadyInstalled) {
             driverOptions["remote:${remote.name}:${remote.url}"] =
-                DriverOption(remote.name, remote.name, false, remote.url)
+                DriverOption(remote.name, remote.name, false, remote.url, remote.repository)
         }
     }
     if (selectedDriver.isNotBlank() && driverOptions.values.none { it.id.equals(selectedDriver, ignoreCase = true) }) {
@@ -667,6 +670,8 @@ internal fun SettingDriverChoice(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
+    var showAuthors by remember { mutableStateOf(false) }
+    if (showAuthors) DriverSourcesDialog(onDismiss = { showAuthors = false })
     val context = LocalContext.current
     val importScope = rememberCoroutineScope()
     val selectedOption = options.firstOrNull { it.id.equals(selected, ignoreCase = true) }
@@ -729,8 +734,33 @@ internal fun SettingDriverChoice(
                     importLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
                 }
             )
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Driver authors…")
+                        Text("Choose whose drivers are offered for download", style = MaterialTheme.typography.labelSmall)
+                    }
+                },
+                leadingIcon = { Icon(Icons.Outlined.People, null) },
+                onClick = { expanded = false; showAuthors = true }
+            )
             HorizontalDivider()
-            options.forEach { option ->
+            // Installed first, then downloads grouped under their author.
+            val installedOptions = options.filter { it.installed }
+            val downloads = options.filter { !it.installed }.groupBy { it.author ?: "Other" }
+            val rows: List<Pair<String?, DriverOption>> =
+                installedOptions.map { null to it } +
+                    downloads.flatMap { (author, list) -> list.mapIndexed { i, o -> (if (i == 0) author else null) to o } }
+            rows.forEach { (header, option) ->
+                if (header != null) {
+                    Text(
+                        header.uppercase(),
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 val busy = "driver:${option.remoteUrl ?: option.id}" in installing
                 DropdownMenuItem(
                     text = {

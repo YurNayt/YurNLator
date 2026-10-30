@@ -190,7 +190,8 @@ public class OnboardingActivity extends AppCompatActivity {
 
         syncComposeCatalog();
         loadCatalog();
-        loadRemoteDrivers();
+        // Driver downloads are offered in Components / the container editor, not on first launch.
+        if (componentManagerMode) loadRemoteDrivers();
         if (!coreReady) startCoreInstallation();
     }
 

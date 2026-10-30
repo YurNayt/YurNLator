@@ -3,8 +3,6 @@ package com.winlator.cmod.contents;
 import android.content.Context;
 import android.net.Uri;
 
-import com.winlator.cmod.contentdialog.DriverRepo;
-import com.winlator.cmod.contentdialog.RepositoryManagerDialog;
 import com.winlator.cmod.core.RemoteFetch;
 
 import org.json.JSONArray;
@@ -14,6 +12,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -37,32 +36,68 @@ public final class RemoteDriverCatalog {
         }
     }
 
+    /** Downloads listed per author, so one huge feed can't bury the others. */
+    private static final int MAX_PER_SOURCE = 40;
+
     /** Downloadable drivers; refreshes the saved list from the network when allowed. */
     public static List<Entry> load(Context context) {
         return load(context, true);
     }
 
     /**
-     * Downloadable drivers from the configured repositories.
-     * allowNetwork=false: saved list only (instant, offline). Otherwise RemoteFetch decides
+     * Downloadable drivers from the enabled driver authors (see DriverSources).
+     * allowNetwork=false: saved lists only (instant, offline). Otherwise RemoteFetch decides
      * (online and not fetched in the last minutes -> download, else the saved copy).
-     * Installing an entry still needs internet; already installed drivers never do.
+     * Entry.repository is the author name. Installing still needs internet;
+     * already installed drivers never do.
      */
     public static List<Entry> load(Context context, boolean allowNetwork) {
         ArrayList<Entry> result = new ArrayList<>();
-        for (DriverRepo repo : RepositoryManagerDialog.loadDriverRepos(context, 0)) {
-            if (repo.apiUrl == null || repo.apiUrl.isEmpty()) continue;
-            String body = allowNetwork ? RemoteFetch.get(context, repo.apiUrl) : RemoteFetch.cached(context, repo.apiUrl);
-            if (body != null) parseRepo(repo, body, result);
+        HashSet<String> seenUrls = new HashSet<>();
+        for (DriverSource source : DriverSources.enabled(context)) {
+            ArrayList<Entry> fromSource = new ArrayList<>();
+            for (DriverFeed feed : source.getFeeds()) {
+                String url = feed instanceof DriverFeed.Github
+                        ? ((DriverFeed.Github) feed).getApiUrl()
+                        : ((DriverFeed.Json) feed).getUrl();
+                String body = allowNetwork ? RemoteFetch.get(context, url) : RemoteFetch.cached(context, url);
+                if (body == null) continue;
+                if (feed instanceof DriverFeed.Github) parseGithubReleases(source.getName(), body, fromSource);
+                else parseJsonFeed(source.getName(), body, fromSource);
+            }
+            int taken = 0;
+            for (Entry e : fromSource) {
+                if (taken >= MAX_PER_SOURCE) break;
+                if (!seenUrls.add(e.url)) continue;
+                result.add(e);
+                taken++;
+            }
         }
         return result;
     }
 
-    private static void parseRepo(DriverRepo repo, String body, List<Entry> result) {
+    /** Bannerlator / Winlator contents format: [{"verName": "...", "remoteUrl": "...zip"}]. */
+    private static void parseJsonFeed(String author, String body, List<Entry> result) {
+        try {
+            JSONArray array = new JSONArray(body);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject o = array.optJSONObject(i);
+                if (o == null) continue;
+                String url = o.optString("remoteUrl", "");
+                if (url.isEmpty() || !url.toLowerCase(Locale.ENGLISH).endsWith(".zip")) continue;
+                String name = o.optString("verName", "").trim();
+                if (name.isEmpty()) name = url.substring(url.lastIndexOf('/') + 1).replaceFirst("(?i)\\.zip$", "");
+                result.add(new Entry(author, name, url));
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** GitHub releases API response: every .zip asset of a release is one driver. */
+    private static void parseGithubReleases(String author, String body, List<Entry> result) {
         try {
             JSONArray releases = new JSONArray(body);
-            int accepted = 0;
-            for (int i = 0; i < releases.length() && accepted < 40; i++) {
+            for (int i = 0; i < releases.length(); i++) {
                 JSONObject release = releases.optJSONObject(i);
                 if (release == null) continue;
                 JSONArray assets = release.optJSONArray("assets");
@@ -81,21 +116,14 @@ public final class RemoteDriverCatalog {
                 }
 
                 for (JSONObject asset : zipAssets) {
-                    if (accepted >= 40) break;
                     String url = asset.optString("browser_download_url", "");
-                    String assetName = asset.optString("name", "");
-                    String assetLabel = assetName.replaceFirst("(?i)\\.zip$", "").trim();
-
-                    String name;
-                    if (zipAssets.size() > 1) {
-                        name = assetLabel.isEmpty() ? releaseName : assetLabel;
-                    } else {
-                        name = releaseName.isEmpty() ? assetLabel : releaseName;
-                    }
+                    String assetLabel = asset.optString("name", "").replaceFirst("(?i)\\.zip$", "").trim();
+                    // One asset: the release title reads best. Several: each asset is its own driver.
+                    String name = zipAssets.size() > 1
+                            ? (assetLabel.isEmpty() ? releaseName : assetLabel)
+                            : (releaseName.isEmpty() ? assetLabel : releaseName);
                     if (name.isEmpty()) continue;
-
-                    result.add(new Entry(repo.name, name, url));
-                    accepted++;
+                    result.add(new Entry(author, name, url));
                 }
             }
         } catch (Exception ignored) {

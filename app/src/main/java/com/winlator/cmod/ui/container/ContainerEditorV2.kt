@@ -2,6 +2,7 @@
 
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.contents.DriverSources
 import com.winlator.cmod.core.GpuProfileManager
 
 import android.content.Context
@@ -367,7 +368,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
     val fexPresets = remember { FEXCorePresetManager.getPresets(context).associate { it.id to it.name } }
     val boxPresets = remember { Box64PresetManager.getPresets("box64", context).associate { it.id to it.name } }
 
-    val catalog by produceState<SettingsCatalog?>(null, arm64, revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion) {
+    val catalog by produceState<SettingsCatalog?>(null, arm64, revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion, DriverSources.revision.intValue) {
         // Saved data first (instant, offline), then refresh from the network in the background.
         value = loadSettingsCatalog(
             context, arm64, state.dxvkVersion, state.vkd3dVersion,

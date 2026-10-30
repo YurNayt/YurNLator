@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
@@ -186,14 +187,16 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             item("gpu-profile") { GpuProfilePreferenceCard() }
 
             item("environment-title") { SectionTitle("ENVIRONMENTS") }
-            item("containers") {
-                NavigationRow(Icons.Outlined.Dns, "Containers", "Create and manage Windows environments") {
-                    context.startActivity(Intent(context, ContainersSettingsActivity::class.java))
+            // Containers live in the bottom bar; Settings links to Input Controls instead.
+            item("input-controls") {
+                NavigationRow(Icons.Outlined.SportsEsports, "Input Controls", "On-screen controls and controller profiles") {
+                    activity?.navigateToMainDestination(R.id.main_menu_input_controls)
                 }
             }
             item("components") {
                 NavigationRow(Icons.Outlined.Apps, "Components", "Wine, Proton, DXVK, VKD3D and runtimes", callbacks::onOpenComponents)
             }
+            item("driver-authors") { DriverSourcesPreferenceCard() }
 
             item("presets-title") { SectionTitle("PRESETS") }
             item("presets") {
