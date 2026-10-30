@@ -153,7 +153,8 @@ android {
         release {
             minifyEnabled false
             def ks = System.getenv("YURN_KEYSTORE_FILE")
-            signingConfig (ks != null && new File(ks).exists()) ? signingConfigs.yurn : signingConfigs.debug
+            def useYurnKey = ks != null && new File(ks).exists()
+            signingConfig = useYurnKey ? signingConfigs.yurn : signingConfigs.debug
             crunchPngs false
         }
     }
