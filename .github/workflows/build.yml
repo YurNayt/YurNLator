@@ -126,3 +126,5 @@ jobs:
         with:
           files: dist/*.apk
           generate_release_notes: true
+          # tags like v0.1.0-alpha1 are test builds, v0.1.0 is a normal release
+          prerelease: ${{ contains(github.ref_name, '-') }}
