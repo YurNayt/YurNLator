@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.components.KeepDialogFullscreen
 import com.winlator.cmod.core.GpuProfileManager
 import com.winlator.cmod.core.DriverNames
 import com.winlator.cmod.contents.DriverSources
@@ -86,6 +87,7 @@ internal fun DriverDownloadsDialog(
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            KeepDialogFullscreen()
             ComponentBrowser(
                 items = items,
                 loading = false,

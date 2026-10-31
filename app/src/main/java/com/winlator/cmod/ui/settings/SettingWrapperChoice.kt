@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.components.KeepDialogFullscreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -107,6 +108,7 @@ internal fun SettingWrapperChoice(selected: String, onSelected: (String) -> Unit
     if (downloads) {
         Dialog(onDismissRequest = { downloads = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                KeepDialogFullscreen()
                 ComponentBrowser(
                     items = wrappers.items,
                     loading = false,

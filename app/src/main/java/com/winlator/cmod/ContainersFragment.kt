@@ -32,6 +32,8 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
         super.onResume()
         // The toolbar is shared by all tabs; without this it keeps "Library" / "Settings".
         (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.setTitle(R.string.containers)
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        if (!landscape) (activity as? MainActivity)?.setMainToolbarVisible(true)
         refresh()
     }
 
@@ -50,6 +52,9 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
 
     /** Opens the Compose container editor above the tabs; back returns here and refreshes. */
     private fun openEditor(fragment: Fragment) {
+        // The editor has its own header with a back arrow: hide the "Containers" toolbar
+        // above it (it comes back in onResume when the editor closes).
+        (activity as? MainActivity)?.setMainToolbarVisible(false)
         parentFragmentManager.beginTransaction()
             .setCustomAnimations(R.anim.slide_in_up, R.anim.slide_out_down, R.anim.slide_in_down, R.anim.slide_out_up)
             .addToBackStack(null)

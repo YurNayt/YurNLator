@@ -1,6 +1,9 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.settings.PresetKind
+import com.winlator.cmod.ui.settings.SettingPresetChoice
 import com.winlator.cmod.contents.DriverSources
+import com.winlator.cmod.contents.ContentFileImport
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -112,7 +115,7 @@ internal fun ContainerRuntimePane(
     var revision by remember { mutableStateOf(0) }
     var installing by remember { mutableStateOf<Set<String>>(emptySet()) }
     val scope = rememberCoroutineScope()
-    val catalog by produceState<SettingsCatalog?>(null, arm64, revision, DriverSources.revision.intValue) {
+    val catalog by produceState<SettingsCatalog?>(null, arm64, revision, DriverSources.revision.intValue, ContentFileImport.revision.intValue) {
         // Saved data first (instant, offline), then refresh from the network in the background.
         value = loadSettingsCatalog(context, arm64, dxvkVersion, vkd3dVersion, fexVersion, boxVersion, driverVersion, allowNetwork = false)
         value = loadSettingsCatalog(context, arm64, dxvkVersion, vkd3dVersion, fexVersion, boxVersion, driverVersion)
@@ -258,14 +261,14 @@ internal fun ContainerRuntimePane(
                     catalog?.let { c ->
                         SettingsDivider(); SettingInstallChoice("FEXCore Version", fexVersion, c.fex, installing, "FEXCore", { v -> installRuntime("FEXCore", v) { fexVersion = it; container.setFEXCoreVersion(it); container.saveData() } }) { fexVersion = it; container.setFEXCoreVersion(it); container.saveData() }
                     }
-                    SettingsDivider(); SettingMappedChoice("FEXCore Preset", fexPreset, fexPresets) { fexPreset = it; container.setFEXCorePreset(it); container.saveData() }
+                    SettingsDivider(); SettingPresetChoice("FEXCore Preset", PresetKind.FEXCORE, fexPreset) { fexPreset = it; container.setFEXCorePreset(it); container.saveData() }
                 }
                 if (!arm64 || emulator == "WOWBox64") {
                     catalog?.let { c ->
                         val versions = if (arm64) c.wow else c.box; val type = if (arm64) "WOWBox64" else "Box64"
                         SettingsDivider(); SettingInstallChoice("$type Version", boxVersion, versions, installing, type, { v -> installRuntime(type, v) { boxVersion = it; container.setBox64Version(it); container.saveData() } }) { boxVersion = it; container.setBox64Version(it); container.saveData() }
                     }
-                    SettingsDivider(); SettingMappedChoice("Box64 Preset", boxPreset, boxPresets) { boxPreset = it; container.setBox64Preset(it); container.saveData() }
+                    SettingsDivider(); SettingPresetChoice(if (arm64) "WOWBox64 Preset" else "Box64 Preset", PresetKind.BOX64, boxPreset) { boxPreset = it; container.setBox64Preset(it); container.saveData() }
                 }
             }
         }

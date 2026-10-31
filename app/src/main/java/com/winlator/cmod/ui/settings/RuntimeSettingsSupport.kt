@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.contents.ContentFileImport
 import com.winlator.cmod.ui.components.ChoiceOption
 import com.winlator.cmod.ui.components.ChoiceSheet
 import com.winlator.cmod.contents.DriverOrigins
@@ -609,6 +610,31 @@ internal fun SettingInstallChoice(
     onSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var importing by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // Offline: install a .wcp package from the phone, then select it if it's this type.
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        importing = true
+        scope.launch {
+            val result = ContentFileImport.import(context, uri)
+            importing = false
+            when (result) {
+                is ContentFileImport.Result.Failed -> Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                is ContentFileImport.Result.Ok -> {
+                    val sameType = result.type.equals(prefix, ignoreCase = true)
+                    if (sameType) {
+                        onSelected(result.versionName)
+                        expanded = false
+                        Toast.makeText(context, "Installed ${result.versionName}", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Installed ${result.versionName}: it's a ${result.type} package, choose it in ${result.type}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
     Box(Modifier.fillMaxWidth()) {
         Surface(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
             Row(
@@ -632,7 +658,12 @@ internal fun SettingInstallChoice(
             },
             selected = selected,
             onPick = { if (it.installed) onSelected(it.value) else onInstall(it.value) },
-            onDismiss = { expanded = false }
+            onDismiss = { expanded = false },
+            actions = listOf(
+                PickerAction(Icons.Outlined.FileOpen, "Install from file", "$prefix package (.wcp) from your phone, works offline", busy = importing) {
+                    importLauncher.launch(arrayOf("*/*"))
+                }
+            )
         )
     }
 }

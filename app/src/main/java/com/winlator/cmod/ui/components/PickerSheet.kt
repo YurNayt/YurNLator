@@ -66,6 +66,7 @@ fun PickerSheet(
 ) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+        KeepDialogFullscreen()
         LazyColumn(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
@@ -174,11 +175,13 @@ fun ChoiceSheet(
     options: List<ChoiceOption>,
     selected: String,
     onPick: (ChoiceOption) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    actions: List<PickerAction> = emptyList()
 ) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scheme = MaterialTheme.colorScheme
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+        KeepDialogFullscreen()
         LazyColumn(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
             contentPadding = PaddingValues(start = 14.dp, end = 14.dp, bottom = 18.dp),
@@ -191,6 +194,25 @@ fun ChoiceSheet(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
+            }
+            items(actions, key = { "choice-action:" + it.title }) { action ->
+                Surface(
+                    onClick = { if (!action.busy) action.onClick() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = scheme.surface,
+                    border = BorderStroke(1.dp, scheme.outlineVariant)
+                ) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (action.busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Icon(action.icon, null, Modifier.size(20.dp), tint = scheme.primary)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(action.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = scheme.primary)
+                            Text(action.subtitle, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                        }
+                    }
+                }
             }
             items(options, key = { "choice:" + it.value }) { option ->
                 val isSelected = option.installed && option.value.equals(selected, ignoreCase = true)

@@ -381,6 +381,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         }
 
+        // A tab switch while an editor had hidden the toolbar: bring it back (portrait;
+        // landscape screens hide it themselves).
+        if (getResources().getConfiguration().orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            setMainToolbarVisible(true);
+        }
+
         switch (item.getItemId()) {
             case R.id.main_menu_shortcuts:
                 show(new ShortcutsFragment(), false);

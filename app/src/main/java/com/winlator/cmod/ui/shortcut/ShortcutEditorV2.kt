@@ -2,7 +2,10 @@
 
 package com.winlator.cmod.ui.shortcut
 
+import com.winlator.cmod.ui.settings.PresetKind
+import com.winlator.cmod.ui.settings.SettingPresetChoice
 import com.winlator.cmod.contents.DriverSources
+import com.winlator.cmod.contents.ContentFileImport
 import com.winlator.cmod.core.GpuProfileManager
 
 import android.app.Activity
@@ -438,7 +441,7 @@ internal fun ShortcutEditorV2(fragment: Fragment, shortcut: Shortcut, close: () 
             InputControlsManager(context).getProfiles(true).forEach { put(it.id.toString(), it.name) }
         }
     }
-    val catalog by produceState<SettingsCatalog?>(null, state.arm64, state.revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion, DriverSources.revision.intValue) {
+    val catalog by produceState<SettingsCatalog?>(null, state.arm64, state.revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion, DriverSources.revision.intValue, ContentFileImport.revision.intValue) {
         // Saved data first (instant, offline), then refresh from the network in the background.
         value = loadSettingsCatalog(
             context, state.arm64, state.dxvkVersion, state.vkd3dVersion,
@@ -938,7 +941,7 @@ private fun ShortcutCategoryV2(
                         }
                     }
                     SettingsDivider()
-                    SettingMappedChoice("FEXCore Preset", s.fexPreset, fexPresets) { s.fexPreset = it; s.extra("fexcorePreset", it) }
+                    SettingPresetChoice("FEXCore Preset", PresetKind.FEXCORE, s.fexPreset) { s.fexPreset = it; s.extra("fexcorePreset", it) }
                 }
                 if (!s.arm64 || s.emulator == "WOWBox64") {
                     catalog?.let { c ->
@@ -951,7 +954,7 @@ private fun ShortcutCategoryV2(
                         }
                     }
                     SettingsDivider()
-                    SettingMappedChoice("Box64 Preset", s.boxPreset, boxPresets) { s.boxPreset = it; s.extra("box64Preset", it) }
+                    SettingPresetChoice(if (s.arm64) "WOWBox64 Preset" else "Box64 Preset", PresetKind.BOX64, s.boxPreset) { s.boxPreset = it; s.extra("box64Preset", it) }
                 }
             }
         }

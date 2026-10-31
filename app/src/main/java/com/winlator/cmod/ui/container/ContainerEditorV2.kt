@@ -2,7 +2,10 @@
 
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.settings.PresetKind
+import com.winlator.cmod.ui.settings.SettingPresetChoice
 import com.winlator.cmod.contents.DriverSources
+import com.winlator.cmod.contents.ContentFileImport
 import com.winlator.cmod.core.GpuProfileManager
 
 import android.content.Context
@@ -369,7 +372,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
     val fexPresets = remember { FEXCorePresetManager.getPresets(context).associate { it.id to it.name } }
     val boxPresets = remember { Box64PresetManager.getPresets("box64", context).associate { it.id to it.name } }
 
-    val catalog by produceState<SettingsCatalog?>(null, arm64, revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion, DriverSources.revision.intValue) {
+    val catalog by produceState<SettingsCatalog?>(null, arm64, revision, state.dxvkVersion, state.vkd3dVersion, state.driverVersion, DriverSources.revision.intValue, ContentFileImport.revision.intValue) {
         // Saved data first (instant, offline), then refresh from the network in the background.
         value = loadSettingsCatalog(
             context, arm64, state.dxvkVersion, state.vkd3dVersion,
@@ -994,7 +997,7 @@ private fun ContainerCategoryV2(
                         }) { s.fexVersion = it }
                     }
                     SettingsDivider()
-                    SettingMappedChoice("FEXCore Preset", s.fexPreset, fexPresets) { s.fexPreset = it }
+                    SettingPresetChoice("FEXCore Preset", PresetKind.FEXCORE, s.fexPreset) { s.fexPreset = it }
                 }
                 if (!arm64 || s.emulator == "WOWBox64") {
                     catalog?.let { c ->
@@ -1006,7 +1009,7 @@ private fun ContainerCategoryV2(
                         }) { s.boxVersion = it }
                     }
                     SettingsDivider()
-                    SettingMappedChoice("Box64 Preset", s.boxPreset, boxPresets) { s.boxPreset = it }
+                    SettingPresetChoice(if (arm64) "WOWBox64 Preset" else "Box64 Preset", PresetKind.BOX64, s.boxPreset) { s.boxPreset = it }
                 }
             }
         }
