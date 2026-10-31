@@ -941,7 +941,7 @@ private fun ShortcutCategoryV2(
                         }
                     }
                     SettingsDivider()
-                    SettingPresetChoice("FEXCore Preset", PresetKind.FEXCORE, s.fexPreset) { s.fexPreset = it; s.extra("fexcorePreset", it) }
+                    SettingPresetChoice("FEXCore Preset", PresetKind.FEXCORE, s.fexPreset, "game-${s.shortcut.name}") { s.fexPreset = it; s.extra("fexcorePreset", it) }
                 }
                 if (!s.arm64 || s.emulator == "WOWBox64") {
                     catalog?.let { c ->
@@ -954,7 +954,7 @@ private fun ShortcutCategoryV2(
                         }
                     }
                     SettingsDivider()
-                    SettingPresetChoice(if (s.arm64) "WOWBox64 Preset" else "Box64 Preset", PresetKind.BOX64, s.boxPreset) { s.boxPreset = it; s.extra("box64Preset", it) }
+                    SettingPresetChoice(if (s.arm64) "WOWBox64 Preset" else "Box64 Preset", PresetKind.BOX64, s.boxPreset, "game-${s.shortcut.name}") { s.boxPreset = it; s.extra("box64Preset", it) }
                 }
             }
         }

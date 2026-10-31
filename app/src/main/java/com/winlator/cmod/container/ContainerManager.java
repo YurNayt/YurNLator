@@ -258,6 +258,10 @@ public class ContainerManager {
     }
 
     private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
+        extractCommonDlls(wineInfo, srcName, dstName, containerDir, onExtractFileListener, false);
+    }
+
+    private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener, boolean overwrite) throws JSONException {
         File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);
 
         File staleIcuDll = new File(containerDir, ".wine/drive_c/windows/" + dstName + "/icu.dll");
@@ -274,7 +278,7 @@ public class ContainerManager {
             if (dllName.equals("tabtip.exe") || dllName.equals("icu.dll"))
                 continue;
             File dstFile = new File(containerDir, ".wine/drive_c/windows/" + dstName + "/" + dllName);
-            if (dstFile.exists()) continue;
+            if (dstFile.exists() && !overwrite) continue;
             if (onExtractFileListener != null ) {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
@@ -309,6 +313,33 @@ public class ContainerManager {
         }
    
         return result;
+    }
+
+    /**
+     * YurNLator: switch an existing container to another Wine / Proton build.
+     * Games, saves, settings and the registry stay; Wine's own DLLs in system32 / syswow64
+     * are replaced with the new build's (like Bannerlator's "Update layer"). The registry
+     * files are copied to *.reg.before-switch first, so the old state can be restored.
+     */
+    public boolean switchWineVersion(Container container, String newWineVersion, ContentsManager contentsManager) {
+        WineInfo wineInfo = WineInfo.fromIdentifier(context, contentsManager, newWineVersion);
+        if (wineInfo.path == null || wineInfo.path.isEmpty()) return false;
+        File containerDir = container.getRootDir();
+        File wineDir = new File(containerDir, ".wine");
+        for (String reg : new String[]{"system.reg", "user.reg", "userdef.reg"}) {
+            File src = new File(wineDir, reg);
+            if (src.isFile()) FileUtils.copy(src, new File(wineDir, reg + ".before-switch"));
+        }
+        try {
+            extractCommonDlls(wineInfo, wineInfo.isArm64EC() ? "aarch64-windows" : "x86_64-windows", "system32", containerDir, null, true);
+            extractCommonDlls(wineInfo, "i386-windows", "syswow64", containerDir, null, true);
+        } catch (JSONException e) {
+            Log.e("ContainerManager", "Switching Wine failed: " + e.getMessage());
+            return false;
+        }
+        container.setWineVersion(newWineVersion);
+        container.saveData();
+        return true;
     }
 
     public Container getContainerForShortcut(Shortcut shortcut) {

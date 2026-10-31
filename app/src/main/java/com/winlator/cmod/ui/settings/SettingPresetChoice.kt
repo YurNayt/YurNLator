@@ -59,6 +59,11 @@ import com.winlator.cmod.ui.components.KeepDialogFullscreen
 import org.json.JSONArray
 import java.util.Locale
 
+/** Name prefix of the per-container / per-game Custom presets. */
+private const val CUSTOM_PREFIX = "Custom · "
+
+private fun displayName(p: PresetInfo, slotName: String) = if (p.name == slotName) "Custom" else p.name
+
 /** Which emulator's presets: FEXCore, or Box64 (also used for WOWBox64). */
 enum class PresetKind(val prefix: String, val defaultId: String) {
     FEXCORE("fexcore", FEXCorePreset.INTERMEDIATE),
@@ -133,11 +138,23 @@ private class PresetStore(val context: Context, val kind: PresetKind) {
  * your own presets save as you change them.
  */
 @Composable
-fun SettingPresetChoice(label: String, kind: PresetKind, selectedId: String, onSelected: (String) -> Unit) {
+fun SettingPresetChoice(
+    label: String,
+    kind: PresetKind,
+    selectedId: String,
+    /** Whose Custom preset this is: "container-3", "game-Doom"… (one Custom per container / game). */
+    scope: String,
+    onSelected: (String) -> Unit
+) {
     val context = LocalContext.current
     val store = remember(kind) { PresetStore(context, kind) }
     var revision by remember { mutableIntStateOf(0) }
-    val presets = remember(revision) { store.list() }
+    // "," and "|" separate stored presets, so they can't be part of the name.
+    val slotName = remember(scope) { CUSTOM_PREFIX + scope.replace(Regex("[,|]+"), "") }
+    // Other containers' / games' Custom presets are hidden here.
+    val presets = remember(revision, slotName) {
+        store.list().filter { !it.name.startsWith(CUSTOM_PREFIX) || it.name == slotName }
+    }
     val current = presets.firstOrNull { it.id == selectedId }
     var open by remember { mutableStateOf(false) }
 
@@ -147,7 +164,7 @@ fun SettingPresetChoice(label: String, kind: PresetKind, selectedId: String, onS
                 Column(Modifier.weight(1f)) {
                     Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        current?.name ?: selectedId,
+                        current?.let { displayName(it, slotName) } ?: selectedId,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -165,7 +182,7 @@ fun SettingPresetChoice(label: String, kind: PresetKind, selectedId: String, onS
     }
 
     if (open) {
-        PresetSheet(label, store, presets, current?.id ?: kind.defaultId,
+        PresetSheet(label, store, presets, current?.id ?: kind.defaultId, slotName,
             onChanged = { revision++ },
             onSelected = onSelected,
             onDismiss = { open = false })
@@ -178,6 +195,7 @@ private fun PresetSheet(
     store: PresetStore,
     presets: List<PresetInfo>,
     selectedId: String,
+    slotName: String,
     onChanged: () -> Unit,
     onSelected: (String) -> Unit,
     onDismiss: () -> Unit
@@ -197,16 +215,26 @@ private fun PresetSheet(
 
     fun envOf(map: Map<String, String>) = EnvVars().apply { map.forEach { (k, v) -> put(k, v) } }
 
-    /** Apply one change: to your preset directly, or to a new copy of a built-in one. */
+    /**
+     * Apply one change. Your presets (and Custom) save directly. A built-in preset is
+     * not touched: its values plus this change go to this container's / game's Custom
+     * preset, which is then selected (GameHub style).
+     */
     fun change(varName: String, value: String) {
         val p = preset ?: return
         val updated = values + (varName to value)
         if (p.custom) {
-            store.save(p.id, name.ifBlank { p.name }, envOf(updated))
+            store.save(p.id, if (p.name == slotName) slotName else name.ifBlank { p.name }, envOf(updated))
         } else {
-            val newId = store.nextId()
-            store.save(null, "${p.name} (my)", envOf(updated))
-            onSelected(newId)
+            val slot = presets.firstOrNull { it.name == slotName }
+            if (slot != null) {
+                store.save(slot.id, slotName, envOf(updated))
+                onSelected(slot.id)
+            } else {
+                val newId = store.nextId()
+                store.save(null, slotName, envOf(updated))
+                onSelected(newId)
+            }
         }
         onChanged()
     }
@@ -239,7 +267,7 @@ private fun PresetSheet(
                                     Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp))
                                     Spacer(Modifier.width(5.dp))
                                 }
-                                Text(p.name, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                                Text(displayName(p, slotName), style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
                         }
                     }
@@ -266,14 +294,17 @@ private fun PresetSheet(
             }
             item(key = "hint") {
                 Text(
-                    if (preset?.custom == true) "Your preset: changes are saved right away."
-                    else "Built-in preset. Change any setting and a copy of it is saved as your own preset.",
+                    when {
+                        preset?.name == slotName -> "Custom for this ${if (slotName.contains("game-")) "game" else "container"}: changes are saved right away."
+                        preset?.custom == true -> "Your preset: changes are saved right away."
+                        else -> "Built-in preset. Change any setting and you switch to Custom with this preset's values plus your change."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
                 )
             }
-            if (preset?.custom == true) {
+            if (preset?.custom == true && preset.name != slotName) {
                 item(key = "name") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
@@ -302,7 +333,7 @@ private fun PresetSheet(
     if (confirmDelete && preset != null) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete ${preset.name}?") },
+            title = { Text("Delete ${displayName(preset, slotName)}?") },
             text = { Text("Containers and games using it switch to the default preset.") },
             confirmButton = {
                 TextButton(onClick = {

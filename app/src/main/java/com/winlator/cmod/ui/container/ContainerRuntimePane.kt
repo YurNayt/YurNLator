@@ -261,14 +261,14 @@ internal fun ContainerRuntimePane(
                     catalog?.let { c ->
                         SettingsDivider(); SettingInstallChoice("FEXCore Version", fexVersion, c.fex, installing, "FEXCore", { v -> installRuntime("FEXCore", v) { fexVersion = it; container.setFEXCoreVersion(it); container.saveData() } }) { fexVersion = it; container.setFEXCoreVersion(it); container.saveData() }
                     }
-                    SettingsDivider(); SettingPresetChoice("FEXCore Preset", PresetKind.FEXCORE, fexPreset) { fexPreset = it; container.setFEXCorePreset(it); container.saveData() }
+                    SettingsDivider(); SettingPresetChoice("FEXCore Preset", PresetKind.FEXCORE, fexPreset, "container-${container.id}") { fexPreset = it; container.setFEXCorePreset(it); container.saveData() }
                 }
                 if (!arm64 || emulator == "WOWBox64") {
                     catalog?.let { c ->
                         val versions = if (arm64) c.wow else c.box; val type = if (arm64) "WOWBox64" else "Box64"
                         SettingsDivider(); SettingInstallChoice("$type Version", boxVersion, versions, installing, type, { v -> installRuntime(type, v) { boxVersion = it; container.setBox64Version(it); container.saveData() } }) { boxVersion = it; container.setBox64Version(it); container.saveData() }
                     }
-                    SettingsDivider(); SettingPresetChoice(if (arm64) "WOWBox64 Preset" else "Box64 Preset", PresetKind.BOX64, boxPreset) { boxPreset = it; container.setBox64Preset(it); container.saveData() }
+                    SettingsDivider(); SettingPresetChoice(if (arm64) "WOWBox64 Preset" else "Box64 Preset", PresetKind.BOX64, boxPreset, "container-${container.id}") { boxPreset = it; container.setBox64Preset(it); container.saveData() }
                 }
             }
         }

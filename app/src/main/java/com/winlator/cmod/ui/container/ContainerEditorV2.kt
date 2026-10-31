@@ -2,6 +2,8 @@
 
 package com.winlator.cmod.ui.container
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import com.winlator.cmod.ui.settings.PresetKind
 import com.winlator.cmod.ui.settings.SettingPresetChoice
 import com.winlator.cmod.contents.DriverSources
@@ -568,7 +570,60 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         }
     }
 
-    val runtimeChoices = if (editing == null) runtimeOptions else runtimeOptions.filter { it.id == state.runtime }
+    // YurNLator: an existing container can switch Wine / Proton too (asks first).
+    val runtimeChoices = runtimeOptions
+    var pendingRuntime by remember { mutableStateOf<String?>(null) }
+    var switchingRuntime by remember { mutableStateOf(false) }
+    LaunchedEffect(state.runtime, editing?.id) {
+        val current = editing?.wineVersion
+        if (editing != null && !switchingRuntime && state.runtime.isNotBlank() && current != null && state.runtime != current) {
+            pendingRuntime = state.runtime
+        }
+    }
+    pendingRuntime?.let { target ->
+        val from = editing?.wineVersion.orEmpty()
+        val labelOf = { id: String -> runtimeOptions.firstOrNull { it.id == id }?.label ?: id }
+        val familyChange = runCatching {
+            WineInfo.fromIdentifier(context, contents, from).isArm64EC != WineInfo.fromIdentifier(context, contents, target).isArm64EC
+        }.getOrDefault(false)
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Switch to ${labelOf(target)}?") },
+            text = {
+                Text(
+                    "Games, saves, settings and the registry stay. Wine's own system files in this container are " +
+                        "replaced with ${labelOf(target)}'s (the registry is backed up first)." +
+                        if (familyChange) "\n\nThis also changes ARM64EC ↔ x86-64: the emulator is switched to match, " +
+                            "and some installed programs may need reinstalling." else ""
+                )
+            },
+            confirmButton = {
+                TextButton(enabled = !switchingRuntime, onClick = {
+                    val container = editing ?: return@TextButton
+                    switchingRuntime = true
+                    scope.launch {
+                        val ok = withContext(Dispatchers.IO) { manager.switchWineVersion(container, target, contents) }
+                        if (ok) {
+                            if (familyChange) {
+                                val toArm = runCatching { WineInfo.fromIdentifier(context, contents, target).isArm64EC }.getOrDefault(false)
+                                state.emulator = if (toArm) "FEXCore" else "Box64"
+                                state.boxVersion = if (toArm) DefaultVersion.WOWBOX64 else DefaultVersion.BOX64
+                            }
+                            Toast.makeText(context, "Now using ${labelOf(target)}", Toast.LENGTH_SHORT).show()
+                        } else {
+                            state.runtime = from
+                            Toast.makeText(context, "Couldn't switch: ${labelOf(target)} isn't installed correctly", Toast.LENGTH_LONG).show()
+                        }
+                        switchingRuntime = false
+                        pendingRuntime = null
+                    }
+                }) { Text(if (switchingRuntime) "Switching…" else "Switch") }
+            },
+            dismissButton = {
+                TextButton(enabled = !switchingRuntime, onClick = { state.runtime = from; pendingRuntime = null }) { Text("Cancel") }
+            }
+        )
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -997,7 +1052,7 @@ private fun ContainerCategoryV2(
                         }) { s.fexVersion = it }
                     }
                     SettingsDivider()
-                    SettingPresetChoice("FEXCore Preset", PresetKind.FEXCORE, s.fexPreset) { s.fexPreset = it }
+                    SettingPresetChoice("FEXCore Preset", PresetKind.FEXCORE, s.fexPreset, "container-${s.editing?.id ?: "new"}") { s.fexPreset = it }
                 }
                 if (!arm64 || s.emulator == "WOWBox64") {
                     catalog?.let { c ->
@@ -1009,7 +1064,7 @@ private fun ContainerCategoryV2(
                         }) { s.boxVersion = it }
                     }
                     SettingsDivider()
-                    SettingPresetChoice(if (arm64) "WOWBox64 Preset" else "Box64 Preset", PresetKind.BOX64, s.boxPreset) { s.boxPreset = it }
+                    SettingPresetChoice(if (arm64) "WOWBox64 Preset" else "Box64 Preset", PresetKind.BOX64, s.boxPreset, "container-${s.editing?.id ?: "new"}") { s.boxPreset = it }
                 }
             }
         }
