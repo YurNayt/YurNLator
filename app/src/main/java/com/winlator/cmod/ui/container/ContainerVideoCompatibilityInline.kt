@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.components.ChoiceOption
+import com.winlator.cmod.ui.components.ChoiceSheet
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -229,15 +231,7 @@ private fun VCChoice(label: String, selected: String, entries: Array<String>, on
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            entries.forEach { value ->
-                DropdownMenuItem(
-                    text = { Text(value) },
-                    trailingIcon = { if (value.equals(selected, true)) Icon(Icons.Outlined.Check, null) },
-                    onClick = { open = false; onSelected(value) }
-                )
-            }
-        }
+        if (open) ChoiceSheet(label, entries.map { ChoiceOption(it) }, selected, { onSelected(it.value) }, { open = false })
     }
 }
 
@@ -254,20 +248,15 @@ private fun VCDownloadChoice(label: String, selected: String, entries: Array<Str
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            entries.forEach { value ->
-                val ready = value.equals("None", true) || installed.any { it.equals(value, true) } || value.equals(selected, true)
-                DropdownMenuItem(
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(value, Modifier.weight(1f))
-                            if (!ready) Text("Download", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    },
-                    onClick = { open = false; if (ready) onSelected(value) else callbacks.onInstallComponent(type, value) }
-                )
-            }
-        }
+        if (open) ChoiceSheet(
+            label,
+            entries.map { v ->
+                ChoiceOption(v, installed = v.equals("None", true) || installed.any { it.equals(v, true) } || v.equals(selected, true))
+            },
+            selected,
+            { if (it.installed) onSelected(it.value) else { open = false; callbacks.onInstallComponent(type, it.value) } },
+            { open = false }
+        )
     }
 }
 

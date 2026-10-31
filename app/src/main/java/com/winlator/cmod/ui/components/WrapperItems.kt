@@ -61,31 +61,34 @@ fun rememberWrapperItems(onInstalled: (String) -> Unit = {}): WrapperItems {
     }
 
     val items = remember(installed, catalog) {
-        val installedIds = installed.map { it.id }.toSet()
-        installed.map { w ->
-            BrowserItem(
-                id = WrapperItems.PREFIX + w.id,
-                type = WrapperManager.TYPE,
-                name = w.name,
-                author = w.author,
-                installed = true,
-                removable = w.id != WrapperManager.BUILTIN_ID,
-                localKey = LocalInstalls.key(WrapperManager.TYPE, w.id),
-                details = listOfNotNull(
-                    if (w.id == WrapperManager.BUILTIN_ID) "Comes with the app" else null,
-                    WrapperManager.targetsLabel(w.targets)
+        val catalogIds = catalog.map { it.id }.toSet()
+        fun installedItem(w: WrapperManager.Installed) = BrowserItem(
+            id = WrapperItems.PREFIX + w.id,
+            type = WrapperManager.TYPE,
+            name = w.name,
+            author = w.author,
+            installed = true,
+            removable = w.id != WrapperManager.BUILTIN_ID,
+            localKey = LocalInstalls.key(WrapperManager.TYPE, w.id),
+            details = listOfNotNull(
+                if (w.id == WrapperManager.BUILTIN_ID) "Comes with the app" else null,
+                WrapperManager.targetsLabel(w.targets)
+            )
+        )
+        val byId = installed.associateBy { it.id }
+        // Built-in and file wrappers first, then the catalog in its own order, where an
+        // installed wrapper keeps its place (shown as installed, with Delete).
+        installed.filter { it.id !in catalogIds }.map(::installedItem) +
+            catalog.filter { it.id in byId || fitsProfile(it.targets) }.map { e ->
+                byId[e.id]?.let(::installedItem) ?: BrowserItem(
+                    id = WrapperItems.PREFIX + e.id,
+                    type = WrapperManager.TYPE,
+                    name = e.title,
+                    author = e.author,
+                    installed = false,
+                    details = listOfNotNull(WrapperManager.targetsLabel(e.targets))
                 )
-            )
-        } + catalog.filter { it.id !in installedIds && fitsProfile(it.targets) }.map { e ->
-            BrowserItem(
-                id = WrapperItems.PREFIX + e.id,
-                type = WrapperManager.TYPE,
-                name = e.title,
-                author = e.author,
-                installed = false,
-                details = listOfNotNull(WrapperManager.targetsLabel(e.targets))
-            )
-        }
+            }
     }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->

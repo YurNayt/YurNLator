@@ -316,15 +316,37 @@ private fun TypePage(
     }
     // A removed author or a list that changed falls back to "All" (no state write during composition).
     val selectedAuthor = if (author in authors) author else AUTHOR_ALL
+    // The list in its own order; installed entries stay in their place (with Delete).
     val shown = when (selectedAuthor) {
-        AUTHOR_ALL -> items.sortedByDescending { it.installed }
+        AUTHOR_ALL -> items
         AUTHOR_INSTALLED -> items.filter { it.installed }
         AUTHOR_MY_FILES -> items.filter { it.id in myFiles }
-        // An author's tab: what you already installed from them on top, then the rest.
-        else -> items.filter { it.author == selectedAuthor }.sortedByDescending { it.installed }
+        else -> items.filter { it.author == selectedAuthor }
     }
+    // In All and in an author's tab, what's installed is also repeated in a group on top.
+    val installedTop = if (selectedAuthor == AUTHOR_ALL || selectedAuthor !in setOf(AUTHOR_INSTALLED, AUTHOR_MY_FILES))
+        shown.filter { it.installed } else emptyList()
+    val splitList = installedTop.isNotEmpty() && shown.any { !it.installed }
     // Inside one author the author line would only repeat the selection.
     val showAuthorLine = selectedAuthor == AUTHOR_ALL || selectedAuthor == AUTHOR_INSTALLED
+
+    val card: @Composable (BrowserItem) -> Unit = { item ->
+        ItemCard(
+            item = item,
+            gpuDriver = type.isGpuDriver,
+            fromFile = item.id in myFiles,
+            showAuthor = showAuthorLine,
+            busy = item.id in busyIds,
+            locked = busyIds.isNotEmpty() && item.id !in busyIds,
+            busyLabel = busyLabel,
+            busyProgress = busyProgress,
+            onInstall = onInstall,
+            onRemove = {
+                it.localKey?.let { key -> LocalInstalls.forget(context, key) }
+                onRemove(it)
+            }
+        )
+    }
 
     Column(Modifier.fillMaxSize()) {
         // Top bar: menu (switch type) on the left, title, close on the right.
@@ -385,23 +407,18 @@ private fun TypePage(
             }
             item(key = "header") { header() }
             when {
-                shown.isNotEmpty() -> items(shown, key = { it.id }) { item ->
-                    ItemCard(
-                        item = item,
-                        gpuDriver = type.isGpuDriver,
-                        fromFile = item.id in myFiles,
-                        showAuthor = showAuthorLine,
-                        busy = item.id in busyIds,
-                        locked = busyIds.isNotEmpty() && item.id !in busyIds,
-                        busyLabel = busyLabel,
-                        busyProgress = busyProgress,
-                        onInstall = onInstall,
-                        onRemove = {
-                            it.localKey?.let { key -> LocalInstalls.forget(context, key) }
-                            onRemove(it)
-                        }
-                    )
+                shown.isNotEmpty() -> {
+                    if (splitList) {
+                        item(key = "h-installed") { SectionLabel("Installed") }
+                        items(installedTop, key = { "top:" + it.id }) { item -> card(item) }
+                        item(key = "h-all") { SectionLabel(if (selectedAuthor == AUTHOR_ALL) "All" else selectedAuthor) }
+                    }
+                    items(shown, key = { it.id }) { item -> card(item) }
                 }
+                else -> Unit
+            }
+            when {
+                shown.isNotEmpty() -> Unit
                 loading -> item(key = "loading") { Hint("Loading the list…") }
                 selectedAuthor == AUTHOR_ALL || selectedAuthor == AUTHOR_INSTALLED || selectedAuthor == AUTHOR_MY_FILES ->
                     item(key = "empty") { Hint("Nothing here yet.") }
@@ -508,6 +525,17 @@ private fun ItemCard(
             }
         }
     }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text.uppercase(),
+        modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable

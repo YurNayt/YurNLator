@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.components.ChoiceOption
+import com.winlator.cmod.ui.components.ChoiceSheet
 import com.winlator.cmod.contents.DriverOrigins
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import com.winlator.cmod.ui.components.PickerSheet
@@ -256,21 +258,26 @@ internal suspend fun loadSettingsCatalog(
     }
     val installedDrivers = runCatching { adreno.enumarateInstalledDrivers() }.getOrNull().orEmpty()
     val remoteDrivers = runCatching { RemoteDriverCatalog.load(context, allowNetwork) }.getOrNull().orEmpty()
-    // Downloaded drivers keep their author and catalog name, so they stay under that author.
-    val origins = remoteDrivers.mapNotNull { r ->
-        DriverOrigins.installedIdFor(context, r.url, installedDrivers)?.let { it.lowercase() to r }
-    }.toMap()
+    // Downloaded drivers keep their author, catalog name and place in the author's list.
+    val originIds = remoteDrivers.mapNotNull { DriverOrigins.installedIdFor(context, it.url, installedDrivers)?.lowercase() }.toSet()
     installedDrivers.forEach { id ->
-        val origin = origins[id.lowercase()]
-        val label = origin?.name ?: listOf(adreno.getDriverName(id), adreno.getDriverVersion(id))
+        if (id.lowercase() in originIds) return@forEach
+        val label = listOf(adreno.getDriverName(id), adreno.getDriverVersion(id))
             .filter { it.isNotBlank() }
             .joinToString(" ")
             .ifBlank { id }
         rendererDrivers[id] = label
-        driverOptions[id.lowercase()] = DriverOption(id, label, true, author = origin?.repository)
+        driverOptions[id.lowercase()] = DriverOption(id, label, true)
     }
     remoteDrivers.forEach { remote ->
-        if (DriverOrigins.installedIdFor(context, remote.url, installedDrivers) != null) return@forEach
+        val installedId = DriverOrigins.installedIdFor(context, remote.url, installedDrivers)
+        if (installedId != null) {
+            if (installedId.lowercase() !in driverOptions) {
+                rendererDrivers[installedId] = remote.name
+                driverOptions[installedId.lowercase()] = DriverOption(installedId, remote.name, true, author = remote.repository)
+            }
+            return@forEach
+        }
         val alreadyInstalled = driverOptions.values.any {
             it.id.equals(remote.name, ignoreCase = true) || it.label.equals(remote.name, ignoreCase = true)
         }
@@ -515,22 +522,15 @@ internal fun SettingChoice(
                     Icon(Icons.Outlined.KeyboardArrowDown, null)
                 }
             }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.widthIn(min = 220.dp, max = 420.dp).heightIn(max = 480.dp)
-            ) {
-                displayEntries.distinct().forEach { value ->
-                    DropdownMenuItem(
-                        text = { Text(settingDisplayLabel(value), maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                        trailingIcon = { if (value == displaySelected) Icon(Icons.Outlined.Check, null) },
-                        onClick = {
-                            expanded = false
-                            onSelected(value)
-                        }
-                    )
-                }
-            }
+        }
+        if (expanded) {
+            ChoiceSheet(
+                title = displayLabel,
+                options = displayEntries.distinct().map { ChoiceOption(it, settingDisplayLabel(it)) },
+                selected = displaySelected,
+                onPick = { onSelected(it.value) },
+                onDismiss = { expanded = false }
+            )
         }
         if (label == "Desktop Background" && selected.equals("Image", ignoreCase = true)) {
             WallpaperPreview()
@@ -581,39 +581,20 @@ internal fun SettingWineRuntimeChoice(
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.widthIn(min = 260.dp, max = 460.dp).heightIn(max = 500.dp)
-        ) {
-            options.forEach { option ->
-                val busy = "wine:${option.id}" in installing
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text(option.label, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (option.installed) 1f else .52f))
-                            Text(
-                                if (option.installed) option.type else if (busy) "${option.type} • Downloading…" else "${option.type} • Download",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    trailingIcon = {
-                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        else if (option.installed && option.id == selectedId) Icon(Icons.Outlined.Check, null)
-                    },
-                    onClick = {
-                        if (option.installed) {
-                            expanded = false
-                            onSelected(option.id)
-                        } else if (!busy) {
-                            onInstall(option)
-                        }
-                    }
-                )
-            }
-        }
+    }
+    if (expanded) {
+        ChoiceSheet(
+            title = label,
+            options = options.map { o ->
+                ChoiceOption(o.id, o.label, o.type, installed = o.installed, busy = "wine:${o.id}" in installing)
+            },
+            selected = selectedId,
+            onPick = { picked ->
+                val o = options.first { it.id == picked.value }
+                if (o.installed) onSelected(o.id) else onInstall(o)
+            },
+            onDismiss = { expanded = false }
+        )
     }
 }
 
@@ -641,36 +622,18 @@ internal fun SettingInstallChoice(
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.widthIn(min = 240.dp, max = 440.dp).heightIn(max = 480.dp)
-        ) {
-            catalog.all.forEach { value ->
+    }
+    if (expanded) {
+        ChoiceSheet(
+            title = label,
+            options = catalog.all.map { value ->
                 val available = catalog.installed.any { it.equals(value, ignoreCase = true) } || value == selected
-                val busy = "$prefix:$value" in installing
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text(value, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (available) 1f else .52f))
-                            if (!available) Text(if (busy) "Downloading…" else "Download", style = MaterialTheme.typography.labelSmall)
-                        }
-                    },
-                    trailingIcon = {
-                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        else if (value == selected) Icon(Icons.Outlined.Check, null)
-                    },
-                    onClick = {
-                        if (available) {
-                            expanded = false
-                            onSelected(value)
-                        } else if (!busy) {
-                            onInstall(value)
-                        }
-                    }
-                )
-            }
-        }
+                ChoiceOption(value, installed = available, busy = "$prefix:$value" in installing)
+            },
+            selected = selected,
+            onPick = { if (it.installed) onSelected(it.value) else onInstall(it.value) },
+            onDismiss = { expanded = false }
+        )
     }
 }
 

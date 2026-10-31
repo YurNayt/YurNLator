@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.components.ChoiceOption
+import com.winlator.cmod.ui.components.ChoiceSheet
 import android.graphics.Color as AndroidColor
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -278,15 +280,7 @@ private fun SSChoice(label: String, selected: String, entries: Array<String>, on
                 Icon(Icons.Outlined.KeyboardArrowDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            entries.forEach { value ->
-                DropdownMenuItem(
-                    text = { Text(value) },
-                    trailingIcon = { if (value.equals(selected, true)) Icon(Icons.Outlined.Check, null) },
-                    onClick = { open = false; onSelected(value) }
-                )
-            }
-        }
+        if (open) ChoiceSheet(label, entries.map { ChoiceOption(it) }, selected, { onSelected(it.value) }, { open = false })
     }
 }
 
@@ -309,15 +303,7 @@ private fun SSCompactChoice(selected: String, entries: Array<String>, onSelected
                 Icon(Icons.Outlined.KeyboardArrowDown, null, modifier = Modifier.size(18.dp))
             }
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            entries.forEach { value ->
-                DropdownMenuItem(
-                    text = { Text(value) },
-                    trailingIcon = { if (value == selected) Icon(Icons.Outlined.Check, null) },
-                    onClick = { open = false; onSelected(value) }
-                )
-            }
-        }
+        if (open) ChoiceSheet("Choose", entries.map { ChoiceOption(it) }, selected, { onSelected(it.value) }, { open = false })
     }
 }
 

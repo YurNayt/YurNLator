@@ -440,25 +440,20 @@ public class OnboardingActivity extends AppCompatActivity {
             }
         }
 
-        // GPU drivers. A driver downloaded from an author stays under that author as
-        // installed (DriverOrigins), so the same download isn't offered again.
+        // GPU drivers. Drivers that didn't come from a download (bundled, from a file) first;
+        // then every author's list in its own order, where a downloaded driver stays in its
+        // place as installed (DriverOrigins), so the same download isn't offered again.
         ArrayList<String> installedDrivers = adrenotoolsManager.enumarateInstalledDrivers();
-        Set<String> placedDrivers = new HashSet<>();
-        Set<String> existingDrivers = new HashSet<>();
+        Set<String> originIds = new HashSet<>();
         synchronized (remoteDrivers) {
             for (RemoteDriverCatalog.Entry driver : remoteDrivers) {
-                String installedId = DriverOrigins.installedIdFor(this, driver.url, installedDrivers);
-                if (installedId != null) {
-                    if (!placedDrivers.add(installedId.toLowerCase(Locale.ENGLISH))) continue;
-                    ui.add(new OnboardingComponent(
-                            "adrenotools:" + installedId, "AdrenoTools", driver.name, true, false, true,
-                            null, false, false, driver.repository
-                    ));
-                }
+                String id = DriverOrigins.installedIdFor(this, driver.url, installedDrivers);
+                if (id != null) originIds.add(id.toLowerCase(Locale.ENGLISH));
             }
         }
+        Set<String> existingDrivers = new HashSet<>();
         for (String id : installedDrivers) {
-            if (placedDrivers.contains(id.toLowerCase(Locale.ENGLISH))) continue;
+            if (originIds.contains(id.toLowerCase(Locale.ENGLISH))) continue;
             String label = adrenotoolsManager.getDriverName(id) + " " + adrenotoolsManager.getDriverVersion(id);
             ui.add(new OnboardingComponent(
                     "adrenotools:" + id, "AdrenoTools", label.trim(), true, false, true,
@@ -466,9 +461,19 @@ public class OnboardingActivity extends AppCompatActivity {
             ));
             existingDrivers.add(label.trim().toLowerCase(Locale.ENGLISH));
         }
+        Set<String> placed = new HashSet<>();
         synchronized (remoteDrivers) {
             for (RemoteDriverCatalog.Entry driver : remoteDrivers) {
-                if (DriverOrigins.installedIdFor(this, driver.url, installedDrivers) != null) continue;
+                String installedId = DriverOrigins.installedIdFor(this, driver.url, installedDrivers);
+                if (installedId != null) {
+                    // One row per installed driver even if two downloads unpacked to the same id.
+                    if (!placed.add(installedId.toLowerCase(Locale.ENGLISH))) continue;
+                    ui.add(new OnboardingComponent(
+                            "adrenotools:" + installedId, "AdrenoTools", driver.name, true, false, true,
+                            null, false, false, driver.repository
+                    ));
+                    continue;
+                }
                 if (existingDrivers.contains(driver.name.toLowerCase(Locale.ENGLISH))) continue;
                 ui.add(new OnboardingComponent(
                         remoteDriverId(driver), "AdrenoTools", driver.name,

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -150,4 +151,96 @@ private fun IconBox(icon: ImageVector, highlighted: Boolean) {
         ),
         contentAlignment = Alignment.Center
     ) { Icon(icon, null, tint = if (highlighted) scheme.primary else scheme.onSurface) }
+}
+
+/** One entry of a [ChoiceSheet]. Not installed entries show "Download" and call onPick without closing. */
+data class ChoiceOption(
+    val value: String,
+    val title: String = value,
+    val subtitle: String? = null,
+    val installed: Boolean = true,
+    val busy: Boolean = false
+)
+
+/**
+ * Compact bottom sheet for any setting with a list of values (memory size, present mode,
+ * DXVK version…), in the GPU driver sheet's style but denser. Short lists only take the
+ * height they need; long ones grow up to the same full height as the driver sheet.
+ * [onPick] gets the chosen option; the sheet closes itself for installed options.
+ */
+@Composable
+fun ChoiceSheet(
+    title: String,
+    options: List<ChoiceOption>,
+    selected: String,
+    onPick: (ChoiceOption) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scheme = MaterialTheme.colorScheme
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, bottom = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            item(key = "title") {
+                Text(
+                    title,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(options, key = { "choice:" + it.value }) { option ->
+                val isSelected = option.installed && option.value.equals(selected, ignoreCase = true)
+                Surface(
+                    onClick = {
+                        if (!option.busy) {
+                            onPick(option)
+                            if (option.installed) onDismiss()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isSelected) scheme.secondaryContainer else scheme.surface,
+                    border = BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) scheme.primary else scheme.outlineVariant)
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 12.dp, vertical = if (option.subtitle == null) 11.dp else 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        when {
+                            option.busy -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            !option.installed -> Icon(Icons.Outlined.CloudDownload, null, Modifier.size(20.dp), tint = scheme.onSurfaceVariant)
+                            else -> Icon(
+                                if (isSelected) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                                null, Modifier.size(20.dp),
+                                tint = if (isSelected) scheme.primary else scheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                option.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (option.installed) scheme.onSurface else scheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            val sub = when {
+                                option.busy -> "Downloading…"
+                                !option.installed -> listOfNotNull(option.subtitle, "Download").joinToString(" · ")
+                                else -> option.subtitle
+                            }
+                            if (!sub.isNullOrBlank()) {
+                                Text(sub, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

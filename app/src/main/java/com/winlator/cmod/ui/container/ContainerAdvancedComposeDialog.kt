@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.components.ChoiceOption
+import com.winlator.cmod.ui.components.ChoiceSheet
 import android.app.Dialog
 import android.content.Context
 import android.graphics.Color as AndroidColor
@@ -469,15 +471,7 @@ private fun AdvancedChoice(label: String, selected: String, entries: List<String
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            entries.forEach { value ->
-                DropdownMenuItem(
-                    text = { Text(value) },
-                    trailingIcon = { if (value == selected) Icon(Icons.Outlined.Check, null) },
-                    onClick = { expanded = false; onSelected(value) }
-                )
-            }
-        }
+        if (expanded) ChoiceSheet(label, entries.map { ChoiceOption(it) }, selected, { onSelected(it.value) }, { expanded = false })
     }
 }
 

@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.shortcut
 
+import com.winlator.cmod.ui.components.ChoiceOption
+import com.winlator.cmod.ui.components.ChoiceSheet
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -166,17 +168,13 @@ private fun ShortcutDriveLetterRowV2(
                     Icon(Icons.Outlined.KeyboardArrowDown, null)
                 }
             }
-            DropdownMenu(expanded = letterMenuOpen, onDismissRequest = { letterMenuOpen = false }) {
-                availableLetters.forEach { letter ->
-                    DropdownMenuItem(
-                        text = { Text("$letter:") },
-                        onClick = {
-                            onLetter(letter)
-                            letterMenuOpen = false
-                        }
-                    )
-                }
-            }
+            if (letterMenuOpen) ChoiceSheet(
+                "Drive letter",
+                availableLetters.map { ChoiceOption(it, "$it:") },
+                entry.letter,
+                { onLetter(it.value) },
+                { letterMenuOpen = false }
+            )
         }
 
         OutlinedTextField(
