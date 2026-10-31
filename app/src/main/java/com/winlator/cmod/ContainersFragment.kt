@@ -30,6 +30,8 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
 
     override fun onResume() {
         super.onResume()
+        // The toolbar is shared by all tabs; without this it keeps "Library" / "Settings".
+        (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.setTitle(R.string.containers)
         refresh()
     }
 

@@ -616,15 +616,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
         Intent notificationIntent = new Intent(this, XServerDisplayActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent,
                 PendingIntent.FLAG_IMMUTABLE);
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_stat_ab_gear_0011)
-                .setContentTitle("Winlator")
-                .setContentText("Winlator is running, do not kill or swipe this notification")
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(false);
+        // YurNLator: one notification only. When the app's keep-alive service already shows
+        // its notification, the game screen doesn't post a second one.
+        if (!com.winlator.cmod.services.NotificationService.isRunning()) {
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_stat_ab_gear_0011)
+                    .setContentTitle(getString(R.string.app_name))
+                    .setContentText(getString(R.string.app_name) + " is running, don't close this notification")
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(false);
 
-        NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, builder.build());
+            NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, builder.build());
+        }
 
         Runnable runnable = () -> {
             setupUI();

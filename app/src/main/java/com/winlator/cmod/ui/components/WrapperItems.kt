@@ -13,6 +13,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.winlator.cmod.contents.WrapperManager
+import com.winlator.cmod.core.GpuProfile
+import com.winlator.cmod.core.GpuProfileManager
 import com.winlator.cmod.core.LocalInstalls
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -50,6 +52,9 @@ fun rememberWrapperItems(onInstalled: (String) -> Unit = {}): WrapperItems {
     var progress by remember { mutableIntStateOf(-1) }
 
     val installed = remember(rev) { WrapperManager.installed(context) }
+    // Mali / Exynos-only wrappers are offered on the Mali and Universal profiles, not on Adreno.
+    val profile = remember { GpuProfileManager.current(context) }
+    fun fitsProfile(targets: List<String>) = targets.isEmpty() || profile != GpuProfile.ADRENO
     val catalog by produceState(emptyList<WrapperManager.CatalogEntry>(), rev) {
         value = withContext(Dispatchers.IO) { WrapperManager.catalog(context, allowNetwork = false) }
         value = withContext(Dispatchers.IO) { WrapperManager.catalog(context, allowNetwork = true) }
@@ -71,7 +76,7 @@ fun rememberWrapperItems(onInstalled: (String) -> Unit = {}): WrapperItems {
                     WrapperManager.targetsLabel(w.targets)
                 )
             )
-        } + catalog.filter { it.id !in installedIds }.map { e ->
+        } + catalog.filter { it.id !in installedIds && fitsProfile(it.targets) }.map { e ->
             BrowserItem(
                 id = WrapperItems.PREFIX + e.id,
                 type = WrapperManager.TYPE,

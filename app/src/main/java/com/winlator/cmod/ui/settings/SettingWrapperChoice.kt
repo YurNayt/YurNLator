@@ -9,13 +9,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -37,6 +34,9 @@ import androidx.compose.ui.window.DialogProperties
 import com.winlator.cmod.contents.WrapperManager
 import com.winlator.cmod.ui.components.ALL_COMPONENT_TYPES
 import com.winlator.cmod.ui.components.ComponentBrowser
+import com.winlator.cmod.ui.components.PickerAction
+import com.winlator.cmod.ui.components.PickerOption
+import com.winlator.cmod.ui.components.PickerSheet
 import com.winlator.cmod.ui.components.WRAPPER
 import com.winlator.cmod.ui.components.rememberWrapperItems
 
@@ -77,47 +77,30 @@ internal fun SettingWrapperChoice(selected: String, onSelected: (String) -> Unit
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.widthIn(min = 260.dp, max = 460.dp).heightIn(max = 500.dp)
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Install from file…", color = MaterialTheme.colorScheme.primary)
-                        Text("Wrapper .tzst from your storage, works offline", style = MaterialTheme.typography.labelSmall)
-                    }
+    }
+
+    if (expanded) {
+        PickerSheet(
+            title = "Vulkan wrapper",
+            subtitle = "Installed wrappers, or get a new one",
+            icon = Icons.Outlined.Hub,
+            actions = listOf(
+                PickerAction(Icons.Outlined.FileOpen, "Install from file", "Wrapper .tzst from your storage, works offline") {
+                    expanded = false
+                    wrappers.importFile()
                 },
-                leadingIcon = { Icon(Icons.Outlined.FileOpen, null, tint = MaterialTheme.colorScheme.primary) },
-                onClick = { expanded = false; wrappers.importFile() }
-            )
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Download wrappers…")
-                        Text("Pick an author, then a wrapper", style = MaterialTheme.typography.labelSmall)
-                    }
-                },
-                leadingIcon = { Icon(Icons.Outlined.CloudDownload, null) },
-                onClick = { expanded = false; downloads = true }
-            )
-            HorizontalDivider()
-            installed.forEach { w ->
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text(w.name)
-                            val sub = listOfNotNull(w.author, WrapperManager.targetsLabel(w.targets))
-                            if (sub.isNotEmpty()) Text(sub.joinToString(" · "), style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    },
-                    trailingIcon = { if (w.id == current) Icon(Icons.Outlined.Check, null) },
-                    onClick = { expanded = false; onSelected(w.id) }
-                )
-            }
-        }
+                PickerAction(Icons.Outlined.CloudDownload, "Download wrappers", "Pick an author, then a wrapper") {
+                    expanded = false
+                    downloads = true
+                }
+            ),
+            options = installed.map { w ->
+                PickerOption(w.id, w.name, listOfNotNull(w.author, WrapperManager.targetsLabel(w.targets)).joinToString(" · ").ifBlank { null })
+            },
+            selectedId = current,
+            onSelect = { expanded = false; onSelected(it) },
+            onDismiss = { expanded = false }
+        )
     }
 
     if (downloads) {

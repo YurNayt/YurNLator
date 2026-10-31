@@ -1,5 +1,9 @@
 package com.winlator.cmod.ui.settings
 
+import androidx.compose.material.icons.outlined.DeveloperBoard
+import com.winlator.cmod.ui.components.PickerSheet
+import com.winlator.cmod.ui.components.PickerOption
+import com.winlator.cmod.ui.components.PickerAction
 import com.winlator.cmod.core.DriverNames
 import com.winlator.cmod.core.LocalInstalls
 import android.content.Context
@@ -705,7 +709,7 @@ internal fun SettingDriverChoice(
                 Column(Modifier.weight(1f)) {
                     Text(settingFieldLabel(label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        selectedOption?.label ?: selected,
+                        DriverNames.parse(selectedOption?.label ?: selected).title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -715,68 +719,30 @@ internal fun SettingDriverChoice(
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.widthIn(min = 260.dp, max = 460.dp).heightIn(max = 500.dp)
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Install from file…", color = MaterialTheme.colorScheme.primary)
-                        Text("Driver .zip from your storage, works offline", style = MaterialTheme.typography.labelSmall)
-                    }
-                },
-                leadingIcon = {
-                    if (importing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Icon(Icons.Outlined.FileOpen, null, tint = MaterialTheme.colorScheme.primary)
-                },
-                enabled = !importing,
-                onClick = {
+    }
+    if (expanded) {
+        PickerSheet(
+            title = "GPU driver",
+            subtitle = "Installed drivers, or get a new one",
+            icon = Icons.Outlined.DeveloperBoard,
+            actions = listOf(
+                PickerAction(Icons.Outlined.FileOpen, "Install from file", "Driver .zip from your storage, works offline", busy = importing) {
                     expanded = false
                     importLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
-                }
-            )
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Download drivers…")
-                        Text("Pick an author, then a driver", style = MaterialTheme.typography.labelSmall)
-                    }
                 },
-                leadingIcon = { Icon(Icons.Outlined.CloudDownload, null) },
-                onClick = { expanded = false; showDownloads = true }
-            )
-            HorizontalDivider()
-            // Only installed drivers here; downloads live in the download screen.
-            options.filter { it.installed }.forEach { option ->
-                val busy = "driver:${option.remoteUrl ?: option.id}" in installing
-                DropdownMenuItem(
-                    text = {
-                        val parsed = remember(option.label) { DriverNames.parse(option.label) }
-                        Column {
-                            Text(parsed.title)
-                            if (parsed.tags.isNotEmpty()) {
-                                Text(parsed.tags.joinToString(" · "), style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    },
-                    trailingIcon = {
-                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        else if (option.installed && option.id.equals(selected, ignoreCase = true)) Icon(Icons.Outlined.Check, null)
-                    },
-                    onClick = {
-                        if (option.installed) {
-                            expanded = false
-                            onSelected(option.id)
-                        } else if (!busy) {
-                            onInstall(option)
-                        }
-                    }
-                )
-            }
-        }
+                PickerAction(Icons.Outlined.CloudDownload, "Download drivers", "Pick an author, then a driver") {
+                    expanded = false
+                    showDownloads = true
+                }
+            ),
+            options = options.filter { it.installed }.map { o ->
+                val parsed = DriverNames.parse(o.label)
+                PickerOption(o.id, parsed.title, parsed.tags.joinToString(" · ").ifBlank { null })
+            },
+            selectedId = selected,
+            onSelect = { expanded = false; onSelected(it) },
+            onDismiss = { expanded = false }
+        )
     }
 }
 
