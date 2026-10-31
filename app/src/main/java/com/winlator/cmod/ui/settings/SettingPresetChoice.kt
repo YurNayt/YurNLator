@@ -182,7 +182,7 @@ fun SettingPresetChoice(
     }
 
     if (open) {
-        PresetSheet(label, store, presets, current?.id ?: kind.defaultId, slotName,
+        PresetSheet(label, store, presets, current?.id ?: kind.defaultId, slotName, revision,
             onChanged = { revision++ },
             onSelected = onSelected,
             onDismiss = { open = false })
@@ -196,6 +196,7 @@ private fun PresetSheet(
     presets: List<PresetInfo>,
     selectedId: String,
     slotName: String,
+    revision: Int,
     onChanged: () -> Unit,
     onSelected: (String) -> Unit,
     onDismiss: () -> Unit
@@ -205,11 +206,11 @@ private fun PresetSheet(
     val variables = remember { store.variables() }
     val preset = presets.firstOrNull { it.id == selectedId } ?: presets.firstOrNull()
     // Values of the shown preset: all known variables, the preset's value or the default.
-    val values = remember(preset?.id, presets) {
+    val values = remember(preset?.id, revision) {
         val env = preset?.let { store.values(it.id) }
         variables.associate { v -> v.name to (env?.takeIf { e -> e.has(v.name) }?.get(v.name) ?: v.default) }
     }
-    var name by remember(preset?.id, presets) { mutableStateOf(preset?.name.orEmpty()) }
+    var name by remember(preset?.id) { mutableStateOf(preset?.name.orEmpty()) }
     var help by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
 

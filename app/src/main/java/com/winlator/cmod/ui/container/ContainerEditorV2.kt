@@ -592,7 +592,8 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
             text = {
                 Text(
                     "Games, saves, settings and the registry stay. Wine's own system files in this container are " +
-                        "replaced with ${labelOf(target)}'s (the registry is backed up first)." +
+                        "replaced with ${labelOf(target)}'s (the registry is backed up first). The first start afterwards " +
+                        "takes longer: Wine updates the container to the new version." +
                         if (familyChange) "\n\nThis also changes ARM64EC ↔ x86-64: the emulator is switched to match, " +
                             "and some installed programs may need reinstalling." else ""
                 )

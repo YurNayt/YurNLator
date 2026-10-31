@@ -337,6 +337,10 @@ public class ContainerManager {
             Log.e("ContainerManager", "Switching Wine failed: " + e.getMessage());
             return false;
         }
+        // Wine's own upgrade path: without the stamp, the next start runs the prefix update
+        // (wineboot --update) for the new version: registry defaults, fonts, system files.
+        File stamp = new File(wineDir, ".update-timestamp");
+        if (stamp.exists() && !stamp.delete()) Log.w("ContainerManager", "Could not remove .update-timestamp");
         container.setWineVersion(newWineVersion);
         container.saveData();
         return true;
