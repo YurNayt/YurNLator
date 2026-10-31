@@ -140,7 +140,9 @@ public final class RemoteDriverCatalog {
                 int read;
                 while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
             }
-            return new AdrenotoolsManager(context).installDriver(Uri.fromFile(archive));
+            String id = new AdrenotoolsManager(context).installDriver(Uri.fromFile(archive));
+            DriverOrigins.record(context, url, id);
+            return id;
         } catch (Exception ignored) {
             return "";
         } finally {

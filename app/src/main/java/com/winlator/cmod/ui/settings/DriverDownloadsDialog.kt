@@ -1,5 +1,14 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.core.GpuProfileManager
+import com.winlator.cmod.core.DriverNames
+import com.winlator.cmod.contents.DriverSources
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
 import com.winlator.cmod.core.LocalInstalls
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,8 +43,11 @@ internal fun DriverDownloadsDialog(
     options: List<DriverOption>,
     installing: Set<String>,
     onInstall: (DriverOption) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    selected: String = "",
+    onSelected: (String) -> Unit = {}
 ) {
+    var removing by remember { mutableStateOf<BrowserItem?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val gpuType = remember { ALL_COMPONENT_TYPES.filter { it.key == GPU_DRIVER } }
@@ -49,7 +61,7 @@ internal fun DriverDownloadsDialog(
                 name = o.label,
                 author = o.author,
                 installed = o.installed,
-                removable = false, // drivers are removed in Settings > Components, not from an editor
+                removable = o.installed && o.id != "System",
                 localKey = if (o.installed) LocalInstalls.key(GPU_DRIVER, o.id) else null
             )
         }
@@ -81,7 +93,7 @@ internal fun DriverDownloadsDialog(
                 initialType = GPU_DRIVER,
                 onClose = onDismiss,
                 onInstall = { item -> options.firstOrNull { (it.remoteUrl ?: it.id) == item.id }?.let(onInstall) },
-                onRemove = {},
+                onRemove = { removing = it },
                 onLocalPackage = {
                     fileLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
                 },
@@ -89,5 +101,26 @@ internal fun DriverDownloadsDialog(
                 busyLabel = "Downloading"
             )
         }
+    }
+
+    removing?.let { item ->
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            title = { Text("Delete ${DriverNames.parse(item.name).title}?") },
+            text = { Text("The driver files are removed. Containers and games that use it switch to the default driver.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val id = item.id
+                    removing = null
+                    scope.launch {
+                        withContext(Dispatchers.IO) { runCatching { AdrenotoolsManager(context).removeDriver(id) } }
+                        LocalInstalls.forget(context, LocalInstalls.key(GPU_DRIVER, id))
+                        if (id.equals(selected, ignoreCase = true)) onSelected(GpuProfileManager.defaultGraphicsDriverVersion(context))
+                        DriverSources.revision.intValue++ // editors reload their driver list
+                    }
+                }) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancel") } }
+        )
     }
 }

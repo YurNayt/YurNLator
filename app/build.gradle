@@ -102,8 +102,10 @@ android {
         // We’re preserving Winlator’s request to keep targetSdkVersion at 28
         targetSdkVersion 28
 
-        versionCode 1
-        versionName "0.1.0"
+        // CI sets these from the run number: every build is a newer version, so Android
+        // installs it as an update and the in-app version shows which build it is.
+        versionCode((System.getenv("YURN_VERSION_CODE") ?: "1") as int)
+        versionName(System.getenv("YURN_VERSION_NAME") ?: "0.1.0")
 
         // External native build from Winlator
         externalNativeBuild {

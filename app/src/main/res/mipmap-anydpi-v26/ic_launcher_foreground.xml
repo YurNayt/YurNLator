@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- YurNLator artwork. 76dp of the 108dp adaptive canvas: the whole logo, title and pad
+     stay inside the area launchers show (72dp) on squircle / rounded-square masks. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:width="66dp"
-        android:height="66dp"
+        android:width="76dp"
+        android:height="76dp"
         android:gravity="center"
-        android:drawable="@drawable/winlator_launcher_full" />
+        android:drawable="@drawable/yurn_launcher_art" />
 </layer-list>

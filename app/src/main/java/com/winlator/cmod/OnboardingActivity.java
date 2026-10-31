@@ -1,6 +1,7 @@
 package com.winlator.cmod;
 
 import com.winlator.cmod.core.LocalInstalls;
+import com.winlator.cmod.contents.DriverOrigins;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -439,8 +440,25 @@ public class OnboardingActivity extends AppCompatActivity {
             }
         }
 
+        // GPU drivers. A driver downloaded from an author stays under that author as
+        // installed (DriverOrigins), so the same download isn't offered again.
+        ArrayList<String> installedDrivers = adrenotoolsManager.enumarateInstalledDrivers();
+        Set<String> placedDrivers = new HashSet<>();
         Set<String> existingDrivers = new HashSet<>();
-        for (String id : adrenotoolsManager.enumarateInstalledDrivers()) {
+        synchronized (remoteDrivers) {
+            for (RemoteDriverCatalog.Entry driver : remoteDrivers) {
+                String installedId = DriverOrigins.installedIdFor(this, driver.url, installedDrivers);
+                if (installedId != null) {
+                    if (!placedDrivers.add(installedId.toLowerCase(Locale.ENGLISH))) continue;
+                    ui.add(new OnboardingComponent(
+                            "adrenotools:" + installedId, "AdrenoTools", driver.name, true, false, true,
+                            null, false, false, driver.repository
+                    ));
+                }
+            }
+        }
+        for (String id : installedDrivers) {
+            if (placedDrivers.contains(id.toLowerCase(Locale.ENGLISH))) continue;
             String label = adrenotoolsManager.getDriverName(id) + " " + adrenotoolsManager.getDriverVersion(id);
             ui.add(new OnboardingComponent(
                     "adrenotools:" + id, "AdrenoTools", label.trim(), true, false, true,
@@ -450,6 +468,7 @@ public class OnboardingActivity extends AppCompatActivity {
         }
         synchronized (remoteDrivers) {
             for (RemoteDriverCatalog.Entry driver : remoteDrivers) {
+                if (DriverOrigins.installedIdFor(this, driver.url, installedDrivers) != null) continue;
                 if (existingDrivers.contains(driver.name.toLowerCase(Locale.ENGLISH))) continue;
                 ui.add(new OnboardingComponent(
                         remoteDriverId(driver), "AdrenoTools", driver.name,

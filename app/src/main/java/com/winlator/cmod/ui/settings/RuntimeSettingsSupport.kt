@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.contents.DriverOrigins
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import com.winlator.cmod.ui.components.PickerSheet
 import com.winlator.cmod.ui.components.PickerOption
@@ -253,15 +254,23 @@ internal suspend fun loadSettingsCatalog(
             driverOptions[version.lowercase()] = DriverOption(version, version, true)
         }
     }
-    runCatching { adreno.enumarateInstalledDrivers() }.getOrNull().orEmpty().forEach { id ->
-        val label = listOf(adreno.getDriverName(id), adreno.getDriverVersion(id))
+    val installedDrivers = runCatching { adreno.enumarateInstalledDrivers() }.getOrNull().orEmpty()
+    val remoteDrivers = runCatching { RemoteDriverCatalog.load(context, allowNetwork) }.getOrNull().orEmpty()
+    // Downloaded drivers keep their author and catalog name, so they stay under that author.
+    val origins = remoteDrivers.mapNotNull { r ->
+        DriverOrigins.installedIdFor(context, r.url, installedDrivers)?.let { it.lowercase() to r }
+    }.toMap()
+    installedDrivers.forEach { id ->
+        val origin = origins[id.lowercase()]
+        val label = origin?.name ?: listOf(adreno.getDriverName(id), adreno.getDriverVersion(id))
             .filter { it.isNotBlank() }
             .joinToString(" ")
             .ifBlank { id }
         rendererDrivers[id] = label
-        driverOptions[id.lowercase()] = DriverOption(id, label, true)
+        driverOptions[id.lowercase()] = DriverOption(id, label, true, author = origin?.repository)
     }
-    runCatching { RemoteDriverCatalog.load(context, allowNetwork) }.getOrNull().orEmpty().forEach { remote ->
+    remoteDrivers.forEach { remote ->
+        if (DriverOrigins.installedIdFor(context, remote.url, installedDrivers) != null) return@forEach
         val alreadyInstalled = driverOptions.values.any {
             it.id.equals(remote.name, ignoreCase = true) || it.label.equals(remote.name, ignoreCase = true)
         }
@@ -677,7 +686,8 @@ internal fun SettingDriverChoice(
     var expanded by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     var showDownloads by remember { mutableStateOf(false) }
-    if (showDownloads) DriverDownloadsDialog(options, installing, onInstall, onDismiss = { showDownloads = false })
+    if (showDownloads) DriverDownloadsDialog(options, installing, onInstall, onDismiss = { showDownloads = false },
+        selected = selected, onSelected = onSelected)
     val context = LocalContext.current
     val importScope = rememberCoroutineScope()
     val selectedOption = options.firstOrNull { it.id.equals(selected, ignoreCase = true) }

@@ -38,6 +38,7 @@ import com.winlator.cmod.ui.components.PickerAction
 import com.winlator.cmod.ui.components.PickerOption
 import com.winlator.cmod.ui.components.PickerSheet
 import com.winlator.cmod.ui.components.WRAPPER
+import com.winlator.cmod.ui.components.WrapperItems
 import com.winlator.cmod.ui.components.rememberWrapperItems
 
 /**
@@ -113,7 +114,11 @@ internal fun SettingWrapperChoice(selected: String, onSelected: (String) -> Unit
                     initialType = WRAPPER,
                     onClose = { downloads = false },
                     onInstall = wrappers.install,
-                    onRemove = wrappers.remove,
+                    onRemove = { item ->
+                        wrappers.remove(item)
+                        // Removing the wrapper this container / game uses: back to the built-in one.
+                        if (WrapperItems.wrapperId(item) == current) onSelected(WrapperManager.BUILTIN_ID)
+                    },
                     onLocalPackage = { wrappers.importFile() },
                     busyIds = wrappers.busyIds,
                     busyLabel = "Downloading",

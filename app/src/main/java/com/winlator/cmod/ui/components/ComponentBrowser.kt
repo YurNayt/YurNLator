@@ -1,5 +1,11 @@
 package com.winlator.cmod.ui.components
 
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -149,7 +155,34 @@ fun ComponentBrowser(
         if (current == null) {
             TypeList(title, subtitle, types, items, loading, onClose) { currentKey = it.key }
         } else {
+            val drawerState = rememberDrawerState(DrawerValue.Closed)
+            val scope = rememberCoroutineScope()
+            BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                gesturesEnabled = drawerState.isOpen,
+                drawerContent = {
+                    ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.background) {
+                        LazyColumn(
+                            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 16.dp, bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            item {
+                                Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
+                            }
+                            items(types, key = { it.key }) { t ->
+                                TypeCard(t, items, loading, selected = t.key == current.key) {
+                                    currentKey = t.key
+                                    scope.launch { drawerState.close() }
+                                }
+                            }
+                        }
+                    }
+                }
+            ) {
             TypePage(
+                onOpenMenu = { scope.launch { drawerState.open() } },
                 type = current,
                 types = types,
                 items = items.filter { current.matches(it) },
@@ -164,6 +197,7 @@ fun ComponentBrowser(
                 onLocalPackage = { onLocalPackage(current) },
                 header = { typeHeader(current) }
             )
+            }
         }
     }
 }
@@ -193,39 +227,48 @@ private fun TypeList(
             Spacer(Modifier.height(6.dp))
         }
         items(types, key = { it.key }) { type ->
-            val ofType = items.filter { type.matches(it) }
-            val installed = ofType.count { it.installed }
-            val available = ofType.count { !it.installed }
-            Surface(
-                onClick = { onOpen(type) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(42.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) { Icon(type.icon, null) }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(type.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            if (loading && ofType.isEmpty()) "Loading…" else "$installed installed · $available available",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            TypeCard(type, items, loading, selected = false) { onOpen(type) }
+        }
+    }
+}
+
+/** A component type as a card: icon, title, "N installed · M available". Used by the list and the side drawer. */
+@Composable
+private fun TypeCard(type: ComponentType, items: List<BrowserItem>, loading: Boolean, selected: Boolean, onClick: () -> Unit) {
+    val ofType = items.filter { type.matches(it) }
+    val installed = ofType.count { it.installed }
+    val available = ofType.count { !it.installed }
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = if (selected) scheme.secondaryContainer else scheme.surface,
+        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) scheme.primary else scheme.outlineVariant)
+    ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(42.dp).background(scheme.surfaceVariant, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) { Icon(type.icon, null, tint = if (selected) scheme.primary else scheme.onSurface) }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(type.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (loading && ofType.isEmpty()) "Loading…" else "$installed installed · $available available",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant
+                )
             }
+            if (selected) Icon(Icons.Outlined.Check, null, tint = scheme.primary)
+            else Icon(Icons.Outlined.ChevronRight, null, tint = scheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
 private fun TypePage(
+    onOpenMenu: () -> Unit,
     type: ComponentType,
     types: List<ComponentType>,
     items: List<BrowserItem>,
@@ -243,7 +286,6 @@ private fun TypePage(
     val context = LocalContext.current
     val sourcesRev = DriverSources.revision.intValue
     var author by rememberSaveable(type.key) { mutableStateOf(AUTHOR_ALL) }
-    var typeMenu by remember { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<DriverSource?>(null) }
 
@@ -278,7 +320,8 @@ private fun TypePage(
         AUTHOR_ALL -> items.sortedByDescending { it.installed }
         AUTHOR_INSTALLED -> items.filter { it.installed }
         AUTHOR_MY_FILES -> items.filter { it.id in myFiles }
-        else -> items.filter { !it.installed && it.author == selectedAuthor }
+        // An author's tab: what you already installed from them on top, then the rest.
+        else -> items.filter { it.author == selectedAuthor }.sortedByDescending { it.installed }
     }
     // Inside one author the author line would only repeat the selection.
     val showAuthorLine = selectedAuthor == AUTHOR_ALL || selectedAuthor == AUTHOR_INSTALLED
@@ -287,19 +330,7 @@ private fun TypePage(
         // Top bar: menu (switch type) on the left, title, close on the right.
         Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (types.size > 1) {
-                Box {
-                    IconButton(onClick = { typeMenu = true }) { Icon(Icons.Outlined.Menu, "Component types") }
-                    DropdownMenu(expanded = typeMenu, onDismissRequest = { typeMenu = false }) {
-                        types.forEach { t ->
-                            DropdownMenuItem(
-                                text = { Text(t.title, fontWeight = if (t.key == type.key) FontWeight.Bold else FontWeight.Normal) },
-                                leadingIcon = { Icon(t.icon, null) },
-                                trailingIcon = { if (t.key == type.key) Icon(Icons.Outlined.Check, null) },
-                                onClick = { typeMenu = false; onSwitchType(t) }
-                            )
-                        }
-                    }
-                }
+                IconButton(onClick = onOpenMenu) { Icon(Icons.Outlined.Menu, "Component types") }
             } else {
                 Spacer(Modifier.width(12.dp))
             }
