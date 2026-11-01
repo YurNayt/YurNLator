@@ -50,6 +50,8 @@ target_link_libraries(winlator
 
 add_library(fakeinput SHARED
         winlator/fakeinput.cpp
+        winlator/dirdedup_getdents.cpp
+        winlator/dirdedup_readdir.cpp
 )
 
 target_compile_options(fakeinput PRIVATE -Wall -Wextra -fvisibility=hidden)

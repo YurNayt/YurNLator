@@ -385,3 +385,14 @@ Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetFrameGen(
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
     if (r) r->setFrameGen(armed == JNI_TRUE, (int)multiplier, (int)preset, (float)flowScale);
 }
+
+extern "C" JNIEXPORT jlongArray JNICALL
+Java_com_winlator_cmod_widget_VulkanXServerView_nativeGetPresentStats(JNIEnv* env, jobject, jlong handle)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    jlong v[2] = {0, 0};
+    if (r) { v[0] = (jlong)r->presentedRealFrames.load(); v[1] = (jlong)r->presentedGeneratedFrames.load(); }
+    jlongArray out = env->NewLongArray(2);
+    if (out) env->SetLongArrayRegion(out, 0, 2, v);
+    return out;
+}

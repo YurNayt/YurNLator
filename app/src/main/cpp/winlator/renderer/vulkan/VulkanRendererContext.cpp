@@ -234,10 +234,22 @@ void VulkanRendererContext::createLogicalDevice() {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME
     };
+    // Frame generation (win-fg) writes r16f / rg16f style storage images: enable the feature
+    // when the GPU has it (otherwise its output stays black). Retried without on failure.
+    VkPhysicalDeviceFeatures supported{}, enabled{};
+    auto getFeatures = (PFN_vkGetPhysicalDeviceFeatures)gipa(instance, "vkGetPhysicalDeviceFeatures");
+    if (getFeatures) getFeatures(physicalDevice, &supported);
+    enabled.shaderStorageImageExtendedFormats = supported.shaderStorageImageExtendedFormats;
+    enabled.shaderStorageImageWriteWithoutFormat = supported.shaderStorageImageWriteWithoutFormat;
+    fgStorageFeatures = supported.shaderStorageImageExtendedFormats == VK_TRUE;
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
     ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
-    if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) throw std::runtime_error("device");
+    ci.pEnabledFeatures=&enabled;
+    if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) {
+        ci.pEnabledFeatures=nullptr; fgStorageFeatures=false;
+        if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) throw std::runtime_error("device");
+    }
     vk_.GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)gipa(instance, "vkGetDeviceProcAddr");
     loadDeviceDispatch();
     vk_.GetDeviceQueue(device,graphicsQueueFamilyIndex,0,&graphicsQueue);
@@ -1150,6 +1162,9 @@ void VulkanRendererContext::renderFrame() {
         memcpy(cursorStgP, cursorPixels.data(), cursorUploadSize);
 
     // Frame generation: render into the composite and synthesise frames (see VulkanRendererFrameGen.cpp).
+    const uint64_t hudSerial = contentSerial.load(std::memory_order_relaxed);
+    const bool hudNewContent = hudSerial != hudLastSerial;
+    hudLastSerial = hudSerial;
     fgPrepareFrame();
 
     recordCmdBuf(cmdBufs[currentFrame],imgIdx,frameDraws,
@@ -1180,6 +1195,9 @@ void VulkanRendererContext::renderFrame() {
     res = vk_.QueuePresentKHR(graphicsQueue, &pi);
 
     if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR||res==VK_SUBOPTIMAL_KHR) fbResized.store(true);
+    // HUD: what reached the screen (the first present is a generated frame while generating).
+    if (fgActiveThisFrame && fgGensThisFrame > 0) presentedGeneratedFrames.fetch_add(1, std::memory_order_relaxed);
+    else if (hudNewContent) presentedRealFrames.fetch_add(1, std::memory_order_relaxed);
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
     if (!fbResized.load()) fgPresentRest();
 }

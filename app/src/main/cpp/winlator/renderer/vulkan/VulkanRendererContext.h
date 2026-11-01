@@ -498,6 +498,10 @@ public:
     int64_t       fgLastFrameNs = 0;
     PFN_vkCmdBlitImage fgCmdBlitImage = nullptr;
     bool          swapchainCanBlit = false;   // swapchain images accept TRANSFER_DST
+    bool          fgStorageFeatures = false;  // shaderStorageImageExtendedFormats enabled
+    std::atomic<uint64_t> presentedRealFrames{0};
+    uint64_t      hudLastSerial = 0;
+    std::atomic<uint64_t> presentedGeneratedFrames{0};
     bool fgPrepareFrame();                 // before recording: decide composite / generation
     void fgRecordTail(VkCommandBuffer cb, uint32_t imgIdx);  // after the render pass
     void fgPresentRest();                  // after the first present

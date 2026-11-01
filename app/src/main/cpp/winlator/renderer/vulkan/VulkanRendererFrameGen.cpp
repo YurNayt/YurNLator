@@ -168,7 +168,7 @@ bool VulkanRendererContext::fgPrepareFrame() {
         if (fgW) { fgDestroyTargets(); fgLastFrameNs = 0; }
         return false;
     }
-    if (!swapchainCanBlit) return false;
+    if (!swapchainCanBlit || !fgStorageFeatures) return false;
     if (!fgEnsureSync() || !fgEnsureTargets()) return false;
 
     if (!fgEngine && !fgEngineTried) {
@@ -293,6 +293,8 @@ void VulkanRendererContext::fgPresentRest() {
         pi.waitSemaphoreCount = 1; pi.pWaitSemaphores = &fgDone[slot];
         pi.swapchainCount = 1; pi.pSwapchains = &swapchain; pi.pImageIndices = &idx;
         res = vk_.QueuePresentKHR(graphicsQueue, &pi);
+        if (i < n) presentedGeneratedFrames.fetch_add(1, std::memory_order_relaxed);
+        else presentedRealFrames.fetch_add(1, std::memory_order_relaxed);
         if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_ERROR_SURFACE_LOST_KHR || res == VK_SUBOPTIMAL_KHR) { fbResized.store(true); return; }
     }
 }

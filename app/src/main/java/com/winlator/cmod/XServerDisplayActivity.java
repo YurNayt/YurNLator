@@ -1309,6 +1309,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             } else if (hudMode == 2) {
 
                 modernHud = new WinlatorHUD(this);
+                if (xServerView instanceof VulkanXServerView) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
                 modernHud.setVisibility(View.GONE);
                 rootView.addView(modernHud);
                 modernHud.enableByUser();
@@ -1780,6 +1781,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (style == 2) {
             if (modernHud == null) {
                 modernHud = new WinlatorHUD(this);
+                if (xServerView instanceof VulkanXServerView) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
                 modernHud.setVisibility(View.GONE);
                 rootView.addView(modernHud);
                 renderer.setFrameRating(modernHud);

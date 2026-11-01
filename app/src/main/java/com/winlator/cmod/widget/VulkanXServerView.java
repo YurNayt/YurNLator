@@ -130,6 +130,12 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     @FastNative private native void nativeSetSharpness(long handle, float sharpness);
     private native void nativeSetColorAdjust(long handle, float brightness, float contrast, float gamma);
     private native void nativeSetFrameGen(long handle, boolean armed, int multiplier, int preset, float flowScale);
+    private native long[] nativeGetPresentStats(long handle);
+
+    /** {real frames, generated frames} presented on screen so far (for the HUD). */
+    public long[] getPresentStats() {
+        synchronized (lock) { return nativeHandle != 0 ? nativeGetPresentStats(nativeHandle) : null; }
+    }
 
     private native void nativeDumpRendererInfo(long handle);
     private native void nativeSetFilterMode(long handle, int mode);
