@@ -115,6 +115,7 @@ struct VkTable {
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
+#include <chrono>
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -504,7 +505,14 @@ public:
     std::atomic<uint64_t> presentedGeneratedFrames{0};
     bool fgPrepareFrame();                 // before recording: decide composite / generation
     void fgRecordTail(VkCommandBuffer cb, uint32_t imgIdx);  // after the render pass
-    void fgPresentRest();                  // after the first present
+    void fgPresentRest();                  // after the first present: schedule the rest
+    uint32_t fgPendNext = 0, fgPendTotal = 0;
+    int64_t  fgPendT0 = 0;
+    double   fgPendStep = 0;
+    bool     fgHasPending() const;
+    int64_t  fgNextDueNs() const;
+    void     fgServicePending(bool newGameFrame);
+    void     fgPresentOne(uint32_t i);
     void fgDestroyTargets();
     void fgShutdown();
     bool fgEnsureTargets();

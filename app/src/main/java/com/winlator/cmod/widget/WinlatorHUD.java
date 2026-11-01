@@ -719,7 +719,7 @@ public class WinlatorHUD extends View {
     // Frames the renderer put on screen {real, generated}: when set, FPS comes from here instead of
     // window updates (works with any driver, and shows frame generation: "90 (45)").
     private volatile java.util.function.Supplier<long[]> presentCounter;
-    private long lastReal = -1, lastGen = 0;
+    private long lastReal = -1, lastGen = 0, lastContent = 0;
 
     public void setPresentCounter(java.util.function.Supplier<long[]> counter) {
         presentCounter = counter;
@@ -736,16 +736,20 @@ public class WinlatorHUD extends View {
         String value = null;
         java.util.function.Supplier<long[]> counter = presentCounter;
         long[] stats = counter != null ? counter.get() : null;
-        if (stats != null && stats.length >= 2) {
+        if (stats != null && stats.length >= 3) {
             if (lastReal >= 0) {
+                // Game FPS: new frames from the game (not capped by the screen); with frame
+                // generation also what reaches the screen: "screen (game)".
                 float real = (stats[0] - lastReal) * 1_000_000_000f / dt;
                 float gen = (stats[1] - lastGen) * 1_000_000_000f / dt;
-                snapFps = real + gen;
-                value = gen >= 1f ? String.format(Locale.US, "%.0f (%.0f)", real + gen, real)
-                                  : String.format(Locale.US, "%.0f", real);
+                float game = (stats[2] - lastContent) * 1_000_000_000f / dt;
+                snapFps = game;
+                value = gen >= 1f ? String.format(Locale.US, "%.0f (%.0f)", real + gen, game)
+                                  : String.format(Locale.US, "%.0f", game);
             }
             lastReal = stats[0];
             lastGen = stats[1];
+            lastContent = stats[2];
         } else {
             snapFps = frames * 1_000_000_000f / dt;
         }

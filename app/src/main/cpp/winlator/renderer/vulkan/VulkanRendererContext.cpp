@@ -1040,10 +1040,22 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
 void VulkanRendererContext::renderLoop() {
     while (isRunning) {
         { std::unique_lock<std::mutex> lk(dirtyMutex);
-          dirtyCV.wait(lk,[this]{
-              return !isRunning||(!surfaceDetached.load()&&(needsRender.load()||fbResized.load()))||cursorMoved.load(); }); }
+          if (fgHasPending()) {
+              // Frame generation has frames due: wake at the next one, or at once for a new game frame.
+              dirtyCV.wait_until(lk, std::chrono::steady_clock::time_point(std::chrono::nanoseconds(fgNextDueNs())),
+                  [this]{ return !isRunning || contentSerial.load(std::memory_order_relaxed) != fgLastSerial; });
+          } else {
+              dirtyCV.wait(lk,[this]{
+                  return !isRunning||(!surfaceDetached.load()&&(needsRender.load()||fbResized.load()))||cursorMoved.load(); });
+          } }
         if (!isRunning) break;
         if (swapchain == VK_NULL_HANDLE || cmdBufs.empty()) continue;
+        if (fgHasPending()) {
+            bool newGameFrame = contentSerial.load(std::memory_order_relaxed) != fgLastSerial;
+            try { std::shared_lock<std::shared_mutex> fl(frameMutex); fgServicePending(newGameFrame); } catch(...) {}
+            // Still frames to show: don't render over the composite yet.
+            if (fgHasPending()) continue;
+        }
         try { renderFrame(); } catch(...) {}
     }
 }

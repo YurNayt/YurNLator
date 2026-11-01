@@ -251,50 +251,77 @@ void VulkanRendererContext::fgRecordTail(VkCommandBuffer cb, uint32_t imgIdx) {
     fgBlitToSwapchain(cb, fgGensThisFrame > 0 ? fgGen[0].img : fgComposite.img, imgIdx);
 }
 
+// After the first (generated) present: the rest is scheduled, not slept on, so the render thread
+// keeps taking game frames (sleeping here held the game back to half its FPS).
 void VulkanRendererContext::fgPresentRest() {
+    fgPendTotal = 0; fgPendNext = 0;
     if (!fgActiveThisFrame || fgGensThisFrame == 0) return;
-    const uint32_t n = fgGensThisFrame;
-    const int64_t t0 = nowNs();
-    const double step = fgIntervalNs / (double)(n + 1);
-    // Remaining outputs in display order: generated 2..n, then the real frame.
-    for (uint32_t i = 1; i <= n; i++) {
-        VkImage src = (i < n) ? fgGen[i].img : fgComposite.img;
-        int slot = (int)(i - 1);
-        std::this_thread::sleep_until(std::chrono::steady_clock::time_point(
-            std::chrono::nanoseconds(t0 + (int64_t)(step * i))));
-        if (!isRunning || surfaceDetached.load() || swapchain == VK_NULL_HANDLE) return;
+    fgPendTotal = fgGensThisFrame;
+    fgPendNext = 1;
+    fgPendT0 = nowNs();
+    fgPendStep = fgIntervalNs / (double)(fgGensThisFrame + 1);
+}
 
-        vk_.WaitForFences(device, 1, &fgFences[slot], VK_TRUE, UINT64_MAX);
-        uint32_t idx;
-        VkResult res = vk_.AcquireNextImageKHR(device, swapchain, UINT64_MAX, fgAcq[slot], VK_NULL_HANDLE, &idx);
-        if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_ERROR_SURFACE_LOST_KHR) { fbResized.store(true); return; }
-        if ((res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) || idx >= swapchainImages.size()) return;
-        if (idx < imgInFlight.size() && imgInFlight[idx] != VK_NULL_HANDLE && imgInFlight[idx] != fgFences[slot])
-            vk_.WaitForFences(device, 1, &imgInFlight[idx], VK_TRUE, UINT64_MAX);
-        if (idx < imgInFlight.size()) imgInFlight[idx] = VK_NULL_HANDLE;
+bool VulkanRendererContext::fgHasPending() const {
+    return fgPendNext != 0 && fgPendNext <= fgPendTotal;
+}
 
-        VkCommandBuffer cb = fgCmds[slot];
-        vk_.ResetCommandBuffer(cb, 0);
-        VkCommandBufferBeginInfo bi{}; bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vk_.BeginCommandBuffer(cb, &bi);
-        fgBlitToSwapchain(cb, src, idx);
-        vk_.EndCommandBuffer(cb);
+int64_t VulkanRendererContext::fgNextDueNs() const {
+    return fgPendT0 + (int64_t)(fgPendStep * fgPendNext);
+}
 
-        VkPipelineStageFlags ws = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-        VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        si.waitSemaphoreCount = 1; si.pWaitSemaphores = &fgAcq[slot]; si.pWaitDstStageMask = &ws;
-        si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-        si.signalSemaphoreCount = 1; si.pSignalSemaphores = &fgDone[slot];
-        vk_.ResetFences(device, 1, &fgFences[slot]);
-        if (vk_.QueueSubmit(graphicsQueue, 1, &si, fgFences[slot]) != VK_SUCCESS) return;
-
-        VkPresentInfoKHR pi{}; pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        pi.waitSemaphoreCount = 1; pi.pWaitSemaphores = &fgDone[slot];
-        pi.swapchainCount = 1; pi.pSwapchains = &swapchain; pi.pImageIndices = &idx;
-        res = vk_.QueuePresentKHR(graphicsQueue, &pi);
-        if (i < n) presentedGeneratedFrames.fetch_add(1, std::memory_order_relaxed);
-        else presentedRealFrames.fetch_add(1, std::memory_order_relaxed);
-        if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_ERROR_SURFACE_LOST_KHR || res == VK_SUBOPTIMAL_KHR) { fbResized.store(true); return; }
+void VulkanRendererContext::fgServicePending(bool newGameFrame) {
+    if (!fgHasPending()) return;
+    if (newGameFrame) {
+        // The game is ahead: drop the leftover generated frames, show the real one now.
+        fgPresentOne(fgPendTotal);
+        fgPendNext = fgPendTotal = 0;
+        return;
     }
+    while (fgHasPending() && nowNs() >= fgNextDueNs()) {
+        fgPresentOne(fgPendNext);
+        fgPendNext++;
+    }
+    if (fgPendNext > fgPendTotal) fgPendNext = fgPendTotal = 0;
+}
+
+// Output i of the current frame: generated frame i (i < n) or the real frame (i == n).
+void VulkanRendererContext::fgPresentOne(uint32_t i) {
+    const uint32_t n = fgPendTotal;
+    if (!isRunning || surfaceDetached.load() || swapchain == VK_NULL_HANDLE || fbResized.load()) { fgPendNext = fgPendTotal = 0; return; }
+    VkImage src = (i < n) ? fgGen[i].img : fgComposite.img;
+    int slot = (int)(i - 1) % 3;
+
+    vk_.WaitForFences(device, 1, &fgFences[slot], VK_TRUE, UINT64_MAX);
+    uint32_t idx;
+    VkResult res = vk_.AcquireNextImageKHR(device, swapchain, UINT64_MAX, fgAcq[slot], VK_NULL_HANDLE, &idx);
+    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_ERROR_SURFACE_LOST_KHR) { fbResized.store(true); fgPendNext = fgPendTotal = 0; return; }
+    if ((res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) || idx >= swapchainImages.size()) return;
+    if (idx < imgInFlight.size() && imgInFlight[idx] != VK_NULL_HANDLE && imgInFlight[idx] != fgFences[slot])
+        vk_.WaitForFences(device, 1, &imgInFlight[idx], VK_TRUE, UINT64_MAX);
+    if (idx < imgInFlight.size()) imgInFlight[idx] = VK_NULL_HANDLE;
+
+    VkCommandBuffer cb = fgCmds[slot];
+    vk_.ResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{}; bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vk_.BeginCommandBuffer(cb, &bi);
+    fgBlitToSwapchain(cb, src, idx);
+    vk_.EndCommandBuffer(cb);
+
+    VkPipelineStageFlags ws = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.waitSemaphoreCount = 1; si.pWaitSemaphores = &fgAcq[slot]; si.pWaitDstStageMask = &ws;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    si.signalSemaphoreCount = 1; si.pSignalSemaphores = &fgDone[slot];
+    vk_.ResetFences(device, 1, &fgFences[slot]);
+    if (vk_.QueueSubmit(graphicsQueue, 1, &si, fgFences[slot]) != VK_SUCCESS) return;
+
+    VkPresentInfoKHR pi{}; pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    pi.waitSemaphoreCount = 1; pi.pWaitSemaphores = &fgDone[slot];
+    pi.swapchainCount = 1; pi.pSwapchains = &swapchain; pi.pImageIndices = &idx;
+    res = vk_.QueuePresentKHR(graphicsQueue, &pi);
+    if (i < n) presentedGeneratedFrames.fetch_add(1, std::memory_order_relaxed);
+    else presentedRealFrames.fetch_add(1, std::memory_order_relaxed);
+    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_ERROR_SURFACE_LOST_KHR || res == VK_SUBOPTIMAL_KHR) { fbResized.store(true); fgPendNext = fgPendTotal = 0; }
 }

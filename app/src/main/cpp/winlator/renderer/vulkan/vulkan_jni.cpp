@@ -390,9 +390,9 @@ extern "C" JNIEXPORT jlongArray JNICALL
 Java_com_winlator_cmod_widget_VulkanXServerView_nativeGetPresentStats(JNIEnv* env, jobject, jlong handle)
 {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
-    jlong v[2] = {0, 0};
-    if (r) { v[0] = (jlong)r->presentedRealFrames.load(); v[1] = (jlong)r->presentedGeneratedFrames.load(); }
-    jlongArray out = env->NewLongArray(2);
-    if (out) env->SetLongArrayRegion(out, 0, 2, v);
+    jlong v[3] = {0, 0, 0};
+    if (r) { v[0] = (jlong)r->presentedRealFrames.load(); v[1] = (jlong)r->presentedGeneratedFrames.load(); v[2] = (jlong)r->contentSerial.load(); }
+    jlongArray out = env->NewLongArray(3);
+    if (out) env->SetLongArrayRegion(out, 0, 3, v);
     return out;
 }
