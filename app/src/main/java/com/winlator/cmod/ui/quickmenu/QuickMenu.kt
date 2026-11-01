@@ -135,18 +135,25 @@ private fun QuickMenu(bridge: QuickMenuBridge, opened: Int) {
             Column(Modifier.fillMaxSize()) {
                 Row(Modifier.fillMaxWidth().padding(start = 22.dp, end = 10.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Quick menu", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    // Always visible, also on short landscape screens where the rail scrolls.
+                    TextButton(onClick = { confirmExit = true }) {
+                        Icon(Icons.Outlined.ExitToApp, null, tint = scheme.error, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Exit game", color = scheme.error)
+                    }
                     IconButton(onClick = { bridge.close() }) { Icon(Icons.Outlined.Close, "Close") }
                 }
                 Row(Modifier.fillMaxSize()) {
                     // Rail
                     Column(
-                        Modifier.width(84.dp).fillMaxHeight().padding(start = 12.dp, end = 8.dp, bottom = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        Modifier.width(80.dp).fillMaxHeight().verticalScroll(rememberScrollState())
+                            .padding(start = 12.dp, end = 8.dp, bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Section.entries.forEach { s ->
                             RailButton(s.icon, s.title, selected = s == section) { section = s }
                         }
-                        Spacer(Modifier.weight(1f))
+                        Spacer(Modifier.height(8.dp))
                         RailButton(if (paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, if (paused) "Resume" else "Pause", selected = paused) {
                             paused = !paused
                             bridge.setPaused(paused)
@@ -187,8 +194,8 @@ private fun RailButton(icon: ImageVector, label: String, selected: Boolean, dang
         selected -> scheme.primary
         else -> scheme.onSurfaceVariant
     }
-    Surface(onClick = onClick, shape = RoundedCornerShape(20.dp), color = bg, modifier = Modifier.size(64.dp)) {
-        Box(contentAlignment = Alignment.Center) { Icon(icon, label, tint = tint, modifier = Modifier.size(28.dp)) }
+    Surface(onClick = onClick, shape = RoundedCornerShape(18.dp), color = bg, modifier = Modifier.size(58.dp)) {
+        Box(contentAlignment = Alignment.Center) { Icon(icon, label, tint = tint, modifier = Modifier.size(26.dp)) }
     }
 }
 

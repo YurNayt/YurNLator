@@ -565,6 +565,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     winStarted[0] = true;
                 }
 
+                trackHudWindow(window);
                 if (frameRatingWindowId == window.id) {
                     if (classicHud != null) classicHud.update();
                     if (modernHud != null) modernHud.onFrame();
@@ -3047,6 +3048,34 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // through this bridge.
     // ---------------------------------------------------------------------------------------
     private boolean quickMenuLogs = false;
+
+    // FPS follows the window that actually renders: games often draw into a new window after a
+    // launcher / splash one, and the HUD kept counting the old window (low or frozen FPS).
+    private final java.util.HashMap<Integer, Integer> hudWindowUpdates = new java.util.HashMap<>();
+    private long hudWindowCheckMs = 0;
+
+    private void trackHudWindow(Window window) {
+        if (!window.isApplicationWindow()) return;
+        if (frameRatingWindowId == -1) return;
+        Integer n = hudWindowUpdates.get(window.id);
+        hudWindowUpdates.put(window.id, n == null ? 1 : n + 1);
+        long now = android.os.SystemClock.uptimeMillis();
+        if (hudWindowCheckMs == 0) hudWindowCheckMs = now;
+        if (now - hudWindowCheckMs < 1000) return;
+        int busiest = -1, busiestCount = 0;
+        for (java.util.Map.Entry<Integer, Integer> e : hudWindowUpdates.entrySet()) {
+            if (e.getValue() > busiestCount) { busiest = e.getKey(); busiestCount = e.getValue(); }
+        }
+        Integer cur = hudWindowUpdates.get(frameRatingWindowId);
+        int current = cur == null ? 0 : cur;
+        if (busiest != -1 && busiest != frameRatingWindowId && busiestCount >= 10 && current * 2 < busiestCount) {
+            frameRatingWindowId = busiest;
+            activeRendererWindowId = busiest;
+            if (xServerView != null) xServerView.setFpsWindowId(busiest);
+        }
+        hudWindowUpdates.clear();
+        hudWindowCheckMs = now;
+    }
     private GyroInput gyroInput;
     private final QuickMenuBridgeImpl quickMenuBridge = new QuickMenuBridgeImpl();
 
@@ -3125,6 +3154,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (classicHud != null) classicHud.disableByUser(false);
                 if (modernHud != null) modernHud.disableByUser(false);
                 enableHudLazily(mode);
+                // The renderer reports frames to one HUD: point it at the one now shown
+                // (switching style used to leave FPS counting on the hidden one).
+                if (xServerView != null) xServerView.setFrameRating(mode == 2 ? (Object) modernHud : (Object) classicHud);
+                if (activeRendererWindowId != -1 && xServerView != null) {
+                    frameRatingWindowId = activeRendererWindowId;
+                    xServerView.setFpsWindowId(activeRendererWindowId);
+                }
             }
             saveHudModeToContainer(mode);
         }
@@ -3381,7 +3417,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (wrapper != null && !wrapper.isEmpty()) out.add(new QmInfo("Vulkan wrapper", wrapper));
             }
             if (xServer != null) out.add(new QmInfo("Resolution", xServer.screenInfo.toString()));
-            out.add(new QmInfo("HDR", hdrInfo()));
             String soc = Build.VERSION.SDK_INT >= 31 ? " · " + Build.SOC_MODEL : "";
             out.add(new QmInfo("Device", Build.MANUFACTURER.toUpperCase(java.util.Locale.ENGLISH) + " " + Build.MODEL + soc
                     + " · " + Runtime.getRuntime().availableProcessors() + "c · Android " + Build.VERSION.RELEASE));

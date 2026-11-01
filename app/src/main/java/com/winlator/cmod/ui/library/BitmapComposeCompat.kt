@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Photo
@@ -229,7 +230,7 @@ private fun LibraryLandscapeHeader(
         }
         LibraryTopIcon(Icons.Outlined.Add, false) { activity?.navigateToMainDestination(R.id.main_menu_file_manager) }
         LibraryTopIcon(Icons.Outlined.Home, true) {}
-        LibraryTopIcon(Icons.Outlined.SportsEsports, false) { activity?.navigateToMainDestination(R.id.main_menu_input_controls) }
+        LibraryTopIcon(Icons.Outlined.Inventory2, false) { activity?.navigateToMainDestination(R.id.main_menu_containers) }
         LibraryTopIcon(Icons.Outlined.Settings, false) { activity?.navigateToMainDestination(R.id.main_menu_settings) }
         LibraryOrientationMenu(activity)
     }

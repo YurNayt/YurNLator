@@ -209,11 +209,21 @@ public class WinlatorHUD extends View {
     private long lastMaliGpuInfoWallMs;
     private boolean battFailed = false;
 
+    private String lastDrawnSignature = "";
+
+    /** Redraws only when something shown changed: every redraw of a view above the game surface costs composition time. */
+    private void invalidateIfChanged() {
+        String sig = strFps + '|' + strGpu + '|' + strCpuUsage + '|' + strCpuTemp + '|' + strRam + '|' + strPwr + '|' + strTmp + '|' + strRend + '|' + showMask;
+        if (sig.equals(lastDrawnSignature)) return;
+        lastDrawnSignature = sig;
+        invalidate();
+    }
+
     private final Runnable redrawRunnable = () -> {
         redrawScheduled = false;
         try {
             snapshot();
-            invalidate();
+            invalidateIfChanged();
         } catch (Exception ignored) {}
         if (getVisibility() == VISIBLE) scheduleRedraw();
     };
@@ -442,7 +452,7 @@ public class WinlatorHUD extends View {
         if (userEnabled && statsHandler != null) {
             statsHandler.postDelayed(statsRunnable, STATS_INTERVAL_MS);
         }
-        uiHandler.post(this::invalidate);
+        uiHandler.post(this::invalidateIfChanged);
     }
 
     private void readStats() {
@@ -1525,6 +1535,7 @@ public class WinlatorHUD extends View {
     }
 
     private void requestRelayout() {
+        lastDrawnSignature = "";
         try {
             requestLayout();
             invalidate();
