@@ -1360,6 +1360,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         setupSidebarHudControls();
         setupSidebarGraphicsControls();
         quickMenuBridge.applySaved();
+        if (xServerView instanceof VulkanXServerView) ((VulkanXServerView) xServerView).setDirectFrameListener(this::trackHudWindow);
     }
 
     private ActivityResultLauncher<Intent> controlsEditorActivityResultLauncher = registerForActivityResult(
@@ -3082,9 +3083,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private final java.util.HashMap<Integer, Integer> hudWindowUpdates = new java.util.HashMap<>();
     private long hudWindowCheckMs = 0;
 
-    private void trackHudWindow(Window window) {
+    private synchronized void trackHudWindow(Window window) {
         if (!window.isApplicationWindow()) return;
-        if (frameRatingWindowId == -1) return;
+        boolean hudOn = (modernHud != null && modernHud.isUserEnabled())
+                || (classicHud != null && classicHud.getVisibility() == View.VISIBLE);
+        if (!hudOn) return;
         Integer n = hudWindowUpdates.get(window.id);
         hudWindowUpdates.put(window.id, n == null ? 1 : n + 1);
         long now = android.os.SystemClock.uptimeMillis();
@@ -3097,9 +3100,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
         Integer cur = hudWindowUpdates.get(frameRatingWindowId);
         int current = cur == null ? 0 : cur;
         if (busiest != -1 && busiest != frameRatingWindowId && busiestCount >= 10 && current * 2 < busiestCount) {
+            // Also the fallback when the driver never announced itself (_MESA_DRV properties are
+            // missing with some drivers / wrappers): the HUD used to stay hidden then.
+            boolean wasUnset = frameRatingWindowId == -1;
             frameRatingWindowId = busiest;
-            activeRendererWindowId = busiest;
+            if (activeRendererWindowId == -1 || !wasUnset) activeRendererWindowId = busiest;
             if (xServerView != null) xServerView.setFpsWindowId(busiest);
+            if (wasUnset) {
+                final String name = lastRendererName;
+                if (modernHud != null) runOnUiThread(() -> modernHud.onRendererDetected(name));
+                if (classicHud != null) runOnUiThread(() -> classicHud.update());
+            }
         }
         hudWindowUpdates.clear();
         hudWindowCheckMs = now;

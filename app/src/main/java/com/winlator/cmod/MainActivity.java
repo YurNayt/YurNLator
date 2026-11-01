@@ -458,7 +458,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     public void setDetailMode(boolean detail) {
-        setBottomNavigationVisible(!detail);
+        // Landscape screens use their own top bar: showing the bottom bar here made it flash
+        // for a frame on every tab switch.
+        boolean landscape = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        setBottomNavigationVisible(!detail && !landscape);
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(detail);

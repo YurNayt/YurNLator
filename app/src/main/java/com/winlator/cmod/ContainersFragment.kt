@@ -41,7 +41,8 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
         // The toolbar is shared by all tabs; without this it keeps "Library" / "Settings".
         (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.setTitle(R.string.containers)
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        if (!landscape) (activity as? MainActivity)?.setMainToolbarVisible(true)
+        // After the editor's exit fade, so the toolbar doesn't pop in over the closing editor.
+        if (!landscape) view?.postDelayed({ (activity as? MainActivity)?.setMainToolbarVisible(true) }, 120)
         refresh()
     }
 
@@ -87,7 +88,8 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
         // above it (it comes back in onResume when the editor closes).
         (activity as? MainActivity)?.setMainToolbarVisible(false)
         parentFragmentManager.beginTransaction()
-            .setCustomAnimations(R.anim.slide_in_up, R.anim.slide_out_down, R.anim.slide_in_down, R.anim.slide_out_up)
+            .setReorderingAllowed(true)
+            .setCustomAnimations(R.anim.nav_enter, R.anim.nav_exit, R.anim.nav_enter, R.anim.nav_exit)
             .addToBackStack(null)
             .replace(R.id.FLFragmentContainer, fragment)
             .commit()
@@ -146,6 +148,26 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
                     "Folder: ${container.rootDir.absolutePath}"
             )
             .setPositiveButton(android.R.string.ok, null)
+            .setNeutralButton("Repair Wine files") { _, _ -> repairWine(container) }
             .show()
+    }
+
+    /**
+     * Copies the system DLLs of the container's own Wine / Proton again and lets Wine update the
+     * prefix on the next start. For containers switched between versions while the app resolved
+     * catalog Proton builds to the built-in Proton 9 (they got Proton 9 files under Proton 11).
+     */
+    private fun repairWine(container: com.winlator.cmod.container.Container) {
+        val ctx = context?.applicationContext ?: return
+        Toast.makeText(ctx, "Repairing ${container.name}…", Toast.LENGTH_SHORT).show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    val contents = ContentsManager(ctx).apply { syncContents() }
+                    ContainerManager(ctx).switchWineVersion(container, container.wineVersion, contents)
+                }.getOrDefault(false)
+            }
+            Toast.makeText(ctx, if (ok) "Done: Wine updates the container on the next start" else "Could not repair: is this Wine / Proton still installed?", Toast.LENGTH_LONG).show()
+        }
     }
 }

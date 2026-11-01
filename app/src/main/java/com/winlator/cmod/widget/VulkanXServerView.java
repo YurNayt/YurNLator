@@ -466,7 +466,16 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
         onUpdateWindowContentDirect(window, drawable, (short) 0, (short) 0);
     }
 
+    private volatile java.util.function.Consumer<Window> directFrameListener;
+
+    /** Called for every frame a window presents directly (the HUD uses it to find the game window). */
+    public void setDirectFrameListener(java.util.function.Consumer<Window> listener) {
+        directFrameListener = listener;
+    }
+
     public void onUpdateWindowContentDirect(Window window, Drawable pixmap, short xOff, short yOff) {
+        java.util.function.Consumer<Window> l = directFrameListener;
+        if (l != null) l.accept(window);
         if (window.id == fpsWindowId) {
             if (hudRef != null) hudRef.onFrame();
             if (classicHudRef != null) classicHudRef.update();
