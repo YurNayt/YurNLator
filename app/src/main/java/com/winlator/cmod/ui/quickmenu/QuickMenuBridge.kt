@@ -25,6 +25,12 @@ data class QmGyro(
     val button: Int
 )
 
+/**
+ * Frame generation (win-fg). loaded: the layer is in this session (changes apply live);
+ * multiplier 2-4; preset 0 Quality / 1 Balanced / 2 Performance; flowScale 0.2-1.
+ */
+data class QmFrameGen(val loaded: Boolean, val on: Boolean, val multiplier: Int, val preset: Int, val flowScale: Float)
+
 /** Live task manager numbers. */
 data class QmTasks(val cpuPercent: Int, val memory: String, val processes: List<QmProcess>)
 
@@ -68,6 +74,9 @@ interface QuickMenuBridge {
     fun contrast(): Int
     fun gamma(): Float
     fun setColorAdjust(brightness: Int, contrast: Int, gamma: Float, save: Boolean)
+
+    fun frameGen(): QmFrameGen
+    fun setFrameGen(fg: QmFrameGen)
 
     /** 0 fit, 1 fullscreen, 2 stretch. */
     fun scaling(): Int

@@ -484,6 +484,7 @@ private fun ScreenSection(bridge: QuickMenuBridge, opened: Int) {
                     onCommit = { bridge.setSharpness(sharp, true) })
             }
         }
+        FrameGenCard(bridge, opened)
         if (vulkan) {
             StepSlider("Brightness", (bright + 100) / 200f, "$bright%", step = 0.025f,
                 onChange = { f -> bright = (f * 200 - 100).roundToInt(); bridge.setColorAdjust(bright, contrast, gamma, false) },
@@ -655,5 +656,38 @@ private fun GyroCard(bridge: QuickMenuBridge, opened: Int) {
         StepSlider("Gyro sensitivity", (g.sensitivity - 0.1f) / 4.9f, String.format(Locale.US, "%.1fx", g.sensitivity), step = 0.02f,
             onChange = { f -> g = g.copy(sensitivity = 0.1f + f * 4.9f) },
             onCommit = { bridge.setGyro(g) })
+    }
+}
+
+
+// ---------- Frame generation ----------
+
+@Composable
+private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
+    var fg by remember(opened) { mutableStateOf(bridge.frameGen()) }
+    fun update(next: QmFrameGen) { fg = next; bridge.setFrameGen(next) }
+    Card {
+        SwitchRow(
+            "Frame generation",
+            "Win-FG: adds generated frames between real ones (Vulkan games)",
+            checked = fg.on
+        ) { update(fg.copy(on = it)) }
+        if (fg.on && !fg.loaded) {
+            Text("Starts with the next launch of the game: the engine loads when the game starts.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        }
+        if (fg.on) {
+            Label("Multiplier")
+            Chips(listOf(2 to "2×", 3 to "3×", 4 to "4×"), fg.multiplier) { update(fg.copy(multiplier = it)) }
+            Label("Mode")
+            Chips(listOf(0 to "Quality", 1 to "Balanced", 2 to "Performance"), fg.preset) { update(fg.copy(preset = it)) }
+            Text("Works best when the game holds a steady FPS: set the FPS limit to half (2×) of the screen rate.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    if (fg.on) {
+        StepSlider("Motion detail", (fg.flowScale - 0.2f) / 0.8f, "${(fg.flowScale * 100).roundToInt()}%", step = 0.05f,
+            onChange = { f -> fg = fg.copy(flowScale = 0.2f + f * 0.8f) },
+            onCommit = { bridge.setFrameGen(fg) })
     }
 }

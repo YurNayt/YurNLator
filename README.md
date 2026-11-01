@@ -34,4 +34,4 @@ builds every variant and publishes a release. Locally: `./gradlew assembleStanda
 
 ## Credits
 BrunoSX (Winlator), Pipetto-crypto (Winlator Bionic), StevenMXZ (Winlator Ludashi),
-GunaCharanTeja (Winlator Mali), The412Banner (Bannerlator), ptitSeb (Box64), FEX-Emu, Mesa, DXVK, VKD3D-Proton.
+GunaCharanTeja (Winlator Mali), The412Banner (Bannerlator; win-fg frame generation, MIT — app/src/main/assets/win-fg/LICENSE.txt, adapts AMD FidelityFX FSR3 optical flow, MIT), ptitSeb (Box64), FEX-Emu, Mesa, DXVK, VKD3D-Proton.

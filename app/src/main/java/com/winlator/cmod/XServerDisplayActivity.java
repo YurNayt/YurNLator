@@ -8,6 +8,8 @@ import com.winlator.cmod.ui.quickmenu.QuickMenuBridge;
 import com.winlator.cmod.ui.quickmenu.QuickMenuHost;
 import com.winlator.cmod.ui.quickmenu.QmInfo;
 import com.winlator.cmod.ui.quickmenu.QmGyro;
+import com.winlator.cmod.ui.quickmenu.QmFrameGen;
+import com.winlator.cmod.core.WinFrameGen;
 import com.winlator.cmod.winhandler.GyroInput;
 import com.winlator.cmod.ui.quickmenu.QmOption;
 import com.winlator.cmod.ui.quickmenu.QmProcess;
@@ -1099,6 +1101,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             if (!envVars.has("WINEESYNC")) {
                 envVars.put("WINEESYNC", "1");
+            }
+            // Frame generation (win-fg layer): loaded when the game has it on or ready, then
+            // switched live from the quick menu through its conf.toml.
+            String frameGen = frameGenSetting("frameGen", WinFrameGen.OFF);
+            if (WinFrameGen.ON.equals(frameGen) || WinFrameGen.READY.equals(frameGen)) {
+                WinFrameGen.install(this, imageFs);
+                envVars.put("WIN_FG_ENABLE", "1");
+                frameGenLoaded = true;
+                writeFrameGenConfig(WinFrameGen.ON.equals(frameGen));
             }
             if (!envVars.has("WINE_FAST_YIELD")) {
                 envVars.put("WINE_FAST_YIELD", "1");
@@ -3048,6 +3059,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // through this bridge.
     // ---------------------------------------------------------------------------------------
     private boolean quickMenuLogs = false;
+    private boolean frameGenLoaded = false;
+
+    /** Frame generation setting: the game's own value first, then the container's. */
+    private String frameGenSetting(String key, String fallback) {
+        String v = shortcut != null ? shortcut.getExtra(key, "") : "";
+        if (v.isEmpty() && container != null) v = container.getExtra(key, "");
+        return v.isEmpty() ? fallback : v;
+    }
+
+    private void writeFrameGenConfig(boolean on) {
+        int mult = 2, preset = 1;
+        float flow = 0.6f;
+        try { mult = Integer.parseInt(frameGenSetting("frameGenMultiplier", "2")); } catch (Exception ignored) {}
+        try { preset = Integer.parseInt(frameGenSetting("frameGenPreset", "1")); } catch (Exception ignored) {}
+        try { flow = Float.parseFloat(frameGenSetting("frameGenFlowScale", "0.6")); } catch (Exception ignored) {}
+        WinFrameGen.writeConfig(imageFs, on, mult, preset, flow);
+    }
 
     // FPS follows the window that actually renders: games often draw into a new window after a
     // launcher / splash one, and the HUD kept counting the old window (low or frozen FPS).
@@ -3259,6 +3287,33 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 container.putExtra("screenGamma", String.format(java.util.Locale.US, "%.2f", colorGamma));
                 container.saveData();
             }
+        }
+
+        @Override public QmFrameGen frameGen() {
+            int mult = parseInt(frameGenSetting("frameGenMultiplier", "2"), 2);
+            int preset = parseInt(frameGenSetting("frameGenPreset", "1"), 1);
+            float flow;
+            try { flow = Float.parseFloat(frameGenSetting("frameGenFlowScale", "0.6")); } catch (Exception e) { flow = 0.6f; }
+            return new QmFrameGen(frameGenLoaded, WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF)), mult, preset, flow);
+        }
+
+        @Override public void setFrameGen(QmFrameGen fg) {
+            if (container == null) return;
+            // Saved where the setting came from: the game if it has its own, else the container.
+            boolean perGame = shortcut != null && !shortcut.getExtra("frameGen", "").isEmpty();
+            String state = fg.getOn() ? WinFrameGen.ON : (frameGenLoaded ? WinFrameGen.READY : WinFrameGen.OFF);
+            String[][] values = {
+                {"frameGen", state},
+                {"frameGenMultiplier", String.valueOf(fg.getMultiplier())},
+                {"frameGenPreset", String.valueOf(fg.getPreset())},
+                {"frameGenFlowScale", String.format(java.util.Locale.US, "%.2f", fg.getFlowScale())}
+            };
+            for (String[] kv : values) {
+                if (perGame) shortcut.putExtra(kv[0], kv[1]);
+                else container.putExtra(kv[0], kv[1]);
+            }
+            if (perGame) shortcut.saveData(); else container.saveData();
+            if (frameGenLoaded) writeFrameGenConfig(fg.getOn());
         }
 
         @Override public int scaling() {
