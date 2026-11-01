@@ -9,6 +9,22 @@ data class QmInfo(val label: String, val value: String)
 /** A running Windows process. */
 data class QmProcess(val pid: Int, val name: String, val memory: String, val wow64: Boolean)
 
+/**
+ * Gyroscope aiming settings. target: 0 mouse, 1 right stick, 2 left stick;
+ * activation: 0 always, 1 hold a button, 2 toggle with a button; button: gamepad button index.
+ */
+data class QmGyro(
+    val available: Boolean,
+    val enabled: Boolean,
+    val target: Int,
+    val sensitivity: Float,
+    val invertX: Boolean,
+    val invertY: Boolean,
+    val fast: Boolean,
+    val activation: Int,
+    val button: Int
+)
+
 /** Live task manager numbers. */
 data class QmTasks(val cpuPercent: Int, val memory: String, val processes: List<QmProcess>)
 
@@ -78,6 +94,8 @@ interface QuickMenuBridge {
     fun setRelativeMouse(on: Boolean)
     fun mouseDisabled(): Boolean
     fun setMouseDisabled(on: Boolean)
+    fun gyro(): QmGyro
+    fun setGyro(gyro: QmGyro)
     fun showKeyboard()
     fun vibrationSettings()
 

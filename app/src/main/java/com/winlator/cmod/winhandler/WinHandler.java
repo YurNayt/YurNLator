@@ -76,6 +76,45 @@ public class WinHandler {
     private int fallbackSlot = -1;
 
     private final Map<Integer, ExternalController> controllers = new HashMap<>();
+    private GyroInput gyro;
+    private ExternalController lastController;
+    private final GamepadState gyroState = new GamepadState();
+    private final GamepadState gyroBlank = new GamepadState();
+
+    public void setGyro(GyroInput gyro) {
+        this.gyro = gyro;
+    }
+
+    /** The state to send with the gyro stick movement added (YurNLator gyroscope aiming). */
+    private GamepadState withGyro(GamepadState state) {
+        if (gyro == null || !gyro.drivesStick()) return state;
+        gyroState.copy(state);
+        gyro.addTo(gyroState);
+        return gyroState;
+    }
+
+    /** Gamepad button pressed on the last used real controller or the on-screen gamepad. */
+    public boolean isGamepadButtonPressed(int index) {
+        if (lastController != null && lastController.state.isPressed(index)) return true;
+        ControlsProfile profile = activity.getInputControlsView() != null ? activity.getInputControlsView().getProfile() : null;
+        return profile != null && profile.isVirtualGamepad() && profile.getGamepadState().isPressed(index);
+    }
+
+    /** Re-sends the gamepad with the new gyro stick values. */
+    public void resendForGyro() {
+        if (lastController != null) {
+            sendGamepadState(lastController);
+            return;
+        }
+        ControlsProfile profile = activity.getInputControlsView() != null ? activity.getInputControlsView().getProfile() : null;
+        if (profile != null && profile.isVirtualGamepad() && activity.getInputControlsView().isShowTouchscreenControls()) {
+            sendGamepadState();
+            return;
+        }
+        // No gamepad in use: the gyro acts as its own controller.
+        int slot = assignSlot(OSC_DEVICE_ID);
+        if (slot >= 0 && writers[slot] != null) writers[slot].writeGamepadState(withGyro(gyroBlank));
+    }
     private final InputManager inputManager;
     private final InputManager.InputDeviceListener inputDeviceListener;
 
@@ -547,7 +586,7 @@ public class WinHandler {
         if (useVirtualGamepad) {
             int slot = assignSlot(OSC_DEVICE_ID);
             if (slot >= 0 && writers[slot] != null) {
-                writers[slot].writeGamepadState(gamepadState);
+                writers[slot].writeGamepadState(withGyro(gamepadState));
             }
         } else {
             releaseSlot(OSC_DEVICE_ID);
@@ -562,14 +601,14 @@ public class WinHandler {
             if (profileController != null && profileController.getControllerBindingCount() > 0) {
                 int slot = assignSlot(controller.getDeviceId());
                 if (slot >= 0 && writers[slot] != null) {
-                    writers[slot].writeGamepadState(controller.remappedState);
+                    writers[slot].writeGamepadState(withGyro(controller.remappedState));
                 }
                 return;
             }
         }
         int slot = assignSlot(controller.getDeviceId());
         if (slot >= 0 && writers[slot] != null) {
-            writers[slot].writeGamepadState(controller.state);
+            writers[slot].writeGamepadState(withGyro(controller.state));
         }
     }
 
@@ -652,6 +691,7 @@ public class WinHandler {
     public boolean onGenericMotionEvent(MotionEvent event) {
         ExternalController controller = getController(event.getDeviceId());
         if (controller != null) {
+            lastController = controller;
             boolean handled = controller.updateStateFromMotionEvent(event);
             if (handled) sendGamepadState(controller);
             return handled;
@@ -662,6 +702,7 @@ public class WinHandler {
     public boolean onKeyEvent(KeyEvent event) {
         ExternalController controller = getController(event.getDeviceId());
         if (controller != null && event.getRepeatCount() == 0) {
+            lastController = controller;
             boolean handled = controller.updateStateFromKeyEvent(event);
             if (handled) sendGamepadState(controller);
             return handled;

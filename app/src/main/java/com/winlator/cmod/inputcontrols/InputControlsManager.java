@@ -58,6 +58,7 @@ public class InputControlsManager {
             FileUtils.copy(context, "inputcontrols/profiles", profilesDir);
             return;
         }
+        addNewBuiltinProfiles(profilesDir);
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
@@ -91,6 +92,31 @@ public class InputControlsManager {
             }
         }
         catch (IOException e) {}
+    }
+
+    /**
+     * YurNLator presets (ids 100+: FPS, Racing…) added in an update reach existing users once;
+     * one the user deleted later doesn't come back.
+     */
+    private void addNewBuiltinProfiles(File profilesDir) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        java.util.Set<String> added = new java.util.HashSet<>(preferences.getStringSet("yurn_builtin_profiles_added", new java.util.HashSet<>()));
+        boolean changed = false;
+        try {
+            AssetManager assetManager = context.getAssets();
+            String[] assetFiles = assetManager.list("inputcontrols/profiles");
+            if (assetFiles == null) return;
+            for (String assetFile : assetFiles) {
+                String assetPath = "inputcontrols/profiles/" + assetFile;
+                ControlsProfile origin = loadProfile(context, assetManager.open(assetPath));
+                if (origin.id < 100 || added.contains(String.valueOf(origin.id))) continue;
+                File target = ControlsProfile.getProfileFile(context, origin.id);
+                if (!target.exists()) FileUtils.copy(context, assetPath, target);
+                added.add(String.valueOf(origin.id));
+                changed = true;
+            }
+        } catch (IOException e) {}
+        if (changed) preferences.edit().putStringSet("yurn_builtin_profiles_added", added).apply();
     }
 
     public void loadProfiles(boolean ignoreTemplates) {

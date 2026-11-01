@@ -7,6 +7,8 @@ import com.winlator.cmod.widget.CPUListView;
 import com.winlator.cmod.ui.quickmenu.QuickMenuBridge;
 import com.winlator.cmod.ui.quickmenu.QuickMenuHost;
 import com.winlator.cmod.ui.quickmenu.QmInfo;
+import com.winlator.cmod.ui.quickmenu.QmGyro;
+import com.winlator.cmod.winhandler.GyroInput;
 import com.winlator.cmod.ui.quickmenu.QmOption;
 import com.winlator.cmod.ui.quickmenu.QmProcess;
 import com.winlator.cmod.ui.quickmenu.QmTasks;
@@ -384,6 +386,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         winHandler = new WinHandler(this);
+        gyroInput = new GyroInput(this, new GyroInput.Output() {
+            @Override public void moveMouse(int dx, int dy) { if (xServer != null) xServer.injectPointerMoveDelta(dx, dy); }
+            @Override public void stickChanged() { if (winHandler != null) winHandler.resendForGyro(); }
+            @Override public boolean isButtonPressed(int index) { return winHandler != null && winHandler.isGamepadButtonPressed(index); }
+        });
+        winHandler.setGyro(gyroInput);
         winHandler.setFakeInputPath(devInputDir.getAbsolutePath());
 
         String screenSize = Container.DEFAULT_SCREEN_SIZE;
@@ -783,6 +791,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         startTime = System.currentTimeMillis();
         handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
+        if (gyroInput != null) gyroInput.apply();
         if (!isInPictureInPictureMode())
             ProcessHelper.resumeAllWineProcesses();
     }
@@ -790,6 +799,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public void onPause() {
         if (taskManagerSidebar != null) taskManagerSidebar.stop();
+        if (gyroInput != null) gyroInput.stop();
+        quickMenuBridge.stopTasks();
         super.onPause();
 
         if (!isInPictureInPictureMode()) {
@@ -3036,6 +3047,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // through this bridge.
     // ---------------------------------------------------------------------------------------
     private boolean quickMenuLogs = false;
+    private GyroInput gyroInput;
     private final QuickMenuBridgeImpl quickMenuBridge = new QuickMenuBridgeImpl();
 
     private final class QuickMenuBridgeImpl implements QuickMenuBridge, OnGetProcessInfoListener {
@@ -3326,6 +3338,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
         @Override public void setMouseDisabled(boolean on) {
             isMouseDisabled = on;
             if (touchpadView != null) touchpadView.setMouseEnabled(!on);
+        }
+
+        @Override public QmGyro gyro() {
+            GyroInput g = gyroInput;
+            if (g == null) return new QmGyro(false, false, 0, 1f, false, false, false, 0, 4);
+            return new QmGyro(g.isAvailable(), g.enabled, g.target, g.sensitivity, g.invertX, g.invertY, g.fast, g.activation, g.button);
+        }
+
+        @Override public void setGyro(QmGyro s) {
+            GyroInput g = gyroInput;
+            if (g == null) return;
+            boolean restart = g.enabled != s.getEnabled() || g.fast != s.getFast() || g.target != s.getTarget() || g.activation != s.getActivation();
+            g.enabled = s.getEnabled();
+            g.target = s.getTarget();
+            g.sensitivity = s.getSensitivity();
+            g.invertX = s.getInvertX();
+            g.invertY = s.getInvertY();
+            g.fast = s.getFast();
+            g.activation = s.getActivation();
+            g.button = s.getButton();
+            g.save();
+            if (restart) g.apply();
         }
 
         @Override public void showKeyboard() { AppUtils.showKeyboard(XServerDisplayActivity.this); }

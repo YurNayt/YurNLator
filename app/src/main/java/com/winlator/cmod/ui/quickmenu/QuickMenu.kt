@@ -531,6 +531,7 @@ private fun ControlsSection(bridge: QuickMenuBridge, opened: Int) {
             SwitchRow("Relative mouse", "Mouse moves by touch delta, for 3D games", checked = relative) { relative = it; bridge.setRelativeMouse(it) }
             SwitchRow("Disable mouse", checked = noMouse) { noMouse = it; bridge.setMouseDisabled(it) }
         }
+        GyroCard(bridge, opened)
         Card {
             ActionRow(Icons.Outlined.Keyboard, "Show keyboard") { bridge.showKeyboard(); bridge.close() }
             ActionRow(Icons.Outlined.Vibration, "Gamepad vibration") { bridge.vibrationSettings() }
@@ -613,3 +614,39 @@ private fun ProcessRow(p: QmProcess, bridge: QuickMenuBridge, onEnd: () -> Unit)
 
 @Suppress("unused")
 private fun pct(v: Float) = String.format(Locale.US, "%d%%", (v * 100).roundToInt())
+
+
+// ---------- Gyroscope ----------
+
+private val GYRO_BUTTONS = listOf(4 to "LB", 5 to "RB", 10 to "LT", 11 to "RT", 8 to "L3", 9 to "R3", 0 to "A", 1 to "B", 2 to "X", 3 to "Y")
+
+@Composable
+private fun GyroCard(bridge: QuickMenuBridge, opened: Int) {
+    var g by remember(opened) { mutableStateOf(bridge.gyro()) }
+    fun update(next: QmGyro) { g = next; bridge.setGyro(next) }
+    Card {
+        SwitchRow(
+            "Gyroscope",
+            if (!g.available) "This phone has no gyroscope" else "Aim by turning the phone",
+            checked = g.enabled && g.available
+        ) { if (g.available) update(g.copy(enabled = it)) }
+        if (g.enabled && g.available) {
+            Label("Controls")
+            Chips(listOf(0 to "Mouse", 1 to "Right stick", 2 to "Left stick"), g.target) { update(g.copy(target = it)) }
+            Label("Active")
+            Chips(listOf(0 to "Always", 1 to "Hold button", 2 to "Toggle button"), g.activation) { update(g.copy(activation = it)) }
+            if (g.activation != 0) {
+                Label("Button (gamepad or on-screen gamepad)")
+                Chips(GYRO_BUTTONS, g.button) { update(g.copy(button = it)) }
+            }
+            SwitchRow("High polling rate", "Smoother, uses a bit more battery", checked = g.fast) { update(g.copy(fast = it)) }
+            SwitchRow("Invert horizontal", checked = g.invertX) { update(g.copy(invertX = it)) }
+            SwitchRow("Invert vertical", checked = g.invertY) { update(g.copy(invertY = it)) }
+        }
+    }
+    if (g.enabled && g.available) {
+        StepSlider("Gyro sensitivity", (g.sensitivity - 0.1f) / 4.9f, String.format(Locale.US, "%.1fx", g.sensitivity), step = 0.02f,
+            onChange = { f -> g = g.copy(sensitivity = 0.1f + f * 4.9f) },
+            onCommit = { bridge.setGyro(g) })
+    }
+}
