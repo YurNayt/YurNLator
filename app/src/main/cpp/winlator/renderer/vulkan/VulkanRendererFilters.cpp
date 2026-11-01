@@ -200,8 +200,9 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
 
     VkRenderPassBeginInfo rpi{};
     rpi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rpi.renderPass = renderPass;
-    rpi.framebuffer = swapchainFBs[imgIdx];
+    // Frame generation renders into its composite image (same format, compatible pass).
+    rpi.renderPass = fgActiveThisFrame ? fgRenderPass : renderPass;
+    rpi.framebuffer = fgActiveThisFrame ? fgFramebuffer : swapchainFBs[imgIdx];
     rpi.renderArea = {{0, 0}, swapchainExt};
     VkClearValue clear = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
     rpi.clearValueCount = 1;
@@ -369,6 +370,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     }
 
     vk_.CmdEndRenderPass(cb);
+    if (fgActiveThisFrame) fgRecordTail(cb, imgIdx);
 
     VkResult endStatus = vk_.EndCommandBuffer(cb);
     if (endStatus != VK_SUCCESS) {

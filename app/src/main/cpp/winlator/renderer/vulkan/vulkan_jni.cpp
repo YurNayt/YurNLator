@@ -377,3 +377,11 @@ Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetColorAdjust(
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
     if (r) r->setColorAdjust((float)brightness, (float)contrast, (float)gamma);
 }
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetFrameGen(
+    JNIEnv*, jobject, jlong handle, jboolean armed, jint multiplier, jint preset, jfloat flowScale)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGen(armed == JNI_TRUE, (int)multiplier, (int)preset, (float)flowScale);
+}

@@ -1104,13 +1104,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
             // Frame generation (win-fg layer): loaded when the game has it on or ready, then
             // switched live from the quick menu through its conf.toml.
-            String frameGen = frameGenSetting("frameGen", WinFrameGen.OFF);
-            if (WinFrameGen.ON.equals(frameGen) || WinFrameGen.READY.equals(frameGen)) {
-                WinFrameGen.install(this, imageFs);
-                envVars.put("WIN_FG_ENABLE", "1");
-                frameGenLoaded = true;
-                writeFrameGenConfig(WinFrameGen.ON.equals(frameGen));
-            }
+            // (Frame generation now runs in the Vulkan renderer itself, see applyFrameGen().)
             if (!envVars.has("WINE_FAST_YIELD")) {
                 envVars.put("WINE_FAST_YIELD", "1");
             }
@@ -1360,6 +1354,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         setupSidebarHudControls();
         setupSidebarGraphicsControls();
         quickMenuBridge.applySaved();
+        applyFrameGen();
         if (xServerView instanceof VulkanXServerView) ((VulkanXServerView) xServerView).setDirectFrameListener(this::trackHudWindow);
     }
 
@@ -3060,7 +3055,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // through this bridge.
     // ---------------------------------------------------------------------------------------
     private boolean quickMenuLogs = false;
-    private boolean frameGenLoaded = false;
 
     /** Frame generation setting: the game's own value first, then the container's. */
     private String frameGenSetting(String key, String fallback) {
@@ -3069,13 +3063,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return v.isEmpty() ? fallback : v;
     }
 
-    private void writeFrameGenConfig(boolean on) {
+    /** Frame generation runs in the host Vulkan renderer (win-fg), switched live. */
+    private void applyFrameGen() {
+        if (!(xServerView instanceof VulkanXServerView)) return;
         int mult = 2, preset = 1;
         float flow = 0.6f;
         try { mult = Integer.parseInt(frameGenSetting("frameGenMultiplier", "2")); } catch (Exception ignored) {}
         try { preset = Integer.parseInt(frameGenSetting("frameGenPreset", "1")); } catch (Exception ignored) {}
         try { flow = Float.parseFloat(frameGenSetting("frameGenFlowScale", "0.6")); } catch (Exception ignored) {}
-        WinFrameGen.writeConfig(imageFs, on, mult, preset, flow);
+        boolean on = WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF));
+        ((VulkanXServerView) xServerView).setFrameGen(on, mult, preset, flow);
     }
 
     // FPS follows the window that actually renders: games often draw into a new window after a
@@ -3305,14 +3302,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             int preset = parseInt(frameGenSetting("frameGenPreset", "1"), 1);
             float flow;
             try { flow = Float.parseFloat(frameGenSetting("frameGenFlowScale", "0.6")); } catch (Exception e) { flow = 0.6f; }
-            return new QmFrameGen(frameGenLoaded, WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF)), mult, preset, flow);
+            return new QmFrameGen(xServerView instanceof VulkanXServerView, WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF)), mult, preset, flow);
         }
 
         @Override public void setFrameGen(QmFrameGen fg) {
             if (container == null) return;
             // Saved where the setting came from: the game if it has its own, else the container.
             boolean perGame = shortcut != null && !shortcut.getExtra("frameGen", "").isEmpty();
-            String state = fg.getOn() ? WinFrameGen.ON : (frameGenLoaded ? WinFrameGen.READY : WinFrameGen.OFF);
+            String state = fg.getOn() ? WinFrameGen.ON : WinFrameGen.OFF;
             String[][] values = {
                 {"frameGen", state},
                 {"frameGenMultiplier", String.valueOf(fg.getMultiplier())},
@@ -3324,7 +3321,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 else container.putExtra(kv[0], kv[1]);
             }
             if (perGame) shortcut.saveData(); else container.saveData();
-            if (frameGenLoaded) writeFrameGenConfig(fg.getOn());
+            applyFrameGen();
         }
 
         @Override public int scaling() {

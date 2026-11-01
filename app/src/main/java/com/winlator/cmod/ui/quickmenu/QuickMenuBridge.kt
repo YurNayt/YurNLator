@@ -26,7 +26,7 @@ data class QmGyro(
 )
 
 /**
- * Frame generation (win-fg). loaded: the layer is in this session (changes apply live);
+ * Frame generation (win-fg in the renderer). loaded: available (Vulkan renderer), changes apply live;
  * multiplier 2-4; preset 0 Quality / 1 Balanced / 2 Performance; flowScale 0.2-1.
  */
 data class QmFrameGen(val loaded: Boolean, val on: Boolean, val multiplier: Int, val preset: Int, val flowScale: Float)

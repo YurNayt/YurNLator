@@ -464,4 +464,47 @@ public:
                                VkAccessFlags srcA, VkAccessFlags dstA,
                                VkPipelineStageFlags srcS, VkPipelineStageFlags dstS);
     VkShaderModule  makeShader(const uint32_t* code, size_t sz);
+
+    // ===== YurNLator frame generation (win-fg, Bannerlator, MIT) =====
+    // When armed, the scene is composited into fgComposite instead of the swapchain image; on
+    // each new game frame win-fg synthesises 1-3 frames between the previous and this one, and
+    // they are presented first, spaced over the measured frame interval, then the real frame.
+    void setFrameGen(bool armed, int multiplier, int preset, float flowScale);
+    void noteContentFrame() { contentSerial.fetch_add(1, std::memory_order_relaxed); }
+    std::atomic<bool>     fgArmed{false};
+    std::atomic<int>      fgMultiplier{2};
+    std::atomic<int>      fgPreset{1};
+    std::atomic<float>    fgFlowScale{0.6f};
+    std::atomic<bool>     fgConfigDirty{true};
+    std::atomic<uint64_t> contentSerial{0};
+    uint64_t fgLastSerial = 0;
+    struct FgImage { VkImage img = VK_NULL_HANDLE; VkDeviceMemory mem = VK_NULL_HANDLE; VkImageView view = VK_NULL_HANDLE; };
+    FgImage       fgComposite;
+    FgImage       fgGen[3];
+    VkRenderPass  fgRenderPass = VK_NULL_HANDLE;
+    VkFramebuffer fgFramebuffer = VK_NULL_HANDLE;
+    uint32_t      fgW = 0, fgH = 0;
+    bool          fgTargetsFailed = false;
+    void*         fgEngine = nullptr;          // winfg::Engine*, owned
+    bool          fgEngineTried = false;
+    bool          fgActiveThisFrame = false;   // recordCmdBuf renders into the composite
+    bool          fgNewThisFrame = false;      // a new game frame: feed win-fg
+    uint32_t      fgGensThisFrame = 0;
+    VkCommandBuffer fgCmds[3] = {};
+    VkSemaphore   fgAcq[3] = {}, fgDone[3] = {};
+    VkFence       fgFences[3] = {};
+    bool          fgSyncReady = false;
+    double        fgIntervalNs = 16.6e6;
+    int64_t       fgLastFrameNs = 0;
+    PFN_vkCmdBlitImage fgCmdBlitImage = nullptr;
+    bool          swapchainCanBlit = false;   // swapchain images accept TRANSFER_DST
+    bool fgPrepareFrame();                 // before recording: decide composite / generation
+    void fgRecordTail(VkCommandBuffer cb, uint32_t imgIdx);  // after the render pass
+    void fgPresentRest();                  // after the first present
+    void fgDestroyTargets();
+    void fgShutdown();
+    bool fgEnsureTargets();
+    bool fgEnsureSync();
+    bool fgMakeImage(FgImage& out, VkImageUsageFlags usage);
+    void fgBlitToSwapchain(VkCommandBuffer cb, VkImage src, uint32_t imgIdx);
 };

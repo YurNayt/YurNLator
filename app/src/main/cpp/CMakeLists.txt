@@ -214,6 +214,10 @@ add_library(vulkan_renderer SHARED
         ${VULKAN_CONTEXT_LEGACY}
         winlator/renderer/vulkan/VulkanRendererFilters.cpp
         winlator/renderer/vulkan/VulkanRendererPipelineOpt.cpp
+        winlator/renderer/vulkan/VulkanRendererFrameGen.cpp
+        winlator/renderer/vulkan/winfg/framegen.cpp
+        winlator/renderer/vulkan/winfg/winfg_engine.cpp
+        winlator/renderer/vulkan/winfg/winfg_vkd.cpp
 
         winlator/renderer/vulkan/view_transformation.cpp
         winlator/renderer/vulkan/xform.cpp

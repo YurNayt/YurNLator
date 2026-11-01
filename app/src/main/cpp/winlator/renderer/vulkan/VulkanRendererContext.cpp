@@ -62,6 +62,7 @@ VulkanRendererContext::~VulkanRendererContext() {
         vk_.DestroySemaphore(device, imgAvailSems[i], nullptr);
         vk_.DestroyFence(device, inFlightFences[i], nullptr);
     }
+    fgShutdown();
     vk_.DestroyCommandPool(device, cmdPool, nullptr);
     vk_.DestroyRenderPass(device, renderPass, nullptr);
     vk_.DestroyDevice(device, nullptr);
@@ -319,6 +320,9 @@ void VulkanRendererContext::createSwapchain() {
     ci.surface=surface; ci.minImageCount=imgCount; ci.imageFormat=swapchainFmt;
     ci.imageColorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; ci.imageExtent=swapchainExt;
     ci.imageArrayLayers=1; ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    // Frame generation blits its frames into the swapchain images.
+    swapchainCanBlit = (caps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0;
+    if (swapchainCanBlit) ci.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE; ci.preTransform=pre;
     ci.compositeAlpha=compositeAlpha; ci.presentMode=presentMode; ci.clipped=VK_TRUE;
     ci.oldSwapchain=oldSwapchain;
@@ -602,6 +606,7 @@ void VulkanRendererContext::createSyncObjects() {
 }
 
 void VulkanRendererContext::cleanupSwapchain() {
+    fgDestroyTargets();
     for (auto fb:swapchainFBs) vk_.DestroyFramebuffer(device,fb,nullptr); swapchainFBs.clear();
     for (auto iv:swapchainViews) vk_.DestroyImageView(device,iv,nullptr); swapchainViews.clear();
     if (!cmdBufs.empty()){vk_.FreeCommandBuffers(device,cmdPool,(uint32_t)cmdBufs.size(),cmdBufs.data());cmdBufs.clear();}
@@ -1144,6 +1149,9 @@ void VulkanRendererContext::renderFrame() {
     if (hasCurUpload && cursorStgP && !cursorPixels.empty())
         memcpy(cursorStgP, cursorPixels.data(), cursorUploadSize);
 
+    // Frame generation: render into the composite and synthesise frames (see VulkanRendererFrameGen.cpp).
+    fgPrepareFrame();
+
     recordCmdBuf(cmdBufs[currentFrame],imgIdx,frameDraws,
         frameAhbTransitions,framePreUpload,framePostUpload,
         curUpload,hasCurUpload,
@@ -1151,7 +1159,8 @@ void VulkanRendererContext::renderFrame() {
         effectiveScissor);
 
     VkSemaphore wSem[]={imgAvailSems[currentFrame]}, sSem[]={renderDoneSems[currentFrame]};
-    VkPipelineStageFlags wStage[]={VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    VkPipelineStageFlags wStage[]={fgActiveThisFrame ? (VkPipelineStageFlags)VK_PIPELINE_STAGE_ALL_COMMANDS_BIT
+                                                     : (VkPipelineStageFlags)VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.waitSemaphoreCount=1; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
     si.commandBufferCount=1; si.pCommandBuffers=&cmdBufs[currentFrame];
@@ -1172,6 +1181,7 @@ void VulkanRendererContext::renderFrame() {
 
     if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR||res==VK_SUBOPTIMAL_KHR) fbResized.store(true);
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
+    if (!fbResized.load()) fgPresentRest();
 }
 
 void VulkanRendererContext::onSurfaceResized(int w, int h) {
@@ -1257,6 +1267,7 @@ void VulkanRendererContext::updateCursorImage(void* px, short w, short h, short 
 }
 
 void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, short h, short stride, int, int) {
+    noteContentFrame();
     if (!px||w<=0||h<=0) return;
     void* mapped=nullptr;
     {
@@ -1284,6 +1295,7 @@ void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, s
 }
 
 void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* ahb, short, short, int, int) {
+    noteContentFrame();
     if (!ahb) return;
     std::lock_guard<std::mutex> lk(renderMutex);
     auto cit = ahbImportCache.find(ahb);

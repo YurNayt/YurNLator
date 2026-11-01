@@ -669,11 +669,11 @@ private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
     Card {
         SwitchRow(
             "Frame generation",
-            "Win-FG: adds generated frames between real ones (Vulkan games)",
+            "Win-FG: generated frames between real ones, shown by the emulator",
             checked = fg.on
         ) { update(fg.copy(on = it)) }
-        if (fg.on && !fg.loaded) {
-            Text("Starts with the next launch of the game: the engine loads when the game starts.",
+        if (!fg.loaded) {
+            Text("Needs the Vulkan renderer (container settings › Renderer).",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
         if (fg.on) {
