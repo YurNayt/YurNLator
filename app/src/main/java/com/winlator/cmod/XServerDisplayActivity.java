@@ -1,5 +1,15 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.winhandler.ProcessInfo;
+import com.winlator.cmod.winhandler.OnGetProcessInfoListener;
+import com.winlator.cmod.core.CPUStatus;
+import com.winlator.cmod.widget.CPUListView;
+import com.winlator.cmod.ui.quickmenu.QuickMenuBridge;
+import com.winlator.cmod.ui.quickmenu.QuickMenuHost;
+import com.winlator.cmod.ui.quickmenu.QmInfo;
+import com.winlator.cmod.ui.quickmenu.QmOption;
+import com.winlator.cmod.ui.quickmenu.QmProcess;
+import com.winlator.cmod.ui.quickmenu.QmTasks;
 import com.winlator.cmod.contents.WrapperManager;
 import static com.winlator.cmod.core.AppUtils.showToast;
 
@@ -343,11 +353,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
         drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
             public void onDrawerOpened(View drawerView) {
+                QuickMenuHost.onOpened();
                 openSidebarPanel(activeSidebarItemId, activeSidebarPanelId);
             }
 
             @Override
             public void onDrawerClosed(View drawerView) {
+                quickMenuBridge.stopTasks();
                 hideAllSidebarPanels();
             }
         });
@@ -356,6 +368,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 || preferences.getBoolean("enable_box64_logs", false);
 
         wireSidebarListeners(enableLogs);
+        quickMenuLogs = enableLogs;
+        androidx.compose.ui.platform.ComposeView quickMenuView = findViewById(R.id.QuickMenuCompose);
+        if (quickMenuView != null) QuickMenuHost.attach(quickMenuView, quickMenuBridge);
 
         imageFs = ImageFs.find(this);
 
@@ -1321,6 +1336,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         setupSidebarHudControls();
         setupSidebarGraphicsControls();
+        quickMenuBridge.applySaved();
     }
 
     private ActivityResultLauncher<Intent> controlsEditorActivityResultLauncher = registerForActivityResult(
@@ -3012,6 +3028,442 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     public void setScreenEffectProfile(String screenEffectProfile) {
         this.screenEffectProfile = screenEffectProfile;
+    }
+
+
+    // ---------------------------------------------------------------------------------------
+    // YurNLator quick menu (ui/quickmenu): the Compose side menu reads and changes the session
+    // through this bridge.
+    // ---------------------------------------------------------------------------------------
+    private boolean quickMenuLogs = false;
+    private final QuickMenuBridgeImpl quickMenuBridge = new QuickMenuBridgeImpl();
+
+    private final class QuickMenuBridgeImpl implements QuickMenuBridge, OnGetProcessInfoListener {
+        private final int[] LEGACY_FPS = {0, 30, 60, 90, 120};
+        private int upscalerMode = -1;
+        private int shaderId = 0;
+        private int sharp = 50;
+        private java.util.Timer tasksTimer;
+        private kotlin.jvm.functions.Function1<? super QmTasks, kotlin.Unit> tasksListener;
+        private final ArrayList<ProcessInfo> pending = new ArrayList<>();
+        private volatile java.util.List<ProcessInfo> processes = new ArrayList<>();
+        private volatile int cpuPercent = 0;
+        private volatile String memoryText = "…";
+
+        private VulkanXServerView vk() {
+            return xServerView instanceof VulkanXServerView ? (VulkanXServerView) xServerView : null;
+        }
+
+        private String extra(String key) {
+            return container != null ? container.getExtra(key) : "";
+        }
+
+        private void putExtra(String key, String value) {
+            if (container == null) return;
+            container.putExtra(key, value);
+            container.saveData();
+        }
+
+        private int parseInt(String v, int def) {
+            try { return v == null || v.isEmpty() ? def : (int) Float.parseFloat(v); } catch (Exception e) { return def; }
+        }
+
+        /** Re-applies what the menu saved last time (after the old sidebar applied its own). */
+        void applySaved() {
+            String fps = extra("graphicsFpsLimit");
+            if (!fps.isEmpty()) applyFps(parseInt(fps, 0));
+            int filter = parseInt(extra("graphicsFilterMode"), 0);
+            upscalerMode = filter >= 2 ? filter - 2 : -1;
+            sharp = parseInt(extra("graphicsSharpness"), 50);
+            String savedShader = extra("graphicsShader");
+            shaderId = !savedShader.isEmpty() ? parseInt(savedShader, 0) : parseInt(extra("graphicsPostFXMode"), 0);
+            VulkanXServerView vk = vk();
+            if (vk == null) return;
+            vk.setSharpness(sharp / 100f);
+            if (shaderId >= 10) {
+                upscalerMode = -1;
+                vk.setFilterMode(0);
+                vk.setPostFXMode(shaderId);
+            } else {
+                if (upscalerMode >= 0) vk.setFilterMode(upscalerMode + 2);
+                vk.setPostFXMode(shaderId);
+            }
+        }
+
+        // ---- HUD ----
+        @Override public int hudMode() {
+            if (container == null) return 0;
+            String extra = container.getExtra("hudMode");
+            if (!extra.isEmpty()) return parseInt(extra, 0);
+            return container.isShowFPS() ? 1 : 0;
+        }
+
+        @Override public void setHudMode(int mode) {
+            if (mode == 0) {
+                if (classicHud != null) classicHud.disableByUser();
+                if (modernHud != null) modernHud.disableByUser();
+            } else {
+                if (classicHud != null) classicHud.disableByUser(false);
+                if (modernHud != null) modernHud.disableByUser(false);
+                enableHudLazily(mode);
+            }
+            saveHudModeToContainer(mode);
+        }
+
+        @Override public boolean hudElement(int index) { return modernHud == null || modernHud.isElementOn(index); }
+        @Override public void setHudElement(int index, boolean on) { if (modernHud != null) modernHud.toggleElement(index, on); }
+        @Override public float hudScale() { return modernHud != null ? modernHud.getHudScale() : 1f; }
+        @Override public void setHudScale(float scale) { if (modernHud != null) modernHud.setHudScale(scale); }
+        @Override public float hudAlpha() { return modernHud != null ? modernHud.getHudAlpha() : 1f; }
+        @Override public void setHudAlpha(float alpha) { if (modernHud != null) modernHud.setHudAlpha(alpha); }
+        @Override public void resetHud() { if (modernHud != null) modernHud.forceReset(); }
+
+        private void applyFps(int fps) {
+            if (xServerView != null) xServerView.setFpsLimit(fps);
+        }
+
+        @Override public int fpsLimit() {
+            String v = extra("graphicsFpsLimit");
+            if (!v.isEmpty()) return parseInt(v, 0);
+            int idx = parseInt(extra("graphicsFpsPreset"), 0);
+            return idx >= 0 && idx < LEGACY_FPS.length ? LEGACY_FPS[idx] : 0;
+        }
+
+        @Override public void setFpsLimit(int fps) {
+            applyFps(fps);
+            if (container == null) return;
+            int legacy = 0;
+            for (int i = 0; i < LEGACY_FPS.length; i++) if (LEGACY_FPS[i] == fps) legacy = i;
+            container.putExtra("graphicsFpsPreset", String.valueOf(legacy));
+            container.putExtra("graphicsFpsLimit", String.valueOf(fps));
+            container.saveData();
+        }
+
+        // ---- Screen ----
+        @Override public boolean isVulkanRenderer() { return vk() != null; }
+        @Override public int upscaler() { return upscalerMode; }
+
+        @Override public void setUpscaler(int mode) {
+            VulkanXServerView vk = vk();
+            if (vk == null) return;
+            upscalerMode = mode;
+            if (mode >= 0 && shaderId >= 10) {
+                shaderId = 0;
+                vk.setPostFXMode(0);
+                putExtra("graphicsShader", "0");
+            }
+            vk.setFilterMode(mode >= 0 ? mode + 2 : (container != null ? container.getRendererFilterMode() : 0));
+            vk.setSharpness(sharp / 100f);
+            putExtra("graphicsFilterMode", String.valueOf(mode >= 0 ? mode + 2 : 0));
+        }
+
+        @Override public int sharpness() { return sharp; }
+
+        @Override public void setSharpness(int value, boolean save) {
+            sharp = Math.max(0, Math.min(100, value));
+            VulkanXServerView vk = vk();
+            if (vk != null) vk.setSharpness(sharp / 100f);
+            if (save) putExtra("graphicsSharpness", String.valueOf(sharp));
+        }
+
+        @Override public int shader() { return shaderId; }
+
+        @Override public void setShader(int id) {
+            VulkanXServerView vk = vk();
+            if (vk == null) return;
+            shaderId = id;
+            if (id >= 10) {
+                // Effect shaders use the single post pass instead of the upscaler.
+                upscalerMode = -1;
+                vk.setFilterMode(0);
+                if (container != null) container.putExtra("graphicsFilterMode", "0");
+            }
+            vk.setSharpness(sharp / 100f);
+            vk.setPostFXMode(id);
+            if (container != null) container.putExtra("graphicsPostFXMode", String.valueOf(id <= 4 ? id : 0));
+            putExtra("graphicsShader", String.valueOf(id));
+        }
+
+        @Override public int scaling() {
+            if (softStretchEnabled) return 2;
+            return xServerView != null && xServerView.isFullscreen() ? 1 : 0;
+        }
+
+        @Override public void setScaling(int mode) {
+            if (xServerView == null) return;
+            boolean full = mode >= 1;
+            if (xServerView.isFullscreen() != full) {
+                xServerView.toggleFullscreen();
+                if (touchpadView != null) touchpadView.toggleFullscreen();
+            }
+            softStretchEnabled = mode == 2;
+            VulkanXServerView vk = vk();
+            if (vk != null) vk.setStretchMode(softStretchEnabled ? 1 : 0);
+        }
+
+        @Override public void openMagnifier() {
+            View v = findViewById(R.id.BTItemMagnifier);
+            if (v != null) v.performClick();
+        }
+
+        @Override public void enterPip() { enterPipMode(); }
+
+        // ---- Controls ----
+        @Override public java.util.List<QmOption> controlProfiles() {
+            ArrayList<QmOption> out = new ArrayList<>();
+            if (inputControlsManager == null) return out;
+            for (ControlsProfile p : inputControlsManager.getProfiles(true)) out.add(new QmOption(p.id, p.getName()));
+            return out;
+        }
+
+        @Override public int controlProfile() {
+            if (inputControlsView == null || inputControlsView.getProfile() == null) return 0;
+            return inputControlsView.getVisibility() == View.VISIBLE || inputControlsView.isShowTouchscreenControls()
+                    ? inputControlsView.getProfile().id : 0;
+        }
+
+        @Override public void setControlProfile(int id) {
+            if (inputControlsManager == null || inputControlsView == null) return;
+            ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles();
+            int index = -1;
+            for (int i = 0; i < profiles.size(); i++) if (profiles.get(i).id == id) index = i;
+            preferences.edit().putInt("selected_profile_index", index).apply();
+            if (index >= 0) showInputControls(profiles.get(index));
+            else hideInputControls();
+            applyTouchTimeout();
+        }
+
+        private void applyTouchTimeout() {
+            if (inputControlsView == null) return;
+            if (preferences.getBoolean("touchscreen_timeout_enabled", false) && inputControlsView.getVisibility() == View.VISIBLE) {
+                startTouchscreenTimeout();
+            } else if (touchpadView != null) {
+                touchpadView.setOnTouchListener(null);
+            }
+        }
+
+        @Override public void editControls() {
+            if (inputControlsManager == null) return;
+            final int current = controlProfile();
+            Intent intent = new Intent(XServerDisplayActivity.this, MainActivity.class);
+            intent.putExtra("edit_input_controls", true);
+            intent.putExtra("selected_profile_id", current);
+            editInputControlsCallback = () -> {
+                hideInputControls();
+                inputControlsManager.loadProfiles(true);
+                if (current != 0) setControlProfile(current);
+            };
+            drawerLayout.closeDrawers();
+            controlsEditorActivityResultLauncher.launch(intent);
+        }
+
+        @Override public boolean touchControls() { return inputControlsView != null && inputControlsView.isShowTouchscreenControls(); }
+
+        @Override public void setTouchControls(boolean on) {
+            if (inputControlsView == null) return;
+            inputControlsView.setShowTouchscreenControls(on);
+            preferences.edit().putBoolean("show_touchscreen_controls_enabled", on).apply();
+        }
+
+        @Override public boolean touchTimeout() { return preferences.getBoolean("touchscreen_timeout_enabled", false); }
+
+        @Override public void setTouchTimeout(boolean on) {
+            preferences.edit().putBoolean("touchscreen_timeout_enabled", on).apply();
+            applyTouchTimeout();
+        }
+
+        @Override public boolean touchHaptics() { return preferences.getBoolean("touchscreen_haptics_enabled", false); }
+        @Override public void setTouchHaptics(boolean on) { preferences.edit().putBoolean("touchscreen_haptics_enabled", on).apply(); }
+
+        @Override public float controlsOpacity() { return preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY); }
+
+        @Override public void setControlsOpacity(float value) {
+            preferences.edit().putFloat("overlay_opacity", value).apply();
+            if (inputControlsView != null) {
+                inputControlsView.setOverlayOpacity(value);
+                inputControlsView.invalidate();
+            }
+        }
+
+        @Override public boolean relativeMouse() { return isRelativeMouseMovement; }
+
+        @Override public void setRelativeMouse(boolean on) {
+            isRelativeMouseMovement = on;
+            if (xServer != null) xServer.setRelativeMouseMovement(on);
+        }
+
+        @Override public boolean mouseDisabled() { return isMouseDisabled; }
+
+        @Override public void setMouseDisabled(boolean on) {
+            isMouseDisabled = on;
+            if (touchpadView != null) touchpadView.setMouseEnabled(!on);
+        }
+
+        @Override public void showKeyboard() { AppUtils.showKeyboard(XServerDisplayActivity.this); }
+        @Override public void vibrationSettings() { showVibrationDialog(); }
+
+        // ---- Tasks ----
+        @Override public java.util.List<QmInfo> sessionInfo() {
+            ArrayList<QmInfo> out = new ArrayList<>();
+            out.add(new QmInfo("Wine", wineInfo != null ? wineInfo.toString() : (container != null ? container.getWineVersion() : "")));
+            out.add(new QmInfo("Display backend", "X11"));
+            out.add(new QmInfo("DX wrapper", dxwrapper != null ? dxwrapper.toUpperCase(java.util.Locale.ENGLISH) : ""));
+            String renderer = xServerView instanceof VulkanXServerView ? "Vulkan"
+                    : xServerView instanceof EGLXServerView ? "OpenGL (EGL)" : "Native display";
+            out.add(new QmInfo("Renderer", renderer));
+            if (graphicsDriverConfig != null) {
+                String driver = graphicsDriverConfig.get("version");
+                if (driver != null && !driver.isEmpty()) out.add(new QmInfo("Graphics driver", driver));
+                String wrapper = graphicsDriverConfig.get("wrapper");
+                if (wrapper != null && !wrapper.isEmpty()) out.add(new QmInfo("Vulkan wrapper", wrapper));
+            }
+            if (xServer != null) out.add(new QmInfo("Resolution", xServer.screenInfo.toString()));
+            out.add(new QmInfo("HDR", hdrInfo()));
+            String soc = Build.VERSION.SDK_INT >= 31 ? " · " + Build.SOC_MODEL : "";
+            out.add(new QmInfo("Device", Build.MANUFACTURER.toUpperCase(java.util.Locale.ENGLISH) + " " + Build.MODEL + soc
+                    + " · " + Runtime.getRuntime().availableProcessors() + "c · Android " + Build.VERSION.RELEASE));
+            return out;
+        }
+
+        private String hdrInfo() {
+            try {
+                android.view.Display display = getWindowManager().getDefaultDisplay();
+                android.view.Display.HdrCapabilities caps = display.getHdrCapabilities();
+                if (caps == null || caps.getSupportedHdrTypes().length == 0) return "Not supported";
+                ArrayList<String> names = new ArrayList<>();
+                for (int t : caps.getSupportedHdrTypes()) {
+                    switch (t) {
+                        case 1: names.add("Dolby Vision"); break;
+                        case 2: names.add("HDR10"); break;
+                        case 3: names.add("HLG"); break;
+                        case 4: names.add("HDR10+"); break;
+                    }
+                }
+                float nits = caps.getDesiredMaxLuminance();
+                return String.join(", ", names) + (nits > 0 ? " · " + Math.round(nits) + " nits" : "");
+            } catch (Throwable e) {
+                return "Unknown";
+            }
+        }
+
+        @Override public void startTasks(kotlin.jvm.functions.Function1<? super QmTasks, kotlin.Unit> listener) {
+            stopTasks();
+            if (winHandler == null) return;
+            tasksListener = listener;
+            winHandler.setOnGetProcessInfoListener(this);
+            tasksTimer = new java.util.Timer();
+            tasksTimer.schedule(new java.util.TimerTask() {
+                @Override public void run() {
+                    winHandler.listProcesses();
+                    updateCpuAndMemory();
+                    publishTasks();
+                }
+            }, 0, 1000);
+        }
+
+        @Override public void stopTasks() {
+            if (tasksTimer != null) {
+                tasksTimer.cancel();
+                tasksTimer = null;
+                if (winHandler != null) winHandler.setOnGetProcessInfoListener(null);
+            }
+            tasksListener = null;
+        }
+
+        private void publishTasks() {
+            runOnUiThread(() -> {
+                kotlin.jvm.functions.Function1<? super QmTasks, kotlin.Unit> l = tasksListener;
+                if (l == null) return;
+                ArrayList<QmProcess> rows = new ArrayList<>();
+                for (ProcessInfo p : processes) rows.add(new QmProcess(p.pid, p.name, p.getFormattedMemoryUsage(), p.wow64Process));
+                l.invoke(new QmTasks(cpuPercent, memoryText, rows));
+            });
+        }
+
+        @Override public void onGetProcessInfo(int index, int numProcesses, ProcessInfo processInfo) {
+            synchronized (pending) {
+                if (numProcesses == 0) {
+                    pending.clear();
+                    processes = new ArrayList<>();
+                    publishTasks();
+                    return;
+                }
+                if (index == 0) pending.clear();
+                if (processInfo != null) pending.add(processInfo);
+                if (index == numProcesses - 1) {
+                    processes = new ArrayList<>(pending);
+                    publishTasks();
+                }
+            }
+        }
+
+        private void updateCpuAndMemory() {
+            short[] clocks = CPUStatus.getCurrentClockSpeeds();
+            if (clocks.length > 0) {
+                int total = 0;
+                short max = 0;
+                for (int i = 0; i < clocks.length; i++) {
+                    total += clocks[i];
+                    max = (short) Math.max(max, CPUStatus.getMaxClockSpeed(i));
+                }
+                cpuPercent = max == 0 ? 0 : (int) (((float) (total / clocks.length) / max) * 100f);
+            }
+            android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            double gib = 1024.0 * 1024.0 * 1024.0;
+            memoryText = String.format(java.util.Locale.US, "%.1f / %.1f GB", (mi.totalMem - mi.availMem) / gib, mi.totalMem / gib);
+        }
+
+        @Override public void bringToFront(String name) { if (winHandler != null) winHandler.bringToFront(name); }
+        @Override public void endProcess(String name) { if (winHandler != null) winHandler.killProcess(name); }
+
+        @Override public void processAffinity(int pid) {
+            ProcessInfo info = null;
+            for (ProcessInfo p : processes) if (p.pid == pid) info = p;
+            if (info == null || winHandler == null) return;
+            final ProcessInfo processInfo = info;
+            ContentDialog dialog = new ContentDialog(XServerDisplayActivity.this, R.layout.cpu_list_dialog);
+            dialog.setTitle(processInfo.name);
+            dialog.setIcon(R.drawable.icon_cpu);
+            final CPUListView cpuListView = dialog.findViewById(R.id.CPUListView);
+            String cpuList = processInfo.getCPUList();
+            int linuxMask = ProcessHelper.getProcessAffinityMask(processInfo.pid);
+            if (linuxMask != 0) cpuList = new ProcessInfo(processInfo.pid, "", 0, linuxMask, false).getCPUList();
+            cpuListView.setCheckedCPUList(cpuList);
+            dialog.setOnConfirmCallback(() -> winHandler.setProcessAffinity(processInfo.pid,
+                    ProcessHelper.getAffinityMask(cpuListView.getCheckedCPUList())));
+            dialog.show();
+        }
+
+        @Override public void newTask() {
+            if (winHandler == null) return;
+            ContentDialog.prompt(XServerDisplayActivity.this, R.string.new_task, "taskmgr.exe", (command) -> winHandler.exec(command));
+        }
+
+        @Override public boolean logsAvailable() { return quickMenuLogs && debugDialog != null; }
+        @Override public void showLogs() { if (debugDialog != null) debugDialog.show(); }
+
+        // ---- Session ----
+        @Override public boolean isPaused() { return isPaused; }
+
+        @Override public void setPaused(boolean paused) {
+            if (paused == isPaused) return;
+            if (paused) ProcessHelper.pauseAllWineProcesses();
+            else ProcessHelper.resumeAllWineProcesses();
+            isPaused = paused;
+            View pause = findViewById(R.id.BTItemPause);
+            if (pause instanceof ViewGroup && ((ViewGroup) pause).getChildAt(0) instanceof ImageView) {
+                ((ImageView) ((ViewGroup) pause).getChildAt(0)).setImageResource(paused ? R.drawable.icon_play : R.drawable.icon_pause);
+            }
+        }
+
+        @Override public void exitGame() {
+            drawerLayout.closeDrawers();
+            exit();
+        }
+
+        @Override public void close() { drawerLayout.closeDrawers(); }
     }
 
 }

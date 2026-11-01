@@ -1471,6 +1471,20 @@ public class WinlatorHUD extends View {
 
     public void setDataSource(Object dataSource) {}
 
+    /** Whether a metric (same index as toggleElement) is shown. */
+    public boolean isElementOn(int idx) {
+        int bit = idxToMask(idx);
+        return bit != 0 && (showMask & bit) != 0;
+    }
+
+    public float getHudScale() {
+        return getScaleX();
+    }
+
+    public float getHudAlpha() {
+        return hudAlpha;
+    }
+
     public void setHudScale(float scale) {
         setScaleX(scale);
         setScaleY(scale);

@@ -11,18 +11,33 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <ScrollView
-        android:id="@+id/SidebarScrollView"
-        android:layout_width="320dp"
+    <!-- YurNLator quick menu (Compose). The old sidebar stays inflated but hidden: its views
+         still carry some startup logic and actions the new menu reuses. -->
+    <FrameLayout
+        android:id="@+id/QuickMenuDrawer"
+        android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:background="@color/ingame_sidebar_background"
-        android:scrollbars="none"
-        android:fillViewport="true">
+        android:layout_gravity="start">
 
-        <include layout="@layout/left_sidebar" />
+        <ScrollView
+            android:id="@+id/SidebarScrollView"
+            android:layout_width="320dp"
+            android:layout_height="match_parent"
+            android:background="@color/ingame_sidebar_background"
+            android:scrollbars="none"
+            android:visibility="gone"
+            android:fillViewport="true">
 
-    </ScrollView>
+            <include layout="@layout/left_sidebar" />
+
+        </ScrollView>
+
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/QuickMenuCompose"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent" />
+
+    </FrameLayout>
 
     <EditText
         android:id="@+id/XRTextInput"
