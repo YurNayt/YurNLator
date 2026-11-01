@@ -97,8 +97,8 @@ jobs:
         if: failure()
         run: |
           # Surface the real cause as annotations (readable without downloading logs)
-          grep -nE "What went wrong|^e: |error:|Exception|Caused by|FAILED|Could not|> " build.log \
-            | grep -vE "^\S*:\s+at " | head -40 | while IFS= read -r line; do
+          grep -nE "What went wrong|^e: |error:|Exception|Caused by|FAILED|Could not" build.log \
+            | grep -vE "^\S*:\s+at |> Task" | head -10 | while IFS= read -r line; do
               echo "::error::${line:0:900}"
             done
           tail -60 build.log > build-tail.txt || true
