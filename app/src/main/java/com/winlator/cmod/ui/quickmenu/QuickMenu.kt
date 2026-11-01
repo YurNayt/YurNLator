@@ -100,7 +100,7 @@ object QuickMenuHost {
 
     @JvmStatic
     fun attach(view: ComposeView, bridge: QuickMenuBridge) {
-        view.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromWindow)
+        view.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool)
         view.setContent { QuickMenu(bridge, opened.intValue) }
     }
 
