@@ -604,7 +604,7 @@ internal fun SettingWineRuntimeChoice(
         ChoiceSheet(
             title = label,
             // One row per Proton / Wine family (newest build), older builds behind the arrow.
-            options = VersionGroups.arrange(options, { it.type }, { it.label }).flatMap { (family, members) ->
+            options = VersionGroups.arrange(options, { it.type }, { it.label }, { it.installed }).flatMap { (family, members) ->
                 members.map { o ->
                     ChoiceOption(
                         o.id, o.label,
@@ -668,7 +668,7 @@ internal fun SettingInstallChoice(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(selected.ifBlank { "Choose a version" }.let { VersionGroups.title(it) }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                    Text(if (selected.isBlank()) "Choose a version" else VersionGroups.title(selected, prefix), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 }
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
@@ -678,11 +678,13 @@ internal fun SettingInstallChoice(
         ChoiceSheet(
             title = label,
             // One row per family (e.g. "DXVK gplasync arm64ec", "FEXCore nightly"), other versions behind the arrow.
-            options = VersionGroups.arrange(catalog.all, { prefix }, { it }).flatMap { (family, members) ->
+            options = VersionGroups.arrange(catalog.all, { prefix }, { it }, { v ->
+                catalog.installed.any { it.equals(v, ignoreCase = true) } || v == selected
+            }).flatMap { (family, members) ->
                 members.map { value ->
                     val available = catalog.installed.any { it.equals(value, ignoreCase = true) } || value == selected
                     ChoiceOption(
-                        value, VersionGroups.title(value), VersionGroups.note(value),
+                        value, VersionGroups.title(value, prefix), VersionGroups.note(value),
                         installed = available, busy = "$prefix:$value" in installing, group = family
                     )
                 }

@@ -346,7 +346,7 @@ private fun TypePage(
             type.isGpuDriver -> shown
                 .groupBy { "${it.author.orEmpty()}|" + DriverNames.parse(it.name).title.lowercase() }
                 .map { (key, members) -> key to members.sortedBy { DriverNames.parse(it.name).tags.size } }
-            else -> VersionGroups.arrange(shown, { it.type }, { it.name })
+            else -> VersionGroups.arrange(shown, { it.type }, { it.name }, { it.installed })
         }
     }
 
@@ -526,7 +526,7 @@ private fun ItemCard(
                 Column(Modifier.weight(1f)) {
                     // GPU drivers: clean title + what the build is for ("OneUI fix · Adreno 710–720").
                     val parsed = remember(item.name, gpuDriver) { if (gpuDriver) DriverNames.parse(item.name) else null }
-                    Text(parsed?.title ?: VersionGroups.title(item.name), fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(parsed?.title ?: VersionGroups.title(item.name, item.type), fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     val details = buildList {
                         parsed?.tags?.let { addAll(it) }
                         if (parsed == null) VersionGroups.note(item.name)?.let { add(it) }
