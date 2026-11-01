@@ -335,13 +335,19 @@ private fun TypePage(
     // Inside one author the author line would only repeat the selection.
     val showAuthorLine = selectedAuthor == AUTHOR_ALL || selectedAuthor == AUTHOR_INSTALLED
 
-    // Runtimes and translators: one row per family (newest), other versions behind an arrow.
-    // GPU drivers and wrappers have free-form names, so they stay a plain list.
-    val groupable = !type.isGpuDriver && !type.isWrapper
+    // Runtimes and translators: one row per family (newest), other versions behind an arrow
+    // (FEX: one row per version, its PPA / unix variants behind the arrow).
+    // GPU drivers: one row per build of an author ("Turnip v27.0.0 R2"), its variants
+    // (OneUI fix, Adreno 710–720, Test…) behind the arrow. Wrappers stay a plain list.
     var openGroups by remember(type.key) { mutableStateOf(setOf<String>()) }
-    val blocks = remember(shown, groupable) {
-        if (groupable) VersionGroups.arrange(shown, { it.type }, { it.name })
-        else shown.map { it.id to listOf(it) }
+    val blocks = remember(shown, type.key) {
+        when {
+            type.isWrapper -> shown.map { it.id to listOf(it) }
+            type.isGpuDriver -> shown
+                .groupBy { "${it.author.orEmpty()}|" + DriverNames.parse(it.name).title.lowercase() }
+                .map { (key, members) -> key to members.sortedBy { DriverNames.parse(it.name).tags.size } }
+            else -> VersionGroups.arrange(shown, { it.type }, { it.name })
+        }
     }
 
     val card: @Composable (BrowserItem, GroupToggle?) -> Unit = { item, group ->

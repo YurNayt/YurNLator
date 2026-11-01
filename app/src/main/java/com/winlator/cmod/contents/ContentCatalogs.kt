@@ -24,8 +24,8 @@ object ContentCatalogs {
         Source("Bannerlator", "https://raw.githubusercontent.com/The412Banner/winlator-contents/main/contents.json"),
         // Arihany's WCP hub: recent DXVK (incl. gplasync), VKD3D, FEXCore.
         Source("WCP Hub", "https://raw.githubusercontent.com/Arihany/WinlatorWCPHub/refs/heads/main/pack.json"),
-        // Daily FEX builds from upstream; about a month of the newest (grouped under one row).
-        Source("FEX nightly", "https://raw.githubusercontent.com/merkezekre2026/fexcore-wcp/main/contents.json", maxPerType = 31),
+        // Daily FEX builds from upstream; about a month of the newest.
+        Source("FEX nightly", "https://raw.githubusercontent.com/merkezekre2026/fexcore-wcp/main/contents.json", maxPerType = 15),
     )
 
     /** Releases of the FEX nightly repo: their publish date names each daily build ("20261030"). */

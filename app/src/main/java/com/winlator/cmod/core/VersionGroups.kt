@@ -30,7 +30,13 @@ object VersionGroups {
         "wine" to setOf("wine"),
     )
 
-    data class Parsed(val family: String, val version: List<Long>, val hash: String?)
+    data class Parsed(
+        val family: String,
+        val version: List<Long>,
+        val hash: String?,
+        /** Extra words besides the version ("ppa", "unix"…): 0 for the plain build. */
+        val words: Int = 0
+    )
 
     @JvmStatic
     fun parse(type: String, name: String): Parsed {
@@ -59,9 +65,10 @@ object VersionGroups {
             }
             if (tok !in skip) family += tok
         }
+        val words = family.size
         if (hash != null && t == "fexcore") family += "nightly"
         val padded = numbers + List((4 - numbers.size).coerceAtLeast(0)) { 0L }
-        return Parsed("$t:" + family.joinToString(" "), padded + layer, hash)
+        return Parsed("$t:" + family.joinToString(" "), padded + layer, hash, words)
     }
 
     private fun compare(a: List<Long>, b: List<Long>): Int {
@@ -79,6 +86,7 @@ object VersionGroups {
     @JvmStatic
     fun <T> arrange(items: List<T>, type: (T) -> String, name: (T) -> String): List<Pair<String, List<T>>> {
         val parsed = items.map { it to parse(type(it), name(it)) }
+        if (parsed.isNotEmpty() && parsed.all { it.second.family.startsWith("fexcore:") }) return arrangeFex(parsed)
         val groups = LinkedHashMap<String, MutableList<Pair<T, Parsed>>>()
         parsed.forEach { groups.getOrPut(it.second.family) { mutableListOf() } += it }
         return groups.map { (family, members) ->
@@ -89,6 +97,25 @@ object VersionGroups {
             }
             family to sorted.map { it.first }
         }
+    }
+
+    /**
+     * FEX is grouped by version instead: one row per release ("2610") or daily build
+     * ("20261030"), its variants (PPA, unix, PPA unix, other catalogs' copies) behind the arrow.
+     * Newest first; the plain build leads each group.
+     */
+    private fun <T> arrangeFex(parsed: List<Pair<T, Parsed>>): List<Pair<String, List<T>>> {
+        val groups = LinkedHashMap<String, MutableList<Pair<T, Parsed>>>()
+        parsed.forEach { item ->
+            val p = item.second
+            val key = if (p.hash != null) "fexcore:build:" + (dateOf(p.hash)?.toString() ?: p.hash)
+            else "fexcore:v" + p.version.first()
+            groups.getOrPut(key) { mutableListOf() } += item
+        }
+        fun order(p: Parsed) = listOf(p.version.first(), dateOf(p.hash) ?: 0L)
+        return groups.entries
+            .sortedWith { a, b -> compare(order(b.value.first().second), order(a.value.first().second)) }
+            .map { (key, members) -> key to members.sortedBy { it.second.words }.map { it.first } }
     }
 
     private fun dateOf(hash: String?): Long? = hash?.let { ContentCatalogs.nightlyDate(it) }?.toLongOrNull()
