@@ -1,6 +1,7 @@
 package com.winlator.cmod.ui.settings
 
 import com.winlator.cmod.core.ProtonVersions
+import com.winlator.cmod.core.VersionGroups
 import com.winlator.cmod.contents.ContentCatalogs
 import com.winlator.cmod.contents.ContentFileImport
 import com.winlator.cmod.ui.components.ChoiceOption
@@ -602,12 +603,16 @@ internal fun SettingWineRuntimeChoice(
     if (expanded) {
         ChoiceSheet(
             title = label,
-            options = options.map { o ->
-                ChoiceOption(
-                    o.id, o.label,
-                    if (o.id == update?.id) "${o.type} · Newer build of your current one" else o.type,
-                    installed = o.installed, busy = "wine:${o.id}" in installing
-                )
+            // One row per Proton / Wine family (newest build), older builds behind the arrow.
+            options = VersionGroups.arrange(options, { it.type }, { it.label }).flatMap { (family, members) ->
+                members.map { o ->
+                    ChoiceOption(
+                        o.id, o.label,
+                        if (o.id == update?.id) "${o.type} · Newer build of your current one" else o.type,
+                        installed = o.installed, busy = "wine:${o.id}" in installing,
+                        group = family
+                    )
+                }
             },
             selected = selectedId,
             onPick = { picked ->
@@ -663,7 +668,7 @@ internal fun SettingInstallChoice(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(selected.ifBlank { "Choose a version" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                    Text(selected.ifBlank { "Choose a version" }.let { VersionGroups.title(it) }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 }
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
@@ -672,9 +677,15 @@ internal fun SettingInstallChoice(
     if (expanded) {
         ChoiceSheet(
             title = label,
-            options = catalog.all.map { value ->
-                val available = catalog.installed.any { it.equals(value, ignoreCase = true) } || value == selected
-                ChoiceOption(value, installed = available, busy = "$prefix:$value" in installing)
+            // One row per family (e.g. "DXVK gplasync arm64ec", "FEXCore nightly"), other versions behind the arrow.
+            options = VersionGroups.arrange(catalog.all, { prefix }, { it }).flatMap { (family, members) ->
+                members.map { value ->
+                    val available = catalog.installed.any { it.equals(value, ignoreCase = true) } || value == selected
+                    ChoiceOption(
+                        value, VersionGroups.title(value), VersionGroups.note(value),
+                        installed = available, busy = "$prefix:$value" in installing, group = family
+                    )
+                }
             },
             selected = selected,
             onPick = { if (it.installed) onSelected(it.value) else onInstall(it.value) },

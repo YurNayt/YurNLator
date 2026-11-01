@@ -37,6 +37,8 @@ import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.Hub
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Menu
@@ -68,6 +70,7 @@ import com.winlator.cmod.contents.DriverSource
 import com.winlator.cmod.contents.DriverSources
 import com.winlator.cmod.core.DriverNames
 import com.winlator.cmod.core.LocalInstalls
+import com.winlator.cmod.core.VersionGroups
 import com.winlator.cmod.ui.settings.AddDriverSourceDialog
 import com.winlator.cmod.ui.settings.RemoveDriverSourceDialog
 
@@ -332,8 +335,18 @@ private fun TypePage(
     // Inside one author the author line would only repeat the selection.
     val showAuthorLine = selectedAuthor == AUTHOR_ALL || selectedAuthor == AUTHOR_INSTALLED
 
-    val card: @Composable (BrowserItem) -> Unit = { item ->
+    // Runtimes and translators: one row per family (newest), other versions behind an arrow.
+    // GPU drivers and wrappers have free-form names, so they stay a plain list.
+    val groupable = !type.isGpuDriver && !type.isWrapper
+    var openGroups by remember(type.key) { mutableStateOf(setOf<String>()) }
+    val blocks = remember(shown, groupable) {
+        if (groupable) VersionGroups.arrange(shown, { it.type }, { it.name })
+        else shown.map { it.id to listOf(it) }
+    }
+
+    val card: @Composable (BrowserItem, GroupToggle?) -> Unit = { item, group ->
         ItemCard(
+            group = group,
             item = item,
             gpuDriver = type.isGpuDriver,
             fromFile = item.id in myFiles,
@@ -412,10 +425,25 @@ private fun TypePage(
                 shown.isNotEmpty() -> {
                     if (splitList) {
                         item(key = "h-installed") { SectionLabel("Installed") }
-                        items(installedTop, key = { "top:" + it.id }) { item -> card(item) }
+                        items(installedTop, key = { "top:" + it.id }) { item -> card(item, null) }
                         item(key = "h-all") { SectionLabel(if (selectedAuthor == AUTHOR_ALL) "All" else selectedAuthor) }
                     }
-                    items(shown, key = { it.id }) { item -> card(item) }
+                    blocks.forEach { (family, members) ->
+                        val head = members.first()
+                        val rest = members.drop(1)
+                        val isOpen = family in openGroups
+                        item(key = head.id) {
+                            card(head, if (rest.isEmpty()) null else GroupToggle(
+                                more = rest.size,
+                                installed = rest.count { it.installed },
+                                expanded = isOpen,
+                                onToggle = { openGroups = if (isOpen) openGroups - family else openGroups + family }
+                            ))
+                        }
+                        if (isOpen) items(rest, key = { it.id }) { item ->
+                            Box(Modifier.padding(start = 18.dp)) { card(item, null) }
+                        }
+                    }
                 }
                 else -> Unit
             }
@@ -462,8 +490,12 @@ private fun AuthorChip(
     }
 }
 
+/** Arrow on a family row: how many other versions it hides and whether they're shown. */
+private class GroupToggle(val more: Int, val installed: Int, val expanded: Boolean, val onToggle: () -> Unit)
+
 @Composable
 private fun ItemCard(
+    group: GroupToggle?,
     item: BrowserItem,
     gpuDriver: Boolean,
     fromFile: Boolean,
@@ -488,9 +520,10 @@ private fun ItemCard(
                 Column(Modifier.weight(1f)) {
                     // GPU drivers: clean title + what the build is for ("OneUI fix · Adreno 710–720").
                     val parsed = remember(item.name, gpuDriver) { if (gpuDriver) DriverNames.parse(item.name) else null }
-                    Text(parsed?.title ?: item.name, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(parsed?.title ?: VersionGroups.title(item.name), fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     val details = buildList {
                         parsed?.tags?.let { addAll(it) }
+                        if (parsed == null) VersionGroups.note(item.name)?.let { add(it) }
                         addAll(item.details)
                         if (fromFile) add("From your files")
                         if (item.inUse) add("In use")
@@ -505,6 +538,14 @@ private fun ItemCard(
                     if (status.isNotEmpty()) {
                         Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    if (group != null) {
+                        Text(
+                            VersionGroups.moreLabel(group.more) + if (group.installed > 0) " · ${group.installed} installed" else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
                 when {
                     busy -> CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
@@ -515,6 +556,15 @@ private fun ItemCard(
                     }
                     !item.installed -> OutlinedButton(onClick = { onInstall(item) }, enabled = !locked) { Text("Download") }
                     else -> Icon(Icons.Outlined.Check, null)
+                }
+                if (group != null) {
+                    IconButton(onClick = group.onToggle) {
+                        Icon(
+                            if (group.expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = if (group.expanded) "Hide versions" else "Show versions",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
             if (busy) {

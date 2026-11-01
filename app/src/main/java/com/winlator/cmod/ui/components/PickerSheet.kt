@@ -20,15 +20,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -154,13 +161,18 @@ private fun IconBox(icon: ImageVector, highlighted: Boolean) {
     ) { Icon(icon, null, tint = if (highlighted) scheme.primary else scheme.onSurface) }
 }
 
-/** One entry of a [ChoiceSheet]. Not installed entries show "Download" and call onPick without closing. */
+/**
+ * One entry of a [ChoiceSheet]. Not installed entries show "Download" and call onPick without closing.
+ * Consecutive entries with the same [group] are shown as one row (the first entry) with an
+ * arrow that reveals the others, e.g. one "Proton arm64ec" row with older builds inside.
+ */
 data class ChoiceOption(
     val value: String,
     val title: String = value,
     val subtitle: String? = null,
     val installed: Boolean = true,
-    val busy: Boolean = false
+    val busy: Boolean = false,
+    val group: String? = null
 )
 
 /**
@@ -180,6 +192,29 @@ fun ChoiceSheet(
 ) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scheme = MaterialTheme.colorScheme
+    // Consecutive options of one group -> one block; ungrouped options are blocks of one.
+    val blocks = remember(options) {
+        val out = mutableListOf<List<ChoiceOption>>()
+        for (o in options) {
+            val last = out.lastOrNull()
+            if (o.group != null && last != null && last.first().group == o.group) out[out.size - 1] = last + o
+            else out += listOf(o)
+        }
+        out
+    }
+    // Groups start open when they hold the current choice (and it isn't their top row).
+    var open by remember(blocks) {
+        mutableStateOf(
+            blocks.filter { b -> b.size > 1 && b.drop(1).any { it.installed && it.value.equals(selected, ignoreCase = true) } }
+                .mapNotNull { it.first().group }.toSet()
+        )
+    }
+    val pick: (ChoiceOption) -> Unit = { option ->
+        if (!option.busy) {
+            onPick(option)
+            if (option.installed) onDismiss()
+        }
+    }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
         KeepDialogFullscreen()
         LazyColumn(
@@ -214,53 +249,103 @@ fun ChoiceSheet(
                     }
                 }
             }
-            items(options, key = { "choice:" + it.value }) { option ->
-                val isSelected = option.installed && option.value.equals(selected, ignoreCase = true)
-                Surface(
-                    onClick = {
-                        if (!option.busy) {
-                            onPick(option)
-                            if (option.installed) onDismiss()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isSelected) scheme.secondaryContainer else scheme.surface,
-                    border = BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) scheme.primary else scheme.outlineVariant)
-                ) {
-                    Row(
-                        Modifier.padding(horizontal = 12.dp, vertical = if (option.subtitle == null) 11.dp else 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        when {
-                            option.busy -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                            !option.installed -> Icon(Icons.Outlined.CloudDownload, null, Modifier.size(20.dp), tint = scheme.onSurfaceVariant)
-                            else -> Icon(
-                                if (isSelected) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
-                                null, Modifier.size(20.dp),
-                                tint = if (isSelected) scheme.primary else scheme.onSurfaceVariant
-                            )
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                option.title,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                color = if (option.installed) scheme.onSurface else scheme.onSurfaceVariant,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            val sub = when {
-                                option.busy -> "Downloading…"
-                                !option.installed -> listOfNotNull(option.subtitle, "Download").joinToString(" · ")
-                                else -> option.subtitle
-                            }
-                            if (!sub.isNullOrBlank()) {
-                                Text(sub, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
-                            }
-                        }
+            blocks.forEach { block ->
+                val head = block.first()
+                val rest = block.drop(1)
+                val group = head.group
+                val isOpen = group != null && group in open
+                item(key = "choice:" + head.value) {
+                    ChoiceRow(
+                        option = head,
+                        selected = selected,
+                        more = rest.size,
+                        moreInstalled = rest.count { it.installed },
+                        expanded = isOpen,
+                        onToggle = if (rest.isEmpty() || group == null) null else {
+                            { open = if (isOpen) open - group else open + group }
+                        },
+                        onClick = { pick(head) }
+                    )
+                }
+                if (isOpen) items(rest, key = { "choice:" + it.value }) { option ->
+                    Box(Modifier.padding(start = 18.dp)) {
+                        ChoiceRow(option = option, selected = selected, onClick = { pick(option) })
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceRow(
+    option: ChoiceOption,
+    selected: String,
+    onClick: () -> Unit,
+    more: Int = 0,
+    moreInstalled: Int = 0,
+    expanded: Boolean = false,
+    onToggle: (() -> Unit)? = null
+) {
+    val scheme = MaterialTheme.colorScheme
+    val isSelected = option.installed && option.value.equals(selected, ignoreCase = true)
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) scheme.secondaryContainer else scheme.surface,
+        border = BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) scheme.primary else scheme.outlineVariant)
+    ) {
+        Row(
+            Modifier.padding(start = 12.dp, end = if (onToggle != null) 2.dp else 12.dp,
+                top = if (option.subtitle == null && more == 0) 11.dp else 8.dp,
+                bottom = if (option.subtitle == null && more == 0) 11.dp else 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            when {
+                option.busy -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                !option.installed -> Icon(Icons.Outlined.CloudDownload, null, Modifier.size(20.dp), tint = scheme.onSurfaceVariant)
+                else -> Icon(
+                    if (isSelected) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                    null, Modifier.size(20.dp),
+                    tint = if (isSelected) scheme.primary else scheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    option.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    color = if (option.installed) scheme.onSurface else scheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                val sub = when {
+                    option.busy -> "Downloading…"
+                    !option.installed -> listOfNotNull(option.subtitle, "Download").joinToString(" · ")
+                    else -> option.subtitle
+                }
+                if (!sub.isNullOrBlank()) {
+                    Text(sub, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                }
+                if (more > 0) {
+                    val inside = if (moreInstalled > 0) " · $moreInstalled installed" else ""
+                    Text(
+                        com.winlator.cmod.core.VersionGroups.moreLabel(more) + inside,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = scheme.primary
+                    )
+                }
+            }
+            if (onToggle != null) {
+                IconButton(onClick = onToggle) {
+                    Icon(
+                        if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = if (expanded) "Hide versions" else "Show versions",
+                        tint = scheme.primary
+                    )
                 }
             }
         }

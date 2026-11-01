@@ -24,9 +24,41 @@ object ContentCatalogs {
         Source("Bannerlator", "https://raw.githubusercontent.com/The412Banner/winlator-contents/main/contents.json"),
         // Arihany's WCP hub: recent DXVK (incl. gplasync), VKD3D, FEXCore.
         Source("WCP Hub", "https://raw.githubusercontent.com/Arihany/WinlatorWCPHub/refs/heads/main/pack.json"),
-        // Daily FEX builds from upstream; only the newest are listed.
-        Source("FEX nightly", "https://raw.githubusercontent.com/merkezekre2026/fexcore-wcp/main/contents.json", maxPerType = 10),
+        // Daily FEX builds from upstream; about a month of the newest (grouped under one row).
+        Source("FEX nightly", "https://raw.githubusercontent.com/merkezekre2026/fexcore-wcp/main/contents.json", maxPerType = 31),
     )
+
+    /** Releases of the FEX nightly repo: their publish date names each daily build ("20261030"). */
+    private const val FEX_NIGHTLY_RELEASES = "https://api.github.com/repos/merkezekre2026/fexcore-wcp/releases?per_page=100"
+
+    /** Commit hash -> build day "yyyyMMdd". */
+    private val nightlyDates = ConcurrentHashMap<String, String>()
+    @Volatile private var nightlyDatesBody: String? = null
+
+    /** Build day of a daily FEX build by its commit hash (full or short), or null if unknown. */
+    @JvmStatic
+    fun nightlyDate(hash: String): String? {
+        val h = hash.lowercase(Locale.ENGLISH)
+        nightlyDates[h]?.let { return it }
+        if (h.length < 7) return null
+        return nightlyDates.entries.firstOrNull { it.key.startsWith(h) || h.startsWith(it.key) }?.value
+    }
+
+    private fun loadNightlyDates(context: Context) {
+        val body = RemoteFetch.cached(context, FEX_NIGHTLY_RELEASES) ?: return
+        if (body == nightlyDatesBody) return
+        runCatching {
+            val arr = JSONArray(body)
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                // Tags look like "fex-nightly-2610-d321f49fb".
+                val hash = o.optString("tag_name").substringAfterLast('-').lowercase(Locale.ENGLISH)
+                val day = o.optString("published_at").take(10).replace("-", "")
+                if (hash.length >= 7 && day.length == 8) nightlyDates[hash] = day
+            }
+        }
+        nightlyDatesBody = body
+    }
 
     data class Entry(val type: String, val verName: String, val verCode: Int, val remoteUrl: String, val source: String)
 
@@ -40,11 +72,18 @@ object ContentCatalogs {
     @JvmStatic
     fun refresh(context: Context) {
         EXTRA_SOURCES.forEach { runCatching { RemoteFetch.get(context, it.url) } }
+        runCatching { RemoteFetch.get(context, FEX_NIGHTLY_RELEASES) }
+        loadNightlyDates(context)
     }
 
     /** Saved copies only (no network). */
     @JvmStatic
-    fun extraEntries(context: Context): List<Entry> = EXTRA_SOURCES.flatMap { source ->
+    fun extraEntries(context: Context): List<Entry> {
+        loadNightlyDates(context)
+        return extraEntriesOf(context)
+    }
+
+    private fun extraEntriesOf(context: Context): List<Entry> = EXTRA_SOURCES.flatMap { source ->
         val body = RemoteFetch.cached(context, source.url) ?: return@flatMap emptyList()
         val parsed = runCatching {
             val arr = JSONArray(body)
