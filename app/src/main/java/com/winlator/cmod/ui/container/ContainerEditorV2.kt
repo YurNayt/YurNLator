@@ -5,6 +5,7 @@ package com.winlator.cmod.ui.container
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import com.winlator.cmod.ui.settings.PresetKind
+import com.winlator.cmod.ui.settings.SettingSyncChoice
 import com.winlator.cmod.ui.settings.SettingPresetChoice
 import com.winlator.cmod.contents.DriverSources
 import com.winlator.cmod.contents.ContentFileImport
@@ -1106,6 +1107,8 @@ private fun ContainerCategoryV2(
                 SettingChoice("Startup Selection", startupEntries[s.startup.coerceIn(0, 2)], startupEntries) {
                     s.startup = startupEntries.indexOf(it).coerceAtLeast(0)
                 }
+                SettingsDivider()
+                SettingSyncChoice(s.envVars) { s.setEnvironment(it) }
             }
             EnvironmentVariablesEditor(cleanContainerEnvironment(s.envVars), onChanged = { s.setEnvironment(it) })
             SettingsCard {

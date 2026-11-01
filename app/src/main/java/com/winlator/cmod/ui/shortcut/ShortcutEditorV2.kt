@@ -3,6 +3,7 @@
 package com.winlator.cmod.ui.shortcut
 
 import com.winlator.cmod.ui.settings.PresetKind
+import com.winlator.cmod.ui.settings.SettingSyncChoice
 import com.winlator.cmod.ui.settings.SettingPresetChoice
 import com.winlator.cmod.contents.DriverSources
 import com.winlator.cmod.contents.ContentFileImport
@@ -998,6 +999,8 @@ private fun ShortcutCategoryV2(
                 SettingChoice("Startup Selection", startupEntries[s.startup], startupEntries) {
                     s.startup = startupEntries.indexOf(it).coerceAtLeast(0); s.extra("startupSelection", s.startup.toString())
                 }
+                SettingsDivider()
+                SettingSyncChoice(s.envVars, note = "For this game only") { s.setEnvironment(it) }
             }
             SettingsCard {
                 SettingChoice("Sharpness Effect", s.sharpnessEffect, listOf("None", "CAS", "DLS")) {
