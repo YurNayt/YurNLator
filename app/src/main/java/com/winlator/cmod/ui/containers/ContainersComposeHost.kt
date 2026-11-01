@@ -57,7 +57,9 @@ class ContainerUiModel(
     val id: Int,
     val name: String,
     val wineVersion: String,
-    val screenSize: String
+    val screenSize: String,
+    /** A newer build of this container's Proton / Wine line, if one exists (Bannerlator-style). */
+    val updateLabel: String? = null
 )
 
 interface ContainersCallbacks {
@@ -248,6 +250,16 @@ private fun ContainerCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    container.updateLabel?.let { newer ->
+                        Text(
+                            "Update available: $newer · Edit to switch",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
                 Surface(
                     onClick = { callbacks.onRun(container.id) },

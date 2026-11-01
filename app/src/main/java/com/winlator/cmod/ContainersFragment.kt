@@ -9,6 +9,14 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.winlator.cmod.container.ContainerManager
+import com.winlator.cmod.contents.ContentProfile
+import com.winlator.cmod.contents.ContentsManager
+import com.winlator.cmod.core.ProtonVersions
+import com.winlator.cmod.core.RemoteFetch
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.winlator.cmod.ui.container.ContainerCreateComposeFragment
 import com.winlator.cmod.ui.containers.ContainerUiModel
 import com.winlator.cmod.ui.containers.ContainersCallbacks
@@ -44,10 +52,33 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
 
     private fun refresh() {
         val ctx = context ?: return
-        val list = ContainerManager(ctx).containers.map { c ->
+        val containers = ContainerManager(ctx).containers.toList()
+        host?.submitList(containers.map { c ->
             ContainerUiModel(c.id, c.name, c.wineVersion.orEmpty(), c.screenSize.orEmpty())
+        })
+        // Then look for newer Proton / Wine builds (saved catalogs only, no waiting on the network).
+        viewLifecycleOwner.lifecycleScope.launch {
+            val updates = withContext(Dispatchers.IO) { runCatching { protonUpdates(ctx, containers) }.getOrDefault(emptyMap()) }
+            if (updates.isEmpty()) return@launch
+            host?.submitList(containers.map { c ->
+                ContainerUiModel(c.id, c.name, c.wineVersion.orEmpty(), c.screenSize.orEmpty(), updates[c.id])
+            })
         }
-        host?.submitList(list)
+    }
+
+    /** container id -> name of a newer build of its Wine / Proton line. */
+    private fun protonUpdates(ctx: android.content.Context, containers: List<com.winlator.cmod.container.Container>): Map<Int, String> {
+        val manager = ContentsManager(ctx)
+        val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(ctx)
+        val url = prefs.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES) ?: ContentsManager.REMOTE_PROFILES
+        manager.setRemoteProfiles(RemoteFetch.cached(ctx, url) ?: "[]")
+        val runtimes = listOf(ContentProfile.ContentType.CONTENT_TYPE_WINE, ContentProfile.ContentType.CONTENT_TYPE_PROTON)
+            .flatMap { manager.getProfiles(it).orEmpty() }
+        val names = runtimes.map { it.verName }
+        return containers.mapNotNull { c ->
+            val current = runtimes.firstOrNull { ContentsManager.getEntryName(it) == c.wineVersion }?.verName ?: c.wineVersion
+            ProtonVersions.newerThan(current.orEmpty(), names)?.let { c.id to it }
+        }.toMap()
     }
 
     /** Opens the Compose container editor above the tabs; back returns here and refreshes. */

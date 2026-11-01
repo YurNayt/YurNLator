@@ -1,5 +1,7 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.core.RemoteFetch;
+import com.winlator.cmod.contents.ContentCatalogs;
 import com.winlator.cmod.core.LocalInstalls;
 import com.winlator.cmod.contents.DriverOrigins;
 import android.Manifest;
@@ -296,11 +298,11 @@ public class OnboardingActivity extends AppCompatActivity {
         io.execute(() -> {
             try {
                 String url = preferences.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES);
-                try (Response response = http.newCall(new Request.Builder().url(url).build()).execute()) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        contentsManager.setRemoteProfiles(response.body().string());
-                    }
-                }
+                // Main catalog plus the extra ones (Bannerlator, WCP Hub, FEX nightlies); saved
+                // copies are used offline, so the list is never empty after the first visit.
+                ContentCatalogs.refresh(this);
+                String body = RemoteFetch.get(this, url);
+                contentsManager.setRemoteProfiles(body != null ? body : "[]");
             } catch (Exception ignored) {
             }
             contentsManager.syncContents();
@@ -435,7 +437,8 @@ public class OnboardingActivity extends AppCompatActivity {
                         runtime,
                         inUse,
                         false,
-                        item.installed ? null : (item.packageInfo != null ? "Proton releases" : "Winlator Contents")
+                        item.installed ? null : (item.packageInfo != null ? "Proton releases"
+                                : (ContentCatalogs.sourceOf(item.url) != null ? ContentCatalogs.sourceOf(item.url) : "Winlator Contents"))
                 ));
             }
         }

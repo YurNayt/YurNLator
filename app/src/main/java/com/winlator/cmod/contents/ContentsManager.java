@@ -110,15 +110,38 @@ public class ContentsManager {
                     ContentProfile remoteProfile = new ContentProfile();
                     remoteProfile.remoteUrl = remoteUrl;
                     remoteProfile.type = ContentProfile.ContentType.getTypeByName(object.getString("type"));
+                    if (remoteProfile.type == null) continue;
                     remoteProfile.verName = object.getString("verName");
                     remoteProfile.verCode = object.getInt("verCode");
                     remoteProfiles.add(remoteProfile);
+                    ContentCatalogs.rememberMainSource(remoteUrl);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
             }
         } catch (JSONException e) {
             e.printStackTrace();
+        }
+        // YurNLator: extra catalogs (Bannerlator, WCP Hub, FEX nightlies), saved copies only.
+        // A version already listed (same type and name, or same file) is not repeated.
+        java.util.HashSet<String> seen = new java.util.HashSet<>();
+        for (ContentProfile p : remoteProfiles) {
+            seen.add(p.type + "|" + p.verName.toLowerCase(java.util.Locale.ENGLISH));
+            seen.add(p.remoteUrl);
+        }
+        for (ContentCatalogs.Entry e : ContentCatalogs.extraEntries(context)) {
+            ContentProfile.ContentType type = ContentProfile.ContentType.getTypeByName(e.getType());
+            if (type == null) continue;
+            String key = type + "|" + e.getVerName().toLowerCase(java.util.Locale.ENGLISH);
+            if (seen.contains(key) || seen.contains(e.getRemoteUrl())) continue;
+            seen.add(key);
+            seen.add(e.getRemoteUrl());
+            ContentProfile remoteProfile = new ContentProfile();
+            remoteProfile.remoteUrl = e.getRemoteUrl();
+            remoteProfile.type = type;
+            remoteProfile.verName = e.getVerName();
+            remoteProfile.verCode = e.getVerCode();
+            remoteProfiles.add(remoteProfile);
         }
         syncContents();
     }

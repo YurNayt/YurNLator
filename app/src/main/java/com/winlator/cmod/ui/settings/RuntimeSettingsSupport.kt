@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.core.ProtonVersions
+import com.winlator.cmod.contents.ContentCatalogs
 import com.winlator.cmod.contents.ContentFileImport
 import com.winlator.cmod.ui.components.ChoiceOption
 import com.winlator.cmod.ui.components.ChoiceSheet
@@ -124,6 +126,7 @@ private suspend fun syncRemoteContents(context: Context, manager: ContentsManage
             val prefs = PreferenceManager.getDefaultSharedPreferences(context)
             val url = prefs.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES)
                 ?: ContentsManager.REMOTE_PROFILES
+            if (allowNetwork) ContentCatalogs.refresh(context)
             val body = if (allowNetwork) RemoteFetch.get(context, url) else RemoteFetch.cached(context, url)
             body?.let(manager::setRemoteProfiles)
             manager.syncContents()
@@ -563,6 +566,11 @@ internal fun SettingWineRuntimeChoice(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedOption = options.firstOrNull { it.id == selectedId }
+    // A newer build of the same Proton / Wine line (installed or downloadable), Bannerlator-style.
+    val update = remember(options, selectedId) {
+        selectedOption?.let { cur -> ProtonVersions.newerThan(cur.label, options.map { it.label }) }
+            ?.let { name -> options.firstOrNull { it.label == name } }
+    }
     Box(Modifier.fillMaxWidth()) {
         Surface(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
             Row(
@@ -578,6 +586,14 @@ internal fun SettingWineRuntimeChoice(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (update != null) {
+                        Text(
+                            "Update available: ${update.label}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
@@ -587,7 +603,11 @@ internal fun SettingWineRuntimeChoice(
         ChoiceSheet(
             title = label,
             options = options.map { o ->
-                ChoiceOption(o.id, o.label, o.type, installed = o.installed, busy = "wine:${o.id}" in installing)
+                ChoiceOption(
+                    o.id, o.label,
+                    if (o.id == update?.id) "${o.type} · Newer build of your current one" else o.type,
+                    installed = o.installed, busy = "wine:${o.id}" in installing
+                )
             },
             selected = selectedId,
             onPick = { picked ->

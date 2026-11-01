@@ -298,7 +298,9 @@ private fun TypePage(
     // Other types have one source -> no selector, unless there are own files: All, My files.
     val customSources = remember(sourcesRev) { DriverSources.custom(context) }
     val authors = remember(items, type.key, sourcesRev, myFiles) {
-        if (type.hasAuthors) {
+        // Other types get the selector too as soon as their versions come from 2+ sources.
+        val sourceCount = items.filter { !it.installed }.mapNotNull { it.author }.distinct().size
+        if (type.hasAuthors || sourceCount > 1) {
             val names = linkedSetOf<String>()
             if (type.isGpuDriver) DriverSources.all(context).forEach { names += it.name }
             items.filter { !it.installed }.mapNotNullTo(names) { it.author }
