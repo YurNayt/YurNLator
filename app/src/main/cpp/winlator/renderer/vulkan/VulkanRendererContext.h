@@ -120,30 +120,35 @@ static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 struct WindowPushConstants      { float ndcX0, ndcY0, ndcX1, ndcY1; int useTexAlpha;
                                   float _pad[7];
-                                  float cosR = 1.f, sinR = 0.f; };
+                                  float cosR = 1.f, sinR = 0.f;
+                                  float brightness = 0.f, contrast = 1.f, gamma = 1.f, colorPad = 0.f; };
 struct WindowPushConstantsSGSR  { float ndcX0, ndcY0, ndcX1, ndcY1; int useTexAlpha;
                                   float invSrcW, invSrcH, srcW, srcH;
                                   int   effectId;
                                   float resW;
                                   float sharpness;
-                                  float cosR = 1.f, sinR = 0.f; };
+                                  float cosR = 1.f, sinR = 0.f;
+                                  float brightness = 0.f, contrast = 1.f, gamma = 1.f, colorPad = 0.f; };
 struct WindowPushConstantsStretch { float ndcX0, ndcY0, ndcX1, ndcY1; int useTexAlpha; float strength; float profile;
                                   float _pad[5];
-                                  float cosR = 1.f, sinR = 0.f; };
+                                  float cosR = 1.f, sinR = 0.f;
+                                  float brightness = 0.f, contrast = 1.f, gamma = 1.f, colorPad = 0.f; };
 
 struct WindowPushConstantsFSR1  { float ndcX0, ndcY0, ndcX1, ndcY1; int useTexAlpha;
                                   float srcW, srcH, outW, outH;
                                   int   effectId;
                                   float sharpness;
                                   float _pad0;
-                                  float cosR = 1.f, sinR = 0.f; };
+                                  float cosR = 1.f, sinR = 0.f;
+                                  float brightness = 0.f, contrast = 1.f, gamma = 1.f, colorPad = 0.f; };
 
 struct WindowPushConstantsPostFX  { float ndcX0, ndcY0, ndcX1, ndcY1;
                                     int   effectId;
                                     float sharpness;
                                     float resW, resH;
                                     float _pad[4];
-                                    float cosR = 1.f, sinR = 0.f; };
+                                    float cosR = 1.f, sinR = 0.f;
+                                  float brightness = 0.f, contrast = 1.f, gamma = 1.f, colorPad = 0.f; };
 
 static_assert(offsetof(WindowPushConstants,       cosR) == 48, "cosR offset must match window_vert.txt layout(offset=48)");
 static_assert(offsetof(WindowPushConstantsSGSR,   cosR) == 48, "cosR offset must match window_vert.txt layout(offset=48)");
@@ -151,6 +156,12 @@ static_assert(offsetof(WindowPushConstantsStretch,cosR) == 48, "cosR offset must
 static_assert(offsetof(WindowPushConstantsFSR1,   cosR) == 48, "cosR offset must match window_vert.txt layout(offset=48)");
 static_assert(sizeof(WindowPushConstantsFSR1) == sizeof(WindowPushConstantsSGSR), "FSR1 push constants must fit the shared pipeline layout range");
 static_assert(offsetof(WindowPushConstantsPostFX, cosR) == 48, "cosR offset must match window_vert.txt layout(offset=48)");
+// YurNLator screen effects: brightness / contrast / gamma at the same offset in every layout (shaders: offset 56).
+static_assert(offsetof(WindowPushConstants, brightness) == 56 && offsetof(WindowPushConstantsSGSR, brightness) == 56 &&
+              offsetof(WindowPushConstantsStretch, brightness) == 56 && offsetof(WindowPushConstantsFSR1, brightness) == 56 &&
+              offsetof(WindowPushConstantsPostFX, brightness) == 56, "color adjust offset must be 56");
+static_assert(sizeof(WindowPushConstants) == sizeof(WindowPushConstantsSGSR) && sizeof(WindowPushConstantsStretch) == sizeof(WindowPushConstantsSGSR) &&
+              sizeof(WindowPushConstantsPostFX) == sizeof(WindowPushConstantsSGSR), "push constant layouts must share one range");
 
 class VulkanRendererContext {
 public:
@@ -193,6 +204,7 @@ public:
     void setStretchMode(int mode);
     void setPostFXMode(int mode);
     void setSharpness(float s);
+    void setColorAdjust(float brightness, float contrast, float gamma);
     void setSwapRB(bool enabled);
     void setPresentMode(VkPresentModeKHR mode);
     std::vector<int> getSupportedPresentModes() const;
@@ -279,6 +291,7 @@ public:
     float stretchStrength = 0.40f;
     float stretchProfile  = 0.60f;
     float sharpness = 0.5f;
+    float colorBrightness = 0.f, colorContrast = 1.f, colorGamma = 1.f;
     bool swapRB = false;
     float maxAnisotropy           = 1.0f;
     VkPhysicalDeviceMemoryProperties memProperties{};

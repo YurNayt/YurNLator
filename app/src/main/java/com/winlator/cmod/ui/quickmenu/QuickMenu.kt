@@ -419,6 +419,9 @@ private fun ScreenSection(bridge: QuickMenuBridge, opened: Int) {
     var sharp by remember(opened) { mutableIntStateOf(bridge.sharpness()) }
     var shader by remember(opened) { mutableIntStateOf(bridge.shader()) }
     var scaling by remember(opened) { mutableIntStateOf(bridge.scaling()) }
+    var bright by remember(opened) { mutableIntStateOf(bridge.brightness()) }
+    var contrast by remember(opened) { mutableIntStateOf(bridge.contrast()) }
+    var gamma by remember(opened) { mutableFloatStateOf(bridge.gamma()) }
     var shaderMenu by remember { mutableStateOf(false) }
 
     SectionPage("Screen effects") {
@@ -472,6 +475,20 @@ private fun ScreenSection(bridge: QuickMenuBridge, opened: Int) {
                 StepSlider(if (shader >= 10) "Effect strength" else "Sharpness", sharp / 100f, "$sharp%",
                     onChange = { f -> sharp = (f * 100).roundToInt(); bridge.setSharpness(sharp, false) },
                     onCommit = { bridge.setSharpness(sharp, true) })
+            }
+        }
+        if (vulkan) {
+            StepSlider("Brightness", (bright + 100) / 200f, "$bright%", step = 0.025f,
+                onChange = { f -> bright = (f * 200 - 100).roundToInt(); bridge.setColorAdjust(bright, contrast, gamma, false) },
+                onCommit = { bridge.setColorAdjust(bright, contrast, gamma, true) })
+            StepSlider("Contrast", (contrast + 100) / 200f, "$contrast%", step = 0.025f,
+                onChange = { f -> contrast = (f * 200 - 100).roundToInt(); bridge.setColorAdjust(bright, contrast, gamma, false) },
+                onCommit = { bridge.setColorAdjust(bright, contrast, gamma, true) })
+            StepSlider("Gamma", (gamma - 0.5f) / 2f, String.format(Locale.getDefault(), "%.2fx", gamma), step = 0.025f,
+                onChange = { f -> gamma = 0.5f + f * 2f; bridge.setColorAdjust(bright, contrast, gamma, false) },
+                onCommit = { bridge.setColorAdjust(bright, contrast, gamma, true) })
+            if (bright != 0 || contrast != 0 || kotlin.math.abs(gamma - 1f) > 0.005f) {
+                TextButton(onClick = { bright = 0; contrast = 0; gamma = 1f; bridge.setColorAdjust(0, 0, 1f, true) }) { Text("Reset picture") }
             }
         }
         Card {

@@ -3043,6 +3043,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         private int upscalerMode = -1;
         private int shaderId = 0;
         private int sharp = 50;
+        private int colorBrightness = 0;
+        private int colorContrast = 0;
+        private float colorGamma = 1f;
         private java.util.Timer tasksTimer;
         private kotlin.jvm.functions.Function1<? super QmTasks, kotlin.Unit> tasksListener;
         private final ArrayList<ProcessInfo> pending = new ArrayList<>();
@@ -3077,8 +3080,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             sharp = parseInt(extra("graphicsSharpness"), 50);
             String savedShader = extra("graphicsShader");
             shaderId = !savedShader.isEmpty() ? parseInt(savedShader, 0) : parseInt(extra("graphicsPostFXMode"), 0);
+            colorBrightness = parseInt(extra("screenBrightness"), 0);
+            colorContrast = parseInt(extra("screenContrast"), 0);
+            try { colorGamma = extra("screenGamma").isEmpty() ? 1f : Float.parseFloat(extra("screenGamma")); } catch (Exception e) { colorGamma = 1f; }
             VulkanXServerView vk = vk();
             if (vk == null) return;
+            applyColor(vk);
             vk.setSharpness(sharp / 100f);
             if (shaderId >= 10) {
                 upscalerMode = -1;
@@ -3182,6 +3189,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
             vk.setPostFXMode(id);
             if (container != null) container.putExtra("graphicsPostFXMode", String.valueOf(id <= 4 ? id : 0));
             putExtra("graphicsShader", String.valueOf(id));
+        }
+
+        private void applyColor(VulkanXServerView vk) {
+            vk.setColorAdjust(colorBrightness / 200f, 1f + colorContrast / 100f, colorGamma);
+        }
+
+        @Override public int brightness() { return colorBrightness; }
+        @Override public int contrast() { return colorContrast; }
+        @Override public float gamma() { return colorGamma; }
+
+        @Override public void setColorAdjust(int brightness, int contrast, float gamma, boolean save) {
+            colorBrightness = Math.max(-100, Math.min(100, brightness));
+            colorContrast = Math.max(-100, Math.min(100, contrast));
+            colorGamma = Math.max(0.5f, Math.min(2.5f, gamma));
+            VulkanXServerView vk = vk();
+            if (vk != null) applyColor(vk);
+            if (save && container != null) {
+                container.putExtra("screenBrightness", String.valueOf(colorBrightness));
+                container.putExtra("screenContrast", String.valueOf(colorContrast));
+                container.putExtra("screenGamma", String.format(java.util.Locale.US, "%.2f", colorGamma));
+                container.saveData();
+            }
         }
 
         @Override public int scaling() {

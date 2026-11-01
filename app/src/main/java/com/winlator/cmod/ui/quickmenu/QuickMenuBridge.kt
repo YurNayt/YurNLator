@@ -47,6 +47,12 @@ interface QuickMenuBridge {
     /** 0 none, 1 DLS, 2 CRT, 3 HDR, 4 Natural, 10 … 20 ReShade-style effects. */
     fun shader(): Int
     fun setShader(id: Int)
+    /** Picture brightness / contrast in -100…100 (0 = unchanged), gamma 0.5…2.5 (1 = unchanged). */
+    fun brightness(): Int
+    fun contrast(): Int
+    fun gamma(): Float
+    fun setColorAdjust(brightness: Int, contrast: Int, gamma: Float, save: Boolean)
+
     /** 0 fit, 1 fullscreen, 2 stretch. */
     fun scaling(): Int
     fun setScaling(mode: Int)

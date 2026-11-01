@@ -63,6 +63,7 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     private int     pendingFilterMode     = 0;
     private int     pendingPostFXMode     = 0;
     private float   pendingSharpness      = 0.5f;
+    private float   pendingBrightness = 0f, pendingContrast = 1f, pendingGamma = 1f;
     private boolean pendingSwapRB         = false;
 
     private WinlatorHUD hudRef = null;
@@ -124,6 +125,7 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     @FastNative private native void nativeRemoveWindow(long handle, long id);
     @FastNative private native void nativeSetVerboseLog(long handle, boolean v);
     @FastNative private native void nativeSetSharpness(long handle, float sharpness);
+    private native void nativeSetColorAdjust(long handle, float brightness, float contrast, float gamma);
 
     private native void nativeDumpRendererInfo(long handle);
     private native void nativeSetFilterMode(long handle, int mode);
@@ -190,6 +192,7 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
                         nativeSetStretchMode(nativeHandle, pendingStretchMode);
                         nativeSetPostFXMode(nativeHandle, pendingPostFXMode);
                         nativeSetSharpness(nativeHandle, pendingSharpness);
+                        nativeSetColorAdjust(nativeHandle, pendingBrightness, pendingContrast, pendingGamma);
                         updateTransform();
                         nativeSetCursorVisible(nativeHandle, cursorVisible);
                         initComplete = true;
@@ -208,6 +211,7 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
                     nativeSetSwapRB(nativeHandle, pendingSwapRB);
                     nativeSetPostFXMode(nativeHandle, pendingPostFXMode);
                     nativeSetSharpness(nativeHandle, pendingSharpness);
+                    nativeSetColorAdjust(nativeHandle, pendingBrightness, pendingContrast, pendingGamma);
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);
 
@@ -560,6 +564,12 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     public void setSharpness(float s) {
         pendingSharpness = s;
         synchronized (lock) { if (nativeHandle != 0) nativeSetSharpness(nativeHandle, s); }
+    }
+
+    /** Picture brightness (-1…1, 0 = unchanged), contrast (1 = unchanged) and gamma (1 = unchanged). */
+    public void setColorAdjust(float brightness, float contrast, float gamma) {
+        pendingBrightness = brightness; pendingContrast = contrast; pendingGamma = gamma;
+        synchronized (lock) { if (nativeHandle != 0) nativeSetColorAdjust(nativeHandle, brightness, contrast, gamma); }
     }
 
     public void setFilterMode(int mode) {

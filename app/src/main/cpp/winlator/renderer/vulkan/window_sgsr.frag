@@ -16,7 +16,17 @@ layout(push_constant) uniform PC {
     int   effectId;
     float resW;
     float sharpness;
+    layout(offset = 56) float brightness;
+    layout(offset = 60) float contrast;
+    layout(offset = 64) float gamma;
 } pc;
+
+// YurNLator screen effects (brightness / contrast / gamma); identity at 0 / 1 / 1.
+vec3 yurnColor(vec3 c) {
+    c = pow(max(c, vec3(0.0)), vec3(1.0 / max(pc.gamma, 0.01)));
+    c = (c - 0.5) * pc.contrast + 0.5 + pc.brightness;
+    return clamp(c, 0.0, 1.0);
+}
 
 layout(binding = 0) uniform mediump sampler2D texSampler;
 layout(location = 0) in  highp vec2 fragTexCoord;
@@ -118,7 +128,7 @@ void main() {
     if (edgeVote <= EDGE_THRESHOLD) {
         vec3 rgb = center.rgb;
         if (pc.effectId != 0) applyPostFX(rgb, fragTexCoord);
-        outColor = vec4(rgb, (pc.useTexAlpha != 0) ? center.a : 1.0);
+        outColor = vec4(yurnColor(rgb), (pc.useTexAlpha != 0) ? center.a : 1.0);
         return;
     }
 
@@ -175,5 +185,5 @@ void main() {
 
     if (pc.effectId != 0) applyPostFX(result.rgb, fragTexCoord);
 
-    outColor = result;
+    outColor = vec4(yurnColor(result.rgb), result.a);
 }

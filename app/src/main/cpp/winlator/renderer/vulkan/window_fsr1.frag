@@ -20,7 +20,17 @@ layout(push_constant) uniform PC {
     float outH;
     int   effectId;
     float sharpness;
+    layout(offset = 56) float brightness;
+    layout(offset = 60) float contrast;
+    layout(offset = 64) float gamma;
 } pc;
+
+// YurNLator screen effects (brightness / contrast / gamma); identity at 0 / 1 / 1.
+vec3 yurnColor(vec3 c) {
+    c = pow(max(c, vec3(0.0)), vec3(1.0 / max(pc.gamma, 0.01)));
+    c = (c - 0.5) * pc.contrast + 0.5 + pc.brightness;
+    return clamp(c, 0.0, 1.0);
+}
 
 layout(binding = 0) uniform mediump sampler2D texSampler;
 layout(location = 0) in highp vec2 fragTexCoord;
@@ -62,7 +72,7 @@ void main() {
     // SGSR uses 12/255. FSR deliberately engages reconstruction earlier.
     const float EDGE_THRESHOLD = 8.0 / 255.0;
     if (edgeVote <= EDGE_THRESHOLD) {
-        outColor = vec4(center.rgb, (pc.useTexAlpha != 0) ? center.a : 1.0);
+        outColor = vec4(yurnColor(center.rgb), (pc.useTexAlpha != 0) ? center.a : 1.0);
         return;
     }
 
@@ -116,5 +126,5 @@ void main() {
     float deltaY = clamp(finalY - centerG, -maxDelta, maxDelta);
 
     vec3 result = clamp(center.rgb + vec3(deltaY), 0.0, 1.0);
-    outColor = vec4(result, (pc.useTexAlpha != 0) ? center.a : 1.0);
+    outColor = vec4(yurnColor(result), (pc.useTexAlpha != 0) ? center.a : 1.0);
 }

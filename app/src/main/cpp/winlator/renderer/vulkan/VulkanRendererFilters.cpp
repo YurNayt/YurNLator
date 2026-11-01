@@ -262,6 +262,9 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.sharpness = sharpness;
             pc.cosR = rotCosR;
             pc.sinR = rotSinR;
+            pc.brightness = colorBrightness;
+            pc.contrast = colorContrast;
+            pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout,
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0, sizeof(pc), &pc);
@@ -285,6 +288,9 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.sharpness = sharpness;
             pc.cosR = rotCosR;
             pc.sinR = rotSinR;
+            pc.brightness = colorBrightness;
+            pc.contrast = colorContrast;
+            pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout,
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0, sizeof(pc), &pc);
@@ -300,6 +306,9 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.resH = (float)std::max(d.h, 1);
             pc.cosR = rotCosR;
             pc.sinR = rotSinR;
+            pc.brightness = colorBrightness;
+            pc.contrast = colorContrast;
+            pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout,
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0, sizeof(pc), &pc);
@@ -314,6 +323,9 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.profile = stretchProfile;
             pc.cosR = rotCosR;
             pc.sinR = rotSinR;
+            pc.brightness = colorBrightness;
+            pc.contrast = colorContrast;
+            pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout,
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0, sizeof(pc), &pc);
@@ -326,6 +338,9 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.useTexAlpha = 0;
             pc.cosR = rotCosR;
             pc.sinR = rotSinR;
+            pc.brightness = colorBrightness;
+            pc.contrast = colorContrast;
+            pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout,
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0, sizeof(pc), &pc);

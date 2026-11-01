@@ -528,6 +528,13 @@ void VulkanRendererContext::setPostFXMode(int mode) {
     needsRender.store(true); dirtyCV.notify_one();
 }
 
+void VulkanRendererContext::setColorAdjust(float brightness, float contrast, float gamma) {
+    colorBrightness = std::clamp(brightness, -1.0f, 1.0f);
+    colorContrast = std::clamp(contrast, 0.0f, 3.0f);
+    colorGamma = std::clamp(gamma, 0.1f, 4.0f);
+    needsRender.store(true); dirtyCV.notify_one();
+}
+
 void VulkanRendererContext::setSharpness(float s) {
     sharpness = std::clamp(s, 0.0f, 1.0f);
     needsRender.store(true); dirtyCV.notify_one();
@@ -946,6 +953,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.srcW = sw; pc.srcH = sh;
             pc.effectId = postFXMode; pc.resW = 0.0f; pc.sharpness = sharpness;
             pc.cosR = rotCosR; pc.sinR = rotSinR;
+            pc.brightness = colorBrightness; pc.contrast = colorContrast; pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         } else if (useFsr1) {
             WindowPushConstantsFSR1 pc{};
@@ -959,6 +967,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.outH = std::max(1.0f, fabsf(pc.ndcY1-pc.ndcY0)*0.5f*(float)swapchainExt.height);
             pc.effectId = postFXMode; pc.sharpness = sharpness;
             pc.cosR = rotCosR; pc.sinR = rotSinR;
+            pc.brightness = colorBrightness; pc.contrast = colorContrast; pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         } else if (usePostFX) {
             WindowPushConstantsPostFX pc{};
@@ -967,6 +976,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.effectId=postFXMode; pc.sharpness=sharpness;
             pc.resW=(float)std::max(d.w,1); pc.resH=(float)std::max(d.h,1);
             pc.cosR = rotCosR; pc.sinR = rotSinR;
+            pc.brightness = colorBrightness; pc.contrast = colorContrast; pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         } else if (useStretch) {
             WindowPushConstantsStretch pc{};
@@ -974,6 +984,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.ndcY0=(oy+(float)d.y*sy)/ch*2.f-1.f; pc.ndcY1=(oy+(float)(d.y+d.h)*sy)/ch*2.f-1.f;
             pc.useTexAlpha=0; pc.strength=stretchStrength; pc.profile=stretchProfile;
             pc.cosR = rotCosR; pc.sinR = rotSinR;
+            pc.brightness = colorBrightness; pc.contrast = colorContrast; pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         } else {
             WindowPushConstants pc{};
@@ -981,6 +992,7 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             pc.ndcX1=(ox+(float)(d.x+d.w)*sx)/cw*2.f-1.f; pc.ndcY1=(oy+(float)(d.y+d.h)*sy)/ch*2.f-1.f;
             pc.useTexAlpha=0;
             pc.cosR = rotCosR; pc.sinR = rotSinR;
+            pc.brightness = colorBrightness; pc.contrast = colorContrast; pc.gamma = colorGamma;
             vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         }
         vk_.CmdDraw(cb, 4, 1, 0, 0);

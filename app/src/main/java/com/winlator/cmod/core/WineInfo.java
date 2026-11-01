@@ -126,7 +126,15 @@ public class WineInfo implements Parcelable {
         ContentProfile wineProfile = contentsManager.getProfileByEntryName(identifier);
 
         if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
-            identifier = identifier.substring(0, identifier.length() - 2).toLowerCase();
+            // Entry names are "<Type>-<verName>-<verCode>": drop the verCode (any length).
+            int lastDash = identifier.lastIndexOf('-');
+            identifier = (lastDash > 0 ? identifier.substring(0, lastDash) : identifier).toLowerCase();
+            // YurNLator: names from other catalogs ("Proton-11.0-2-arm64ec (v16)", "GE-Proton-11.0-9-…")
+            // don't match the strict pattern below; before, they silently fell back to the
+            // built-in Proton 9. An installed package always runs from its own folder.
+            if (!pattern.matcher(identifier).find()) {
+                return fromInstalledProfile(wineProfile, contentsManager.getInstallDir(context, wineProfile).getPath());
+            }
         }
 
         Matcher matcher = pattern.matcher(identifier);
@@ -147,6 +155,29 @@ public class WineInfo implements Parcelable {
             return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(3), matcher.group(4), path);
         }
         else return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, imageFs.getRootDir().getPath() + "/opt/" + MAIN_WINE_VERSION.identifier());
+    }
+
+    private static final Pattern loosePattern = Pattern.compile("(\\d+(?:\\.\\d+)+|\\d+)(?:-(\\d+(?:\\.\\d+)*))?");
+
+    /** Wine / Proton version, sub version and architecture read from a package's free-form name. */
+    private static WineInfo fromInstalledProfile(ContentProfile profile, String path) {
+        String name = profile.verName != null ? profile.verName.toLowerCase() : "";
+        String type = profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON ? "proton" : "wine";
+        String arch;
+        if (name.contains("arm64ec")) arch = "arm64ec";
+        else if (name.contains("x86_64") || name.contains("x86-64")) arch = "x86_64";
+        else if (name.contains("x86")) arch = "x86";
+        else arch = "arm64ec";
+        String cleaned = name.replace("x86_64", " ").replace("x86-64", " ").replace("arm64ec", " ")
+                .replaceAll("\\(v\\d+\\)", " ");
+        Matcher m = loosePattern.matcher(cleaned);
+        String version = "0";
+        String subversion = null;
+        if (m.find()) {
+            version = m.group(1);
+            subversion = m.group(2);
+        }
+        return new WineInfo(type, version, subversion, arch, path);
     }
 
     public static boolean isMainWineVersion(String wineVersion) {

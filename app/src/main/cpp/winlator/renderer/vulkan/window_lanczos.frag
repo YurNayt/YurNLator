@@ -15,7 +15,17 @@ layout(push_constant) uniform PC {
     float outH;
     int   effectId;
     float sharpness;
+    layout(offset = 56) float brightness;
+    layout(offset = 60) float contrast;
+    layout(offset = 64) float gamma;
 } pc;
+
+// YurNLator screen effects (brightness / contrast / gamma); identity at 0 / 1 / 1.
+vec3 yurnColor(vec3 c) {
+    c = pow(max(c, vec3(0.0)), vec3(1.0 / max(pc.gamma, 0.01)));
+    c = (c - 0.5) * pc.contrast + 0.5 + pc.brightness;
+    return clamp(c, 0.0, 1.0);
+}
 
 layout(binding = 0) uniform sampler2D texSampler;
 layout(location = 0) in vec2 fragTexCoord;
@@ -62,5 +72,6 @@ void main() {
 
     vec4 color = accum / max(abs(totalWeight), 1e-6);
     if (pc.useTexAlpha == 0) color.a = 1.0;
-    outColor = clamp(color, 0.0, 1.0);
+    vec4 clamped = clamp(color, 0.0, 1.0);
+    outColor = vec4(yurnColor(clamped.rgb), clamped.a);
 }

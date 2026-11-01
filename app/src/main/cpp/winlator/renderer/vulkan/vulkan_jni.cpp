@@ -369,3 +369,11 @@ Java_com_winlator_cmod_widget_VulkanXServerView_nativeReattachSurface(
     bool ok = r->reattachSurface(win);
     return (jboolean)ok;
 }
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetColorAdjust(
+    JNIEnv*, jobject, jlong handle, jfloat brightness, jfloat contrast, jfloat gamma)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setColorAdjust((float)brightness, (float)contrast, (float)gamma);
+}

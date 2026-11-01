@@ -10,7 +10,17 @@ layout(push_constant) uniform PC {
     int   useTexAlpha;
     float strength;
     float profile;
+    layout(offset = 56) float brightness;
+    layout(offset = 60) float contrast;
+    layout(offset = 64) float gamma;
 } pc;
+
+// YurNLator screen effects (brightness / contrast / gamma); identity at 0 / 1 / 1.
+vec3 yurnColor(vec3 c) {
+    c = pow(max(c, vec3(0.0)), vec3(1.0 / max(pc.gamma, 0.01)));
+    c = (c - 0.5) * pc.contrast + 0.5 + pc.brightness;
+    return clamp(c, 0.0, 1.0);
+}
 
 layout(location = 0) in  vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
@@ -32,5 +42,5 @@ void main() {
     float u = clamp(0.5 * warped + 0.5, 0.0, 1.0);
 
     vec4 c = texture(texSampler, vec2(u, fragTexCoord.y));
-    outColor = vec4(c.rgb, pc.useTexAlpha != 0 ? c.a : 1.0);
+    outColor = vec4(yurnColor(c.rgb), pc.useTexAlpha != 0 ? c.a : 1.0);
 }
