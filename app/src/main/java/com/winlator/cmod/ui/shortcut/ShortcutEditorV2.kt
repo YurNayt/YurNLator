@@ -192,6 +192,7 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     var bcnType by mutableStateOf(readConfig(graphicsConfig, "bcnEmulationType", ';').ifBlank { "compute" })
     var bcnVersion by mutableStateOf(readConfig(graphicsConfig, "bcnVersion", ';').ifBlank { "current" })
     var bcnTranscode by mutableStateOf(readConfig(graphicsConfig, "bcnTranscode", ';').ifBlank { "astc" })
+    var bcnQuality by mutableStateOf(readConfig(graphicsConfig, "bcnQuality", ';').ifBlank { "auto" })
     var bcnCache by mutableStateOf(readConfig(graphicsConfig, "bcnEmulationCache", ';') == "1")
     var gpuName by mutableStateOf(readConfig(graphicsConfig, "gpuName", ';').ifBlank { "Device" })
     var blacklistedExtensions by mutableStateOf(readConfig(graphicsConfig, "blacklistedExtensions", ';'))
@@ -876,6 +877,8 @@ private fun ShortcutCategoryV2(
                     if (s.bcnVersion == "legacy") {
                         SettingsDivider()
                         SettingChoice("BCn transcode to", s.bcnTranscode, listOf("astc", "etc2", "etc1")) { s.bcnTranscode = it; s.graphics("bcnTranscode", it) }
+                        SettingsDivider()
+                        SettingChoice("BCn quality", s.bcnQuality, listOf("auto", "fast", "balanced", "high")) { s.bcnQuality = it; s.graphics("bcnQuality", it) }
                     }
                 }
                 SettingsDivider()

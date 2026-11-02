@@ -202,6 +202,7 @@ private class ContainerEditorStateV2(
     var bcnType by mutableStateOf(readConfig(graphicsConfig, "bcnEmulationType", ';').ifBlank { "compute" })
     var bcnVersion by mutableStateOf(readConfig(graphicsConfig, "bcnVersion", ';').ifBlank { "current" })
     var bcnTranscode by mutableStateOf(readConfig(graphicsConfig, "bcnTranscode", ';').ifBlank { "astc" })
+    var bcnQuality by mutableStateOf(readConfig(graphicsConfig, "bcnQuality", ';').ifBlank { "auto" })
     var bcnCache by mutableStateOf(readConfig(graphicsConfig, "bcnEmulationCache", ';') == "1")
 
     var wrapper by mutableStateOf(editing?.dxWrapper ?: Container.DEFAULT_DXWRAPPER)
@@ -992,6 +993,8 @@ private fun ContainerCategoryV2(
                     if (s.bcnVersion == "legacy") {
                         SettingsDivider()
                         SettingChoice("BCn transcode to", s.bcnTranscode, listOf("astc", "etc2", "etc1")) { s.bcnTranscode = it; s.graphics("bcnTranscode", it) }
+                        SettingsDivider()
+                        SettingChoice("BCn quality", s.bcnQuality, listOf("auto", "fast", "balanced", "high")) { s.bcnQuality = it; s.graphics("bcnQuality", it) }
                     }
                 }
                 SettingsDivider()

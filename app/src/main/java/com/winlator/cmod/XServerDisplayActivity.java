@@ -2381,7 +2381,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (dxwrapper.contains("dxvk")) {
             DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
             String version = dxwrapperConfig.get("version");
-            if (version.equals("1.11.1-sarek")) {
+            if (version != null && version.contains("sarek")) {
                 Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
                 envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
             }
@@ -2432,7 +2432,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         String gpuName = graphicsDriverConfig.get("gpuName");
         String dxvkVersion = dxwrapperConfig.get("version");
-        if (!gpuName.equals("Device") && !dxvkVersion.equals("1.11.1-sarek")) {
+        if (!gpuName.equals("Device") && (dxvkVersion == null || !dxvkVersion.contains("sarek"))) {
             envVars.put("WRAPPER_DEVICE_NAME", gpuName);
             envVars.put("WRAPPER_DEVICE_ID", WineD3DConfigDialog.getDeviceIdFromGPUName(this, gpuName));
             envVars.put("WRAPPER_VENDOR_ID", WineD3DConfigDialog.getVendorIdFromGPUName(this, gpuName));
