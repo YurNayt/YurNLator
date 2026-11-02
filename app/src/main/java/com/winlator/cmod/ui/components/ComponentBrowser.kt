@@ -70,6 +70,8 @@ import com.winlator.cmod.contents.DriverSource
 import com.winlator.cmod.contents.DriverSources
 import com.winlator.cmod.core.DriverNames
 import com.winlator.cmod.core.LocalInstalls
+import com.winlator.cmod.core.MaliCompat
+import androidx.compose.material3.TextButton
 import com.winlator.cmod.core.VersionGroups
 import com.winlator.cmod.ui.settings.AddDriverSourceDialog
 import com.winlator.cmod.ui.settings.RemoveDriverSourceDialog
@@ -148,6 +150,15 @@ fun ComponentBrowser(
     busyProgress: Int = -1,
     typeHeader: @Composable (ComponentType) -> Unit = {}
 ) {
+    // Mali profile: versions that only work on Adreno are hidden (a banner shows them again).
+    val context = LocalContext.current
+    val maliActive = remember { MaliCompat.active(context) }
+    MaliCompat.showAll(context)
+    val maliShowAll = MaliCompat.showAllState.value == true
+    val visible = remember(items, maliActive, maliShowAll) {
+        if (!maliActive || maliShowAll) items
+        else items.filter { it.inUse || it.type == WRAPPER || MaliCompat.fits(context, it.type, it.name) }
+    }
     var currentKey by rememberSaveable { mutableStateOf(initialType) }
     val current = types.firstOrNull { it.key == currentKey }
     val canGoToList = initialType == null && types.size > 1
@@ -156,7 +167,7 @@ fun ComponentBrowser(
 
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (current == null) {
-            TypeList(title, subtitle, types, items, loading, onClose) { currentKey = it.key }
+            TypeList(title, subtitle, types, visible, loading, onClose) { currentKey = it.key }
         } else {
             val drawerState = rememberDrawerState(DrawerValue.Closed)
             val scope = rememberCoroutineScope()
@@ -175,7 +186,7 @@ fun ComponentBrowser(
                                     modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
                             }
                             items(types, key = { it.key }) { t ->
-                                TypeCard(t, items, loading, selected = t.key == current.key) {
+                                TypeCard(t, visible, loading, selected = t.key == current.key) {
                                     currentKey = t.key
                                     scope.launch { drawerState.close() }
                                 }
@@ -188,7 +199,7 @@ fun ComponentBrowser(
                 onOpenMenu = { scope.launch { drawerState.open() } },
                 type = current,
                 types = types,
-                items = items.filter { current.matches(it) },
+                items = visible.filter { current.matches(it) },
                 loading = loading,
                 busyIds = busyIds,
                 busyLabel = busyLabel,
@@ -198,7 +209,16 @@ fun ComponentBrowser(
                 onInstall = onInstall,
                 onRemove = onRemove,
                 onLocalPackage = { onLocalPackage(current) },
-                header = { typeHeader(current) }
+                header = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (maliActive) MaliNotice(
+                            hidden = items.count { current.matches(it) } - visible.count { current.matches(it) },
+                            showAll = maliShowAll,
+                            gpuDriver = current.isGpuDriver
+                        ) { MaliCompat.setShowAll(context, it) }
+                        typeHeader(current)
+                    }
+                }
             )
             }
         }
@@ -604,4 +624,26 @@ private fun Hint(text: String) {
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
+}
+
+/** Mali profile: "N Adreno-only versions hidden · Show" (or "Hide" when they're shown). */
+@Composable
+private fun MaliNotice(hidden: Int, showAll: Boolean, gpuDriver: Boolean, onShowAll: (Boolean) -> Unit) {
+    if (!showAll && hidden == 0) return
+    val scheme = MaterialTheme.colorScheme
+    Surface(shape = RoundedCornerShape(12.dp), color = scheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                when {
+                    showAll -> "Showing all versions, including Adreno-only ones"
+                    gpuDriver -> "Mali uses the system driver: $hidden Turnip / Adreno drivers hidden"
+                    else -> "$hidden Adreno-only versions hidden for your Mali GPU"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = { onShowAll(!showAll) }) { Text(if (showAll) "Hide" else "Show") }
+        }
+    }
 }

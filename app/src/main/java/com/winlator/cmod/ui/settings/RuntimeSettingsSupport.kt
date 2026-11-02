@@ -88,6 +88,31 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.CloudDownload
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import com.winlator.cmod.core.MaliCompat
+
+/** Mali profile: hide versions that only work on Adreno (see [MaliCompat]). */
+internal class MaliFilter(val active: Boolean, val showAll: Boolean) {
+    val on get() = active && !showAll
+    /** "Show N Adreno-only versions" / "Hide Adreno-only versions"; null when nothing to toggle. */
+    fun action(context: Context, hidden: Int): PickerAction? = when {
+        !active -> null
+        on && hidden > 0 -> PickerAction(Icons.Outlined.Visibility, MaliCompat.hiddenLabel(hidden),
+            "Hidden for your Mali GPU: they need Turnip / Adreno or newer Vulkan") { MaliCompat.setShowAll(context, true) }
+        showAll -> PickerAction(Icons.Outlined.VisibilityOff, "Hide Adreno-only versions",
+            "Show only versions that work on Mali") { MaliCompat.setShowAll(context, false) }
+        else -> null
+    }
+}
+
+@Composable
+internal fun maliFilter(): MaliFilter {
+    val context = LocalContext.current
+    val active = remember { MaliCompat.active(context) }
+    MaliCompat.showAll(context)
+    return MaliFilter(active, MaliCompat.showAllState.value == true)
+}
 
 internal data class VersionCatalog(val all: List<String>, val installed: Set<String>)
 internal data class DriverOption(
@@ -601,10 +626,13 @@ internal fun SettingWineRuntimeChoice(
         }
     }
     if (expanded) {
+        val context = LocalContext.current
+        val mali = maliFilter()
+        val fitting = options.filter { !mali.on || it.id == selectedId || MaliCompat.fits(context, it.type, it.label) }
         ChoiceSheet(
             title = label,
             // One row per Proton / Wine family (newest build), older builds behind the arrow.
-            options = VersionGroups.arrange(options, { it.type }, { it.label }, { it.installed }).flatMap { (family, members) ->
+            options = VersionGroups.arrange(fitting, { it.type }, { it.label }, { it.installed }).flatMap { (family, members) ->
                 members.map { o ->
                     ChoiceOption(
                         o.id, o.label,
@@ -619,7 +647,8 @@ internal fun SettingWineRuntimeChoice(
                 val o = options.first { it.id == picked.value }
                 if (o.installed) onSelected(o.id) else onInstall(o)
             },
-            onDismiss = { expanded = false }
+            onDismiss = { expanded = false },
+            actions = listOfNotNull(mali.action(context, options.size - fitting.size))
         )
     }
 }
@@ -675,10 +704,12 @@ internal fun SettingInstallChoice(
         }
     }
     if (expanded) {
+        val mali = maliFilter()
+        val fitting = catalog.all.filter { !mali.on || it == selected || MaliCompat.fits(context, prefix, it) }
         ChoiceSheet(
             title = label,
             // One row per family (e.g. "DXVK gplasync arm64ec", "FEXCore nightly"), other versions behind the arrow.
-            options = VersionGroups.arrange(catalog.all, { prefix }, { it }, { v ->
+            options = VersionGroups.arrange(fitting, { prefix }, { it }, { v ->
                 catalog.installed.any { it.equals(v, ignoreCase = true) } || v == selected
             }).flatMap { (family, members) ->
                 members.map { value ->
@@ -692,10 +723,11 @@ internal fun SettingInstallChoice(
             selected = selected,
             onPick = { if (it.installed) onSelected(it.value) else onInstall(it.value) },
             onDismiss = { expanded = false },
-            actions = listOf(
+            actions = listOfNotNull(
                 PickerAction(Icons.Outlined.FileOpen, "Install from file", "$prefix package (.wcp) from your phone, works offline", busy = importing) {
                     importLauncher.launch(arrayOf("*/*"))
-                }
+                },
+                mali.action(context, catalog.all.size - fitting.size)
             )
         )
     }
@@ -758,6 +790,7 @@ internal fun SettingDriverChoice(
         }
     }
     if (expanded) {
+        val mali = maliFilter()
         PickerSheet(
             title = "GPU driver",
             subtitle = "Installed drivers, or get a new one",
@@ -771,8 +804,12 @@ internal fun SettingDriverChoice(
                     expanded = false
                     showDownloads = true
                 }
-            ),
-            options = options.filter { it.installed }.map { o ->
+            ) + listOfNotNull(mali.action(context, options.count {
+                it.installed && !it.id.equals(selected, ignoreCase = true) && !MaliCompat.fits(context, "AdrenoTools", it.id)
+            })),
+            options = options.filter { it.installed }
+                .filter { !mali.on || it.id.equals(selected, ignoreCase = true) || MaliCompat.fits(context, "AdrenoTools", it.id) }
+                .map { o ->
                 val parsed = DriverNames.parse(o.label)
                 PickerOption(o.id, parsed.title, parsed.tags.joinToString(" · ").ifBlank { null })
             },
