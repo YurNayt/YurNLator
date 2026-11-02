@@ -118,6 +118,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         super.onCreate(savedInstanceState);
+        // Last crash (also from the game screen), once, with Share / Copy for testers.
+        getWindow().getDecorView().post(() -> com.winlator.cmod.core.CrashReports.checkOnLaunch(this));
         applyImmersiveMode();
 
         if (!sharedPreferences.getBoolean(OnboardingActivity.PREF_ONBOARDING_COMPLETE, false)) {
