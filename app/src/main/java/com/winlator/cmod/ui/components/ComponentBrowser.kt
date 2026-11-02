@@ -636,7 +636,7 @@ private fun MaliNotice(hidden: Int, showAll: Boolean, gpuDriver: Boolean, onShow
             Text(
                 when {
                     showAll -> "Showing all versions, including Adreno-only ones"
-                    gpuDriver -> "Mali uses the system driver: $hidden Turnip / Adreno drivers hidden"
+                    gpuDriver -> "$hidden Turnip / Adreno drivers hidden: on Mali use System or PanVK"
                     else -> "$hidden Adreno-only versions hidden for your Mali GPU"
                 },
                 style = MaterialTheme.typography.bodySmall,

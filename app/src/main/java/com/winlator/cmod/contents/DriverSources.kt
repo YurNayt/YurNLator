@@ -57,6 +57,16 @@ object DriverSources {
             "Bannerlator's Turnip builds", true),
         DriverSource("Rutabaga", listOf(DriverFeed.Json("$NIGHTLIES/rutabaga_drivers.json")),
             "Rutabaga builds", true),
+        // PanVK (open-source Mesa Vulkan for Mali, kbase backend), as listed by Winlator Mali+.
+        // Experimental: the System driver stays the safe choice on Mali.
+        DriverSource("PanVK · zenithblue", listOf(DriverFeed.Github("zenithblue-oss", "panvk-kbase-android")),
+            "Mali PanVK: G57, G615, G710, G715, G720", true),
+        DriverSource("PanVK · GunaCharanTeja", listOf(DriverFeed.Github("GunaCharanTeja", "panvk-kbase-android")),
+            "Mali PanVK: G615 MC2", true),
+        DriverSource("PanVK · FristOneRR", listOf(DriverFeed.Github("FristOneRR", "FristOneRR-Panvk-Driver")),
+            "Mali PanVK: G57 MC2 (Helio G99, Galaxy A15)", true),
+        DriverSource("PanVK · Noysz", listOf(DriverFeed.Github("Noysz", "panvk-g99-jm")),
+            "Mali PanVK: G57 MC2 / Helio G99, experimental", true),
     )
 
     /** Bumped on every change, so open screens reload their driver lists. */
