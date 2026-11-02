@@ -217,7 +217,6 @@ fun ComponentBrowser(
                 busyIds = busyIds,
                 busyLabel = busyLabel,
                 busyProgress = busyProgress,
-            downloadKey = downloadKey(item),
                 downloadKey = downloadKey,
                 onSwitchType = { currentKey = it.key },
                 onClose = { if (canGoToList) currentKey = null else onClose() },
@@ -397,6 +396,7 @@ private fun TypePage(
             locked = busyIds.isNotEmpty() && item.id !in busyIds,
             busyLabel = busyLabel,
             busyProgress = busyProgress,
+            downloadKey = downloadKey(item),
             onInstall = onInstall,
             onRemove = {
                 it.localKey?.let { key -> LocalInstalls.forget(context, key) }
