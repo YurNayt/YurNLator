@@ -2408,6 +2408,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
+    /** Puts the chosen BCn layer build into the image (only when it changed since last time). */
+    private void installBcnLayer(File rootDir, boolean legacy) {
+        String asset = legacy ? "graphics_driver/leegao_bcn_legacy.tzst" : "graphics_driver/leegao_bcn.tzst";
+        File marker = new File(rootDir, "usr/lib/.yurn-bcn-layer");
+        String want = asset + ":" + FileUtils.getSize(this, asset);
+        String have = marker.isFile() ? FileUtils.readString(marker).trim() : "";
+        if (want.equals(have) && new File(rootDir, "usr/lib/libbcn_layer.so").isFile()) return;
+        // version.txt at the root would overwrite the graphics driver's own: skip it.
+        com.winlator.cmod.core.OnExtractFileListener skipVersion = (file, size) ->
+                file.getName().equals("version.txt") && rootDir.equals(file.getParentFile()) ? null : file;
+        if (TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, asset, rootDir, skipVersion)) {
+            FileUtils.writeString(marker, want);
+        }
+    }
+
     private void extractGraphicsDriverFiles() {
         String adrenoToolsDriverId = graphicsDriverConfig.get("version");
 
@@ -2497,28 +2512,43 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         String bcnEmulation = graphicsDriverConfig.get("bcnEmulation");
         String bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType");
+        if (bcnEmulation == null) bcnEmulation = "auto";
+        if (bcnEmulationType == null || bcnEmulationType.isEmpty()) bcnEmulationType = "compute";
 
         switch (bcnEmulation) {
-            case "auto" -> {
-                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
-                    envVars.put("ENABLE_BCN_COMPUTE", "1");
-                    envVars.put("BCN_COMPUTE_AUTO", "1");
-                }
-                envVars.put("WRAPPER_EMULATE_BCN", "3");
-            }
-            case "full" -> {
-                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
-                    envVars.put("ENABLE_BCN_COMPUTE", "1");
-                    envVars.put("BCN_COMPUTE_AUTO", "0");
-                }
-                envVars.put("WRAPPER_EMULATE_BCN", "2");
-            }
+            case "auto" -> envVars.put("WRAPPER_EMULATE_BCN", "3");
+            case "full" -> envVars.put("WRAPPER_EMULATE_BCN", "2");
             case "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0");
             default -> envVars.put("WRAPPER_EMULATE_BCN", "1");
         }
 
         String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache");
-        envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache);
+        envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache != null && !bcnEmulationCache.isEmpty() ? bcnEmulationCache : "1");
+
+        // BCn texture layer from Winlator Mali 1.2.1 (leegao's bcn_layer, modified by WinMali-Dev):
+        // Mali / non-Adreno GPUs have no BC1-BC7 in hardware, the layer transcodes them (ASTC /
+        // ETC2). Adreno decodes BCn natively, so the layer is never loaded there.
+        boolean bcnLayer = !"none".equals(bcnEmulation) && "compute".equals(bcnEmulationType)
+                && GPUInformation.getVendorID(null, null) != 0x5143;
+        if (bcnLayer) {
+            boolean legacy = "legacy".equals(graphicsDriverConfig.get("bcnVersion"));
+            installBcnLayer(rootDir, legacy);
+            envVars.put("ENABLE_BCN_COMPUTE", "1");
+            if (legacy) {
+                // September build: one target format at a quality preset.
+                envVars.put("BCN_COMPUTE_AUTO", "1");
+                String transcode = graphicsDriverConfig.get("bcnTranscode");
+                envVars.put("etc2".equals(transcode) ? "BCN_TRANSCODE_TO_ETC2"
+                        : "etc1".equals(transcode) ? "BCN_TRANSCODE_TO_ETC1" : "BCN_TRANSCODE_TO_ASTC", "1");
+                String quality = graphicsDriverConfig.get("bcnQuality");
+                if (quality != null && !quality.isEmpty() && !"auto".equals(quality)) envVars.put("BCN_QUALITY_PRESET", quality);
+            } else {
+                // Current build: the layer picks per texture; "full" emulation forces compute.
+                envVars.put("BCN_COMPUTE_AUTO", "full".equals(bcnEmulation) ? "0" : "1");
+            }
+        } else {
+            envVars.put("DISABLE_BCN_COMPUTE", "1");
+        }
 
         if (xServer.getSurfaceFormat() == Drawable.HAL_PIXEL_FORMAT_RGBA_8888) {
             envVars.put("WRAPPER_SURFACE_FORMAT", "rgba8");

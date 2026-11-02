@@ -190,6 +190,8 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     var resourceType by mutableStateOf(readConfig(graphicsConfig, "resourceType", ';').ifBlank { "auto" })
     var bcn by mutableStateOf(readConfig(graphicsConfig, "bcnEmulation", ';').ifBlank { "auto" })
     var bcnType by mutableStateOf(readConfig(graphicsConfig, "bcnEmulationType", ';').ifBlank { "compute" })
+    var bcnVersion by mutableStateOf(readConfig(graphicsConfig, "bcnVersion", ';').ifBlank { "current" })
+    var bcnTranscode by mutableStateOf(readConfig(graphicsConfig, "bcnTranscode", ';').ifBlank { "astc" })
     var bcnCache by mutableStateOf(readConfig(graphicsConfig, "bcnEmulationCache", ';') == "1")
     var gpuName by mutableStateOf(readConfig(graphicsConfig, "gpuName", ';').ifBlank { "Device" })
     var blacklistedExtensions by mutableStateOf(readConfig(graphicsConfig, "blacklistedExtensions", ';'))
@@ -868,6 +870,14 @@ private fun ShortcutCategoryV2(
                 SettingChoice("BCN Emulation", s.bcn, listOf("none", "partial", "full", "auto")) { s.bcn = it; s.graphics("bcnEmulation", it) }
                 SettingsDivider()
                 SettingChoice("BCN Emulation Type", s.bcnType, listOf("software", "compute")) { s.bcnType = it; s.graphics("bcnEmulationType", it) }
+                if (s.bcnType == "compute") {
+                    SettingsDivider()
+                    SettingChoice("BCn layer (Winlator Mali)", s.bcnVersion, listOf("current", "legacy")) { s.bcnVersion = it; s.graphics("bcnVersion", it) }
+                    if (s.bcnVersion == "legacy") {
+                        SettingsDivider()
+                        SettingChoice("BCn transcode to", s.bcnTranscode, listOf("astc", "etc2", "etc1")) { s.bcnTranscode = it; s.graphics("bcnTranscode", it) }
+                    }
+                }
                 SettingsDivider()
                 SettingToggle("BCN Emulation Cache", s.bcnCache) { s.bcnCache = it; s.graphics("bcnEmulationCache", if (it) "1" else "0") }
             }

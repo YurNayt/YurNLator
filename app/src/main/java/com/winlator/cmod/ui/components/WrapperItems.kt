@@ -68,10 +68,10 @@ fun rememberWrapperItems(onInstalled: (String) -> Unit = {}): WrapperItems {
             name = w.name,
             author = w.author,
             installed = true,
-            removable = w.id != WrapperManager.BUILTIN_ID,
+            removable = w.id != WrapperManager.BUILTIN_ID && !WrapperManager.isBundled(w.id),
             localKey = LocalInstalls.key(WrapperManager.TYPE, w.id),
             details = listOfNotNull(
-                if (w.id == WrapperManager.BUILTIN_ID) "Comes with the app" else null,
+                if (w.id == WrapperManager.BUILTIN_ID || WrapperManager.isBundled(w.id)) "Comes with the app" else null,
                 WrapperManager.targetsLabel(w.targets)
             )
         )

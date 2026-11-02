@@ -55,9 +55,27 @@ object WrapperManager {
     private fun archive(context: Context, id: String) = File(dir(context), "$id.tzst")
     private fun meta(context: Context, id: String) = File(dir(context), "$id.json")
 
+    /**
+     * Wrappers bundled from Winlator Mali 1.2.1 (GunaCharanTeja), offered on the Mali / Universal
+     * profiles: id -> (asset in graphics_driver/, name).
+     */
+    private val BUNDLED = linkedMapOf(
+        "mali-wrapper" to ("wrapper-mali.tzst" to "Winlator Mali wrapper"),
+        "mali-wrapper-1.1" to ("wrapper-mali-1.1.tzst" to "Winlator Mali wrapper 1.1"),
+        "mali-wrapper-v2" to ("wrapper-mali-v2.tzst" to "Winlator Mali wrapper v2"),
+        "mali-wrapper-leegao" to ("wrapper-mali-leegao.tzst" to "Wrapper (leegao)"),
+        "mali-wrapper-gamenative" to ("wrapper-mali-gamenative.tzst" to "Wrapper (GameNative)"),
+    )
+
+    @JvmStatic
+    fun isBundled(id: String?) = id != null && id in BUNDLED
+
     @JvmStatic
     fun installed(context: Context): List<Installed> {
         val list = arrayListOf(Installed(BUILTIN_ID, "Built-in wrapper", "Ludashi", emptyList(), false))
+        if (com.winlator.cmod.core.GpuProfileManager.current(context) != com.winlator.cmod.core.GpuProfile.ADRENO) {
+            BUNDLED.forEach { (id, v) -> list += Installed(id, v.second, "Winlator Mali", listOf("Mali"), false) }
+        }
         dir(context).listFiles { f -> f.name.endsWith(".tzst") }?.sortedBy { it.name }?.forEach { f ->
             val id = f.name.removeSuffix(".tzst")
             val m = runCatching { JSONObject(meta(context, id).readText()) }.getOrNull()
@@ -73,7 +91,7 @@ object WrapperManager {
     }
 
     @JvmStatic
-    fun isInstalled(context: Context, id: String) = id == BUILTIN_ID || archive(context, id).isFile
+    fun isInstalled(context: Context, id: String) = id == BUILTIN_ID || isBundled(id) || archive(context, id).isFile
 
     @JvmStatic
     fun displayName(context: Context, id: String?): String {
@@ -188,7 +206,7 @@ object WrapperManager {
 
     @JvmStatic
     fun remove(context: Context, id: String) {
-        if (id == BUILTIN_ID) return
+        if (id == BUILTIN_ID || isBundled(id)) return
         archive(context, id).delete()
         meta(context, id).delete()
         LocalInstalls.forget(context, LocalInstalls.key(TYPE, id))
@@ -203,7 +221,7 @@ object WrapperManager {
     @JvmStatic
     fun applySelected(context: Context, rootDir: File, selectedId: String?, builtinJustExtracted: Boolean) {
         var id = selectedId?.takeIf { it.isNotBlank() } ?: BUILTIN_ID
-        if (id != BUILTIN_ID && !archive(context, id).isFile) {
+        if (id != BUILTIN_ID && !isBundled(id) && !archive(context, id).isFile) {
             Log.w(TAG, "Wrapper $id is not installed, using the built-in one")
             id = BUILTIN_ID
         }
@@ -220,6 +238,8 @@ object WrapperManager {
         }
         val ok = if (id == BUILTIN_ID) {
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, "graphics_driver/wrapper.tzst", rootDir, skipMacMetadata)
+        } else if (isBundled(id)) {
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, "graphics_driver/" + BUNDLED.getValue(id).first, rootDir, skipMacMetadata)
         } else {
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, archive(context, id), rootDir, skipMacMetadata)
         }
