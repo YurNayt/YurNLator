@@ -233,7 +233,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 JSONObject elementJSONObject = elementsJSONArray.getJSONObject(i);
                 ControlElement element = new ControlElement(inputControlsView);
                 element.setType(ControlElement.Type.valueOf(elementJSONObject.getString("type")));
-                element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape")));
+                try { element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape"))); } catch (IllegalArgumentException ignored) {}
                 element.setToggleSwitch(elementJSONObject.getBoolean("toggleSwitch"));
                 element.setX((int)(elementJSONObject.getDouble("x") * inputControlsView.getMaxWidth()));
                 element.setY((int)(elementJSONObject.getDouble("y") * inputControlsView.getMaxHeight()));
@@ -245,6 +245,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 if (elementJSONObject.has("opacity")) element.setOpacity((float)elementJSONObject.getDouble("opacity"));
                 if (elementJSONObject.has("customColor")) element.setCustomColor(elementJSONObject.getInt("customColor"));
                 if (elementJSONObject.has("mouseMoveMode")) element.setMouseMoveMode(elementJSONObject.getBoolean("mouseMoveMode"));
+                if (elementJSONObject.has("turbo")) element.setTurbo(elementJSONObject.getBoolean("turbo"));
                 if (elementJSONObject.has("customIconPath")) element.setCustomIconPath(elementJSONObject.getString("customIconPath"));
 
                 boolean hasGamepadBinding = true;

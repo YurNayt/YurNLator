@@ -60,8 +60,8 @@
             android:id="@+id/SBScale"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:min="50"
-            android:max="150" />
+            android:min="30"
+            android:max="400" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -218,6 +218,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/toggle_switch" />
+
+        <CheckBox
+            android:id="@+id/CBTurbo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Turbo (autofire while held)" />
 
         <LinearLayout
             android:id="@+id/LLCustomTextIcon"

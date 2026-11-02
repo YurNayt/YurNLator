@@ -47,13 +47,40 @@ public class ControlElement {
         }
     }
     public enum Shape {
-        CIRCLE, RECT, ROUND_RECT, SQUARE;
+        // Saved by name: new shapes go at the end.
+        CIRCLE, RECT, ROUND_RECT, SQUARE,
+        /** Long flat bar: Space, Shift, Ctrl, Jump. */
+        WIDE_BAR,
+        /** Tall bar: gas / brake. Bound to L2 / R2 or a stick direction it is analog (higher = more). */
+        PEDAL,
+        HEXAGON,
+        /** Rotated square: skill / action buttons. */
+        DIAMOND,
+        /** Small round button (map, menu, quick actions). */
+        PILL,
+        /** Big see-through zone ("tap anywhere on the right to shoot"). */
+        AREA;
 
         public static String[] names() {
             Shape[] shapes = values();
             String[] names = new String[shapes.length];
-            for (int i = 0; i < shapes.length; i++) names[i] = shapes[i].name().replace("_", " ");
+            for (int i = 0; i < shapes.length; i++) names[i] = title(shapes[i]);
             return names;
+        }
+
+        public static String title(Shape shape) {
+            switch (shape) {
+                case RECT: return "Rectangle";
+                case ROUND_RECT: return "Rounded rectangle";
+                case WIDE_BAR: return "Wide bar";
+                case PEDAL: return "Pedal (analog)";
+                case PILL: return "Pill";
+                case AREA: return "Touch area";
+                default: {
+                    String n = shape.name().toLowerCase(java.util.Locale.ENGLISH);
+                    return Character.toUpperCase(n.charAt(0)) + n.substring(1);
+                }
+            }
         }
     }
     public enum Range {
@@ -80,6 +107,20 @@ public class ControlElement {
     private short y;
     private boolean selected = false;
     private boolean toggleSwitch = false;
+    /** Turbo: while held, the bindings are pressed and released repeatedly (autofire). */
+    private boolean turbo = false;
+    private boolean turboDown = false;
+    private final Runnable turboTick = new Runnable() {
+        @Override public void run() {
+            if (!turbo || currentPointerId == -1) return;
+            turboDown = !turboDown;
+            setButtonBindingsActive(turboDown);
+            inputControlsView.postDelayed(this, TURBO_HALF_PERIOD_MS);
+        }
+    };
+    public static final int TURBO_HALF_PERIOD_MS = 40; // ~12 presses a second
+    /** Pedal: last analog value sent (0 … 1). */
+    private float pedalValue = 0f;
     private float opacity = 1.0f;
     private int customColor = 0; 
     private ColorFilter customColorFilter = null;
@@ -200,6 +241,14 @@ public class ControlElement {
 
     public void setToggleSwitch(boolean toggleSwitch) {
         this.toggleSwitch = toggleSwitch;
+    }
+
+    public boolean isTurbo() {
+        return turbo;
+    }
+
+    public void setTurbo(boolean turbo) {
+        this.turbo = turbo;
     }
 
     public boolean isMouseMoveMode() {
@@ -336,8 +385,29 @@ public class ControlElement {
                         halfHeight = (int)(snappingSize * 2.5f);
                         break;
                     case CIRCLE:
+                    case HEXAGON:
                         halfWidth = snappingSize * 3;
                         halfHeight = snappingSize * 3;
+                        break;
+                    case DIAMOND:
+                        halfWidth = (int)(snappingSize * 3.2f);
+                        halfHeight = (int)(snappingSize * 3.2f);
+                        break;
+                    case WIDE_BAR:
+                        halfWidth = snappingSize * 8;
+                        halfHeight = (int)(snappingSize * 1.8f);
+                        break;
+                    case PEDAL:
+                        halfWidth = (int)(snappingSize * 2.4f);
+                        halfHeight = snappingSize * 5;
+                        break;
+                    case PILL:
+                        halfWidth = (int)(snappingSize * 2.6f);
+                        halfHeight = (int)(snappingSize * 1.3f);
+                        break;
+                    case AREA:
+                        halfWidth = snappingSize * 10;
+                        halfHeight = snappingSize * 8;
                         break;
                 }
                 break;
@@ -531,6 +601,30 @@ public class ControlElement {
         canvas.drawRoundRect(left + inset, top + inset, right - inset, bottom - inset, Math.max(0, radius - inset), Math.max(0, radius - inset), paint);
     }
 
+    /** Regular polygon with [sides] corners (4 = diamond, 6 = hexagon), in the soft button style. */
+    private void drawSoftPolygon(Canvas canvas, float cx, float cy, float radius, int sides, boolean active) {
+        Paint paint = inputControlsView.getPaint();
+        Path path = inputControlsView.getPath();
+        path.reset();
+        double start = sides == 4 ? -Math.PI / 2 : -Math.PI / 2 + Math.PI / sides;
+        for (int i = 0; i < sides; i++) {
+            double a = start + i * 2 * Math.PI / sides;
+            float px = cx + (float)(Math.cos(a) * radius), py = cy + (float)(Math.sin(a) * radius);
+            if (i == 0) path.moveTo(px, py); else path.lineTo(px, py);
+        }
+        path.close();
+        paint.setStrokeJoin(Paint.Join.ROUND);
+        setupPaint(paint, Paint.Style.STROKE, withAlpha(getThemeColor(), active ? 72 : 18), Math.max(1f, inputControlsView.getSnappingSize() * 0.55f * scale));
+        paint.setStrokeJoin(Paint.Join.ROUND);
+        canvas.drawPath(path, paint);
+        setupPaint(paint, Paint.Style.STROKE, withAlpha(EDGE_SOFT, active ? 74 : 30), Math.max(1f, inputControlsView.getSnappingSize() * 0.20f * scale));
+        paint.setStrokeJoin(Paint.Join.ROUND);
+        canvas.drawPath(path, paint);
+        setupPaint(paint, Paint.Style.FILL, active ? withAlpha(getThemeColor(), 190) : withAlpha(DARK_SURFACE, 140), 0);
+        canvas.drawPath(path, paint);
+        paint.setStrokeJoin(Paint.Join.MITER);
+    }
+
     private void drawSoftCircle(Canvas canvas, float cx, float cy, float radius, boolean active, int accentColor, boolean fillActive) {
         Paint paint = inputControlsView.getPaint();
 
@@ -618,10 +712,51 @@ public class ControlElement {
                         drawSoftCircle(canvas, cx, cy, w * 0.5f, active, accent, true);
                         break;
                     }
-                    case RECT:
-                    case ROUND_RECT: {
+                    case RECT: {
+                        drawSoftRoundRect(canvas, boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, h * 0.12f, active);
+                        break;
+                    }
+                    case ROUND_RECT:
+                    case WIDE_BAR:
+                    case PILL: {
                         float radius = h * 0.45f;
                         drawSoftRoundRect(canvas, boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, active);
+                        break;
+                    }
+                    case PEDAL: {
+                        float radius = w * 0.22f;
+                        drawSoftRoundRect(canvas, boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, false);
+                        // How far it's pressed: filled from the bottom.
+                        float level = active ? Math.max(pedalValue, 0.08f) : 0f;
+                        if (level > 0f) {
+                            Paint p = inputControlsView.getPaint();
+                            setupPaint(p, Paint.Style.FILL, withAlpha(getThemeColor(), 170), 0);
+                            float top = boundingBox.bottom - h * level;
+                            canvas.drawRoundRect(boundingBox.left, top, boundingBox.right, boundingBox.bottom, radius, radius, p);
+                        }
+                        // Grip lines.
+                        Paint p = inputControlsView.getPaint();
+                        setupPaint(p, Paint.Style.STROKE, withAlpha(0xffffffff, 40), Math.max(1f, snappingSize * 0.12f * scale));
+                        for (int i = 1; i <= 3; i++) {
+                            float ly = boundingBox.top + h * (0.55f + i * 0.1f);
+                            canvas.drawLine(boundingBox.left + w * 0.25f, ly, boundingBox.right - w * 0.25f, ly, p);
+                        }
+                        break;
+                    }
+                    case HEXAGON:
+                    case DIAMOND: {
+                        drawSoftPolygon(canvas, cx, cy, w * 0.5f, shape == Shape.HEXAGON ? 6 : 4, active);
+                        break;
+                    }
+                    case AREA: {
+                        Paint p = inputControlsView.getPaint();
+                        setupPaint(p, Paint.Style.FILL, withAlpha(active ? getThemeColor() : DARK_SURFACE, active ? 60 : 28), 0);
+                        float r = snappingSize * 1.2f * scale;
+                        canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, r, r, p);
+                        setupPaint(p, Paint.Style.STROKE, withAlpha(EDGE_SOFT, active ? 90 : 45), Math.max(1f, snappingSize * 0.12f * scale));
+                        p.setPathEffect(new android.graphics.DashPathEffect(new float[]{snappingSize * 0.8f, snappingSize * 0.6f}, 0));
+                        canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, r, r, p);
+                        p.setPathEffect(null);
                         break;
                     }
                     case SQUARE: {
@@ -809,7 +944,7 @@ public class ControlElement {
             }
         }
 
-        int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 1.65f : 0.85f) * scale);
+        int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE || shape == Shape.HEXAGON || shape == Shape.DIAMOND ? 1.65f : 0.85f) * scale);
         int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);
 
         Rect srcRect = new Rect(0, 0, icon.getWidth(), icon.getHeight());
@@ -838,6 +973,7 @@ public class ControlElement {
             if (opacity != 1.0f) elementJSONObject.put("opacity", opacity);
             if (customColor != 0) elementJSONObject.put("customColor", customColor);
             if (mouseMoveMode) elementJSONObject.put("mouseMoveMode", true);
+            if (turbo) elementJSONObject.put("turbo", true);
             if (customIconPath != null) elementJSONObject.put("customIconPath", customIconPath);
 
             if (type == Type.RANGE_BUTTON && range != null) {
@@ -878,6 +1014,18 @@ public class ControlElement {
                     invalidateSelf();
                     return true;
                 }
+                if (isAnalogPedal()) {
+                    updatePedal(y);
+                    invalidateSelf();
+                    return true;
+                }
+                if (turbo && !toggleSwitch) {
+                    turboDown = true;
+                    setButtonBindingsActive(true);
+                    inputControlsView.postDelayed(turboTick, TURBO_HALF_PERIOD_MS);
+                    invalidateSelf();
+                    return true;
+                }
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!toggleSwitch || !selected) {
                     setButtonBindingsActive(true);
@@ -901,7 +1049,30 @@ public class ControlElement {
         else return false;
     }
 
+    /** Pedal shape bound to an analog input (L2 / R2 or a stick direction): pressure from the finger height. */
+    private boolean isAnalogPedal() {
+        if (type != Type.BUTTON || shape != Shape.PEDAL || toggleSwitch || mouseMoveMode) return false;
+        Binding b = getBindingAt(0);
+        return b == Binding.GAMEPAD_BUTTON_L2 || b == Binding.GAMEPAD_BUTTON_R2
+                || (b.isGamepad() && b.name().contains("_THUMB_"));
+    }
+
+    private void updatePedal(float y) {
+        Rect box = getBoundingBox();
+        // Bottom quarter = light press, top = full; never 0 while touched.
+        float v = (box.bottom - y) / Math.max(1f, box.height());
+        v = Math.max(0.15f, Math.min(1f, 0.15f + v * 1.1f));
+        if (Math.abs(v - pedalValue) < 0.02f && pedalValue > 0f) return;
+        pedalValue = v;
+        for (Binding b : bindings) if (b != Binding.NONE) inputControlsView.handleInputEvent(b, true, v);
+    }
+
     public boolean handleTouchMove(int pointerId, float x, float y) {
+        if (pointerId == currentPointerId && isAnalogPedal()) {
+            updatePedal(y);
+            invalidateSelf();
+            return true;
+        }
         if (pointerId == currentPointerId && type == Type.BUTTON && mouseMoveMode) {
             inputControlsView.getTouchpadView().mouseMove(x, y, MotionEvent.ACTION_MOVE);
             return true;
@@ -1057,6 +1228,15 @@ public class ControlElement {
     public boolean handleTouchUp(int pointerId) {
         if (pointerId == currentPointerId) {
             if (type == Type.BUTTON) {
+                if (isAnalogPedal() || (turbo && !toggleSwitch)) {
+                    inputControlsView.removeCallbacks(turboTick);
+                    turboDown = false;
+                    pedalValue = 0f;
+                    setButtonBindingsActive(false);
+                    currentPointerId = -1;
+                    invalidateSelf();
+                    return true;
+                }
                 if (mouseMoveMode) {
                     inputControlsView.getTouchpadView().mouseMove(0, 0, MotionEvent.ACTION_UP);
                     invalidateSelf();

@@ -190,12 +190,14 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
             ControlElement.Type type = element.getType();
             view.findViewById(R.id.LLShape).setVisibility(View.GONE);
             view.findViewById(R.id.CBToggleSwitch).setVisibility(View.GONE);
+            view.findViewById(R.id.CBTurbo).setVisibility(View.GONE);
             view.findViewById(R.id.LLCustomTextIcon).setVisibility(View.GONE);
             view.findViewById(R.id.LLRangeOptions).setVisibility(View.GONE);
 
             if (type == ControlElement.Type.BUTTON) {
                 view.findViewById(R.id.LLShape).setVisibility(View.VISIBLE);
                 view.findViewById(R.id.CBToggleSwitch).setVisibility(View.VISIBLE);
+                view.findViewById(R.id.CBTurbo).setVisibility(View.VISIBLE);
                 view.findViewById(R.id.LLCustomTextIcon).setVisibility(View.VISIBLE);
             }
             else if (type == ControlElement.Type.RANGE_BUTTON) {
@@ -248,6 +250,13 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         cbToggleSwitch.setChecked(element.isToggleSwitch());
         cbToggleSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             element.setToggleSwitch(isChecked);
+            profile.save();
+        });
+
+        CheckBox cbTurbo = view.findViewById(R.id.CBTurbo);
+        cbTurbo.setChecked(element.isTurbo());
+        cbTurbo.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            element.setTurbo(isChecked);
             profile.save();
         });
 
