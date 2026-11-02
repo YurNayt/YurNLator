@@ -72,11 +72,16 @@ object CrashReports {
             am.getHistoricalProcessExitReasons(activity.packageName, 0, 10)
                 .filter { it.timestamp > seen }
                 .filter { it.reason == ApplicationExitInfo.REASON_CRASH_NATIVE || it.reason == ApplicationExitInfo.REASON_ANR ||
+                    it.reason == ApplicationExitInfo.REASON_LOW_MEMORY ||
                     (it.reason == ApplicationExitInfo.REASON_CRASH && parts.isEmpty()) }
                 .forEach { info ->
                     val kind = when (info.reason) {
                         ApplicationExitInfo.REASON_CRASH_NATIVE -> "Native crash"
                         ApplicationExitInfo.REASON_ANR -> "Not responding (ANR)"
+                        // The game closes with "X connection broken": Android ran out of RAM and
+                        // closed the app (heavy game, transcoded textures, other apps in memory).
+                        ApplicationExitInfo.REASON_LOW_MEMORY -> "Closed by Android: out of memory " +
+                            "(app used ${info.pss / 1024} MB, ${info.rss / 1024} MB resident)"
                         else -> "Crash"
                     }
                     val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(info.timestamp))
