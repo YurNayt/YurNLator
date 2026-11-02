@@ -105,6 +105,59 @@ public abstract class ProtonPackageManager {
         return identifiers;
     }
 
+    /**
+     * Download with progress, pause / resume and cancel through {@link DownloadTracker} under [key]:
+     * each part goes to its own file (resumable with HTTP Range), then they're joined.
+     */
+    public static boolean downloadPackage(PackageInfo packageInfo, File output, String key) throws DownloadTracker.CancelledException {
+        if (packageInfo == null || output == null || packageInfo.partSizes == null || packageInfo.partSizes.length == 0)
+            return false;
+        long totalSize = 0;
+        for (long size : packageInfo.partSizes) totalSize += size;
+        long base = 0;
+        ArrayList<File> parts = new ArrayList<>();
+        try {
+            for (int i = 0; i < packageInfo.partSizes.length; i++) {
+                String address = packageInfo.directUrl != null
+                        ? packageInfo.directUrl
+                        : RELEASE_BASE_URL + packageInfo.fileName + "." + String.format("%02d", i);
+                File part = new File(output.getPath() + ".part" + i);
+                parts.add(part);
+                if (!DownloadTracker.download(key, address, part, true, base, totalSize, packageInfo.partSizes[i])) return false;
+                if (packageInfo.partSizes[i] > 0 && part.length() != packageInfo.partSizes[i]) {
+                    Log.e(TAG, "Size mismatch for " + packageInfo.fileName + " part " + i);
+                    part.delete();
+                    return false;
+                }
+                base += part.length();
+            }
+            FileUtils.delete(output);
+            try (FileOutputStream out = new FileOutputStream(output)) {
+                byte[] buf = new byte[256 * 1024];
+                for (File part : parts) {
+                    try (FileInputStream in = new FileInputStream(part)) {
+                        int n;
+                        while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+                    }
+                    part.delete();
+                }
+            }
+        } catch (DownloadTracker.CancelledException e) {
+            for (File part : parts) part.delete();
+            throw e;
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to download " + packageInfo.identifier, e);
+            FileUtils.delete(output);
+            return false;
+        }
+        if (packageInfo.sha256 != null && !packageInfo.sha256.isEmpty() && !verifySha256(output, packageInfo.sha256)) {
+            Log.e(TAG, "SHA-256 mismatch for " + packageInfo.identifier);
+            FileUtils.delete(output);
+            return false;
+        }
+        return true;
+    }
+
     public static boolean downloadPackage(PackageInfo packageInfo, File output, Callback<Integer> progressCallback) {
         if (packageInfo == null || output == null || packageInfo.partSizes == null || packageInfo.partSizes.length == 0)
             return false;

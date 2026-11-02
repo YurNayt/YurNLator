@@ -91,6 +91,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import com.winlator.cmod.core.MaliCompat
+import com.winlator.cmod.core.DownloadTracker
 
 /** Mali profile: hide versions that only work on Adreno (see [MaliCompat]). */
 internal class MaliFilter(val active: Boolean, val showAll: Boolean) {
@@ -216,15 +217,20 @@ internal suspend fun loadWineRuntimeOptions(context: Context, allowNetwork: Bool
 
 internal suspend fun installWineRuntimeComponent(context: Context, option: WineRuntimeOption): String? {
     if (option.installed) return option.id
+    val key = "wine:${option.id}"
 
     ProtonPackageManager.getPackage(option.id)?.let { packageInfo ->
-        val archive = File(context.cacheDir, "winz-${System.nanoTime()}-${packageInfo.fileName}")
+        val archive = File(context.cacheDir, "winz-proton-${packageInfo.fileName}")
         val installed = withContext(Dispatchers.IO) {
+            DownloadTracker.begin(key)
             try {
-                ProtonPackageManager.downloadPackage(packageInfo, archive) { _ -> } &&
-                    ProtonPackageManager.installPackage(context, packageInfo.identifier, archive)
+                ProtonPackageManager.downloadPackage(packageInfo, archive, key) &&
+                    run { DownloadTracker.installing(key); ProtonPackageManager.installPackage(context, packageInfo.identifier, archive) }
+            } catch (_: DownloadTracker.CancelledException) {
+                false
             } finally {
                 archive.delete()
+                DownloadTracker.finish(key)
             }
         }
         return packageInfo.identifier.takeIf {
@@ -232,7 +238,7 @@ internal suspend fun installWineRuntimeComponent(context: Context, option: WineR
         }
     }
 
-    val installedName = installRuntimeComponent(context, option.type, option.version) ?: return null
+    val installedName = installRuntimeComponent(context, option.type, option.version, key) ?: return null
     val manager = ContentsManager(context)
     manager.syncContents()
     val type = ContentProfile.ContentType.getTypeByName(option.type) ?: return null
@@ -351,7 +357,22 @@ internal suspend fun loadSettingsCatalog(
 internal suspend fun installRuntimeComponent(
     context: Context,
     typeName: String,
-    version: String
+    version: String,
+    key: String = "$typeName:$version"
+): String? {
+    DownloadTracker.begin(key)
+    try {
+        return installRuntimeComponentTracked(context, typeName, version, key)
+    } finally {
+        DownloadTracker.finish(key)
+    }
+}
+
+private suspend fun installRuntimeComponentTracked(
+    context: Context,
+    typeName: String,
+    version: String,
+    key: String
 ): String? {
     val manager = ContentsManager(context)
     val profile = withContext(Dispatchers.IO) {
@@ -366,24 +387,18 @@ internal suspend fun installRuntimeComponent(
         }
     } ?: return null
 
-    val archive = File(context.cacheDir, "winz-${System.nanoTime()}")
+    // Same file name for the same package: a paused / interrupted download continues.
+    val archive = File(context.cacheDir, "winz-" + Integer.toHexString(profile.remoteUrl.hashCode()))
     val downloaded = withContext(Dispatchers.IO) {
         try {
-            OkHttpClient().newCall(Request.Builder().url(profile.remoteUrl).build()).execute().use { response ->
-                if (!response.isSuccessful || response.body == null) {
-                    false
-                } else {
-                    response.body!!.byteStream().use { input ->
-                        FileOutputStream(archive).use { output -> input.copyTo(output, 64 * 1024) }
-                    }
-                    true
-                }
-            }
+            DownloadTracker.download(key, profile.remoteUrl, archive, true)
         } catch (_: Exception) {
+            archive.delete()
             false
         }
     }
     if (!downloaded) return null
+    DownloadTracker.installing(key)
 
     val result = suspendCoroutine<String?> { continuation ->
         manager.extraContentFile(Uri.fromFile(archive), object : ContentsManager.OnInstallFinishedCallback {
@@ -415,7 +430,7 @@ internal suspend fun installRuntimeComponent(
 internal suspend fun installAdrenoDriver(context: Context, option: DriverOption): String? =
     withContext(Dispatchers.IO) {
         if (option.remoteUrl != null) {
-            RemoteDriverCatalog.install(context, option.remoteUrl).takeIf { it.isNotBlank() }
+            RemoteDriverCatalog.install(context, option.remoteUrl, "driver:${option.remoteUrl}").takeIf { it.isNotBlank() }
         } else {
             option.id.takeIf { option.installed }
         }
@@ -638,7 +653,7 @@ internal fun SettingWineRuntimeChoice(
                         o.id, o.label,
                         if (o.id == update?.id) "${o.type} · Newer build of your current one" else o.type,
                         installed = o.installed, busy = "wine:${o.id}" in installing,
-                        group = family
+                        group = family, downloadKey = "wine:${o.id}"
                     )
                 }
             },
@@ -716,7 +731,8 @@ internal fun SettingInstallChoice(
                     val available = catalog.installed.any { it.equals(value, ignoreCase = true) } || value == selected
                     ChoiceOption(
                         value, VersionGroups.title(value, prefix), VersionGroups.note(value),
-                        installed = available, busy = "$prefix:$value" in installing, group = family
+                        installed = available, busy = "$prefix:$value" in installing, group = family,
+                        downloadKey = "$prefix:$value"
                     )
                 }
             },
@@ -791,6 +807,7 @@ internal fun SettingDriverChoice(
     }
     if (expanded) {
         val mali = maliFilter()
+        val maliAuthors = remember { com.winlator.cmod.contents.DriverSources.all(context).filter { it.gpu == "mali" }.map { it.name }.toSet() }
         PickerSheet(
             title = "GPU driver",
             subtitle = "Installed drivers, or get a new one",
@@ -805,10 +822,11 @@ internal fun SettingDriverChoice(
                     showDownloads = true
                 }
             ) + listOfNotNull(mali.action(context, options.count {
-                it.installed && !it.id.equals(selected, ignoreCase = true) && !MaliCompat.fits(context, "AdrenoTools", it.id)
+                it.installed && !it.id.equals(selected, ignoreCase = true) &&
+                    !MaliCompat.fits(context, "AdrenoTools", it.id + " " + it.label) && it.author !in maliAuthors
             })),
             options = options.filter { it.installed }
-                .filter { !mali.on || it.id.equals(selected, ignoreCase = true) || MaliCompat.fits(context, "AdrenoTools", it.id) }
+                .filter { !mali.on || it.id.equals(selected, ignoreCase = true) || MaliCompat.fits(context, "AdrenoTools", it.id + " " + it.label) || it.author in maliAuthors }
                 .map { o ->
                 val parsed = DriverNames.parse(o.label)
                 PickerOption(o.id, parsed.title, parsed.tags.joinToString(" · ").ifBlank { null })

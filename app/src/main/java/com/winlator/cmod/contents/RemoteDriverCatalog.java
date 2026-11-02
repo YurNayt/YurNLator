@@ -131,6 +131,24 @@ public final class RemoteDriverCatalog {
         }
     }
 
+    /** Like {@link #install(Context, String)}, with progress / pause / cancel under [key] (DownloadTracker). */
+    public static String install(Context context, String url, String key) {
+        File archive = new File(context.getCacheDir(), "winz-driver-" + Integer.toHexString(url.hashCode()) + ".zip");
+        com.winlator.cmod.core.DownloadTracker.begin(key);
+        try {
+            if (!com.winlator.cmod.core.DownloadTracker.download(key, url, archive)) return "";
+            com.winlator.cmod.core.DownloadTracker.installing(key);
+            String id = new AdrenotoolsManager(context).installDriver(Uri.fromFile(archive));
+            DriverOrigins.record(context, url, id);
+            return id;
+        } catch (Exception ignored) {
+            return "";
+        } finally {
+            archive.delete();
+            com.winlator.cmod.core.DownloadTracker.finish(key);
+        }
+    }
+
     public static String install(Context context, String url) {
         File archive = new File(context.getCacheDir(), "winz-driver-" + System.nanoTime() + ".zip");
         try (Response response = new OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).build().newCall(new Request.Builder().url(url).build()).execute()) {

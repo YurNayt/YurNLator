@@ -100,7 +100,8 @@ internal fun DriverDownloadsDialog(
                     fileLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
                 },
                 busyIds = busyIds,
-                busyLabel = "Downloading"
+                busyLabel = "Downloading",
+                downloadKey = { "driver:" + it.id }
             )
         }
     }

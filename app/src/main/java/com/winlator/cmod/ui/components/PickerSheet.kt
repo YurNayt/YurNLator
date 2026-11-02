@@ -172,7 +172,9 @@ data class ChoiceOption(
     val subtitle: String? = null,
     val installed: Boolean = true,
     val busy: Boolean = false,
-    val group: String? = null
+    val group: String? = null,
+    /** DownloadTracker key: shows the progress bar with pause / cancel while [busy]. */
+    val downloadKey: String? = null
 )
 
 /**
@@ -203,7 +205,7 @@ fun ChoiceSheet(
         out
     }
     // Groups start open when they hold the current choice (and it isn't their top row).
-    var open by remember(blocks) {
+    var open by remember(title) {
         mutableStateOf(
             blocks.filter { b -> b.size > 1 && b.drop(1).any { it.installed && it.value.equals(selected, ignoreCase = true) } }
                 .mapNotNull { it.first().group }.toSet()
@@ -321,7 +323,10 @@ private fun ChoiceRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                val tracked = option.busy && option.downloadKey != null &&
+                    com.winlator.cmod.core.DownloadTracker.states[option.downloadKey] != null
                 val sub = when {
+                    tracked -> option.subtitle
                     option.busy -> "Downloading…"
                     !option.installed -> listOfNotNull(option.subtitle, "Download").joinToString(" · ")
                     else -> option.subtitle
@@ -329,6 +334,7 @@ private fun ChoiceRow(
                 if (!sub.isNullOrBlank()) {
                     Text(sub, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
                 }
+                if (tracked) DownloadProgress(option.downloadKey, Modifier.padding(top = 4.dp))
                 if (more > 0) {
                     val inside = if (moreInstalled > 0) " · $moreInstalled installed" else ""
                     Text(

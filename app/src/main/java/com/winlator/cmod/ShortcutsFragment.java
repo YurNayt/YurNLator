@@ -47,6 +47,7 @@ import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.ui.shortcut.ShortcutSettingsComposeDialog;
 import com.winlator.cmod.core.ExeIconExtractor;
 import com.winlator.cmod.core.FileUtils;
+import com.winlator.cmod.core.GameTitleGuess;
 import com.winlator.cmod.ui.library.LibraryCallbacks;
 import com.winlator.cmod.ui.library.LibraryComposeBinding;
 import com.winlator.cmod.ui.library.LibraryComposeController;
@@ -315,27 +316,58 @@ public class ShortcutsFragment extends Fragment {
                 .build();
 
         SteamGridDBApi api = retrofit.create(SteamGridDBApi.class);
-        api.searchGame("Bearer " + STEAMGRID_API_KEY, shortcut.name)
-                .enqueue(new Callback<SteamGridSearchResponse>() {
-                    @Override
-                    public void onResponse(Call<SteamGridSearchResponse> call,
-                                           Response<SteamGridSearchResponse> response) {
-                        if (response.isSuccessful() && response.body() != null
-                                && response.body().data != null
-                                && !response.body().data.isEmpty()) {
-                            fetchSteamGridArtwork(response.body().data.get(0).id, destFile,
-                                    dimensions, onSuccess, onFail);
-                        } else if (onFail != null) {
-                            onFail.run();
-                        }
-                    }
+        // The exe name alone misleads ("speed2.exe" -> Speedball 2): try the exe's product name and
+        // the game folder first, and accept a result only if its name really matches.
+        Executors.newSingleThreadExecutor().execute(() -> {
+            String key = shortcut.file.getPath();
+            Integer known = matchedGameIds.get(key);
+            if (known != null) {
+                fetchSteamGridArtwork(known, destFile, dimensions, onSuccess, onFail);
+                return;
+            }
+            File exe = resolveExeFile(shortcut);
+            boolean answered = false;
+            for (String query : GameTitleGuess.candidates(shortcut.name, exe)) {
+                try {
+                    Response<SteamGridSearchResponse> response = api.searchGame("Bearer " + STEAMGRID_API_KEY, query).execute();
+                    if (!response.isSuccessful() || response.body() == null) continue;
+                    answered = true;
+                    List<SteamGridSearchResponse.GameData> data = response.body().data;
+                    if (data == null || data.isEmpty()) continue;
+                    ArrayList<String> names = new ArrayList<>();
+                    for (SteamGridSearchResponse.GameData d : data) names.add(d.name != null ? d.name : "");
+                    int best = GameTitleGuess.best(query, names);
+                    if (best < 0) continue;
+                    Log.d(TAG, "SteamGridDB: '" + query + "' -> " + names.get(best));
+                    matchedGameIds.put(key, data.get(best).id);
+                    fetchSteamGridArtwork(data.get(best).id, destFile, dimensions, onSuccess, onFail);
+                    return;
+                } catch (Exception e) {
+                    Log.e(TAG, "SteamGridDB search failed: " + e.getMessage());
+                }
+            }
+            // Searched and nothing fits: remember that, so the library doesn't ask again every time.
+            if (answered) {
+                destFile.delete(); // an old cover from the exe-name search may be of another game
+                markArtworkChecked(destFile, "");
+            }
+            if (onFail != null) onFail.run();
+        });
+    }
 
-                    @Override
-                    public void onFailure(Call<SteamGridSearchResponse> call, Throwable error) {
-                        Log.e(TAG, "SteamGridDB search failed: " + error.getMessage());
-                        if (onFail != null) onFail.run();
-                    }
-                });
+    private final java.util.Map<String, Integer> matchedGameIds = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Cover / banner files fetched with the title matching above carry a ".match" marker. */
+    private static File artworkMarker(File artwork) {
+        return new File(artwork.getPath() + ".match");
+    }
+
+    private static void markArtworkChecked(File artwork, String title) {
+        try { FileUtils.writeString(artworkMarker(artwork), title); } catch (Exception ignored) {}
+    }
+
+    private static boolean artworkChecked(File artwork) {
+        return artworkMarker(artwork).isFile();
     }
 
     private void fetchSteamGridArtwork(int gameId, File destFile, String dimensions,
@@ -391,7 +423,8 @@ public class ShortcutsFragment extends Fragment {
                     bmp.compress(Bitmap.CompressFormat.PNG, 100, fos);
                 }
                 bmp.recycle();
-                Log.d(TAG, "SteamGridDB cover salvo: " + destFile.getAbsolutePath());
+                markArtworkChecked(destFile, url);
+                Log.d(TAG, "SteamGridDB artwork saved: " + destFile.getAbsolutePath());
                 if (onSuccess != null) onSuccess.run();
             } catch (Exception e) {
                 Log.e(TAG, "Falha ao baixar cover do SteamGridDB: " + e.getMessage());
@@ -459,8 +492,8 @@ public class ShortcutsFragment extends Fragment {
                     shortcut.file.getPath(),
                     shortcut.name,
                     shortcut.container != null ? shortcut.container.getName() : "",
-                    cover.exists() ? cover.getPath() : null,
-                    banner.exists() ? banner.getPath() : null,
+                    cover.exists() && artworkChecked(cover) ? cover.getPath() : null,
+                    banner.exists() && artworkChecked(banner) ? banner.getPath() : null,
                     iconPath,
                     shortcut.icon,
                     "1".equals(shortcut.getExtra("favorite", "0"))
@@ -484,7 +517,7 @@ public class ShortcutsFragment extends Fragment {
 
     private void requestCover(Shortcut shortcut, File cover, File autoIcon) {
         final String coverKey = "cover:" + shortcut.file.getPath();
-        if (!cover.exists() && artworkRequests.add(coverKey)) {
+        if (!artworkChecked(cover) && artworkRequests.add(coverKey)) {
             fetchCoverFromSteamGrid(shortcut, cover, () -> {
                 artworkRequests.remove(coverKey);
                 if (getActivity() != null) getActivity().runOnUiThread(this::publishLibraryItems);
@@ -502,7 +535,7 @@ public class ShortcutsFragment extends Fragment {
 
     private void requestBanner(Shortcut shortcut, File banner) {
         final String bannerKey = "banner:" + shortcut.file.getPath();
-        if (!banner.exists() && artworkRequests.add(bannerKey)) {
+        if (!artworkChecked(banner) && artworkRequests.add(bannerKey)) {
             fetchBannerFromSteamGrid(shortcut, banner, () -> {
                 artworkRequests.remove(bannerKey);
                 if (getActivity() != null) getActivity().runOnUiThread(this::publishLibraryItems);

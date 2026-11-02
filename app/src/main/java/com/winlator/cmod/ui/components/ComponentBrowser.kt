@@ -148,6 +148,8 @@ fun ComponentBrowser(
     busyIds: Set<String> = emptySet(),
     busyLabel: String? = null,
     busyProgress: Int = -1,
+    /** DownloadTracker key of an item: a bar with pause / cancel while it downloads. */
+    downloadKey: (BrowserItem) -> String? = { null },
     typeHeader: @Composable (ComponentType) -> Unit = {}
 ) {
     // Mali profile: versions that only work on Adreno are hidden (a banner shows them again).
@@ -156,8 +158,19 @@ fun ComponentBrowser(
     MaliCompat.showAll(context)
     val maliShowAll = MaliCompat.showAllState.value == true
     val visible = remember(items, maliActive, maliShowAll) {
-        if (!maliActive || maliShowAll) items
-        else items.filter { it.inUse || it.type == WRAPPER || MaliCompat.fits(context, it.type, it.name) }
+        // Each driver author is for one GPU family: Turnip / Qualcomm for Adreno, PanVK for Mali.
+        val sourceGpu = DriverSources.all(context).associate { it.name to it.gpu }
+        val profile = com.winlator.cmod.core.GpuProfileManager.current(context)
+        when {
+            profile == com.winlator.cmod.core.GpuProfile.ADRENO ->
+                items.filter { it.installed || it.type != GPU_DRIVER || sourceGpu[it.author] != "mali" }
+            !maliActive || maliShowAll -> items
+            else -> items.filter {
+                it.inUse || it.type == WRAPPER ||
+                    (it.type == GPU_DRIVER && sourceGpu[it.author] == "mali") ||
+                    MaliCompat.fits(context, it.type, it.name)
+            }
+        }
     }
     var currentKey by rememberSaveable { mutableStateOf(initialType) }
     val current = types.firstOrNull { it.key == currentKey }
@@ -204,6 +217,8 @@ fun ComponentBrowser(
                 busyIds = busyIds,
                 busyLabel = busyLabel,
                 busyProgress = busyProgress,
+            downloadKey = downloadKey(item),
+                downloadKey = downloadKey,
                 onSwitchType = { currentKey = it.key },
                 onClose = { if (canGoToList) currentKey = null else onClose() },
                 onInstall = onInstall,
@@ -299,6 +314,7 @@ private fun TypePage(
     busyIds: Set<String>,
     busyLabel: String?,
     busyProgress: Int,
+    downloadKey: (BrowserItem) -> String?,
     onSwitchType: (ComponentType) -> Unit,
     onClose: () -> Unit,
     onInstall: (BrowserItem) -> Unit,
@@ -320,12 +336,12 @@ private fun TypePage(
     // Selector: GPU drivers have many authors -> All, Installed, authors, My files, + Add.
     // Other types have one source -> no selector, unless there are own files: All, My files.
     val customSources = remember(sourcesRev) { DriverSources.custom(context) }
-    val authors = remember(items, type.key, sourcesRev, myFiles) {
+    val authors = remember(items, type.key, sourcesRev, myFiles, MaliCompat.showAllState.value) {
         // Other types get the selector too as soon as their versions come from 2+ sources.
         val sourceCount = items.filter { !it.installed }.mapNotNull { it.author }.distinct().size
         if (type.hasAuthors || sourceCount > 1) {
             val names = linkedSetOf<String>()
-            if (type.isGpuDriver) DriverSources.all(context).forEach { names += it.name }
+            if (type.isGpuDriver) DriverSources.forProfile(context).forEach { names += it.name }
             items.filter { !it.installed }.mapNotNullTo(names) { it.author }
             buildList {
                 add(AUTHOR_ALL)
@@ -530,9 +546,11 @@ private fun ItemCard(
     locked: Boolean,
     busyLabel: String?,
     busyProgress: Int,
+    downloadKey: String?,
     onInstall: (BrowserItem) -> Unit,
     onRemove: (BrowserItem) -> Unit
 ) {
+    val tracked = busy && downloadKey != null && com.winlator.cmod.core.DownloadTracker.states[downloadKey] != null
     Surface(
         Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -557,6 +575,7 @@ private fun ItemCard(
                         if (showAuthor && !item.installed) item.author?.let { add(it) }
                     }.joinToString(" · ")
                     val status = when {
+                        tracked -> details
                         busy && busyProgress >= 0 -> "${busyLabel ?: "Installing"} • $busyProgress%"
                         busy -> busyLabel ?: "Working…"
                         else -> details
@@ -574,6 +593,7 @@ private fun ItemCard(
                     }
                 }
                 when {
+                    tracked -> {}
                     busy -> CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
                     item.installed && item.removable -> OutlinedButton(onClick = { onRemove(item) }, enabled = !locked && !item.inUse) {
                         Icon(Icons.Outlined.DeleteOutline, null)
@@ -593,7 +613,10 @@ private fun ItemCard(
                     }
                 }
             }
-            if (busy) {
+            if (tracked) {
+                Spacer(Modifier.height(6.dp))
+                DownloadProgress(downloadKey)
+            } else if (busy) {
                 Spacer(Modifier.height(9.dp))
                 if (busyProgress >= 0) {
                     LinearProgressIndicator(progress = { busyProgress.coerceIn(0, 100) / 100f }, modifier = Modifier.fillMaxWidth())

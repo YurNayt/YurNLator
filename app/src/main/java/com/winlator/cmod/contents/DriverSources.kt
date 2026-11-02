@@ -27,7 +27,9 @@ data class DriverSource(
     val name: String,
     val feeds: List<DriverFeed>,
     val note: String = "",
-    val builtIn: Boolean = false
+    val builtIn: Boolean = false,
+    /** GPU the drivers are for: "adreno" (Turnip, Qualcomm), "mali" (PanVK), null = any / unknown. */
+    val gpu: String? = null
 )
 
 /**
@@ -42,31 +44,31 @@ object DriverSources {
     @JvmField
     val BUILT_IN: List<DriverSource> = listOf(
         DriverSource("StevenMXZ", listOf(DriverFeed.Github("StevenMXZ", "freedreno_turnip-CI")),
-            "Turnip builds, Ludashi's default", true),
+            "Turnip builds, Ludashi's default", true, "adreno"),
         DriverSource("whitebelyash", listOf(DriverFeed.Github("whitebelyash", "AdrenoToolsDrivers")),
-            "Mainline Turnip sync builds", true),
+            "Mainline Turnip sync builds", true, "adreno"),
         DriverSource("Weab-Chan", listOf(DriverFeed.Github("Weab-chan", "freedreno_turnip-CI")),
-            "Turnip CI builds", true),
+            "Turnip CI builds", true, "adreno"),
         DriverSource("K11MCH1 (Kimchi)", listOf(DriverFeed.Json("$NIGHTLIES/kimchi_drivers.json")),
-            "Qualcomm proprietary and Turnip builds", true),
+            "Qualcomm proprietary and Turnip builds", true, "adreno"),
         DriverSource("MTR / WinNative", listOf(
             DriverFeed.Json("$NIGHTLIES/mtr_drivers.json"),
             DriverFeed.Github("WinNative-Emu", "Drivers")
-        ), "Turnip MTR builds", true),
+        ), "Turnip MTR builds", true, "adreno"),
         DriverSource("Banners-Turnip", listOf(DriverFeed.Json("$NIGHTLIES/banners-turnip_drivers.json")),
-            "Bannerlator's Turnip builds", true),
+            "Bannerlator's Turnip builds", true, "adreno"),
         DriverSource("Rutabaga", listOf(DriverFeed.Json("$NIGHTLIES/rutabaga_drivers.json")),
-            "Rutabaga builds", true),
+            "Rutabaga builds", true, "adreno"),
         // PanVK (open-source Mesa Vulkan for Mali, kbase backend), as listed by Winlator Mali+.
         // Experimental: the System driver stays the safe choice on Mali.
         DriverSource("PanVK · zenithblue", listOf(DriverFeed.Github("zenithblue-oss", "panvk-kbase-android")),
-            "Mali PanVK: G57, G615, G710, G715, G720", true),
+            "Mali PanVK: G57, G615, G710, G715, G720", true, "mali"),
         DriverSource("PanVK · GunaCharanTeja", listOf(DriverFeed.Github("GunaCharanTeja", "panvk-kbase-android")),
-            "Mali PanVK: G615 MC2", true),
+            "Mali PanVK: G615 MC2", true, "mali"),
         DriverSource("PanVK · FristOneRR", listOf(DriverFeed.Github("FristOneRR", "FristOneRR-Panvk-Driver")),
-            "Mali PanVK: G57 MC2 (Helio G99, Galaxy A15)", true),
+            "Mali PanVK: G57 MC2 (Helio G99, Galaxy A15)", true, "mali"),
         DriverSource("PanVK · Noysz", listOf(DriverFeed.Github("Noysz", "panvk-g99-jm")),
-            "Mali PanVK: G57 MC2 / Helio G99, experimental", true),
+            "Mali PanVK: G57 MC2 / Helio G99, experimental", true, "mali"),
     )
 
     /** Bumped on every change, so open screens reload their driver lists. */
@@ -95,6 +97,24 @@ object DriverSources {
 
     @JvmStatic
     fun all(context: Context): List<DriverSource> = BUILT_IN + custom(context)
+
+    /**
+     * Authors shown for the active GPU profile: Mali hides the Turnip / Qualcomm authors (unless
+     * "show Adreno-only" is on), Adreno hides PanVK. Custom authors are always shown.
+     */
+    @JvmStatic
+    fun forProfile(context: Context): List<DriverSource> {
+        val profile = com.winlator.cmod.core.GpuProfileManager.current(context)
+        return all(context).filter { fitsProfile(context, it, profile) }
+    }
+
+    @JvmStatic
+    fun fitsProfile(context: Context, source: DriverSource, profile: com.winlator.cmod.core.GpuProfile =
+        com.winlator.cmod.core.GpuProfileManager.current(context)): Boolean = when (profile) {
+        com.winlator.cmod.core.GpuProfile.ADRENO -> source.gpu != "mali"
+        com.winlator.cmod.core.GpuProfile.MALI -> source.gpu != "adreno" || com.winlator.cmod.core.MaliCompat.showAll(context)
+        else -> true
+    }
 
     /** Adds a custom author. Returns an error message, or null on success. */
     fun addCustom(context: Context, name: String, feed: DriverFeed): String? {
