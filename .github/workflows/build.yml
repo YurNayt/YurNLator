@@ -36,6 +36,7 @@ jobs:
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             IN="${{ github.event.inputs.variant }}"
             if [[ "$IN" == "all" || -z "$IN" ]]; then V="$ALL"; else V="[\"$IN\"]"; fi
+          elif [[ "${{ github.event_name }}" == "push" ]]; then V='["standard","antutu"]'
           else V='["standard"]'; fi
           echo "variants=$V" >> "$GITHUB_OUTPUT"
 
@@ -145,20 +146,26 @@ jobs:
           # Unique file name per build: a download that started before this push keeps
           # its own file, and a browser can't resume one build with bytes of another.
           NAME="YurNLator-dev-${GITHUB_RUN_NUMBER}-${SHORT}.apk"
-          for f in dist/*.apk; do mv "$f" "dist/$NAME"; done
-          NOTES="Latest automatic build from main, build ${GITHUB_RUN_NUMBER} (commit $SHORT). For testing; may be unstable. The newest APK is the one with the highest build number; the previous one is kept so running downloads finish."
+          # standard -> YurNLator-dev-N-sha.apk; other variants get their name at the end.
+          for f in dist/*.apk; do
+            V="${f##*-}"; V="${V%.apk}"
+            if [[ "$V" == "standard" ]]; then mv "$f" "dist/$NAME"; else mv "$f" "dist/${NAME%.apk}-$V.apk"; fi
+          done
+          NOTES="Latest automatic build from main, build ${GITHUB_RUN_NUMBER} (commit $SHORT). For testing; may be unstable. The -antutu APK installs as a separate app named like AnTuTu, so phones that boost benchmarks (MediaTek, Unisoc) run it at full clocks. The newest APK is the one with the highest build number; the previous one is kept so running downloads finish."
           if gh release view dev >/dev/null 2>&1; then
-            gh release upload dev "dist/$NAME" --clobber
+            gh release upload dev dist/*.apk --clobber
             gh release edit dev --title "Dev build ${GITHUB_RUN_NUMBER} ($SHORT)" --notes "$NOTES" --prerelease
           else
-            gh release create dev "dist/$NAME" --prerelease --target "$GITHUB_SHA" \
+            gh release create dev dist/*.apk --prerelease --target "$GITHUB_SHA" \
               --title "Dev build ${GITHUB_RUN_NUMBER} ($SHORT)" --notes "$NOTES"
           fi
-          # Keep this build and the one before it; delete older APKs.
-          gh release view dev --json assets -q '.assets[].name' | grep '\.apk$' \
-            | sort -t- -k3 -n -r | tail -n +3 | while read -r old; do
-              gh release delete-asset dev "$old" -y || true
-            done
+          # Keep this build and the one before it (all their variants); delete older APKs.
+          KEEP=$(gh release view dev --json assets -q '.assets[].name' | grep '\.apk$' \
+            | cut -d- -f3 | sort -n -r -u | head -n 2 | tr '\n' ' ')
+          gh release view dev --json assets -q '.assets[].name' | grep '\.apk$' | while read -r old; do
+            N=$(echo "$old" | cut -d- -f3)
+            [[ " $KEEP " == *" $N "* ]] || gh release delete-asset dev "$old" -y || true
+          done
 
       - name: Versioned release
         if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')

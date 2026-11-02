@@ -13,10 +13,12 @@ layout(push_constant) uniform PC {
     layout(offset = 56) float brightness;
     layout(offset = 60) float contrast;
     layout(offset = 64) float gamma;
+    layout(offset = 68) float swapRB;
 } pc;
 
 // YurNLator screen effects (brightness / contrast / gamma); identity at 0 / 1 / 1.
 vec3 yurnColor(vec3 c) {
+    if (pc.swapRB > 0.5) c = c.bgr; // "Swap red/blue" for every frame source (CPU copy and AHB)
     c = pow(max(c, vec3(0.0)), vec3(1.0 / max(pc.gamma, 0.01)));
     c = (c - 0.5) * pc.contrast + 0.5 + pc.brightness;
     return clamp(c, 0.0, 1.0);

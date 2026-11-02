@@ -1305,6 +1305,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         quickMenuBridge.applySaved();
         applyFrameGen();
         if (xServerView instanceof VulkanXServerView) ((VulkanXServerView) xServerView).setDirectFrameListener(this::trackHudWindow);
+        // "Swap red/blue channels" (container / game setting) was saved but never applied.
+        if (xServerView instanceof VulkanXServerView && container != null)
+            ((VulkanXServerView) xServerView).setSwapRB(shortcut != null ? shortcut.getRendererSwapRB() : container.getRendererSwapRB());
     }
 
     private ActivityResultLauncher<Intent> controlsEditorActivityResultLauncher = registerForActivityResult(
