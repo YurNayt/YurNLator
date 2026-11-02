@@ -65,6 +65,8 @@ object WrapperManager {
         "mali-wrapper-v2" to ("wrapper-mali-v2.tzst" to "Winlator Mali wrapper v2"),
         "mali-wrapper-leegao" to ("wrapper-mali-leegao.tzst" to "Wrapper (leegao)"),
         "mali-wrapper-gamenative" to ("wrapper-mali-gamenative.tzst" to "Wrapper (GameNative)"),
+        // Newer GameNative build from testers: NieR: Automata on Dimensity 8400 with DXVK 2.4.1 gplasync.
+        "mali-wrapper-gamenative-2" to ("wrapper-mali-gamenative-2.tzst" to "Wrapper (GameNative 2, DXVK 2.x)"),
     )
 
     @JvmStatic

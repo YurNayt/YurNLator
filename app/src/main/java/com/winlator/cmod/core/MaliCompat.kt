@@ -11,8 +11,8 @@ import java.util.Locale
  * Mali runs games through the system Vulkan driver (plus a wrapper), so:
  *  - GPU drivers (adrenotools: Turnip, Qualcomm builds) load only on Adreno -> hidden;
  *    PanVK builds (open Mesa driver for Mali) stay.
- *  - DXVK: 1.x only (1.10.3, async, Sarek 1.11 / 1.12, d8vk). 2.x needs Vulkan 1.3 and
- *    features the Mali driver lacks; testers saw it fail even on Mali-G720 (Dimensity 8400).
+ *  - DXVK: 1.x (1.10.3, async, Sarek 1.11 / 1.12, d8vk); 2.x up to 2.4 on Vulkan 1.3 GPUs,
+ *    where it works with the right wrapper (GameNative 2).
  *  - VKD3D-Proton up to 2.14 (Winlator Mali ships 2.8 and 2.14.1); 2.8 max on Vulkan < 1.3.
  *  - Wine / Proton, Box64, FEX are CPU-side and fit any GPU; only builds marked for
  *    Adreno / Turnip are hidden.
@@ -73,9 +73,11 @@ object MaliCompat {
                 if ("d8vk" in n || "sarek" in n) return true
                 if (adrenoOnly.containsMatchIn(n)) return false
                 val v = lead(t, name) ?: return true
-                // Testers: DXVK 2.x fails on Mali-G720 (Dimensity 8400 Ultra) too, so 1.x only
-                // (1.10.3, async, Sarek 1.11 / 1.12) and d8vk for DX8.
-                v[0] < 2
+                // DXVK 2.x needs Vulkan 1.3, and on Mali it depends on the wrapper: testers ran
+                // NieR: Automata on Mali-G720 with 2.4.1 gplasync + "GameNative 2", while other
+                // wrappers fail. Up to 2.4 on Vulkan 1.3; 1.x (Sarek, async) otherwise.
+                if (!hasVulkan13(context)) v[0] < 2
+                else v[0] < 2 || (v[0] == 2L && v.getOrElse(1) { 0L } <= 4)
             }
             "vkd3d" -> {
                 if (adrenoOnly.containsMatchIn(n)) return false
