@@ -26,6 +26,9 @@ class ContainerCreateComposeFragment : Fragment() {
     ): View = ComposeView(requireContext()).apply {
         val editId = arguments?.getInt(ARG_EDIT_CONTAINER_ID, -1)?.takeIf { it > 0 }
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+        // Shown as a full-screen layer above the tabs: don't let touches reach the list below.
+        isClickable = true
+        isFocusable = true
         setContent {
             WinZTheme {
                 ContainerEditorV2(

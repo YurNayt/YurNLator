@@ -132,7 +132,7 @@ private fun InputControlsScreen(model: InputControlsModel, callbacks: InputContr
             activity?.setMainToolbarVisible(false)
         }
         onDispose {
-            if (landscape) {
+            if (landscape && activity?.resources?.configuration?.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
                 activity?.setBottomNavigationVisible(true)
                 activity?.setMainToolbarVisible(true)
             }

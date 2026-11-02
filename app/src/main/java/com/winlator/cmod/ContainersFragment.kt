@@ -41,12 +41,22 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
         // The toolbar is shared by all tabs; without this it keeps "Library" / "Settings".
         (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.setTitle(R.string.containers)
         val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        // After the editor's exit fade, so the toolbar doesn't pop in over the closing editor.
-        if (!landscape) view?.postDelayed({ (activity as? MainActivity)?.setMainToolbarVisible(true) }, 120)
+        if (!landscape) (activity as? MainActivity)?.setMainToolbarVisible(true)
         refresh()
     }
 
+    // The editor is a layer above this screen (it stays resumed): refresh when the editor closes.
+    private val backStackListener = androidx.fragment.app.FragmentManager.OnBackStackChangedListener {
+        if (isAdded && view != null) refresh()
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        parentFragmentManager.addOnBackStackChangedListener(backStackListener)
+    }
+
     override fun onDestroyView() {
+        parentFragmentManager.removeOnBackStackChangedListener(backStackListener)
         host = null
         super.onDestroyView()
     }
@@ -82,16 +92,16 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
         }.toMap()
     }
 
-    /** Opens the Compose container editor above the tabs; back returns here and refreshes. */
+    /**
+     * Opens the Compose container editor as a full-screen layer above everything (toolbar and
+     * bottom bar included), so nothing below changes size or jumps while it fades in and out.
+     */
     private fun openEditor(fragment: Fragment) {
-        // The editor has its own header with a back arrow: hide the "Containers" toolbar
-        // above it (it comes back in onResume when the editor closes).
-        (activity as? MainActivity)?.setMainToolbarVisible(false)
         parentFragmentManager.beginTransaction()
             .setReorderingAllowed(true)
             .setCustomAnimations(R.anim.nav_enter, R.anim.nav_exit, R.anim.nav_enter, R.anim.nav_exit)
             .addToBackStack(null)
-            .replace(R.id.FLFragmentContainer, fragment)
+            .add(android.R.id.content, fragment)
             .commit()
     }
 

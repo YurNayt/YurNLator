@@ -112,8 +112,12 @@ internal fun LibraryRoot(
         activity?.setBottomNavigationVisible(!landscape)
         activity?.setMainToolbarVisible(!landscape)
         onDispose {
-            activity?.setBottomNavigationVisible(true)
-            activity?.setMainToolbarVisible(true)
+            // Only back in portrait: in landscape the next screen keeps them hidden, and showing
+            // them here made the bottom bar flash and the next screen jump on every switch.
+            if (activity?.resources?.configuration?.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+                activity?.setBottomNavigationVisible(true)
+                activity?.setMainToolbarVisible(true)
+            }
         }
     }
 
