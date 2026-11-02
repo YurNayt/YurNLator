@@ -177,6 +177,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private WinlatorHUD modernHud = null;
     private Runnable editInputControlsCallback;
     private Shortcut shortcut;
+    /** Resolved launch settings (shortcut over container), see session/LaunchConfig. */
+    private com.winlator.cmod.session.LaunchConfig launchConfig;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
     private HashMap<String, String> graphicsDriverConfig;
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
@@ -446,28 +448,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
             shortcut = new Shortcut(container, new File(shortcutPath));
         }
 
-        taskAffinityMask = (short) ProcessHelper.getAffinityMask(container.getCPUList(true));
-        taskAffinityMaskWoW64 = (short) ProcessHelper.getAffinityMask(container.getCPUListWoW64(true));
+        // Settings of this launch: the game's own where set, else the container's (session/LaunchConfig).
+        launchConfig = com.winlator.cmod.session.LaunchConfig.resolve(container, shortcut);
+        final com.winlator.cmod.session.LaunchConfig lc = launchConfig;
 
-        String affinityCpuList = container.getCPUList(true);
+        taskAffinityMask = (short) ProcessHelper.getAffinityMask(lc.getCpuList());
+        taskAffinityMaskWoW64 = lc.getCpuListFromShortcut() ? taskAffinityMask
+                : (short) ProcessHelper.getAffinityMask(container.getCPUListWoW64(true));
+        wineCpuTopologyValue = lc.getWineCpuTopology();
 
-        if (shortcut != null) {
-            affinityCpuList = shortcut.getExtra("cpuList", container.getCPUList(true));
-            taskAffinityMask = (short) ProcessHelper.getAffinityMask(affinityCpuList);
-            taskAffinityMaskWoW64 = taskAffinityMask;
-        }
-
-        boolean syncCpuTopology = shortcut != null
-                ? shortcut.getExtra("syncCpuTopology", container.isSyncCpuTopology() ? "1" : "").equals("1")
-                : container.isSyncCpuTopology();
-
-        wineCpuTopologyValue = "";
-        if (syncCpuTopology && affinityCpuList != null && !affinityCpuList.isEmpty()) {
-            int coreCount = affinityCpuList.split(",").length;
-            wineCpuTopologyValue = coreCount + ":" + affinityCpuList;
-        }
-
-        String wmClass = shortcut != null ? shortcut.getExtra("wmClass", "") : "";
+        String wmClass = lc.getWmClass();
         Log.d("XServerDisplayActivity", "Startup wmClass: " + wmClass);
 
         firstTimeBoot = container.getExtra("imgVersion").isEmpty();
@@ -483,49 +473,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
             ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
         }
 
-        graphicsDriver = container.getGraphicsDriver();
-        String graphicsDriverConfig = container.getGraphicsDriverConfig();
-        audioDriver = Container.normalizeAudioDriver(container.getAudioDriver());
-        emulator = container.getEmulator();
+        graphicsDriver = lc.getGraphicsDriver();
+        String graphicsDriverConfig = lc.getGraphicsDriverConfig();
+        audioDriver = lc.getAudioDriver();
+        emulator = lc.getEmulator();
         midiSoundFont = container.getMIDISoundFont();
-        dxwrapper = container.getDXWrapper();
-        String dxwrapperConfig = container.getDXWrapperConfig();
-        screenSize = container.getScreenSize();
-        winHandler.setInputType((byte) container.getInputType());
-        lc_all = container.getLC_ALL();
+        dxwrapper = lc.getDxwrapper();
+        String dxwrapperConfig = lc.getDxwrapperConfig();
+        screenSize = lc.getScreenSize();
+        winHandler.setInputType((byte) lc.getInputType());
+        lc_all = lc.getLcAll();
 
         Intent intent = getIntent();
         Log.d("XServerDisplayActivity", "Intent Extras: " + intent.getExtras());
 
         if (shortcut != null) {
-            graphicsDriver = shortcut.getExtra("graphicsDriver", container.getGraphicsDriver());
-            graphicsDriverConfig = shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig());
-            audioDriver = Container.normalizeAudioDriver(shortcut.getExtra("audioDriver", container.getAudioDriver()));
-            emulator = shortcut.getExtra("emulator", container.getEmulator());
-            dxwrapper = shortcut.getExtra("dxwrapper", container.getDXWrapper());
-            dxwrapperConfig = shortcut.getExtra("dxwrapperConfig", container.getDXWrapperConfig());
-            screenSize = shortcut.getExtra("screenSize", container.getScreenSize());
-            lc_all = shortcut.getExtra("lc_all", container.getLC_ALL());
-            String inputType = shortcut.getExtra("inputType");
-            if (!inputType.isEmpty())
-                winHandler.setInputType(Byte.parseByte(inputType));
-            String xinputDisabledString = shortcut.getExtra("disableXinput", "false");
-            xinputDisabledFromShortcut = parseBoolean(xinputDisabledString);
-
+            xinputDisabledFromShortcut = lc.getXinputDisabled();
             winHandler.setXInputDisabled(xinputDisabledFromShortcut);
-            String sharpnessEffect = shortcut.getExtra("sharpnessEffect", "None");
-            if (!sharpnessEffect.equals("None")) {
-                double sharpnessLevel = Double.parseDouble(shortcut.getExtra("sharpnessLevel", "100"));
-                double sharpnessDenoise = Double.parseDouble(shortcut.getExtra("sharpnessDenoise", "100"));
-                vkbasaltConfig = "effects=" + sharpnessEffect.toLowerCase() + ";" + "casSharpness="
-                        + sharpnessLevel / 100 + ";" + "dlsSharpness=" + sharpnessLevel / 100 + ";" + "dlsDenoise="
-                        + sharpnessDenoise / 100 + ";" + "enableOnLaunch=True";
-            }
+            if (!lc.getVkbasaltConfig().isEmpty()) vkbasaltConfig = lc.getVkbasaltConfig();
             Log.d("XServerDisplayActivity", "XInput Disabled from Shortcut: " + xinputDisabledFromShortcut);
-
-            simulateTouchScreen = shortcut.getExtra("simTouchScreen").equals("1");
-            isRelativeMouseMovement = shortcut.getExtra("enableRelativeMouse").equals("1");
-            isMouseDisabled = shortcut.getExtra("disableMouse").equals("1");
+            simulateTouchScreen = lc.getSimulateTouchScreen();
+            isRelativeMouseMovement = lc.getRelativeMouse();
+            isMouseDisabled = lc.getMouseDisabled();
         }
 
         this.graphicsDriverConfig = GraphicsDriverConfigDialog.parseGraphicsDriverConfig(graphicsDriverConfig);
@@ -1007,8 +976,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             containerDataChanged = true;
         }
 
-        String wincomponents = shortcut != null ? shortcut.getExtra("wincomponents", container.getWinComponents())
-                : container.getWinComponents();
+        String wincomponents = launchConfig.getWinComponents();
         if (!wincomponents.equals(container.getExtra("wincomponents"))) {
             extractWinComponentFiles();
             container.putExtra("wincomponents", wincomponents);
@@ -1025,28 +993,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
         WineStartMenuCreator.create(this, container);
         WineUtils.createDosdevicesSymlinks(container);
 
-        int inputType = container.getInputType();
-        if (shortcut != null) {
-            String shortcutInputType = shortcut.getExtra("inputType");
-            if (!shortcutInputType.isEmpty()) {
-                inputType = Byte.parseByte(shortcutInputType);
-            }
-        }
+        int inputType = launchConfig.getInputType();
         boolean dinputEnabled = (inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT;
 
-        boolean exclusiveXInput = container.isExclusiveXInput();
-        if (shortcut != null) {
-            String extra = shortcut.getExtra("exclusiveXInput");
-            if (!extra.isEmpty())
-                exclusiveXInput = extra.equals("1");
-        }
+        boolean exclusiveXInput = launchConfig.getExclusiveXInput();
 
         WineUtils.setJoystickRegistryKeys(container, dinputEnabled, exclusiveXInput);
 
-        if (shortcut != null)
-            startupSelection = shortcut.getExtra("startupSelection", String.valueOf(container.getStartupSelection()));
-        else
-            startupSelection = String.valueOf(container.getStartupSelection());
+        startupSelection = launchConfig.getStartupSelection();
 
         if (!startupSelection.equals(container.getExtra("startupSelection"))) {
             WineUtils.changeServicesStatus(container, startupSelection);
@@ -1116,15 +1070,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             guestProgramLauncherComponent.setBindingPaths(bindingPaths.toArray(new String[0]));
 
-            guestProgramLauncherComponent.setBox64Preset(
-                    shortcut != null
-                            ? shortcut.getExtra("box64Preset", container.getBox64Preset())
-                            : container.getBox64Preset());
+            guestProgramLauncherComponent.setBox64Preset(launchConfig.getBox64Preset());
 
-            guestProgramLauncherComponent.setFEXCorePreset(
-                    shortcut != null
-                            ? shortcut.getExtra("fexcorePreset", container.getFEXCorePreset())
-                            : container.getFEXCorePreset());
+            guestProgramLauncherComponent.setFEXCorePreset(launchConfig.getFexcorePreset());
         }
 
         if (overrideEnvVars != null) {
@@ -2737,8 +2685,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             JSONObject wincomponentsJSONObject = new JSONObject(
                     FileUtils.readString(this, "wincomponents/wincomponents.json"));
             ArrayList<String> dlls = new ArrayList<>();
-            String wincomponents = shortcut != null ? shortcut.getExtra("wincomponents", container.getWinComponents())
-                    : container.getWinComponents();
+            String wincomponents = launchConfig.getWinComponents();
 
             Iterator<String[]> oldWinComponentsIter = new KeyValueSet(
                     container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator();
