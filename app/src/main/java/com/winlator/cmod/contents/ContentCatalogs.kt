@@ -18,6 +18,7 @@ object ContentCatalogs {
     data class Source(val name: String, val url: String, val maxPerType: Int = Int.MAX_VALUE)
 
     const val MAIN_SOURCE = "Winlator Contents"
+    private const val FEX_NIGHTLY_SOURCE = "https://raw.githubusercontent.com/merkezekre2026/fexcore-wcp/main/contents.json"
 
     val EXTRA_SOURCES = listOf(
         // Bannerlator's catalog: Nightlies components, Proton / GE-Proton / CachyOS layers.
@@ -25,7 +26,7 @@ object ContentCatalogs {
         // Arihany's WCP hub: recent DXVK (incl. gplasync), VKD3D, FEXCore.
         Source("WCP Hub", "https://raw.githubusercontent.com/Arihany/WinlatorWCPHub/refs/heads/main/pack.json"),
         // Daily FEX builds from upstream; about a month of the newest.
-        Source("FEX nightly", "https://raw.githubusercontent.com/merkezekre2026/fexcore-wcp/main/contents.json", maxPerType = 15),
+        Source("FEX nightly", FEX_NIGHTLY_SOURCE, maxPerType = 15),
     )
 
     /** Releases of the FEX nightly repo: their publish date names each daily build ("20261030"). */
@@ -95,7 +96,12 @@ object ContentCatalogs {
                 else Entry(o.optString("type"), name, o.optString("verCode", "0").toIntOrNull() ?: 0, url, source.name)
             }
         }.getOrDefault(emptyList())
-        parsed.groupBy { it.type.lowercase(Locale.ENGLISH) }.values.flatMap { it.take(source.maxPerType) }
+        // The FEX nightly repo keeps only its last few releases while its catalog still lists
+        // the old ones (their downloads are gone, 404): keep only builds that still have a release.
+        val alive = if (source.url == FEX_NIGHTLY_SOURCE && nightlyDates.isNotEmpty()) {
+            parsed.filter { e -> nightlyDate(e.verName.substringAfterLast('-')) != null }
+        } else parsed
+        alive.groupBy { it.type.lowercase(Locale.ENGLISH) }.values.flatMap { it.take(source.maxPerType) }
     }.onEach { sourceByUrl[it.remoteUrl] = it.source }
 
     @JvmStatic
