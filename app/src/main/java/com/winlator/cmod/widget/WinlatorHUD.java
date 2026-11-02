@@ -743,6 +743,12 @@ public class WinlatorHUD extends View {
                 float real = (stats[0] - lastReal) * 1_000_000_000f / dt;
                 float gen = (stats[1] - lastGen) * 1_000_000_000f / dt;
                 float game = (stats[2] - lastContent) * 1_000_000_000f / dt;
+                // Some drivers / wrappers (Mali) deliver game frames by a path the content
+                // counter doesn't see: then count window updates, or else what reached the screen.
+                if (game < 0.5f) {
+                    float updates = frames * 1_000_000_000f / dt;
+                    game = updates >= 0.5f ? updates : real;
+                }
                 snapFps = game;
                 value = gen >= 1f ? String.format(Locale.US, "%.0f (%.0f)", real + gen, game)
                                   : String.format(Locale.US, "%.0f", game);
