@@ -29,6 +29,7 @@ import java.util.Date;
 public class LogView extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final ArrayList<String> lines = new ArrayList<>();
+    private static final int MAX_LINES = 5000;
     private final float rowHeight = UnitUtils.dpToPx(30);
     private final float defaultTextSize = UnitUtils.dpToPx(16);
     private final float minScrollThumbSize = UnitUtils.dpToPx(6);
@@ -181,6 +182,9 @@ public class LogView extends View {
     public void append(String line) {
         synchronized (lock) {
             lines.add("["+DateFormat.format("HH:mm:ss", System.currentTimeMillis())+"]  "+line.replace("\n", ""));
+            // The view keeps the latest lines only (the log file has them all): +relay logs ran
+            // into hundreds of thousands of lines and the app out of memory.
+            if (lines.size() > MAX_LINES) lines.subList(0, lines.size() - MAX_LINES + MAX_LINES / 5).clear();
             computeScrollSize();
         }
     }

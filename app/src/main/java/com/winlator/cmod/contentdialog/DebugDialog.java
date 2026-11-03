@@ -22,6 +22,8 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
     private final LogView logView;
     private static boolean paused = false;
     private BufferedWriter writer;
+    private int unflushed = 0;
+    private long lastFlushMs = 0;
 
     public DebugDialog(@NonNull Context context) {
         super(context, R.layout.debug_dialog);
@@ -45,6 +47,12 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
         llBottomBarPanel.addView(toolbarView);
         try {
             writer = new BufferedWriter(new FileWriter(logView.getLogFile(context)));
+            // The tail (what the game printed before it closed) reaches the file within 0.5 s.
+            java.util.concurrent.ScheduledExecutorService flusher = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "LogFlush"); t.setDaemon(true); return t;
+            });
+            final BufferedWriter w = writer;
+            flusher.scheduleWithFixedDelay(() -> { try { w.flush(); } catch (IOException ignored) {} }, 500, 500, java.util.concurrent.TimeUnit.MILLISECONDS);
         }
         catch (IOException e) {
             throw new RuntimeException(e);
@@ -56,7 +64,14 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
         if (!getPaused()) logView.append(line+"\n");
         try {
             writer.write(line + "\n");
-            writer.flush();
+            // Flushing every line made heavy logs (+relay) crawl; flush in batches and often enough
+            // that a crash loses at most a fraction of a second.
+            long now = android.os.SystemClock.uptimeMillis();
+            if (++unflushed >= 256 || now - lastFlushMs > 300) {
+                writer.flush();
+                unflushed = 0;
+                lastFlushMs = now;
+            }
         }
         catch (IOException e) {
             throw new RuntimeException(e);
