@@ -7,6 +7,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function
 add_subdirectory(OpenXR-SDK)
 add_subdirectory(patchelf)
 add_subdirectory(adrenotools)
+# Wayland display backend: Bannerlator's embedded compositor (libbannerwayland.so).
+add_subdirectory(waylandcomp)
 
 add_library(winlator SHARED
         xr/engine.c
