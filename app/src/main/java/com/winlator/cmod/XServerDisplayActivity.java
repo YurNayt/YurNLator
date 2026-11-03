@@ -1304,10 +1304,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         setupSidebarGraphicsControls();
         quickMenuBridge.applySaved();
         applyFrameGen();
-        if (xServerView instanceof VulkanXServerView) ((VulkanXServerView) xServerView).setDirectFrameListener(this::trackHudWindow);
+        // Every renderer: direct (DRI3) frames tell the HUD which window is the game's.
+        xServerView.setDirectFrameListener(this::trackHudWindow);
         // "Swap red/blue channels" (container / game setting) was saved but never applied.
-        if (xServerView instanceof VulkanXServerView && container != null)
-            ((VulkanXServerView) xServerView).setSwapRB(shortcut != null ? shortcut.getRendererSwapRB() : container.getRendererSwapRB());
+        boolean swapRB = container != null && (shortcut != null ? shortcut.getRendererSwapRB() : container.getRendererSwapRB());
+        if (xServerView instanceof VulkanXServerView) ((VulkanXServerView) xServerView).setSwapRB(swapRB);
+        else if (xServerView instanceof EGLXServerView) ((EGLXServerView) xServerView).setSwapRB(swapRB);
     }
 
     private ActivityResultLauncher<Intent> controlsEditorActivityResultLauncher = registerForActivityResult(

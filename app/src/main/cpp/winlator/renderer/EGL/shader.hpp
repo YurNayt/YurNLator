@@ -53,12 +53,16 @@ class DrawableShader : public Shader {
             uniform sampler2D texture;
             varying vec2 vUV;
             uniform int is_cursor;
+            uniform int swap_rb;
 
             void main() {
                 vec4 color = vec4(0, 0, 0, 0);
                     
-                if (is_cursor == 0)
-                    color = vec4(texture2D(texture, vUV).rgb, 1.0);            
+                if (is_cursor == 0) {
+                    vec3 c = texture2D(texture, vUV).rgb;
+                    if (swap_rb != 0) c = c.bgr;
+                    color = vec4(c, 1.0);
+                }
                 else
                     color = texture2D(texture, vUV);
                 

@@ -197,6 +197,7 @@ public class EGLXServerView extends XServerRendererView implements SurfaceHolder
 
     @Override
     public void onUpdateWindowContentDirect(Window window, Drawable drawable, short xOff, short yOff) {
+        notifyDirectFrame(window);
         if (window.id == fpsWindowId) {
             if (hudRef != null) hudRef.onFrame();
             if (classicHudRef != null) classicHudRef.update();
@@ -270,6 +271,13 @@ public class EGLXServerView extends XServerRendererView implements SurfaceHolder
     public native void nativeToggleFullscreen();
     @FastNative
     public native void nativeSetCursorVisible(boolean visible);
+
+    private native void nativeSetSwapRB(boolean enabled);
+
+    /** "Swap red/blue channels". */
+    public void setSwapRB(boolean enabled) {
+        nativeSetSwapRB(enabled);
+    }
     @FastNative
     public native void nativeSetScreenOffsetYRelativeToCursor(boolean cond);
     @FastNative

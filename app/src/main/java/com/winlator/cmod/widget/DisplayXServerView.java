@@ -185,6 +185,7 @@ public class DisplayXServerView extends XServerRendererView implements SurfaceHo
 
     @Override
     public void onUpdateWindowContentDirect(Window window, Drawable drawable, short xOff, short yOff) {
+        notifyDirectFrame(window);
         if (window.id == fpsWindowId) {
             if (hudRef != null) hudRef.onFrame();
             if (classicHudRef != null) classicHudRef.update();

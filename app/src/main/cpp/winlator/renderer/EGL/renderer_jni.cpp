@@ -492,3 +492,8 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_cmod_widget_EGLXServerView_nativeSetFilterMode(JNIEnv *env, jobject thiz, jint mode) {
     renderer.filterMode = mode;
 }
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_EGLXServerView_nativeSetSwapRB(JNIEnv *env, jobject thiz, jboolean enabled) {
+    renderer.swapRB = enabled;
+    renderer.requestRenderer();
+}

@@ -10,6 +10,18 @@ import com.winlator.cmod.xserver.Window;
 import com.winlator.cmod.xserver.XServer;
 
 public abstract class XServerRendererView extends SurfaceView {
+    /** Called for every frame a window presents directly (the HUD uses it to find the game window). */
+    protected volatile java.util.function.Consumer<com.winlator.cmod.xserver.Window> directFrameListener;
+
+    public void setDirectFrameListener(java.util.function.Consumer<com.winlator.cmod.xserver.Window> listener) {
+        directFrameListener = listener;
+    }
+
+    protected void notifyDirectFrame(com.winlator.cmod.xserver.Window window) {
+        java.util.function.Consumer<com.winlator.cmod.xserver.Window> l = directFrameListener;
+        if (l != null) l.accept(window);
+    }
+
 
     public final ViewTransformation viewTransformation = new ViewTransformation();
     protected final XServer xServer;

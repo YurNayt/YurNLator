@@ -109,6 +109,8 @@ class EGLRenderer {
         bool magnifierEnabled = true;
         float magnifierZoom = 1.0f;
         bool cursorVisible = true;
+        /** "Swap red/blue channels" for window content. */
+        bool swapRB = false;
         int filterMode = 0;
         WindowManager *windowManager;
         CursorManager *cursorManager;

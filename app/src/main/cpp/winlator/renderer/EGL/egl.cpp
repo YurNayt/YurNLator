@@ -427,6 +427,7 @@ void EGLRenderer::renderDrawable(int textureId, int length, float xform[], bool 
     glUniform1i(drawableShader->getUniformLoc("texture"), 0);
     glUniform1fv(drawableShader->getUniformLoc("xform"), length, xform);
     glUniform1i(drawableShader->getUniformLoc("is_cursor"), isFromWindow ? 0 : 1);
+    glUniform1i(drawableShader->getUniformLoc("swap_rb"), swapRB ? 1 : 0);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
