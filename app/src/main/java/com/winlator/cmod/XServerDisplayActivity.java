@@ -477,7 +477,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         waylandMode = launchConfig.getWayland() && com.winlator.cmod.session.WaylandSupport.isLayerCapable(wineInfo.path);
         if (launchConfig.getWayland() && !waylandMode) {
             Log.w("XServerDisplayActivity", "wayland: layer " + wineInfo.path + " has no winewayland.so, launching on X11");
-            runOnUiThread(() -> Toast.makeText(this, "Wayland needs a Proton layer with the Wayland driver (Bannerlator v8 layers). Launching on X11.", Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> Toast.makeText(this, "This Proton has no Wayland driver: use a Bannerlator layer, e.g. Proton-11.0-2-arm64ec (v16) or GE-Proton-11.0-9 (v16). Starting on X11.", Toast.LENGTH_LONG).show());
         }
 
         ProcessHelper.removeAllDebugCallbacks();
@@ -3589,6 +3589,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 String driver = graphicsDriverConfig.get("version");
                 if (driver != null && !driver.isEmpty()) out.add(new QmInfo("Graphics driver", driver));
                 if (actualDriver != null) out.add(new QmInfo("Running on", actualDriver));
+                out.add(new QmInfo("Display", waylandMode ? "Wayland (compositor)" : "X11"
+                        + (launchConfig != null && launchConfig.getWayland() ? " (Wayland not available with this Proton)" : "")));
                 String wrapper = graphicsDriverConfig.get("wrapper");
                 if (wrapper != null && !wrapper.isEmpty()) out.add(new QmInfo("Vulkan wrapper", wrapper));
             }

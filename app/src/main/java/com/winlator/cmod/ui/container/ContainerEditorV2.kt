@@ -893,7 +893,7 @@ private fun ContainerCategoryV2(
                 SettingMappedChoice("Display backend", s.displayBackend,
                     linkedMapOf("x11" to "X11", "wayland" to "Wayland (experimental)")) { s.displayBackend = it }
                 if (s.displayBackend == "wayland") Text(
-                    "Needs a Proton layer with the Wayland driver (Bannerlator v8) and a Mesa driver in Driver Version (Turnip on Adreno, PanVK on Mali). Otherwise the game starts on X11.",
+                    "Needs a Bannerlator Proton layer with the Wayland driver (Proton-11.0-2-arm64ec (v16), GE-Proton-11 (v16), DroidDeck-Proton-11 (v16)…) and a Mesa driver in Driver Version: Turnip on Adreno, PanVK on Mali (System on Mali is experimental). Otherwise the game starts on X11.",
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
                 SettingsDivider()
