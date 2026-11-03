@@ -3451,6 +3451,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
         }
 
+        @Override public float mouseSpeed() { return globalCursorSpeed; }
+
+        @Override public void setMouseSpeed(float speed) {
+            globalCursorSpeed = Math.max(0.1f, Math.min(5f, speed));
+            preferences.edit().putFloat("cursor_speed", globalCursorSpeed).apply();
+            ControlsProfile p = inputControlsView != null ? inputControlsView.getProfile() : null;
+            if (touchpadView != null) touchpadView.setSensitivity(globalCursorSpeed * (p != null ? p.getCursorSpeed() : 1f));
+        }
+
         @Override public boolean relativeMouse() { return isRelativeMouseMovement; }
 
         @Override public void setRelativeMouse(boolean on) {

@@ -455,7 +455,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:min="10"
-                        android:max="200" />
+                        android:max="500" />
 
                     <CheckBox
                         android:id="@+id/CBUseDRI3"

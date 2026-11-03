@@ -570,7 +570,7 @@ public class SettingsFragment extends Fragment {
 
             @Override
             public void onCursorSpeedChanged(int percent) {
-                int clamped = Math.max(10, Math.min(200, percent));
+                int clamped = Math.max(10, Math.min(500, percent));
                 preferences.edit().putFloat("cursor_speed", clamped / 100.0f).apply();
                 refreshCompose();
             }

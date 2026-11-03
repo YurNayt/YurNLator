@@ -101,6 +101,9 @@ interface QuickMenuBridge {
     fun setControlsOpacity(value: Float)
     fun relativeMouse(): Boolean
     fun setRelativeMouse(on: Boolean)
+    /** Touch -> mouse speed (also the on-screen trackpad), 0.1 … 5.0; saved for all games. */
+    fun mouseSpeed(): Float
+    fun setMouseSpeed(speed: Float)
     fun mouseDisabled(): Boolean
     fun setMouseDisabled(on: Boolean)
     fun gyro(): QmGyro

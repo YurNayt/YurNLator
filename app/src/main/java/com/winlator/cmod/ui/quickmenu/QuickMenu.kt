@@ -522,6 +522,7 @@ private fun ControlsSection(bridge: QuickMenuBridge, opened: Int) {
     var opacity by remember(opened) { mutableFloatStateOf(bridge.controlsOpacity()) }
     var relative by remember(opened) { mutableStateOf(bridge.relativeMouse()) }
     var noMouse by remember(opened) { mutableStateOf(bridge.mouseDisabled()) }
+    var mouseSpeed by remember(opened) { mutableFloatStateOf(bridge.mouseSpeed()) }
 
     SectionPage("Controls") {
         Card {
@@ -539,6 +540,11 @@ private fun ControlsSection(bridge: QuickMenuBridge, opened: Int) {
             SwitchRow("Relative mouse", "Mouse moves by touch delta, for 3D games", checked = relative) { relative = it; bridge.setRelativeMouse(it) }
             SwitchRow("Disable mouse", checked = noMouse) { noMouse = it; bridge.setMouseDisabled(it) }
         }
+        StepSlider(
+            "Mouse sensitivity", (mouseSpeed - 0.1f) / 4.9f,
+            String.format(java.util.Locale.US, "%.1f×", mouseSpeed), step = 0.1f / 4.9f,
+            onChange = { f -> mouseSpeed = 0.1f + f * 4.9f; bridge.setMouseSpeed(mouseSpeed) }
+        )
         GyroCard(bridge, opened)
         Card {
             ActionRow(Icons.Outlined.Keyboard, "Show keyboard") { bridge.showKeyboard(); bridge.close() }

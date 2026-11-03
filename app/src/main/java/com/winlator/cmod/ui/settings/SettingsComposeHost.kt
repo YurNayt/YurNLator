@@ -370,7 +370,7 @@ private fun ToggleRow(title: String, checked: Boolean, onChecked: (Boolean) -> U
 
 @Composable
 private fun CursorSpeedRow(value: Int, onChanged: (Int) -> Unit) {
-    var draft by remember(value) { mutableFloatStateOf(value.coerceIn(10, 200).toFloat()) }
+    var draft by remember(value) { mutableFloatStateOf(value.coerceIn(10, 500).toFloat()) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Cursor speed", modifier = Modifier.weight(1f))
@@ -380,7 +380,7 @@ private fun CursorSpeedRow(value: Int, onChanged: (Int) -> Unit) {
             value = draft,
             onValueChange = { draft = it },
             onValueChangeFinished = { onChanged(draft.roundToInt()) },
-            valueRange = 10f..200f
+            valueRange = 10f..500f
         )
     }
 }
