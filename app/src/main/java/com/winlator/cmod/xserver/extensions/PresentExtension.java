@@ -304,20 +304,19 @@ public class PresentExtension implements Extension,
                 renderer instanceof EGLXServerView ||
                 renderer instanceof DisplayXServerView;
 
-            if (supportsDirectScanout && pixmap.drawable.isDirectScanout()) {
+            // Direct scanout only when the window is really on screen. Wine moves a game's Vulkan
+            // surface "offscreen" (an unmapped parent or a Composite redirect: child windows,
+            // DPI scaling, failed mode changes) and then copies the window's content itself; a
+            // frame handed straight to the renderer never reached that content: black screen.
+            XCompositeExtension composite = client.xServer.getExtension(XCompositeExtension.MAJOR_OPCODE);
+            boolean onScreen = window.getMapState() == Window.MapState.VIEWABLE
+                    && (composite == null || !composite.isRedirected(window));
+
+            if (supportsDirectScanout && pixmap.drawable.isDirectScanout() && onScreen) {
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.FLIP, ust, msc);
                 flushClientOutput(client);
-                if (window.attributes.isMapped())
-                    renderer.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
+                renderer.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
                 scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, renderer);
-
-            } else if (renderer != null && window.attributes.isMapped()) {
-                content.copyArea((short)0, (short)0, xOff, yOff,
-                    pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
-                sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
-                flushClientOutput(client);
-                scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, renderer);
-
             } else {
                 content.copyArea((short)0, (short)0, xOff, yOff,
                     pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);

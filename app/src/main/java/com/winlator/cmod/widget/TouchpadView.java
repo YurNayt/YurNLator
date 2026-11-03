@@ -100,11 +100,22 @@ public class TouchpadView extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        updateXform(w, h, xServer.screenInfo.width, xServer.screenInfo.height);
+        updateXform(w, h, sceneWidth(), sceneHeight());
         resolutionScale = 1000.0f / Math.min(xServer.screenInfo.width, xServer.screenInfo.height);
     }
 
+    /** The game's display mode area (auto-fit), else the whole X screen. */
+    private int sceneWidth() { return xServer.displayMode != null ? xServer.displayMode.getWidth() : xServer.screenInfo.width; }
+    private int sceneHeight() { return xServer.displayMode != null ? xServer.displayMode.getHeight() : xServer.screenInfo.height; }
+    private boolean displayModeListening = false;
+
     private void updateXform(int outerWidth, int outerHeight, int innerWidth, int innerHeight) {
+        if (!displayModeListening && xServer.displayMode != null) {
+            displayModeListening = true;
+            xServer.displayMode.addListener(() -> post(() -> {
+                if (getWidth() > 0) updateXform(getWidth(), getHeight(), sceneWidth(), sceneHeight());
+            }));
+        }
         ViewTransformation viewTransformation = new ViewTransformation();
         viewTransformation.update(outerWidth, outerHeight, innerWidth, innerHeight);
 
@@ -113,7 +124,7 @@ public class TouchpadView extends View {
             XForm.makeTranslation(xform, -viewTransformation.viewOffsetX, -viewTransformation.viewOffsetY);
             XForm.scale(xform, invAspect, invAspect);
         } else
-            XForm.makeScale(xform, (float) innerWidth / outerWidth, (float) innerHeight / outerHeight);
+            XForm.makeScale(xform, (float) xServer.screenInfo.width / outerWidth, (float) xServer.screenInfo.height / outerHeight);
     }
 
     private class Finger {
@@ -736,7 +747,7 @@ public class TouchpadView extends View {
     }
 
     public void toggleFullscreen() {
-        new Handler().postDelayed(() -> updateXform(getWidth(), getHeight(), xServer.screenInfo.width, xServer.screenInfo.height),
+        new Handler().postDelayed(() -> updateXform(getWidth(), getHeight(), sceneWidth(), sceneHeight()),
                 UPDATE_FORM_DELAYED_TIME);
     }
     

@@ -67,10 +67,14 @@ public class XServer {
         selectionManager = new SelectionManager(windowManager);
         inputDeviceManager = new InputDeviceManager(this);
         grabManager = new GrabManager(this);
+        displayMode = new DisplayModeTracker(screenInfo, windowManager);
 
         DesktopHelper.attachTo(this);
         setupExtensions();
     }
+
+    /** The game's display mode inside the virtual desktop (auto-fit scaling). */
+    public DisplayModeTracker displayMode;
 
     public int getSurfaceFormat() {
         return surfaceFormat;

@@ -3569,7 +3569,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 String wrapper = graphicsDriverConfig.get("wrapper");
                 if (wrapper != null && !wrapper.isEmpty()) out.add(new QmInfo("Vulkan wrapper", wrapper));
             }
-            if (xServer != null) out.add(new QmInfo("Resolution", xServer.screenInfo.toString()));
+            if (xServer != null) out.add(new QmInfo("Resolution", xServer.screenInfo.toString()
+                    + (xServer.displayMode != null && xServer.displayMode.isActive()
+                        ? " · game " + xServer.displayMode.getWidth() + "x" + xServer.displayMode.getHeight() + " (scaled to fit)" : "")));
             String soc = Build.VERSION.SDK_INT >= 31 ? " · " + Build.SOC_MODEL : "";
             out.add(new QmInfo("Device", Build.MANUFACTURER.toUpperCase(java.util.Locale.ENGLISH) + " " + Build.MODEL + soc
                     + " · " + Runtime.getRuntime().availableProcessors() + "c · Android " + Build.VERSION.RELEASE));

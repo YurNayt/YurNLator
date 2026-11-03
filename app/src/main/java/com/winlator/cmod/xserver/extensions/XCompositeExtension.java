@@ -48,6 +48,14 @@ public class XCompositeExtension implements Extension, XResourceManager.OnResour
     private final XServer xServer;
     private final List<Redirect> redirects = new CopyOnWriteArrayList<>();
 
+    /** The window or one of its ancestors is redirected offscreen (its content isn't on screen). */
+    public boolean isRedirected(Window window) {
+        if (redirects.isEmpty()) return false;
+        for (Window w = window; w != null; w = w.getParent())
+            for (Redirect r : redirects) if (r.window == w) return true;
+        return false;
+    }
+
     public XCompositeExtension(XServer xServer) {
         this.xServer = xServer;
         xServer.windowManager.addOnResourceLifecycleListener(this);

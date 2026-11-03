@@ -95,6 +95,9 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
         rootCursorDrawable = createRootCursorDrawable();
         xServer.setXServerView(this);
         xServer.windowManager.addOnWindowModificationListener(this);
+        if (xServer.displayMode != null) xServer.displayMode.addListener(() -> post(() -> {
+            synchronized (lock) { updateTransform(); }
+        }));
         xServer.pointer.addOnPointerMotionListener(this);
     }
 
@@ -301,7 +304,7 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     public void onResume() {}
 
     private void updateTransform() {
-        if (nativeHandle == 0) return;
+        if (nativeHandle == 0 || surfaceWidth <= 0 || surfaceHeight <= 0) return;
         final float zoom = magnifierZoom;
         final float ptrX = xServer.pointer.getX();
         final float ptrY = xServer.pointer.getY();
@@ -319,15 +322,23 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
                 ox = 0f; oy = 0f; sx = 1f; sy = 1f;
             }
         } else {
+            // Auto-fit: the game's display mode (Wine desktop area at 0,0) fills the view.
+            final int sceneW = xServer.displayMode != null ? xServer.displayMode.getWidth() : xServer.screenInfo.width;
+            final int sceneH = xServer.displayMode != null ? xServer.displayMode.getHeight() : xServer.screenInfo.height;
+            viewTransformation.update(surfaceWidth, surfaceHeight, sceneW, sceneH);
+            final float k = (float) xServer.screenInfo.width / surfaceWidth;
+            final float kY = (float) xServer.screenInfo.height / surfaceHeight;
+            final float baseSX = viewTransformation.aspect * k, baseSY = viewTransformation.aspect * kY;
+            final float baseOX = viewTransformation.viewOffsetX * k, baseOY = viewTransformation.viewOffsetY * kY;
             float py = 0;
             if (screenOffsetYRelativeToCursor) {
-                short halfH = (short)(xServer.screenInfo.height / 2);
+                short halfH = (short)(sceneH / 2);
                 py = Math.max(0, Math.min(ptrY - halfH / 2.0f, halfH));
             }
-            ox = viewTransformation.sceneOffsetX + ptrX * viewTransformation.sceneScaleX * (1f - zoom);
-            oy = viewTransformation.sceneOffsetY - py + ptrY * viewTransformation.sceneScaleY * (1f - zoom);
-            sx = viewTransformation.sceneScaleX * zoom;
-            sy = viewTransformation.sceneScaleY * zoom;
+            ox = baseOX + ptrX * baseSX * (1f - zoom);
+            oy = baseOY - py + ptrY * baseSY * (1f - zoom);
+            sx = baseSX * zoom;
+            sy = baseSY * zoom;
         }
 
         final boolean needScissor = !(fullscreen && zoom == 1.0f);
