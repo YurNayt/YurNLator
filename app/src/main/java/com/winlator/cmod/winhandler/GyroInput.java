@@ -55,6 +55,9 @@ public class GyroInput implements SensorEventListener {
     public boolean fast;
     public int activation;
     public int button;
+    /** Mouse target: 0 auto (Windows input while a game holds the mouse), 1 always Windows input, 2 always the X pointer. */
+    public int mouseMode;
+    public static final int MOUSE_AUTO = 0, MOUSE_GAME = 1, MOUSE_POINTER = 2;
 
     private boolean toggledOn = false;
     private boolean lastButton = false;
@@ -84,6 +87,7 @@ public class GyroInput implements SensorEventListener {
         fast = p.getBoolean("gyro_fast", false);
         activation = p.getInt("gyro_activation", ACTIVATION_ALWAYS);
         button = p.getInt("gyro_button", 4);
+        mouseMode = p.getInt("gyro_mouse_mode", MOUSE_AUTO);
     }
 
     public void save() {
@@ -96,6 +100,7 @@ public class GyroInput implements SensorEventListener {
                 .putBoolean("gyro_fast", fast)
                 .putInt("gyro_activation", activation)
                 .putInt("gyro_button", button)
+                .putInt("gyro_mouse_mode", mouseMode)
                 .apply();
     }
 

@@ -24,10 +24,14 @@ public final class WinFrameGen {
 
     private WinFrameGen() {}
 
-    /** The engine used when a container / game doesn't choose one. */
+    /**
+     * The engine used when a container / game doesn't choose one: the user's pick in Settings,
+     * else LSFG once a Lossless.dll is imported (smoother), else Win-FG.
+     */
     public static String defaultEngine(Context context) {
-        String v = PreferenceManager.getDefaultSharedPreferences(context).getString(PREF_ENGINE, ENGINE_WINFG);
-        return ENGINE_LSFG.equals(v) ? ENGINE_LSFG : ENGINE_WINFG;
+        String v = PreferenceManager.getDefaultSharedPreferences(context).getString(PREF_ENGINE, "");
+        if (v.isEmpty()) return LsfgNative.isDllAvailable(context) ? ENGINE_LSFG : ENGINE_WINFG;
+        return ENGINE_LSFG.equals(v) && LsfgNative.isDllAvailable(context) ? ENGINE_LSFG : ENGINE_WINFG;
     }
 
     public static void setDefaultEngine(Context context, String engine) {

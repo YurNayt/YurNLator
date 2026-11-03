@@ -397,7 +397,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         winHandler = new WinHandler(this);
         gyroInput = new GyroInput(this, new GyroInput.Output() {
-            @Override public void moveMouse(int dx, int dy) { if (xServer != null) xServer.injectPointerMoveDelta(dx, dy); }
+            @Override public void moveMouse(int dx, int dy) {
+                if (xServer == null) return;
+                // In a game the camera reads Windows input (raw input / DirectInput, or the cursor
+                // Wine moves itself); a moved X pointer is ignored once the game has grabbed it.
+                // So: Windows input (like Relative mouse) while the game holds the mouse.
+                int mode = gyroInput != null ? gyroInput.mouseMode : GyroInput.MOUSE_AUTO;
+                boolean game = mode == GyroInput.MOUSE_GAME || (mode == GyroInput.MOUSE_AUTO
+                        && (xServer.isRelativeMouseMovement() || xServer.grabManager.getWindow() != null));
+                if (game && winHandler != null) winHandler.mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+                else xServer.injectPointerMoveDelta(dx, dy);
+            }
             @Override public void stickChanged() { if (winHandler != null) winHandler.resendForGyro(); }
             @Override public boolean isButtonPressed(int index) { return winHandler != null && winHandler.isGamepadButtonPressed(index); }
         });
@@ -3529,8 +3539,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         @Override public QmGyro gyro() {
             GyroInput g = gyroInput;
-            if (g == null) return new QmGyro(false, false, 0, 1f, false, false, false, 0, 4);
-            return new QmGyro(g.isAvailable(), g.enabled, g.target, g.sensitivity, g.invertX, g.invertY, g.fast, g.activation, g.button);
+            if (g == null) return new QmGyro(false, false, 0, 1f, false, false, false, 0, 4, 0);
+            return new QmGyro(g.isAvailable(), g.enabled, g.target, g.sensitivity, g.invertX, g.invertY, g.fast, g.activation, g.button, g.mouseMode);
         }
 
         @Override public void setGyro(QmGyro s) {
@@ -3545,6 +3555,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             g.fast = s.getFast();
             g.activation = s.getActivation();
             g.button = s.getButton();
+            g.mouseMode = s.getMouseMode();
             g.save();
             if (restart) g.apply();
         }

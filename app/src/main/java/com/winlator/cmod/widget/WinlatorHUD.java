@@ -297,7 +297,7 @@ public class WinlatorHUD extends View {
 
     private void detectGpuNameOnce() {
         try {
-            String name = sanitizeGpuName(GPUInformation.getRenderer(null, getContext()));
+            String name = compactGpu(sanitizeGpuName(GPUInformation.getRenderer(null, getContext())), null);
             if (isUsefulGpuName(name)) {
                 gpuNameLabel = name;
                 wDynGpuName = pGpuName.measureText(gpuNameLabel);
@@ -1492,6 +1492,22 @@ public class WinlatorHUD extends View {
         setGpuName(base);
     }
 
+    /**
+     * Short GPU name for the HUD: "Turnip Adreno (TM) 750 (Mesa 26.1.0-devel)" -> "Adreno 750",
+     * "Mali-G57 MC2" -> "Mali-G57 MC2". The driver goes after it, once.
+     */
+    static String compactGpu(String name, String driver) {
+        if (name == null) return "";
+        String s = name.replaceAll("(?i)\\((tm|r)\\)", " ")
+                .replaceAll("\\s*\\([^)]*\\)", " ")
+                .replaceAll("(?i)\\b(qualcomm|arm|turnip|freedreno|panvk|panfrost|mesa|wrapper|vulkan|driver)\\b", " ")
+                .replaceAll("(?i)\\bv?\\d+\\.\\d+[\\w.\\-]*", " ")
+                .replaceAll("\\s+", " ").trim();
+        if (driver != null && !driver.isEmpty()) s = s.replace(driver, " ").replaceAll("\\s+", " ").trim();
+        if (s.isEmpty()) s = name.trim();
+        return s.length() > 18 ? s.substring(0, 17).trim() + "…" : s;
+    }
+
     /** Short form for the HUD line ("Turnip", "PanVK", "Mesa 26.1"); the full name is in the task manager. */
     static String compactDriver(String label) {
         if (label == null) return null;
@@ -1507,8 +1523,9 @@ public class WinlatorHUD extends View {
 
     public void setGpuName(String name) {
         rawGpuName = sanitizeGpuName(name);
-        String clean = sanitizeGpuName(name);
-        if (driverLabel != null && isUsefulGpuName(clean) && !clean.contains(driverLabel)) clean = clean + " · " + driverLabel;
+        String clean = compactGpu(sanitizeGpuName(name), driverLabel);
+        if (driverLabel != null && isUsefulGpuName(clean) && !clean.toLowerCase(Locale.US).contains(driverLabel.toLowerCase(Locale.US)))
+            clean = clean + " · " + driverLabel;
         if (!isUsefulGpuName(clean) || clean.equals(gpuNameLabel)) return;
 
         gpuNameLabel = clean;

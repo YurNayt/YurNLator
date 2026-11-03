@@ -22,7 +22,9 @@ data class QmGyro(
     val invertY: Boolean,
     val fast: Boolean,
     val activation: Int,
-    val button: Int
+    val button: Int,
+    /** 0 auto, 1 Windows input (games), 2 X pointer (desktop). */
+    val mouseMode: Int = 0
 )
 
 /**

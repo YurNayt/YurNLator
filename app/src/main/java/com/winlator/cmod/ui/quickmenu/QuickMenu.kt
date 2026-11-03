@@ -647,6 +647,10 @@ private fun GyroCard(bridge: QuickMenuBridge, opened: Int) {
         if (g.enabled && g.available) {
             Label("Controls")
             Chips(listOf(0 to "Mouse", 1 to "Right stick", 2 to "Left stick"), g.target) { update(g.copy(target = it)) }
+            if (g.target == 0) {
+                Label("Mouse goes to")
+                Chips(listOf(0 to "Auto", 1 to "Game (Windows input)", 2 to "Desktop pointer"), g.mouseMode) { update(g.copy(mouseMode = it)) }
+            }
             Label("Active")
             Chips(listOf(0 to "Always", 1 to "Hold button", 2 to "Toggle button"), g.activation) { update(g.copy(activation = it)) }
             if (g.activation != 0) {

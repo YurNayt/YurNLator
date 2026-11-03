@@ -64,6 +64,11 @@ fun FrameGenPreferenceCard() {
             val result = withContext(Dispatchers.IO) { importLossless(context, uri) }
             busy = false
             status = result
+            // A working LSFG becomes the default engine (Win-FG stays one tap away).
+            if (LsfgNative.cacheVariant(context) != LsfgNative.VARIANT_NONE) {
+                WinFrameGen.setDefaultEngine(context, WinFrameGen.ENGINE_LSFG)
+                engine = WinFrameGen.ENGINE_LSFG
+            }
         }
     }
 
