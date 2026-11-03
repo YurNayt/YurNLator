@@ -29,7 +29,9 @@ data class DriverSource(
     val note: String = "",
     val builtIn: Boolean = false,
     /** GPU the drivers are for: "adreno" (Turnip, Qualcomm), "mali" (PanVK), null = any / unknown. */
-    val gpu: String? = null
+    val gpu: String? = null,
+    /** Mali models the author's builds are tested on ("g57", "g615"…); empty = not specified. */
+    val models: List<String> = emptyList()
 )
 
 /**
@@ -62,13 +64,13 @@ object DriverSources {
         // PanVK (open-source Mesa Vulkan for Mali, kbase backend), as listed by Winlator Mali+.
         // Experimental: the System driver stays the safe choice on Mali.
         DriverSource("PanVK · zenithblue", listOf(DriverFeed.Github("zenithblue-oss", "panvk-kbase-android")),
-            "Mali PanVK: G57, G615, G710, G715, G720", true, "mali"),
+            "Mali PanVK: G57, G615, G710, G715, G720", true, "mali", listOf("g57", "g615", "g710", "g715", "g720")),
         DriverSource("PanVK · GunaCharanTeja", listOf(DriverFeed.Github("GunaCharanTeja", "panvk-kbase-android")),
-            "Mali PanVK: G615 MC2", true, "mali"),
+            "Mali PanVK: G615 MC2", true, "mali", listOf("g615")),
         DriverSource("PanVK · FristOneRR", listOf(DriverFeed.Github("FristOneRR", "FristOneRR-Panvk-Driver")),
-            "Mali PanVK: G57 MC2 (Helio G99, Galaxy A15)", true, "mali"),
+            "Mali PanVK: G57 MC2 (Helio G99, Galaxy A15)", true, "mali", listOf("g57")),
         DriverSource("PanVK · Noysz", listOf(DriverFeed.Github("Noysz", "panvk-g99-jm")),
-            "Mali PanVK: G57 MC2 / Helio G99, experimental", true, "mali"),
+            "Mali PanVK: G57 MC2 / Helio G99, experimental", true, "mali", listOf("g57")),
     )
 
     /** Bumped on every change, so open screens reload their driver lists. */
@@ -106,6 +108,18 @@ object DriverSources {
     fun forProfile(context: Context): List<DriverSource> {
         val profile = com.winlator.cmod.core.GpuProfileManager.current(context)
         return all(context).filter { fitsProfile(context, it, profile) }
+    }
+
+    /**
+     * PanVK authors whose builds were tested on this phone's Mali model come first ("Mali-G57 MC2"
+     * -> "g57"); a build for another Mali generation often crashes or hangs (testers: G615 builds
+     * crash on G57).
+     */
+    @JvmStatic
+    fun sortForGpu(context: Context, sources: List<DriverSource>): List<DriverSource> {
+        val renderer = com.winlator.cmod.core.GpuProfileManager.detect(context).renderer.lowercase()
+        val model = Regex("(g\\d{2,3})").find(renderer.replace("mali-", " "))?.value ?: return sources
+        return sources.sortedBy { if (it.models.isEmpty()) 1 else if (model in it.models) 0 else 2 }
     }
 
     @JvmStatic

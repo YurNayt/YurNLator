@@ -340,7 +340,7 @@ private fun TypePage(
         val sourceCount = items.filter { !it.installed }.mapNotNull { it.author }.distinct().size
         if (type.hasAuthors || sourceCount > 1) {
             val names = linkedSetOf<String>()
-            if (type.isGpuDriver) DriverSources.forProfile(context).forEach { names += it.name }
+            if (type.isGpuDriver) DriverSources.sortForGpu(context, DriverSources.forProfile(context)).forEach { names += it.name }
             items.filter { !it.installed }.mapNotNullTo(names) { it.author }
             buildList {
                 add(AUTHOR_ALL)
