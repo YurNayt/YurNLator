@@ -85,6 +85,7 @@ import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.DefaultVersion;
 import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.FileUtils;
+import com.winlator.cmod.core.MaliCompat;
 import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.KeyValueSet;
 import com.winlator.cmod.core.OnExtractFileListener;
@@ -2492,8 +2493,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // Winlator Mali wrappers fail to create the device when the current layer asks for
             // ASTC HDR (winevulkan assert). The legacy layer doesn't ask for it.
             String wrapperId = graphicsDriverConfig.get("wrapper");
-            if (!legacy && !getPackageName().equals("com.yurnayt.yurnlator") && wrapperId != null
-                    && WrapperManager.isBundled(wrapperId) && !wrapperId.startsWith("mali-wrapper-gamenative")) {
+            if (!legacy && MaliCompat.forcesLegacyBcn(this, wrapperId)) {
                 Log.d("BCn", "Spoofed package + Winlator Mali wrapper " + wrapperId + ": legacy BCn layer");
                 legacy = true;
             }

@@ -823,10 +823,10 @@ internal fun SettingDriverChoice(
                 }
             ) + listOfNotNull(mali.action(context, options.count {
                 it.installed && !it.id.equals(selected, ignoreCase = true) &&
-                    !MaliCompat.fits(context, "AdrenoTools", it.id + " " + it.label) && it.author !in maliAuthors
+                    !(MaliCompat.fits(context, "AdrenoTools", it.id) || MaliCompat.fits(context, "AdrenoTools", it.label)) && it.author !in maliAuthors
             })),
             options = options.filter { it.installed }
-                .filter { !mali.on || it.id.equals(selected, ignoreCase = true) || MaliCompat.fits(context, "AdrenoTools", it.id + " " + it.label) || it.author in maliAuthors }
+                .filter { !mali.on || it.id.equals(selected, ignoreCase = true) || (MaliCompat.fits(context, "AdrenoTools", it.id) || MaliCompat.fits(context, "AdrenoTools", it.label)) || it.author in maliAuthors }
                 .map { o ->
                 val parsed = DriverNames.parse(o.label)
                 PickerOption(o.id, parsed.title, parsed.tags.joinToString(" · ").ifBlank { null })

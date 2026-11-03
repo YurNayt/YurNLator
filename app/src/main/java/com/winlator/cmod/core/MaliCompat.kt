@@ -93,6 +93,17 @@ object MaliCompat {
     private fun lead(type: String, name: String): List<Long>? =
         VersionGroups.parse(type, name).lead.takeIf { it.isNotEmpty() }
 
+    /**
+     * Benchmark-named builds (antutu…) with a Winlator Mali wrapper: the current BCn layer asks
+     * for ASTC HDR, the wrapper then fails to create the device (winevulkan assert); the legacy
+     * layer doesn't. Used at launch and shown in the editors.
+     */
+    @JvmStatic
+    fun forcesLegacyBcn(context: Context, wrapperId: String?): Boolean =
+        context.packageName != "com.yurnayt.yurnlator" && wrapperId != null &&
+            com.winlator.cmod.contents.WrapperManager.isBundled(wrapperId) &&
+            !wrapperId.startsWith("mali-wrapper-gamenative")
+
     /** Short reason shown on hidden-type notices. */
     @JvmStatic
     fun hiddenLabel(count: Int): String =

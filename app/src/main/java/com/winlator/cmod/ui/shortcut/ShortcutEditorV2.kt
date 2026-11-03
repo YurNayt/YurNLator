@@ -873,8 +873,12 @@ private fun ShortcutCategoryV2(
                 SettingChoice("BCN Emulation Type", s.bcnType, listOf("software", "compute")) { s.bcnType = it; s.graphics("bcnEmulationType", it) }
                 if (s.bcnType == "compute") {
                     SettingsDivider()
-                    SettingChoice("BCn layer (Winlator Mali)", s.bcnVersion, listOf("current", "legacy")) { s.bcnVersion = it; s.graphics("bcnVersion", it) }
-                    if (s.bcnVersion == "legacy") {
+                    val forcedLegacy = com.winlator.cmod.core.MaliCompat.forcesLegacyBcn(context, readConfig(s.graphicsConfig, "wrapper", ';'))
+                    SettingChoice("BCn layer (Winlator Mali)", if (forcedLegacy) "legacy" else s.bcnVersion, listOf("current", "legacy")) { s.bcnVersion = it; s.graphics("bcnVersion", it) }
+                    if (forcedLegacy) Text("Legacy is used with this wrapper in the benchmark-named build (current fails to start there)",
+                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
+                    if (forcedLegacy || s.bcnVersion == "legacy") {
                         SettingsDivider()
                         SettingChoice("BCn transcode to", s.bcnTranscode, listOf("astc", "etc2", "etc1")) { s.bcnTranscode = it; s.graphics("bcnTranscode", it) }
                         SettingsDivider()
