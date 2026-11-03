@@ -40,12 +40,10 @@ public class RandrExtension implements Extension {
         short[] copy = rates.clone();
         refreshRates = copy;
 
-        // Report 60 Hz as the current rate when the panel has it. Wine's virtual desktop offers
-        // its display modes at 60 Hz, so a game that asked for "the current rate" (120) got
-        // DISP_CHANGE_BADMODE and then a black, offscreen-redirected window (CS:S, NieR).
-        short current = copy[0];
-        for (short r : copy) if (r == 60) { current = 60; break; }
-        currentRate = current;
+        // The panel's top rate is current (high refresh rate games). A game asking for a mode
+        // Wine's virtual desktop lacks now just takes Wine's offscreen path, which is shown
+        // (PresentExtension / DrawRequests.copyArea).
+        currentRate = copy[0];
     }
 
     @Override

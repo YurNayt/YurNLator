@@ -1514,10 +1514,13 @@ public class WinlatorHUD extends View {
         String s = label;
         int dot = s.indexOf(" · ");
         if (dot > 0) s = s.substring(0, dot);
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^Mesa (\\d+\\.\\d+)").matcher(s);
-        if (m.find()) return "Mesa " + m.group(1);
-        if (s.startsWith("driver ")) s = s.substring(7);
         s = s.replaceAll("\\s*\\(.*$", "").trim();
+        if (s.startsWith("driver ")) return null;              // a bare version says nothing
+        java.util.regex.Matcher mesa = java.util.regex.Pattern.compile("^Mesa (\\d+\\.\\d+)").matcher(s);
+        if (mesa.find()) return "Mesa " + mesa.group(1);
+        s = s.replaceFirst("(?i)^mesa\\s+", "");               // "Mesa Turnip v27..." -> "Turnip v27..."
+        java.util.regex.Matcher v = java.util.regex.Pattern.compile("\\s*\\bv?(\\d+)\\.(\\d+)[\\w.\\-]*").matcher(s);
+        if (v.find()) s = (s.substring(0, v.start()).trim() + " " + v.group(1) + "." + v.group(2)).trim();
         return s.length() > 14 ? s.substring(0, 13).trim() + "…" : s;
     }
 

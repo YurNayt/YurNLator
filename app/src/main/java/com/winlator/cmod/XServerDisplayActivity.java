@@ -496,7 +496,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
         }
         // Which driver the game really runs on (a wrapper may load its own): HUD + session info.
-        ProcessHelper.addDebugCallback(new com.winlator.cmod.core.DriverSniffer(label -> {
+        ProcessHelper.addDebugCallback(new com.winlator.cmod.core.DriverSniffer(found -> {
+            // Only a version number ("driver 26.99.99" from DXVK): name the configured driver.
+            String label = found;
+            String configured = graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null;
+            if (found.startsWith("driver ") && configured != null && !configured.isEmpty() && !"System".equalsIgnoreCase(configured))
+                label = configured + " (" + found + ")";
             actualDriver = label;
             if (modernHud != null) modernHud.setDriverLabel(label);
             return kotlin.Unit.INSTANCE;

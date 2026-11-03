@@ -313,11 +313,22 @@ public class PresentExtension implements Extension,
                     && (composite == null || !composite.isRedirected(window));
 
             if (supportsDirectScanout && pixmap.drawable.isDirectScanout() && onScreen) {
+                content.directSource = null;
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.FLIP, ust, msc);
                 flushClientOutput(client);
                 renderer.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
                 scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, renderer);
+            } else if (supportsDirectScanout && pixmap.drawable.isDirectScanout()) {
+                // Offscreen: no CPU copy. Wine copies this window onto the visible one next
+                // (CopyArea), which then shows the frame directly (DrawRequests.copyArea).
+                content.directXOff = xOff;
+                content.directYOff = yOff;
+                content.directSource = pixmap.drawable;
+                sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
+                flushClientOutput(client);
+                scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, renderer);
             } else {
+                content.directSource = null;
                 content.copyArea((short)0, (short)0, xOff, yOff,
                     pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);

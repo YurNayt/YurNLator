@@ -113,6 +113,13 @@ public class Drawable extends XResource {
         return texture instanceof GPUImage ? (GPUImage)texture : null;
     }
 
+    /**
+     * Offscreen windows (Wine's offscreen Vulkan path): the last frame presented to this window's
+     * content, not copied into it. A CopyArea from the window forwards this frame instead.
+     */
+    public volatile Drawable directSource;
+    public volatile short directXOff, directYOff;
+
     public void setDirectScanout(boolean value) {
         directScanout = value;
     }

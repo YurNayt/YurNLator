@@ -122,6 +122,23 @@ public abstract class DrawRequests {
 
         if (srcDrawable.visual.depth != dstDrawable.visual.depth) throw new BadMatch();
 
+        // Wine's offscreen Vulkan path: the source window got its frame as a direct buffer
+        // (PresentExtension); forward it to the visible window instead of copying stale pixels.
+        Drawable direct = srcDrawable.directSource;
+        if (direct != null && direct.backingAHB != 0 && graphicsContext.getFunction() == GraphicsContext.Function.COPY) {
+            com.winlator.cmod.xserver.Window dstWindow = client.xServer.windowManager.getWindow(dstDrawableId);
+            com.winlator.cmod.widget.XServerRendererView renderer = client.xServer.getXServerView();
+            short ox = (short)(dstX - srcX + srcDrawable.directXOff), oy = (short)(dstY - srcY + srcDrawable.directYOff);
+            if (dstWindow != null && renderer != null && dstWindow.getMapState() == com.winlator.cmod.xserver.Window.MapState.VIEWABLE) {
+                renderer.onUpdateWindowContentDirect(dstWindow, direct, ox, oy);
+                return;
+            }
+            synchronized (direct.renderLock) {
+                dstDrawable.copyArea((short)(srcX - srcDrawable.directXOff), (short)(srcY - srcDrawable.directYOff),
+                        dstX, dstY, width, height, direct, GraphicsContext.Function.COPY);
+            }
+            return;
+        }
         dstDrawable.copyArea(srcX, srcY, dstX, dstY, width, height, srcDrawable, graphicsContext.getFunction());
     }
 
