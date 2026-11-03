@@ -782,7 +782,7 @@ private fun ShortcutCategoryV2(
                 }
                 SettingsDivider()
                 SettingChoice(
-                    "Surface format",
+                    "Color order (BGRA = swap red / blue)",
                     if (s.surfaceFormat == "bgra8") "BGRA" else "RGBA",
                     listOf("RGBA", "BGRA")
                 ) {

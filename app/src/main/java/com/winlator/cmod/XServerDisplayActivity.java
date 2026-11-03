@@ -1305,9 +1305,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         quickMenuBridge.applySaved();
         applyFrameGen();
         // Every renderer: direct (DRI3) frames tell the HUD which window is the game's.
-        xServerView.setDirectFrameListener(this::trackHudWindow);
+        xServerView.setDirectFrameListener(this::trackHudDirectWindow);
         // "Swap red/blue channels" (container / game setting) was saved but never applied.
-        boolean swapRB = container != null && (shortcut != null ? shortcut.getRendererSwapRB() : container.getRendererSwapRB());
+        // "Color order: BGRA" (surface format) or "Swap red/blue": both swap the channels on
+        // Vulkan / Native; before, the surface format only changed anything with DisplayX.
+        boolean swapRB = container != null && ((shortcut != null ? shortcut.getRendererSwapRB() : container.getRendererSwapRB())
+                || (!isDisplayXEnabled() && "bgra8".equals(getSelectedSurfaceFormat())));
         if (xServerView instanceof VulkanXServerView) ((VulkanXServerView) xServerView).setSwapRB(swapRB);
         else if (xServerView instanceof EGLXServerView) ((EGLXServerView) xServerView).setSwapRB(swapRB);
     }
@@ -2485,6 +2488,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 && GPUInformation.getVendorID(null, null) != 0x5143;
         if (bcnLayer) {
             boolean legacy = "legacy".equals(graphicsDriverConfig.get("bcnVersion"));
+            // Benchmark-named builds (antutu…): the Mali driver answers differently there and the
+            // Winlator Mali wrappers fail to create the device when the current layer asks for
+            // ASTC HDR (winevulkan assert). The legacy layer doesn't ask for it.
+            String wrapperId = graphicsDriverConfig.get("wrapper");
+            if (!legacy && !getPackageName().equals("com.yurnayt.yurnlator") && wrapperId != null
+                    && WrapperManager.isBundled(wrapperId) && !wrapperId.startsWith("mali-wrapper-gamenative")) {
+                Log.d("BCn", "Spoofed package + Winlator Mali wrapper " + wrapperId + ": legacy BCn layer");
+                legacy = true;
+            }
             installBcnLayer(rootDir, legacy);
             envVars.put("ENABLE_BCN_COMPUTE", "1");
             if (legacy) {
@@ -2990,6 +3002,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (classicHud == null && modernHud == null) return;
 
         if (property != null) {
+            // The window the driver announced itself on renders the game: prefer it over a window
+            // picked earlier (a launcher / splash window when the HUD was on from the start).
+            if (propName.contains("_MESA_DRV") && window.id == activeRendererWindowId && frameRatingWindowId != window.id) {
+                frameRatingWindowId = -1;
+            }
             if (frameRatingWindowId == -1 && propName.contains("_MESA_DRV")) {
                 frameRatingWindowId = window.id;
                 if (xServerView != null) xServerView.setFpsWindowId(window.id);
@@ -3064,8 +3081,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private final java.util.HashMap<Integer, Integer> hudWindowUpdates = new java.util.HashMap<>();
     private long hudWindowCheckMs = 0;
 
-    private synchronized void trackHudWindow(Window window) {
-        if (!window.isApplicationWindow()) return;
+    /** Direct (DRI3) frames come from the game's own rendering window, which is often a child
+     *  window (Wine's Vulkan / GL client window), not a top-level "application" window. */
+    private void trackHudDirectWindow(Window window) {
+        trackHudWindow(window, true);
+    }
+
+    private void trackHudWindow(Window window) {
+        trackHudWindow(window, false);
+    }
+
+    private synchronized void trackHudWindow(Window window, boolean direct) {
+        if (!direct && !window.isApplicationWindow()) return;
         boolean hudOn = (modernHud != null && modernHud.isUserEnabled())
                 || (classicHud != null && classicHud.getVisibility() == View.VISIBLE);
         if (!hudOn) return;
