@@ -1033,6 +1033,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
+    /** Wine's builtin PE DLLs carry "Wine builtin DLL" in their DOS stub; DXVK's don't. */
+    private static boolean isWineBuiltinDll(File dll) {
+        if (!dll.isFile()) return true;
+        try (java.io.FileInputStream in = new java.io.FileInputStream(dll)) {
+            byte[] head = new byte[0x80];
+            int n = in.read(head);
+            return n > 0 && new String(head, 0, n, java.nio.charset.StandardCharsets.ISO_8859_1).contains("Wine builtin DLL");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void setupWineSystemFiles() {
         String imgVersion = String.valueOf(imageFs.getVersion());
         boolean containerDataChanged = false;
@@ -1053,7 +1065,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             dxwrapper = dxvkWrapper + ";" + vkd3dWrapper + ";" + ddrawrapper;
         }
 
-        if (!dxwrapper.equals(container.getExtra("dxwrapper"))) {
+        // The DLLs can be gone while the container still says they're applied: switching the
+        // Wine / Proton version (or a prefix update) puts Wine's own d3d11 / dxgi back, and the
+        // game silently ran on WineD3D with DXVK selected. Check the files, not only the record.
+        boolean dxvkMissing = dxwrapper.startsWith("dxvk") && isWineBuiltinDll(new File(imageFs.getRootDir(),
+                ImageFs.WINEPREFIX + "/drive_c/windows/system32/d3d11.dll"));
+        if (dxvkMissing) Log.w("XServerDisplayActivity", "DXVK selected but system32\\d3d11.dll is Wine's own: re-installing DXVK");
+        if (dxvkMissing || !dxwrapper.equals(container.getExtra("dxwrapper"))) {
             extractDXWrapperFiles(dxwrapper);
             container.putExtra("dxwrapper", dxwrapper);
             containerDataChanged = true;
