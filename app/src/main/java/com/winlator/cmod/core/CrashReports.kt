@@ -54,6 +54,50 @@ object CrashReports {
             "Time: $time\n"
     }
 
+    /**
+     * What Android kept besides the one-line description: the ANR thread dump (main thread and
+     * our renderer / X server threads), or the native tombstone's backtrace (a protobuf: its
+     * readable strings - signal, abort message, frames "libX.so (function+off)").
+     */
+    private fun details(info: ApplicationExitInfo): String {
+        val raw = runCatching { info.traceInputStream?.use { it.readBytes() } }.getOrNull() ?: return ""
+        if (raw.isEmpty()) return ""
+        return if (info.reason == ApplicationExitInfo.REASON_ANR) {
+            val text = String(raw, Charsets.UTF_8)
+            // Thread blocks are separated by blank lines; keep main + the interesting ones.
+            val blocks = text.split(Regex("\\n\\s*\\n"))
+            val keep = blocks.filter { b ->
+                val head = b.trimStart().lineSequence().firstOrNull().orEmpty()
+                head.startsWith("\"main\"") || Regex("(?i)render|xserver|vulkan|wayland|winhandler|gyro|surface|GLThread").containsMatchIn(head)
+            }.take(8)
+            "\n\n--- ANR threads ---\n" + keep.joinToString("\n\n") { it.lines().take(45).joinToString("\n") }
+        } else {
+            val strings = Regex("[\\x20-\\x7e]{6,}").findAll(String(raw, Charsets.ISO_8859_1)).map { it.value.trim() }
+                .filter { it.contains(".so") || it.contains("SIG") || it.contains("Abort") || it.contains("abort") ||
+                          it.contains("Cause") || it.contains("/data/") || it.contains("fault") }
+                .distinct().take(80).toList()
+            if (strings.isEmpty()) "" else "\n\n--- native backtrace ---\n" + strings.joinToString("\n")
+        }
+    }
+
+    /** Also saved to Downloads/YurNLator so it can be found later or sent as a file. */
+    private fun saveToDownloads(context: Context, report: String): String? = runCatching {
+        val name = "YurNLator-crash-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".txt"
+        if (Build.VERSION.SDK_INT >= 29) {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Downloads.DISPLAY_NAME, name)
+                put(android.provider.MediaStore.Downloads.MIME_TYPE, "text/plain")
+                put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "Download/YurNLator")
+            }
+            val uri = context.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
+            context.contentResolver.openOutputStream(uri)?.use { it.write(report.toByteArray()) }
+        } else {
+            val dir = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "YurNLator")
+            dir.mkdirs(); File(dir, name).writeText(report)
+        }
+        "Download/YurNLator/$name"
+    }.getOrNull()
+
     /** Shows the last crash once, if there is one. Call from the main screen's onCreate. */
     @JvmStatic
     fun checkOnLaunch(activity: Activity) {
@@ -85,7 +129,7 @@ object CrashReports {
                         else -> "Crash"
                     }
                     val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(info.timestamp))
-                    parts += "$kind in ${info.processName} at $time\n${info.description.orEmpty()}"
+                    parts += "$kind in ${info.processName} at $time\n${info.description.orEmpty()}" + details(info)
                     newest = maxOf(newest, info.timestamp)
                 }
         }
@@ -93,8 +137,9 @@ object CrashReports {
         prefs.edit().putLong(PREF_SEEN, maxOf(newest, System.currentTimeMillis())).apply()
 
         val report = (if (parts.first().startsWith("YurNLator")) "" else header(activity) + "\n") + parts.joinToString("\n\n---\n\n")
+        val saved = saveToDownloads(activity, report)
         val text = TextView(activity).apply {
-            setText(report)
+            setText((if (saved != null) "Saved: $saved\n\n" else "") + report)
             setTextIsSelectable(true)
             textSize = 11f
             setPadding(48, 24, 48, 24)
