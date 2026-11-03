@@ -1,5 +1,24 @@
 {
  "version": 1,
- "updated": 0,
- "presets": []
+ "updated": 1793743757,
+ "presets": [
+  {
+   "id": "0badc0ffee01",
+   "game": "Pipeline test",
+   "game_key": "pipelinetest",
+   "exe": "test.exe",
+   "title": "Test, will be removed",
+   "author": "YurNLator",
+   "device": "Test",
+   "soc": "SM8750",
+   "gpu": "Adreno 830",
+   "created": 1762210000,
+   "app_version": "dev",
+   "issue": 1,
+   "likes": 0,
+   "comments": 0,
+   "login": "YurNayt",
+   "published": 1793743757
+  }
+ ]
 }

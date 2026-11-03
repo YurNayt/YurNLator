@@ -1,0 +1,37 @@
+{
+ "format": "yurnlator-preset",
+ "version": 1,
+ "id": "0badc0ffee01",
+ "game": "Pipeline test",
+ "exe": "test.exe",
+ "title": "Test, will be removed",
+ "notes": "",
+ "author": "YurNLator",
+ "created": 1762210000,
+ "device": {
+  "model": "Test",
+  "soc": "SM8750",
+  "gpu": "Adreno 830",
+  "android": 35
+ },
+ "app": {
+  "version": "dev"
+ },
+ "requires": {
+  "wine": "",
+  "wine_label": "",
+  "dxvk": "",
+  "vkd3d": "",
+  "box64": "",
+  "fexcore": "",
+  "driver": {
+   "id": "",
+   "label": "",
+   "url": ""
+  }
+ },
+ "settings": {
+  "dxwrapper": "dxvk+vkd3d"
+ },
+ "owner_hash": "83422a41180c2a61fe5f90f5e0b6c346c76ebd28cf4d07515d93e4c1f0c49e1c"
+}
