@@ -552,6 +552,19 @@ public class InputControlsView extends View {
     }
 
 
+    /** Fingers that went down on a control: they can slide from button to button. */
+    private final java.util.HashSet<Integer> swipeFingers = new java.util.HashSet<>();
+
+    private void swipeHaptic() {
+        if (!androidx.preference.PreferenceManager.getDefaultSharedPreferences(getContext())
+                .getBoolean("touchscreen_haptics_enabled", true)) return;
+        Vibrator vibrator = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibrator == null || !vibrator.hasVibrator()) return;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+            vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
+        else vibrator.vibrate(30);
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
 
@@ -630,6 +643,7 @@ public class InputControlsView extends View {
                             touchpadView.setPointerButtonLeftEnabled(false);
                         }
                     }
+                    if (handled) swipeFingers.add(pointerId);
                     if (!handled) touchpadView.onTouchEvent(event);
                     break;
                 }
@@ -639,7 +653,27 @@ public class InputControlsView extends View {
                         float y = event.getY(i);
                         int pid = event.getPointerId(i);
 
-                        handled = false;
+                        // Swipe across buttons: off a plain button releases it, onto another presses it.
+                        if (swipeFingers.contains(pid)) {
+                            ControlElement owner = null;
+                            for (ControlElement element : profile.getElements())
+                                if (element.getCurrentPointerId() == pid) { owner = element; break; }
+                            if (owner != null && owner.isSwipeButton() && !owner.containsPoint(x, y)) {
+                                owner.handleTouchUp(pid);
+                                owner = null;
+                            }
+                            if (owner == null) {
+                                for (ControlElement element : profile.getElements()) {
+                                    if (element.getCurrentPointerId() == -1 && element.acceptsSwipeIn() && element.containsPoint(x, y)
+                                            && element.handleTouchDown(pid, x, y)) {
+                                        swipeHaptic();
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        handled = swipeFingers.contains(pid);
                         for (ControlElement element : profile.getElements()) {
                             if (element.handleTouchMove(pid, x, y)) handled = true;
                         }
@@ -651,6 +685,8 @@ public class InputControlsView extends View {
                 case MotionEvent.ACTION_POINTER_UP:
                 case MotionEvent.ACTION_CANCEL:
                     for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId)) handled = true;
+                    if (swipeFingers.remove(pointerId)) handled = true;
+                    if (actionMasked != MotionEvent.ACTION_POINTER_UP) swipeFingers.clear();
                     if (!handled) touchpadView.onTouchEvent(event);
                     break;
             }

@@ -86,7 +86,7 @@ add_dependencies(wfg wfg_shaders)
 
 set_target_properties(wfg PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_options(wfg PRIVATE -Wall -Wextra -fvisibility=hidden)
-target_compile_definitions(wfg PUBLIC VK_USE_PLATFORM_ANDROID_KHR vkd=wfg_vkd)
+target_compile_definitions(wfg PUBLIC VK_USE_PLATFORM_ANDROID_KHR PRIVATE vkd=wfg_vkd)
 target_include_directories(wfg
         PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/include

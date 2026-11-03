@@ -138,6 +138,14 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     private native void nativeSetFrameGenEngine(long handle, int kind, String lsfgCachePath);
     private native int nativeLsfgProblem(long handle);
     private native void nativeSetFrameGenRefresh(long handle, float hz);
+    private native void nativeSetFrameGenTarget(long handle, int fps);
+    private int pendingFgTarget = 0;
+
+    /** Adaptive frame generation: aim for this output rate (LSFG / WFG); 0 = fixed multiplier. */
+    public void setFrameGenTarget(int fps) {
+        pendingFgTarget = fps;
+        synchronized (lock) { if (nativeHandle != 0) nativeSetFrameGenTarget(nativeHandle, fps); }
+    }
     private native String nativeLsfgReason(long handle);
     private native long[] nativeGetPresentStats(long handle);
 
@@ -213,6 +221,7 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
                         nativeSetSharpness(nativeHandle, pendingSharpness);
                         nativeSetColorAdjust(nativeHandle, pendingBrightness, pendingContrast, pendingGamma);
                         nativeSetFrameGenEngine(nativeHandle, pendingFgEngine, pendingLsfgCache);
+                        nativeSetFrameGenTarget(nativeHandle, pendingFgTarget);
                         nativeSetFrameGenRefresh(nativeHandle, pendingFgRefresh());
                         nativeSetFrameGen(nativeHandle, pendingFgArmed, pendingFgMultiplier, pendingFgPreset, pendingFgFlow);
                         updateTransform();
@@ -236,6 +245,7 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
                     nativeSetColorAdjust(nativeHandle, pendingBrightness, pendingContrast, pendingGamma);
                     nativeSetFrameGenRefresh(nativeHandle, pendingFgRefresh());
                     nativeSetFrameGenEngine(nativeHandle, pendingFgEngine, pendingLsfgCache);
+                        nativeSetFrameGenTarget(nativeHandle, pendingFgTarget);
                     nativeSetFrameGen(nativeHandle, pendingFgArmed, pendingFgMultiplier, pendingFgPreset, pendingFgFlow);
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);

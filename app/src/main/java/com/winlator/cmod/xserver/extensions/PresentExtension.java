@@ -68,25 +68,19 @@ public class PresentExtension implements Extension,
 
     private static final long FIRE_EARLY_NS = 700_000L;
 
+    /**
+     * The FPS limiter releases buffers on its own precise timer thread. The vsync-callback path
+     * it replaces rounded every release to the next display vsync (a 60 FPS cap on a 60 Hz panel
+     * landed one vsync late now and then: ~55 FPS) and kept only one pending release per window,
+     * dropping the others, so the game sometimes waited for a buffer that was never released.
+     */
     private android.view.Choreographer tryGetChoreographer(XServerRendererView renderer) {
-        if (choreographerChecked) return choreographer;
-        synchronized (choreographerLock) {
-            if (choreographerChecked) return choreographer;
-            choreographerChecked = true;
-            try {
-                if (renderer != null) {
-
-                    choreographer = android.view.Choreographer.getInstance();
-                }
-            } catch (Exception ignored) {
-
-                android.util.Log.w("PresentExtension", "Choreographer unavailable, using CPU pacer");
+        if (!choreographerChecked) {
+            synchronized (choreographerLock) {
+                if (!choreographerChecked) { choreographerChecked = true; startCpuPacer(); }
             }
-            if (choreographer == null) {
-                startCpuPacer();
-            }
-            return choreographer;
         }
+        return null;
     }
 
     private void startCpuPacer() {

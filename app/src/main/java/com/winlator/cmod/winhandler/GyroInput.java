@@ -58,6 +58,11 @@ public class GyroInput implements SensorEventListener {
     /** Mouse target: 0 auto (Windows input while a game holds the mouse), 1 always Windows input, 2 always the X pointer. */
     public int mouseMode;
     public static final int MOUSE_AUTO = 0, MOUSE_GAME = 1, MOUSE_POINTER = 2;
+    /**
+     * Activation button codes: 0-15 gamepad buttons; 100 / 101 / 102 left / right / middle mouse
+     * (physical mouse, touchpad or on-screen controls); 200 + X keycode for a keyboard key.
+     */
+    public static final int BUTTON_MOUSE_BASE = 100, BUTTON_KEY_BASE = 200;
 
     private boolean toggledOn = false;
     private boolean lastButton = false;

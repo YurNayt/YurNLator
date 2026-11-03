@@ -404,6 +404,13 @@ Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetFrameGenRefresh(JNIEnv*
     if (r) r->setFrameGenRefresh((float)hz);
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetFrameGenTarget(JNIEnv*, jobject, jlong handle, jint fps)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenTarget((int)fps);
+}
+
 extern "C" JNIEXPORT jint JNICALL
 Java_com_winlator_cmod_widget_VulkanXServerView_nativeLsfgProblem(JNIEnv*, jobject, jlong handle)
 {

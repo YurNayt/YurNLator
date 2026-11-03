@@ -487,6 +487,8 @@ public:
     int lsfgProblem() const;
     void setFrameGenRefresh(float hz);       // panel refresh rate: generated frames fit into it
     std::atomic<float> fgRefreshHz{0.f};
+    std::atomic<int>   fgTargetFps{0};       // adaptive target output rate (LSFG / WFG); 0 = fixed multiplier
+    void setFrameGenTarget(int fps) { fgTargetFps.store(fps < 0 ? 0 : fps); fgConfigDirty.store(true); }
     lsfg::Caps    lsfgCaps{};
     std::atomic<int> fgKind{0};
     std::mutex    fgKindMutex;

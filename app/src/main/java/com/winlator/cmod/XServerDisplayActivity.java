@@ -409,7 +409,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 else xServer.injectPointerMoveDelta(dx, dy);
             }
             @Override public void stickChanged() { if (winHandler != null) winHandler.resendForGyro(); }
-            @Override public boolean isButtonPressed(int index) { return winHandler != null && winHandler.isGamepadButtonPressed(index); }
+            @Override public boolean isButtonPressed(int index) {
+                if (index >= GyroInput.BUTTON_KEY_BASE)
+                    return xServer != null && xServer.keyboard.isKeyPressed((byte) (index - GyroInput.BUTTON_KEY_BASE));
+                if (index >= GyroInput.BUTTON_MOUSE_BASE) {
+                    if (xServer == null) return false;
+                    Pointer.Button b = index == GyroInput.BUTTON_MOUSE_BASE ? Pointer.Button.BUTTON_LEFT
+                            : index == GyroInput.BUTTON_MOUSE_BASE + 1 ? Pointer.Button.BUTTON_RIGHT : Pointer.Button.BUTTON_MIDDLE;
+                    return xServer.pointer.isButtonPressed(b);
+                }
+                return winHandler != null && winHandler.isGamepadButtonPressed(index);
+            }
         });
         winHandler.setGyro(gyroInput);
         winHandler.setFakeInputPath(devInputDir.getAbsolutePath());
@@ -3118,6 +3128,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         try { preset = Integer.parseInt(frameGenSetting("frameGenPreset", "1")); } catch (Exception ignored) {}
         try { flow = Float.parseFloat(frameGenSetting("frameGenFlowScale", "0.6")); } catch (Exception ignored) {}
         boolean on = WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF));
+        int target = 0;
+        try { target = Integer.parseInt(frameGenSetting("frameGenTarget", "0")); } catch (Exception ignored) {}
+        view.setFrameGenTarget(target);
         final int fMult = mult, fPreset = preset;
         final float fFlow = flow;
         if (on && WinFrameGen.ENGINE_LSFG.equals(frameGenEngine())) {
@@ -3394,7 +3407,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             float flow;
             try { flow = Float.parseFloat(frameGenSetting("frameGenFlowScale", "0.6")); } catch (Exception e) { flow = 0.6f; }
             return new QmFrameGen(xServerView instanceof VulkanXServerView, WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF)), mult, preset, flow,
-                    frameGenEngine(), com.winlator.cmod.core.LsfgNative.isDllAvailable(XServerDisplayActivity.this));
+                    frameGenEngine(), com.winlator.cmod.core.LsfgNative.isDllAvailable(XServerDisplayActivity.this),
+                    parseInt(frameGenSetting("frameGenTarget", "0"), 0));
         }
 
         @Override public void setFrameGen(QmFrameGen fg) {
@@ -3407,7 +3421,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 {"frameGenMultiplier", String.valueOf(fg.getMultiplier())},
                 {"frameGenPreset", String.valueOf(fg.getPreset())},
                 {"frameGenFlowScale", String.format(java.util.Locale.US, "%.2f", fg.getFlowScale())},
-                {"frameGenEngine", fg.getEngine()}
+                {"frameGenEngine", fg.getEngine()},
+                {"frameGenTarget", String.valueOf(fg.getTarget())}
             };
             for (String[] kv : values) {
                 if (perGame) shortcut.putExtra(kv[0], kv[1]);

@@ -1004,6 +1004,23 @@ public class ControlElement {
         }
     }
 
+    public int getCurrentPointerId() { return currentPointerId; }
+
+    /**
+     * Swipe across buttons (YurNLator, idea from WinNative): a plain button releases when the
+     * finger slides off it, and the finger then presses whatever button / d-pad / stick it
+     * slides onto. Toggles, turbo, pedals, mouse-move and hold-to-keep buttons keep the finger.
+     */
+    public boolean isSwipeButton() {
+        return type == Type.BUTTON && !toggleSwitch && !mouseMoveMode && !turbo && !isAnalogPedal()
+                && !isKeepButtonPressedAfterMinTime();
+    }
+
+    /** Can be picked up by a finger sliding in from another button. */
+    public boolean acceptsSwipeIn() {
+        return isSwipeButton() || type == Type.D_PAD || type == Type.STICK;
+    }
+
     public boolean handleTouchDown(int pointerId, float x, float y) {
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;

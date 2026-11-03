@@ -33,7 +33,9 @@ data class QmGyro(
  */
 /** [engine] "winfg" | "lsfg"; [lsfgImported] the user's Lossless.dll is in Settings. */
 data class QmFrameGen(val loaded: Boolean, val on: Boolean, val multiplier: Int, val preset: Int, val flowScale: Float,
-                      val engine: String = "winfg", val lsfgImported: Boolean = false)
+                      val engine: String = "winfg", val lsfgImported: Boolean = false,
+                      /** Adaptive target output FPS (LSFG / WFG); 0 = fixed multiplier. */
+                      val target: Int = 0)
 
 /** Live task manager numbers. */
 data class QmTasks(val cpuPercent: Int, val memory: String, val processes: List<QmProcess>)

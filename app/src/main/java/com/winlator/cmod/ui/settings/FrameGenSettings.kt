@@ -72,6 +72,24 @@ fun FrameGenPreferenceCard() {
         }
     }
 
+    fun autoFind() {
+        busy = true
+        status = "Looking for Lossless.dll…"
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                val found = findLossless(context)
+                if (found == null) "Not found: Steam folders of the containers, Download, Documents. Use Import."
+                else importLosslessFrom(context) { found.inputStream() }.let { "Found ${found.parentFile?.name}/Lossless.dll · $it" }
+            }
+            busy = false
+            status = result
+            if (LsfgNative.cacheVariant(context) != LsfgNative.VARIANT_NONE) {
+                WinFrameGen.setDefaultEngine(context, WinFrameGen.ENGINE_LSFG)
+                engine = WinFrameGen.ENGINE_LSFG
+            }
+        }
+    }
+
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(::import) }
 
     Surface(
@@ -114,6 +132,9 @@ fun FrameGenPreferenceCard() {
                     Spacer(Modifier.width(6.dp))
                     Text(if (LsfgNative.isDllAvailable(context)) "Replace" else "Import Lossless.dll")
                 }
+                if (!LsfgNative.isDllAvailable(context) && !busy) {
+                    TextButton(onClick = { autoFind() }) { Text("Find") }
+                }
                 if (LsfgNative.isDllAvailable(context) && !busy) {
                     TextButton(onClick = {
                         LsfgNative.losslessDll(context).delete()
@@ -137,13 +158,44 @@ private fun lsfgStatusText(context: android.content.Context): String {
     else "Imported · shaders are prepared at the next game start"
 }
 
+/**
+ * Looks for Lossless.dll where it usually ends up: the containers' Steam folders (Lossless
+ * Scaling installed through Steam in a container) and Download / Documents on the phone.
+ */
+private fun findLossless(context: android.content.Context): File? {
+    val roots = mutableListOf<Pair<File, Int>>()
+    val home = File(com.winlator.cmod.xenvironment.ImageFs.find(context).rootDir, "home")
+    home.listFiles()?.forEach { user ->
+        val c = File(user, ".wine/drive_c")
+        roots += File(c, "Program Files (x86)/Steam/steamapps/common/Lossless Scaling") to 0
+        roots += File(c, "Program Files/Steam/steamapps/common/Lossless Scaling") to 0
+        roots += File(c, "Program Files (x86)/Steam/steamapps/common") to 2
+    }
+    val ext = android.os.Environment.getExternalStorageDirectory()
+    listOf("Download", "Documents", "Lossless Scaling", "Steam", "SteamLibrary").forEach { roots += File(ext, it) to 4 }
+    for ((dir, depth) in roots) search(dir, depth)?.let { return it }
+    return null
+}
+
+private fun search(dir: File, depth: Int): File? {
+    val direct = File(dir, "Lossless.dll")
+    if (direct.isFile) return direct
+    if (depth <= 0) return null
+    val kids = runCatching { dir.listFiles() }.getOrNull() ?: return null
+    for (k in kids) if (k.isDirectory && !k.name.startsWith(".")) search(k, depth - 1)?.let { return it }
+    return null
+}
+
 /** Copies the picked file to a temp name, checks it, builds the cache, then makes it the active DLL. */
-private fun importLossless(context: android.content.Context, uri: Uri): String {
+private fun importLossless(context: android.content.Context, uri: Uri): String =
+    importLosslessFrom(context) { context.contentResolver.openInputStream(uri) }
+
+private fun importLosslessFrom(context: android.content.Context, open: () -> java.io.InputStream?): String {
     val target = LsfgNative.losslessDll(context)
     target.parentFile?.mkdirs()
     val tmp = File(target.parentFile, "Lossless.dll.import")
     return try {
-        context.contentResolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { input.copyTo(it) } }
+        open()?.use { input -> tmp.outputStream().use { input.copyTo(it) } }
             ?: return "Could not read the file"
         val valid = LsfgNative.validate(tmp)
         if (valid != LsfgNative.STATUS_OK) {

@@ -282,15 +282,15 @@ bool VulkanRendererContext::fgPrepareFrame() {
         static const uint32_t kSide[3] = {252, 216, 180};
         uint32_t side = kSide[std::clamp(fgPreset.load(), 0, 2)];
         fgConfigDirty.store(false);
-        wfgb::configure(wfg, side, 0, fgRefreshHz.load() > 1.f ? fgRefreshHz.load() : 60.f);
+        wfgb::configure(wfg, side, (uint32_t)fgTargetFps.load(), fgRefreshHz.load() > 1.f ? fgRefreshHz.load() : 60.f);
         if (!wfgb::prepare(wfg, fgW, fgH, swapchainFmt)) return true;
-        uint32_t want = (uint32_t)std::clamp(fgMultiplier.load(), 2, 4) - 1;
+        uint32_t want = fgTargetFps.load() > 0 ? 3u : (uint32_t)std::clamp(fgMultiplier.load(), 2, 4) - 1;
         fgGensThisFrame = std::min<uint32_t>(wfgb::plan(wfg, want, ++wfgSourceFrames), 3);
         return true;
     }
     if (ls) {
         if (fgConfigDirty.exchange(false))
-            ls->configure((uint32_t)fgMultiplier.load(), 0, fgFlowScale.load(), fgRefreshHz.load());
+            ls->configure((uint32_t)fgMultiplier.load(), (uint32_t)fgTargetFps.load(), fgFlowScale.load(), fgRefreshHz.load());
         if (containerWidth > 0 && containerHeight > 0) ls->setGuestExtent((uint32_t)containerWidth, (uint32_t)containerHeight);
         if (!ls->prepare(fgW, fgH, swapchainFmt)) return true;
         if (fgIntervalNs > 0) ls->setPresentedRate((float)(1e9 / fgIntervalNs) * (float)(fgMultiplier.load()));

@@ -633,6 +633,9 @@ private fun pct(v: Float) = String.format(Locale.US, "%d%%", (v * 100).roundToIn
 // ---------- Gyroscope ----------
 
 private val GYRO_BUTTONS = listOf(4 to "LB", 5 to "RB", 10 to "LT", 11 to "RT", 8 to "L3", 9 to "R3", 0 to "A", 1 to "B", 2 to "X", 3 to "Y")
+/** Mouse (physical, touchpad or on-screen) and keyboard keys: GyroInput.BUTTON_MOUSE_BASE / BUTTON_KEY_BASE + X keycode. */
+private val GYRO_MOUSE_KEYS = listOf(101 to "Right mouse", 100 to "Left mouse", 102 to "Middle mouse",
+    250 to "Shift", 237 to "Ctrl", 264 to "Alt", 265 to "Space", 224 to "Q", 226 to "E", 241 to "F", 227 to "R", 254 to "C")
 
 @Composable
 private fun GyroCard(bridge: QuickMenuBridge, opened: Int) {
@@ -654,8 +657,10 @@ private fun GyroCard(bridge: QuickMenuBridge, opened: Int) {
             Label("Active")
             Chips(listOf(0 to "Always", 1 to "Hold button", 2 to "Toggle button"), g.activation) { update(g.copy(activation = it)) }
             if (g.activation != 0) {
-                Label("Button (gamepad or on-screen gamepad)")
+                Label("Gamepad button")
                 Chips(GYRO_BUTTONS, g.button) { update(g.copy(button = it)) }
+                Label("…or mouse button / key")
+                Chips(GYRO_MOUSE_KEYS, g.button) { update(g.copy(button = it)) }
             }
             SwitchRow("High polling rate", "Smoother, uses a bit more battery", checked = g.fast) { update(g.copy(fast = it)) }
             SwitchRow("Invert horizontal", checked = g.invertX) { update(g.copy(invertX = it)) }
@@ -693,7 +698,11 @@ private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
                 Text("Import your own Lossless.dll in Settings › Frame generation first; until then Win-FG runs.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-            Label("Multiplier")
+            if (fg.engine != "winfg") {
+                Label("Target (adaptive: generates as many frames as fit)")
+                Chips(listOf(0 to "Off", 60 to "60", 90 to "90", 120 to "120", 144 to "144"), fg.target) { update(fg.copy(target = it)) }
+            }
+            Label(if (fg.engine != "winfg" && fg.target > 0) "Multiplier (ignored with a target)" else "Multiplier")
             Chips(listOf(2 to "2×", 3 to "3×", 4 to "4×"), fg.multiplier) { update(fg.copy(multiplier = it)) }
             if (fg.engine != "lsfg") {
                 Label(if (fg.engine == "wfg") "Motion search (detail vs speed)" else "Mode")

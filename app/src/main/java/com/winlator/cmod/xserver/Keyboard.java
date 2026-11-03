@@ -65,6 +65,12 @@ public class Keyboard {
         }
     }
 
+    /** Whether an X keycode is held now (gyro activation key). */
+    public boolean isKeyPressed(byte keycode) {
+        try { synchronized (pressedKeys) { return pressedKeys.contains(keycode); } }
+        catch (RuntimeException e) { return false; }
+    }
+
     public void setKeyRelease(byte keycode) {
         if (!isModifierSticky(keycode) && pressedKeys.contains(keycode)) {
             pressedKeys.remove(keycode);
