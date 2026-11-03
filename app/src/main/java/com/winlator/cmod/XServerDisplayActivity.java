@@ -1181,6 +1181,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (rendererDriverId == null || rendererDriverId.isEmpty()) {
                 rendererDriverId = graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null;
             }
+            // Our compositor runs inside the app: on non-Adreno GPUs a custom driver (PanVK) here
+            // takes the whole app down ("the container doesn't even start"). The game keeps its
+            // chosen driver; the compositor uses the system one.
+            if (rendererDriverId != null && !rendererDriverId.equalsIgnoreCase("system") && !GPUInformation.isAdrenoGPU(this)) {
+                Log.d("XServerDisplayActivity", "Renderer driver " + rendererDriverId + " ignored on non-Adreno GPU: system driver");
+                rendererDriverId = null;
+            }
             if (rendererDriverId != null && !rendererDriverId.isEmpty() && !rendererDriverId.equalsIgnoreCase("system")) {
                 try {
                     String driverPath = getFilesDir().getAbsolutePath() + "/contents/adrenotools/" + rendererDriverId + "/";

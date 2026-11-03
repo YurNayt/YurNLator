@@ -302,14 +302,14 @@ internal suspend fun loadSettingsCatalog(
             .filter { it.isNotBlank() }
             .joinToString(" ")
             .ifBlank { id }
-        rendererDrivers[id] = label
+        if (GPUInformation.isAdrenoGPU(context)) rendererDrivers[id] = label // compositor: system only elsewhere
         driverOptions[id.lowercase()] = DriverOption(id, label, true)
     }
     remoteDrivers.forEach { remote ->
         val installedId = DriverOrigins.installedIdFor(context, remote.url, installedDrivers)
         if (installedId != null) {
             if (installedId.lowercase() !in driverOptions) {
-                rendererDrivers[installedId] = remote.name
+                if (GPUInformation.isAdrenoGPU(context)) rendererDrivers[installedId] = remote.name
                 driverOptions[installedId.lowercase()] = DriverOption(installedId, remote.name, true, author = remote.repository)
             }
             return@forEach
