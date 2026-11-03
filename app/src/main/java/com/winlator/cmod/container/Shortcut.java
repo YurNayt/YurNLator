@@ -104,7 +104,7 @@ public class Shortcut {
         this.iconFile = iconFile;
 
         if (execArgs.contains("wine ")) {
-            this.path = StringUtils.unescape(execArgs.substring(execArgs.lastIndexOf("wine ") + 4));
+            this.path = StringUtils.unescape(StringUtils.repairDroppedSpaces(execArgs.substring(execArgs.lastIndexOf("wine ") + 4)));
         } else {
             this.path = execArgs;
         }

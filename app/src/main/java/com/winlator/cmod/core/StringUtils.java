@@ -100,9 +100,19 @@ public class StringUtils {
         // Replace backslashes with double backslashes
         String escapedPath = path.replace("\\", "\\\\\\\\");
 
-        // Replace spaces with escaped spaces
-        escapedPath = escapedPath.replace(" ", "\\\\");
+        // Spaces as Wine writes them in .desktop files: "\\ " (this used to write "\\" and drop
+        // the space, so "The Last of Us" became "TheLastofUs" and the game never started).
+        escapedPath = escapedPath.replace(" ", "\\\\ ");
 
         return escapedPath;
+    }
+
+    /**
+     * Repairs Exec paths written by the old escapeFileDOSPath: separators are four backslashes
+     * there and a lone pair of backslashes was a space.
+     */
+    public static String repairDroppedSpaces(String execPath) {
+        if (execPath == null || !execPath.contains("\\\\\\\\")) return execPath;
+        return execPath.replaceAll("(?<!\\\\)\\\\\\\\(?![\\\\ ])", "\\\\\\\\ ");
     }
 }
