@@ -1481,8 +1481,21 @@ public class WinlatorHUD extends View {
         });
     }
 
+    private volatile String driverLabel = null;
+    private volatile String rawGpuName = null;
+
+    /** The driver the game really runs on ("PanVK · FristOneRR 3.0"), shown after the GPU name. */
+    public void setDriverLabel(String label) {
+        driverLabel = label;
+        String base = rawGpuName != null ? rawGpuName : gpuNameLabel;
+        gpuNameLabel = "";
+        setGpuName(base);
+    }
+
     public void setGpuName(String name) {
+        rawGpuName = sanitizeGpuName(name);
         String clean = sanitizeGpuName(name);
+        if (driverLabel != null && isUsefulGpuName(clean) && !clean.contains(driverLabel)) clean = clean + " · " + driverLabel;
         if (!isUsefulGpuName(clean) || clean.equals(gpuNameLabel)) return;
 
         gpuNameLabel = clean;

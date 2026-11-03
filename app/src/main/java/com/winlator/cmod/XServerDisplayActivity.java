@@ -180,6 +180,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private Shortcut shortcut;
     /** Resolved launch settings (shortcut over container), see session/LaunchConfig. */
     private com.winlator.cmod.session.LaunchConfig launchConfig;
+    /** The Vulkan driver the game reported at start (DriverSniffer); null until then. */
+    private volatile String actualDriver;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
     private HashMap<String, String> graphicsDriverConfig;
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
@@ -473,6 +475,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             LogView.setFilename(getExecutable());
             ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
         }
+        // Which driver the game really runs on (a wrapper may load its own): HUD + session info.
+        ProcessHelper.addDebugCallback(new com.winlator.cmod.core.DriverSniffer(label -> {
+            actualDriver = label;
+            if (modernHud != null) modernHud.setDriverLabel(label);
+            return kotlin.Unit.INSTANCE;
+        }));
 
         graphicsDriver = lc.getGraphicsDriver();
         String graphicsDriverConfig = lc.getGraphicsDriverConfig();
@@ -3494,6 +3502,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (graphicsDriverConfig != null) {
                 String driver = graphicsDriverConfig.get("version");
                 if (driver != null && !driver.isEmpty()) out.add(new QmInfo("Graphics driver", driver));
+                if (actualDriver != null) out.add(new QmInfo("Running on", actualDriver));
                 String wrapper = graphicsDriverConfig.get("wrapper");
                 if (wrapper != null && !wrapper.isEmpty()) out.add(new QmInfo("Vulkan wrapper", wrapper));
             }
