@@ -18,7 +18,7 @@ import org.json.JSONObject
  * component lists have them; what can't be had keeps this phone's current value. The shortcut's
  * previous values are kept in its "presetBackup" extra, so [undo] puts them back.
  */
-object PresetApply {
+internal object PresetApply {
     enum class State { INSTALLED, DOWNLOAD, MISSING, KEEP, INFO }
 
     data class Requirement(
