@@ -132,11 +132,6 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if (box64File.exists()) {
             FileUtils.chmod(box64File, 0755);
         }
-
-        if (waylandRuntimeDir != null) {
-            String wineLauncher = wineInfo.isArm64EC() ? winePath + "/wine" : imageFs.getBinDir() + "/box64 wine";
-            updatePrefixBeforeWaylandSession(execEnvVars, wineLauncher, rootDir, imageFs);
-        }
     }
 
     private void extractEmulatorsDlls() {;
@@ -595,6 +590,11 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         File box64File = new File(rootDir, "/usr/bin/box64");
         if (box64File.exists()) {
             FileUtils.chmod(box64File, 0755);
+        }
+
+        if (waylandRuntimeDir != null) {
+            String wineLauncher = wineInfo.isArm64EC() ? winePath + "/wine" : imageFs.getBinDir() + "/box64 wine";
+            updatePrefixBeforeWaylandSession(execEnvVars, wineLauncher, rootDir, imageFs);
         }
 
         return ProcessHelper.exec(command, execEnvVars.toStringArray(), rootDir, (status) -> {
