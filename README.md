@@ -6,6 +6,10 @@ automatic Adreno / Mali setup and package-name variants.
 Based on [Winlator Ludashi 4.1](https://github.com/StevenMXZ/Winlator-Ludashi) by StevenMXZ,
 itself a fork of Winlator Bionic by Pipetto-crypto and the original Winlator by BrunoSX.
 
+## License
+GPL-3.0 (see `LICENSE`). The Winlator base is MIT (`LICENSE-WINLATOR-MIT`); other parts and
+their licenses are listed in `THIRD_PARTY_NOTICES.md`.
+
 ## Planned
 - GPU profile on first launch (Adreno / Mali / other), changeable later with a warning
 - Driver & wrapper manager, drivers from repositories, readable driver names with a short note
