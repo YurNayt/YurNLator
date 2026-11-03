@@ -364,6 +364,16 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             // Wayland display backend: winewayland.drv talks to the embedded compositor's socket.
             execEnvVars.put("WAYLAND_DISPLAY", "wayland-0");
             execEnvVars.put("XDG_RUNTIME_DIR", waylandRuntimeDir);
+            // winewayland.so needs libwayland-client / -egl / xkbcommon with the exact sonames the
+            // layer ships in its lib/ (imagefs has versioned ones bionic rejects): the layer's lib/
+            // goes first (Bannerlator's fix).
+            execEnvVars.put("LD_LIBRARY_PATH", imageFs.getWinePath() + "/lib:" + rootDir.getPath() + "/usr/lib:/system/lib64");
+            // The compositor creates its socket on its own thread once the surface is up.
+            java.io.File socket = new java.io.File(waylandRuntimeDir, "wayland-0");
+            for (int i = 0; i < 100 && !socket.exists(); i++) {
+                try { Thread.sleep(50); } catch (InterruptedException ignored) { break; }
+            }
+            if (!socket.exists()) android.util.Log.w("GuestProgramLauncherComponent", "wayland: no socket at " + socket);
         }
         execEnvVars.put("WINE_DISABLE_FULLSCREEN_HACK", "1");
         execEnvVars.put("GST_PLUGIN_FEATURE_RANK", "ximagesink:3000");
