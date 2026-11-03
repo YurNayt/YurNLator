@@ -90,8 +90,11 @@ public final class WaylandSession {
      * Starts the compositor on a new SurfaceView put right above the X server's view (index
      * [aboveIndex]), so touch overlays, HUD and on-screen controls stay on top.
      */
-    public void start(FrameLayout rootView, int aboveIndex, String driverPath, String libraryName, boolean stretch, Listener listener) {
+    public void start(FrameLayout rootView, int aboveIndex, String driverPath, String libraryName, boolean stretch,
+                      boolean hideShell, Listener listener) {
         this.stretch = stretch;
+        // Game shortcuts: don't draw explorer's desktop / taskbar (the X11 view hides them the same way).
+        try { WaylandCompositor.nativeSetHideShell(hideShell); } catch (Throwable t) { Log.w(TAG, "hide shell", t); }
         File rt = runtimeDir(activity);
         // The guest needs the keymap to read our evdev codes.
         try { FileUtils.copy(activity, "wayland/keymap.xkb", new File(rt, "keymap.xkb")); }

@@ -988,6 +988,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         waylandSession = new com.winlator.cmod.session.WaylandSession(this, xServer);
         waylandSession.start(rootView, rootView.indexOfChild(xServerView) + 1, driverPath, libraryName,
                 launchConfig != null && launchConfig.getFullscreenStretched(),
+                shortcut != null,
                 new com.winlator.cmod.session.WaylandSession.Listener() {
             @Override public void onFirstFrame() { preloaderDialog.closeOnUiThread(); }
             @Override public void onGameFrame() { if (modernHud != null) modernHud.onFrame(); }

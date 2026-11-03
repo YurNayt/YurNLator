@@ -132,6 +132,11 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if (box64File.exists()) {
             FileUtils.chmod(box64File, 0755);
         }
+
+        if (waylandRuntimeDir != null) {
+            String wineLauncher = wineInfo.isArm64EC() ? winePath + "/wine" : imageFs.getBinDir() + "/box64 wine";
+            updatePrefixBeforeWaylandSession(execEnvVars, wineLauncher, rootDir, imageFs);
+        }
     }
 
     private void extractEmulatorsDlls() {;
@@ -309,6 +314,57 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     }
 
     public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
+
+    /**
+     * Wayland (Bannerlator's fix): when the prefix is stale (new container, layer changed) Wine
+     * updates it inside the session's first process, blocking explorer for seconds while wineboot's
+     * dialog needs a desktop that doesn't exist yet; the desktop then came up wrong and the launch
+     * often failed until the second try. So the update runs first, on its own, with no display.
+     */
+    private void updatePrefixBeforeWaylandSession(EnvVars guestEnv, String wineLauncher, File rootDir, ImageFs imageFs) {
+        final String tag = "GuestProgramLauncherComponent";
+        try {
+            File wineInf = new File(imageFs.getWinePath(), "share/wine/wine.inf");
+            File stamp = new File(rootDir, ImageFs.WINEPREFIX + "/.update-timestamp");
+            if (!wineInf.isFile()) return;
+            long infMtime = wineInf.lastModified() / 1000L;
+            String current = stamp.isFile() ? FileUtils.readString(stamp) : "";
+            current = current == null ? "" : current.trim();
+            if (current.startsWith("disable")) return;
+            int i = 0;
+            while (i < current.length() && Character.isDigit(current.charAt(i))) i++;
+            long stamped = -1;
+            if (i > 0) try { stamped = Long.parseLong(current.substring(0, i)); } catch (NumberFormatException ignored) {}
+            if (stamped == infMtime) return;
+
+            EnvVars env = new EnvVars();
+            env.putAll(guestEnv);
+            env.remove("WAYLAND_DISPLAY");
+            env.remove("XDG_RUNTIME_DIR");
+            env.remove("DISPLAY");
+            String ov = env.get("WINEDLLOVERRIDES");
+            env.put("WINEDLLOVERRIDES", (ov == null || ov.isEmpty() ? "" : ov + ";") + "mscoree=d");
+            Log.i(tag, "wayland: updating the prefix before the session (wine.inf " + infMtime + ", stamp \"" + current + "\")");
+            String[] cmd = ProcessHelper.splitCommand(wineLauncher + " wineboot -h");
+            ProcessBuilder pb = new ProcessBuilder(cmd).directory(rootDir).redirectErrorStream(true)
+                    .redirectOutput(new File("/dev/null"));
+            pb.environment().clear();
+            for (String kv : env.toStringArray()) {
+                int eq = kv.indexOf('=');
+                if (eq > 0) pb.environment().put(kv.substring(0, eq), kv.substring(eq + 1));
+            }
+            java.lang.Process p = pb.start();
+            p.waitFor(180, java.util.concurrent.TimeUnit.SECONDS);
+            long deadline = System.currentTimeMillis() + 30_000;
+            while (!ProcessHelper.listRunningWineProcesses().isEmpty() && System.currentTimeMillis() < deadline) {
+                Thread.sleep(200);
+            }
+            if (!ProcessHelper.listRunningWineProcesses().isEmpty()) ProcessHelper.terminateAllWineProcesses();
+            Log.i(tag, "wayland: prefix update done");
+        } catch (Exception e) {
+            Log.w(tag, "wayland: prefix update failed", e);
+        }
+    }
 
     /** Wayland display backend: the compositor's runtime dir (its socket), or null for X11. */
     private String waylandRuntimeDir = null;
