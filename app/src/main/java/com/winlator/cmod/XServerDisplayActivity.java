@@ -1167,6 +1167,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             String guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " + getWineStartCommand();
 
             guestProgramLauncherComponent.setGuestExecutable(guestExecutable);
+            // First line of the log: what was launched (and the shortcut's path), so a game
+            // that never starts shows why (wrong folder, mangled path...).
+            if (debugDialog != null) {
+                String ver = "";
+                try { ver = " " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
+                debugDialog.call("[YurNLator" + ver + "] launch: " + guestExecutable);
+                if (shortcut != null) debugDialog.call("[YurNLator] shortcut path: " + shortcut.path);
+            }
 
             envVars.putAll(container.getEnvVars());
 
