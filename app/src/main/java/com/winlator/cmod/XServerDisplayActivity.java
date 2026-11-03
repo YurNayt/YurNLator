@@ -180,6 +180,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private Shortcut shortcut;
     /** Resolved launch settings (shortcut over container), see session/LaunchConfig. */
     private com.winlator.cmod.session.LaunchConfig launchConfig;
+    /** Wayland display backend for this session (session/WaylandSession). */
+    private boolean waylandMode = false;
+    private com.winlator.cmod.session.WaylandSession waylandSession;
     /** The Vulkan driver the game reported at start (DriverSniffer); null until then. */
     private volatile String actualDriver;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
@@ -469,6 +472,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
         wineInfo = WineInfo.fromIdentifier(this, contentsManager, wineVersion);
 
         imageFs.setWinePath(wineInfo.path);
+
+        // Wayland display backend (experimental): needs a layer with winewayland.so.
+        waylandMode = launchConfig.getWayland() && com.winlator.cmod.session.WaylandSupport.isLayerCapable(wineInfo.path);
+        if (launchConfig.getWayland() && !waylandMode) {
+            Log.w("XServerDisplayActivity", "wayland: layer " + wineInfo.path + " has no winewayland.so, launching on X11");
+            runOnUiThread(() -> Toast.makeText(this, "Wayland needs a Proton layer with the Wayland driver (Bannerlator v8 layers). Launching on X11.", Toast.LENGTH_LONG).show());
+        }
 
         ProcessHelper.removeAllDebugCallbacks();
         if (enableLogs) {
@@ -906,6 +916,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (waylandSession != null) { waylandSession.stop(); waylandSession = null; }
         if (taskManagerSidebar != null) taskManagerSidebar.stop();
         super.onDestroy();
     }
@@ -960,9 +971,70 @@ public class XServerDisplayActivity extends AppCompatActivity {
             touchpadView.releasePointerCapture();
     }
 
+    /**
+     * Wayland: the compositor goes right above the X server's view. It imports the game's frames with
+     * the container's Mesa driver (Turnip / PanVK); System works on Mali only (experimental).
+     */
+    private void startWaylandSession(FrameLayout rootView) {
+        String driverId = graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null;
+        String driverPath = null, libraryName = null;
+        if (com.winlator.cmod.session.WaylandSupport.adapterUnusableReason(this, driverId) == null) {
+            AdrenotoolsManager atm = new AdrenotoolsManager(this);
+            driverPath = atm.getDriverPath(driverId);
+            libraryName = atm.getLibraryName(driverId);
+        } else if (GPUInformation.isAdrenoGPU(this)) {
+            Toast.makeText(this, "Wayland on Adreno needs a Turnip driver in Driver Version (System can't share frames).", Toast.LENGTH_LONG).show();
+        }
+        waylandSession = new com.winlator.cmod.session.WaylandSession(this, xServer);
+        waylandSession.start(rootView, rootView.indexOfChild(xServerView) + 1, driverPath, libraryName,
+                new com.winlator.cmod.session.WaylandSession.Listener() {
+            @Override public void onFirstFrame() { preloaderDialog.closeOnUiThread(); }
+            @Override public void onGameFrame() { if (modernHud != null) modernHud.onFrame(); }
+            @Override public void onGameSurface(String window, String gpuName) {
+                if (window != null && gpuName != null && modernHud != null) {
+                    modernHud.setGpuName(gpuName);
+                    runOnUiThread(() -> modernHud.onRendererDetected("Wayland"));
+                }
+            }
+        });
+    }
+
+    /**
+     * Wine's graphics driver for this prefix: "wayland" (winewayland.drv) on the Wayland backend, else
+     * back to x11 if a Wayland launch had set it. Winlator's winex11.drv starts even without an X
+     * server and would win Wine's driver choice, so it is hidden (renamed) on Wayland and restored on
+     * the next X11 launch (Bannerlator's approach).
+     */
+    private void setWineDisplayDriver() {
+        File userReg = new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg");
+        try (WineRegistryEditor reg = new WineRegistryEditor(userReg)) {
+            if (waylandMode) {
+                reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "wayland");
+                reg.setStringValue("Software\\Wine\\Explorer", "Desktop", "shell");
+                reg.setStringValue("Software\\Wine\\Explorer\\Desktops", "shell", String.valueOf(xServer.screenInfo));
+            } else if ("wayland".equals(reg.getStringValue("Software\\Wine\\Drivers", "Graphics", ""))) {
+                reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "x11");
+                if ("shell".equals(reg.getStringValue("Software\\Wine\\Explorer", "Desktop", ""))) {
+                    reg.removeValue("Software\\Wine\\Explorer", "Desktop");
+                    reg.removeValue("Software\\Wine\\Explorer\\Desktops", "shell");
+                }
+            }
+        } catch (Exception e) {
+            Log.e("XServerDisplayActivity", "wayland: registry", e);
+        }
+        if (wineInfo == null || wineInfo.path == null) return;
+        for (String arch : new String[]{"aarch64-windows", "i386-windows", "x86_64-windows"}) {
+            File drv = new File(wineInfo.path, "lib/wine/" + arch + "/winex11.drv");
+            File bak = new File(wineInfo.path, "lib/wine/" + arch + "/winex11.drv.bak");
+            if (waylandMode) { if (drv.exists() && !bak.exists()) drv.renameTo(bak); }
+            else if (bak.exists() && !drv.exists()) bak.renameTo(drv);
+        }
+    }
+
     private void setupWineSystemFiles() {
         String imgVersion = String.valueOf(imageFs.getVersion());
         boolean containerDataChanged = false;
+        setWineDisplayDriver();
 
         if (!container.getExtra("imgVersion").equals(imgVersion)) {
             applyGeneralPatches(container);
@@ -1082,6 +1154,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             guestProgramLauncherComponent.setBox64Preset(launchConfig.getBox64Preset());
 
             guestProgramLauncherComponent.setFEXCorePreset(launchConfig.getFexcorePreset());
+            guestProgramLauncherComponent.setWaylandRuntimeDir(waylandMode
+                    ? com.winlator.cmod.session.WaylandSession.runtimeDir(this).getPath() : null);
         }
 
         if (overrideEnvVars != null) {
@@ -1224,6 +1298,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         rootView.addView(xServerView);
+        if (waylandMode) startWaylandSession(rootView);
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
         touchpadView = new TouchpadView(this, xServer, timeoutHandler, hideControlsRunnable);
@@ -2445,6 +2520,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
             adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
         }
+        if (waylandMode) Log.i("XServerDisplayActivity", "wayland: "
+                + com.winlator.cmod.session.WaylandSupport.applyGameDriver(this, envVars, adrenoToolsDriverId, wineInfo.path));
 
         String vulkanVersion = graphicsDriverConfig.get("vulkanVersion");
         String vulkanVersionPatch = GPUInformation.getVulkanVersion(adrenoToolsDriverId, this).split("\\.")[2];

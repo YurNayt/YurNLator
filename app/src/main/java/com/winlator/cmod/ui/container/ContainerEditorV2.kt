@@ -172,6 +172,8 @@ private class ContainerEditorStateV2(
         if (editing?.isRendererNative == true) "EGL" else "Vulkan"
     )
     var rendererPresentMode by mutableStateOf(editing?.rendererPresentMode ?: "fifo")
+    /** "x11" / "wayland" (experimental, Bannerlator's compositor). */
+    var displayBackend by mutableStateOf(editing?.getExtra("displayBackend", "x11")?.ifBlank { "x11" } ?: "x11")
     var rendererDriver by mutableStateOf(editing?.rendererDriverId ?: "system")
     var filterMode by mutableIntStateOf(editing?.rendererFilterMode ?: 0)
     var surfaceFormat by mutableStateOf(editing?.getSurfaceFormat() ?: "rgba8")
@@ -312,7 +314,7 @@ private class ContainerEditorStateV2(
     fun fingerprint(): String = listOf(
         name, screen, audio, oboeProfile, oboeApi, oboeAdaptive, oboeExclusive, hudMode, locale, soundFont,
         fullscreen, desktopTheme, desktopBackground, wallpaperStamp, mouseWarp,
-        renderer, rendererPresentMode, rendererDriver, filterMode, surfaceFormat, trueDisplayX,
+        renderer, rendererPresentMode, rendererDriver, filterMode, surfaceFormat, trueDisplayX, displayBackend,
         displayXPerformanceMode, displayXPresentAtRefreshRate, graphicsDriver, graphicsConfig,
         wrapper, wrapperConfig, emulator, fexVersion, boxVersion, fexPreset, boxPreset, exclusive, xinput, dinput,
         syncCpu, startup, openGlDefaultInitialized, autoMesaGlVersionOverride, envVars,
@@ -468,6 +470,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         container.setDXWrapperConfig(state.wrapperConfig)
         container.setAudioDriver(state.audio)
         container.putExtra("oboeProfile", state.oboeProfile)
+        container.putExtra("displayBackend", state.displayBackend)
         container.putExtra("oboeApi", state.oboeApi)
         container.putExtra("oboeAdaptive", if (state.oboeAdaptive) "1" else "0")
         container.putExtra("oboeExclusive", if (state.oboeExclusive) "1" else "0")
@@ -554,6 +557,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                     .put("displayXPerformanceMode", if (state.displayXPerformanceMode) "1" else "0")
                     .put("displayXPresentAtRefreshRate", if (state.displayXPresentAtRefreshRate) "1" else "0")
                     .put("oboeProfile", state.oboeProfile)
+                    .put("displayBackend", state.displayBackend)
                     .put("oboeApi", state.oboeApi)
                     .put("oboeAdaptive", if (state.oboeAdaptive) "1" else "0")
                     .put("oboeExclusive", if (state.oboeExclusive) "1" else "0")
@@ -885,6 +889,13 @@ private fun ContainerCategoryV2(
                     SettingsDivider()
                     SettingText("Custom resolution", s.screen) { s.screen = it }
                 }
+                SettingsDivider()
+                SettingMappedChoice("Display backend", s.displayBackend,
+                    linkedMapOf("x11" to "X11", "wayland" to "Wayland (experimental)")) { s.displayBackend = it }
+                if (s.displayBackend == "wayland") Text(
+                    "Needs a Proton layer with the Wayland driver (Bannerlator v8) and a Mesa driver in Driver Version (Turnip on Adreno, PanVK on Mali). Otherwise the game starts on X11.",
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
                 SettingsDivider()
                 SettingChoice("Renderer", s.renderer, listOf("Vulkan", "EGL")) {
                     s.renderer = it

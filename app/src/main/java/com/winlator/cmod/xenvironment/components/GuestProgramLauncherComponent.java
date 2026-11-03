@@ -310,6 +310,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
     public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
 
+    /** Wayland display backend: the compositor's runtime dir (its socket), or null for X11. */
+    private String waylandRuntimeDir = null;
+    public void setWaylandRuntimeDir(String dir) { this.waylandRuntimeDir = dir; }
+
     private int execGuestProgram() {
         Context context = environment.getContext();
         ImageFs imageFs = environment.getImageFs();
@@ -356,6 +360,11 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         execEnvVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         execEnvVars.put("PREFIX", rootDir.getPath() + "/usr");
         execEnvVars.put("DISPLAY", ":0");
+        if (waylandRuntimeDir != null) {
+            // Wayland display backend: winewayland.drv talks to the embedded compositor's socket.
+            execEnvVars.put("WAYLAND_DISPLAY", "wayland-0");
+            execEnvVars.put("XDG_RUNTIME_DIR", waylandRuntimeDir);
+        }
         execEnvVars.put("WINE_DISABLE_FULLSCREEN_HACK", "1");
         execEnvVars.put("GST_PLUGIN_FEATURE_RANK", "ximagesink:3000");
         execEnvVars.put("ALSA_CONFIG_PATH", rootDir.getPath() + "/usr/share/alsa/alsa.conf" + ":" + rootDir.getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");

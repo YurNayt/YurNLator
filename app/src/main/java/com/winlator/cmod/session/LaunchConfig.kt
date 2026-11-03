@@ -44,7 +44,11 @@ data class LaunchConfig(
     val wmClass: String,
     /** vkBasalt config from the shortcut's sharpness effect; empty = none. */
     val vkbasaltConfig: String,
+    /** "x11" (default) or "wayland" (Bannerlator's embedded compositor, experimental). */
+    val displayBackend: String,
 ) {
+    val wayland: Boolean get() = displayBackend == "wayland"
+
     companion object {
         @JvmStatic
         fun resolve(container: Container, shortcut: Shortcut?): LaunchConfig {
@@ -91,6 +95,7 @@ data class LaunchConfig(
                 mouseDisabled = shortcut?.getExtra("disableMouse") == "1",
                 wmClass = shortcut?.getExtra("wmClass", "").orEmpty(),
                 vkbasaltConfig = vkbasalt,
+                displayBackend = (own("displayBackend") ?: container.getExtra("displayBackend", "x11")).ifEmpty { "x11" },
             )
         }
     }

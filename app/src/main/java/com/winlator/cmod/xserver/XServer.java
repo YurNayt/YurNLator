@@ -169,10 +169,32 @@ public class XServer {
         return null;
     }
 
+    /**
+     * Wayland display backend: the X server has no client then, so every injected input (touchpad,
+     * on-screen controls, keyboard, mouse) is also handed to the embedded compositor.
+     */
+    public interface InputSink {
+        /** Absolute pointer position in screen (= compositor scene) pixels. */
+        void onPointerMove(int x, int y);
+        /** Relative motion (relative mouse / pointer lock). */
+        void onPointerDelta(int dx, int dy);
+        void onPointerButton(Pointer.Button button, boolean pressed);
+        /** Linux evdev key code. */
+        void onKey(int evdev, boolean pressed);
+    }
+
+    private volatile InputSink inputSink;
+
+    public void setInputSink(InputSink sink) {
+        inputSink = sink;
+    }
+
     public void injectPointerMove(int x, int y) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setPosition(x, y);
         }
+        InputSink sink = inputSink;
+        if (sink != null) sink.onPointerMove(pointer.getX(), pointer.getY());
     }
 
     public void injectPointerMoveDelta(int dx, int dy) {
@@ -194,6 +216,8 @@ public class XServer {
             XInput2Extension xInput2 = getExtension(XInput2Extension.MAJOR_OPCODE);
             if (xInput2 != null) xInput2.emitRawMotion(2, dx, dy);
         }
+        InputSink sink = inputSink;
+        if (sink != null) sink.onPointerDelta(dx, dy);
     }
 
     public void injectPointerButtonPress(Pointer.Button buttonCode) {
@@ -206,6 +230,8 @@ public class XServer {
                 xInput2.emitRawButton(2, buttonCode.code(), true);
             }
         }
+        InputSink sink = inputSink;
+        if (sink != null) sink.onPointerButton(buttonCode, true);
     }
 
     public void injectPointerButtonRelease(Pointer.Button buttonCode) {
@@ -218,6 +244,8 @@ public class XServer {
                 xInput2.emitRawButton(2, buttonCode.code(), false);
             }
         }
+        InputSink sink = inputSink;
+        if (sink != null) sink.onPointerButton(buttonCode, false);
     }
 
     public void injectKeyPress(XKeycode xKeycode) {
@@ -228,12 +256,16 @@ public class XServer {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             keyboard.setKeyPress(xKeycode.id, keysym);
         }
+        InputSink sink = inputSink;
+        if (sink != null) sink.onKey((xKeycode.id & 0xff) - 8, true); // X keycode = evdev + 8
     }
 
     public void injectKeyRelease(XKeycode xKeycode) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             keyboard.setKeyRelease(xKeycode.id);
         }
+        InputSink sink = inputSink;
+        if (sink != null) sink.onKey((xKeycode.id & 0xff) - 8, false);
     }
 
     private void setupExtensions() {

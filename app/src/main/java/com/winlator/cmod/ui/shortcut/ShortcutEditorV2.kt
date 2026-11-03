@@ -164,6 +164,8 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     var screen by mutableStateOf(normalizeResolution(shortcut.getExtra("screenSize", container.getScreenSize())))
     var renderer by mutableStateOf(if (shortcut.getUseDisplayX()) "DisplayX" else if (shortcut.getRendererNative()) "EGL" else "Vulkan")
     var presentMode by mutableStateOf(shortcut.getRendererPresentMode())
+    /** "" = container default, "x11", "wayland". */
+    var displayBackend by mutableStateOf(shortcut.getExtra("displayBackend", ""))
     var rendererDriver by mutableStateOf(shortcut.getRendererDriverId())
     var filterMode by mutableIntStateOf(shortcut.getRendererFilterMode())
     var surfaceFormat by mutableStateOf(shortcut.getSurfaceFormat())
@@ -773,6 +775,11 @@ private fun ShortcutCategoryV2(
                         s.screen = value
                         if (Regex("\\d{2,5}x\\d{2,5}").matches(value.trim())) s.extra("screenSize", normalizeResolution(value))
                     }
+                }
+                SettingsDivider()
+                SettingMappedChoice("Display backend", s.displayBackend,
+                    linkedMapOf("" to "Container default", "x11" to "X11", "wayland" to "Wayland (experimental)")) {
+                    s.displayBackend = it; s.extra("displayBackend", it)
                 }
                 SettingsDivider()
                 SettingChoice("Renderer", s.renderer, listOf("Vulkan", "EGL", "DisplayX")) {
