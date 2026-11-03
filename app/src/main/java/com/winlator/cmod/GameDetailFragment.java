@@ -26,6 +26,7 @@ import com.winlator.cmod.core.WineInfo;
 import com.winlator.cmod.ui.library.GameDetailCallbacks;
 import com.winlator.cmod.ui.library.GameDetailComposeHost;
 import com.winlator.cmod.ui.shortcut.ShortcutSettingsComposeDialog;
+import com.winlator.cmod.ui.presets.CommunityPresetsDialog;
 
 import java.io.File;
 
@@ -101,6 +102,11 @@ public class GameDetailFragment extends Fragment {
                     public void onFavorite(boolean favorite) {
                         shortcut.putExtra("favorite", favorite ? "1" : "0");
                         shortcut.saveData();
+                    }
+
+                    @Override
+                    public void onPresets() {
+                        CommunityPresetsDialog.show(requireContext(), shortcut);
                     }
 
                     @Override

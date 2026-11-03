@@ -1,0 +1,84 @@
+name: Community presets
+
+# "[preset] …" issues (opened from the app) become entries of the public preset library on the
+# "presets" branch; "[preset-delete] …" issues remove them. Every 3 hours the likes (👍 on a
+# preset's issue) and comment counts are refreshed.
+on:
+  issues:
+    types: [opened]
+  schedule:
+    - cron: '41 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: community-presets
+  cancel-in-progress: false
+
+jobs:
+  presets:
+    if: github.event_name != 'issues' || startsWith(github.event.issue.title, '[preset')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scripts
+        uses: actions/checkout@v4
+        with:
+          path: main
+          sparse-checkout: .github/presets
+
+      - name: Library
+        uses: actions/checkout@v4
+        with:
+          ref: presets
+          path: data
+
+      - name: Process
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DATA_DIR: data
+          OUT_DIR: ${{ runner.temp }}
+        run: python3 main/.github/presets/process.py
+
+      - name: Commit
+        working-directory: data
+        env:
+          OUT_DIR: ${{ runner.temp }}
+        run: |
+          [ -f "$OUT_DIR/commit_msg" ] || exit 0
+          git config user.name "yurnlator-presets"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -q -F "$OUT_DIR/commit_msg"
+          for i in 1 2 3 4; do
+            git push -q origin HEAD:presets && exit 0
+            sleep $((i * 3)); git pull -q --rebase origin presets
+          done
+          exit 1
+
+      - name: Reply
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUT_DIR: ${{ runner.temp }}
+          NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          status=$(cat "$OUT_DIR/status" 2>/dev/null || echo skip)
+          [ "$status" = skip ] && exit 0
+          gh issue comment "$NUMBER" -R "$REPO" --body-file "$OUT_DIR/reply.md"
+          if [ "$status" = ok ]; then
+            gh label create preset -R "$REPO" --color 1f6feb --description "Community preset" 2>/dev/null || true
+            gh issue edit "$NUMBER" -R "$REPO" --add-label preset || true
+            gh issue close "$NUMBER" -R "$REPO" --reason completed
+            old=$(cat "$OUT_DIR/close_issue" 2>/dev/null || true)
+            if [ -n "$old" ]; then
+              gh issue comment "$old" -R "$REPO" --body "🗑️ Removed from the library by its author." || true
+              gh issue lock "$old" -R "$REPO" || true
+            fi
+          else
+            gh issue close "$NUMBER" -R "$REPO" --reason "not planned"
+          fi

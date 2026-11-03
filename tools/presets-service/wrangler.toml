@@ -1,0 +1,6 @@
+name = "yurnlator-presets"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+REPO = "YurNayt/YurNLator"

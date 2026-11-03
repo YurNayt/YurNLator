@@ -88,6 +88,7 @@ import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.MaliCompat;
 import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.KeyValueSet;
+import com.winlator.cmod.session.DxWrapperFiles;
 import com.winlator.cmod.core.OnExtractFileListener;
 import com.winlator.cmod.core.PreloaderDialog;
 import com.winlator.cmod.core.ProcessHelper;
@@ -1058,18 +1059,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    /** Wine's builtin PE DLLs carry "Wine builtin DLL" in their DOS stub; DXVK's don't. */
-    private static boolean isWineBuiltinDll(File dll) {
-        if (!dll.isFile()) return true;
-        try (java.io.FileInputStream in = new java.io.FileInputStream(dll)) {
-            byte[] head = new byte[0x80];
-            int n = in.read(head);
-            return n > 0 && new String(head, 0, n, java.nio.charset.StandardCharsets.ISO_8859_1).contains("Wine builtin DLL");
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     private void setupWineSystemFiles() {
         String imgVersion = String.valueOf(imageFs.getVersion());
         boolean containerDataChanged = false;
@@ -1081,23 +1070,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             containerDataChanged = true;
         }
 
-        String dxwrapper = this.dxwrapper;
-
-        if (dxwrapper.contains("dxvk")) {
-            String dxvkWrapper = "dxvk-" + dxwrapperConfig.get("version");
-            String vkd3dWrapper = "vkd3d-" + dxwrapperConfig.get("vkd3dVersion");
-            String ddrawrapper = dxwrapperConfig.get("ddrawrapper");
-            dxwrapper = dxvkWrapper + ";" + vkd3dWrapper + ";" + ddrawrapper;
-        }
-
-        // The DLLs can be gone while the container still says they're applied: switching the
-        // Wine / Proton version (or a prefix update) puts Wine's own d3d11 / dxgi back, and the
-        // game silently ran on WineD3D with DXVK selected. Check the files, not only the record.
-        boolean dxvkMissing = dxwrapper.startsWith("dxvk") && isWineBuiltinDll(new File(imageFs.getRootDir(),
-                ImageFs.WINEPREFIX + "/drive_c/windows/system32/d3d11.dll"));
-        if (dxvkMissing) Log.w("XServerDisplayActivity", "DXVK selected but system32\\d3d11.dll is Wine's own: re-installing DXVK");
-        if (dxvkMissing || !dxwrapper.equals(container.getExtra("dxwrapper"))) {
-            extractDXWrapperFiles(dxwrapper);
+        DxWrapperFiles dxFiles = dxWrapperFiles();
+        String dxwrapper = DxWrapperFiles.wrapperId(this.dxwrapper, dxwrapperConfig.get("version"),
+                dxwrapperConfig.get("vkd3dVersion"), dxwrapperConfig.get("ddrawrapper"));
+        if (dxFiles.filesMissing(dxwrapper) || !dxwrapper.equals(container.getExtra("dxwrapper"))) {
+            dxFiles.install(dxwrapper, envVars);
             container.putExtra("dxwrapper", dxwrapper);
             containerDataChanged = true;
         }
@@ -2640,118 +2617,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     private static final String TAG = "DXWrapperExtraction";
 
-    private void extractDXWrapperFiles(String dxwrapper) {
-        final String[] dlls = { "d3d10.dll", "d3d10_1.dll", "d3d10core.dll", "d3d11.dll", "d3d12.dll", "d3d12core.dll",
-                "d3d8.dll", "d3d9.dll", "dxgi.dll", "ddraw.dll", "d3dimm.dll" };
-
-        File rootDir = imageFs.getRootDir();
-        File windowsDir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows");
-
-        if (dxwrapper.contains("dxvk")) {
-            Log.d(TAG, "Extracting DXVK wrapper files, version: " + dxwrapper);
-
-            String dxvkWrapper = dxwrapper.split(";")[0];
-            String vkd3dWrapper = dxwrapper.split(";")[1];
-            String ddrawrapper = dxwrapper.split(";")[2];
-
-            ContentProfile dxvkProfile = contentsManager.getProfileByEntryName(dxvkWrapper);
-            if (dxvkProfile != null) {
-                Log.d(TAG, "Applying user-defined DXVK content profile: " + dxvkWrapper);
-                contentsManager.applyContent(dxvkProfile);
-            } else {
-                Log.d(TAG, "Extracting fallback DXVK .tzst archive: " + dxvkWrapper);
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + dxvkWrapper + ".tzst",
-                        windowsDir, onExtractFileListener);
-
-                if (compareVersion(dxvkWrapper, "2.4") < 0) {
-                    Log.d(TAG, "Extracting d8vk as part of DXVK version " + dxvkWrapper);
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this,
-                            "dxwrapper/d8vk-" + DefaultVersion.D8VK + ".tzst", windowsDir, onExtractFileListener);
-                }
-            }
-
-            if (vkd3dWrapper.contains("None")) {
-                Log.d(TAG, "No VKD3D has been selected, restoring original d3d12");
-                restoreOriginalDllFiles(new String[] { "d3d12.dll", "d3d12core.dll" });
-            } else {
-                ContentProfile vkd3dProfile = contentsManager.getProfileByEntryName(vkd3dWrapper);
-                if (vkd3dProfile != null) {
-                    Log.d(TAG, "Applying user-defined VKD3D content profile: " + vkd3dWrapper);
-                    contentsManager.applyContent(vkd3dProfile);
-                } else {
-                    Log.d(TAG, "Extracting fallback VKD3D .tzst archive: " + vkd3dWrapper);
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this,
-                            "dxwrapper/" + vkd3dWrapper + ".tzst", windowsDir, onExtractFileListener);
-                }
-            }
-
-            Log.d(TAG, "Extracting nglide wrapper");
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/nglide.tzst", windowsDir,
-                    onExtractFileListener);
-
-            if (ddrawrapper.contains("None")) {
-                Log.d(TAG, "No DDRaw wrapper has been selected, restoring original ddraw files");
-                restoreOriginalDllFiles(new String[] { "ddraw.dll", "d3dimm.dll" });
-            } else {
-                if (ddrawrapper.equals("cnc-ddraw"))
-                    envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\windows\\syswow64\\ddraw.ini");
-
-                Log.d(TAG, "Extracting ddrawrapper " + ddrawrapper);
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/" + ddrawrapper + ".tzst",
-                        windowsDir, onExtractFileListener);
-            }
-
-            Log.d(TAG, "Finished extraction of DXVK wrapper files, version: " + dxwrapper);
-        } else if (dxwrapper.contains("wined3d")) {
-            Log.d(TAG, "Restoring original DLL files for wined3d.");
-            restoreOriginalDllFiles(dlls);
-        }
-    }
-
-    private static int compareVersion(String varA, String varB) {
-        int[] a = parseSemverLoose(varA);
-        int[] b = parseSemverLoose(varB);
-
-        if (a[0] != b[0])
-            return a[0] - b[0];
-        if (a[1] != b[1])
-            return a[1] - b[1];
-        return a[2] - b[2];
-    }
-
-    private static final Pattern SEMVER_LOOSE = Pattern.compile("(\\d+)\\.(\\d+)(?:\\.(\\d+))?");
-
-    private static int[] parseSemverLoose(String s) {
-        if (s == null)
-            return new int[] { 0, 0, 0 };
-
-        Matcher m = SEMVER_LOOSE.matcher(s);
-
-        String g1 = null, g2 = null, g3 = null;
-        while (m.find()) {
-            g1 = m.group(1);
-            g2 = m.group(2);
-            g3 = m.group(3);
-        }
-
-        if (g1 == null || g2 == null) {
-            return new int[] { 0, 0, 0 };
-        }
-
-        int major = safeParseInt(g1);
-        int minor = safeParseInt(g2);
-        int patch = safeParseInt(g3);
-        return new int[] { major, minor, patch };
-    }
-
-    private static int safeParseInt(String s) {
-        if (s == null || s.isEmpty())
-            return 0;
-        try {
-            return Integer.parseInt(s);
-        } catch (NumberFormatException ignored) {
-            return 0;
-        }
+    private DxWrapperFiles dxWrapperFiles() {
+        return new DxWrapperFiles(this, imageFs, wineInfo, contentsManager, onExtractFileListener);
     }
 
     private void extractWinComponentFiles() {
@@ -2798,26 +2665,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void restoreOriginalDllFiles(final String... dlls) {
-        File rootDir = imageFs.getRootDir();
-        File windowsDir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows");
-        File system32dlls = null;
-        File syswow64dlls = null;
-
-        if (wineInfo.isArm64EC())
-            system32dlls = new File(imageFs.getWinePath() + "/lib/wine/aarch64-windows");
-        else
-            system32dlls = new File(imageFs.getWinePath() + "/lib/wine/x86_64-windows");
-
-        syswow64dlls = new File(imageFs.getWinePath() + "/lib/wine/i386-windows");
-
-        for (String dll : dlls) {
-            File srcFile = new File(system32dlls, dll);
-            File dstFile = new File(windowsDir, "system32/" + dll);
-            FileUtils.copy(srcFile, dstFile);
-            srcFile = new File(syswow64dlls, dll);
-            dstFile = new File(windowsDir, "syswow64/" + dll);
-            FileUtils.copy(srcFile, dstFile);
-        }
+        dxWrapperFiles().restoreOriginal(dlls);
     }
 
     private String getWineStartCommand() {

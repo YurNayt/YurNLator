@@ -704,6 +704,9 @@ public class ShortcutsFragment extends Fragment {
         else if (LibraryComposeHost.ACTION_EXPORT.equals(action)) {
             exportShortcut(shortcut);
         }
+        else if (LibraryComposeHost.ACTION_PRESETS.equals(action)) {
+            com.winlator.cmod.ui.presets.CommunityPresetsDialog.show(context, shortcut);
+        }
     }
 
     private void exportShortcut(Shortcut shortcut) {

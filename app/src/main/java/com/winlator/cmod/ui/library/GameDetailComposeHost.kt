@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Star
@@ -73,6 +74,7 @@ interface GameDetailCallbacks {
     fun onGameFolder()
     fun onFavorite(favorite: Boolean)
     fun onRemove()
+    fun onPresets() {}
 }
 
 object GameDetailComposeHost {
@@ -177,6 +179,8 @@ private fun LandscapeDetail(title: String, subtitle: String, artwork: Bitmap?, f
                         DetailAction(Icons.Outlined.PlayArrow, "Enter container", Modifier.weight(1f), callbacks::onArguments)
                     }
                     Spacer(Modifier.height(10.dp))
+                    DetailAction(Icons.Outlined.Public, "Community presets", Modifier.fillMaxWidth(), callbacks::onPresets)
+                    Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         DetailAction(Icons.Outlined.Folder, "Game folder", Modifier.weight(1f), callbacks::onGameFolder)
                         DetailAction(Icons.Outlined.DeleteOutline, "Remove", Modifier.weight(1f), callbacks::onRemove, true)
@@ -211,6 +215,7 @@ private fun PortraitDetail(title: String, subtitle: String, artwork: Bitmap?, fa
             ) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.size(8.dp)); Text("Play", fontWeight = FontWeight.Bold) }
             DetailAction(Icons.Outlined.Settings, "Configure", Modifier.fillMaxWidth(), callbacks::onConfigure)
             DetailAction(Icons.Outlined.PlayArrow, "Enter container", Modifier.fillMaxWidth(), callbacks::onArguments)
+            DetailAction(Icons.Outlined.Public, "Community presets", Modifier.fillMaxWidth(), callbacks::onPresets)
             DetailAction(Icons.Outlined.Folder, "Game folder", Modifier.fillMaxWidth(), callbacks::onGameFolder)
             DetailAction(Icons.Outlined.DeleteOutline, "Remove", Modifier.fillMaxWidth(), callbacks::onRemove, true)
             Spacer(Modifier.height(12.dp))

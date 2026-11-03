@@ -23,6 +23,14 @@ object DriverOrigins {
         PreferenceManager.getDefaultSharedPreferences(context).edit().putString(KEY, o.toString()).apply()
     }
 
+    /** The download a driver was installed from, or null for a driver added by hand. */
+    @JvmStatic
+    fun urlFor(context: Context, driverId: String): String? {
+        val o = read(context)
+        o.keys().forEach { url -> if (o.optString(url).equals(driverId, ignoreCase = true)) return url }
+        return null
+    }
+
     /** The installed driver id for this download, or null when it isn't installed (any more). */
     @JvmStatic
     fun installedIdFor(context: Context, url: String, installedIds: Collection<String>): String? {

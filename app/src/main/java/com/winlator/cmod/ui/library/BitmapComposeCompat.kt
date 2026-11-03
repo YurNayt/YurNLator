@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Photo
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SportsEsports
@@ -494,6 +495,15 @@ internal fun LibraryItemMenuCompat(item: LibraryItem, cb: LibraryCallbacks, clos
                     close()
                     cb.onAction(item.shortcutPath, LibraryComposeHost.ACTION_EXPORT)
                 }
+            }
+            LibraryActionTileCompat(
+                Icons.Outlined.Public,
+                "Community presets",
+                Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontal = landscape
+            ) {
+                close()
+                cb.onAction(item.shortcutPath, LibraryComposeHost.ACTION_PRESETS)
             }
             LibraryActionTileCompat(
                 Icons.Outlined.DeleteOutline,
