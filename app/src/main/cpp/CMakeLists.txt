@@ -9,6 +9,8 @@ add_subdirectory(patchelf)
 add_subdirectory(adrenotools)
 # Wayland display backend: Bannerlator's embedded compositor (libbannerwayland.so).
 add_subdirectory(waylandcomp)
+# DXVK's DXBC->SPIR-V translator (zlib), for LSFG: Lossless.dll's shaders are translated on device.
+add_subdirectory(thirdparty/dxbc)
 
 add_library(winlator SHARED
         xr/engine.c
@@ -222,6 +224,23 @@ add_library(vulkan_renderer SHARED
         winlator/renderer/vulkan/winfg/framegen.cpp
         winlator/renderer/vulkan/winfg/winfg_engine.cpp
         winlator/renderer/vulkan/winfg/winfg_vkd.cpp
+        winlator/lsfg/lsfg_probe.cpp
+        winlator/lsfg/lsfg_dll.cpp
+        winlator/lsfg/lsfg_dxbc.cpp
+        winlator/lsfg/lsfg_vkd.cpp
+        winlator/lsfg/lsfg_common.cpp
+        winlator/lsfg/lsfg_shaders.cpp
+        winlator/lsfg/lsfg_mipmaps.cpp
+        winlator/lsfg/lsfg_alpha.cpp
+        winlator/lsfg/lsfg_beta.cpp
+        winlator/lsfg/lsfg_gamma.cpp
+        winlator/lsfg/lsfg_delta.cpp
+        winlator/lsfg/lsfg_generate.cpp
+        winlator/lsfg/lsfg_chain.cpp
+        winlator/lsfg/lsfg_pacer.cpp
+        winlator/lsfg/lsfg_engine.cpp
+        winlator/lsfg/lsfg_governor.cpp
+        winlator/lsfg/lsfg_jni.cpp
 
         winlator/renderer/vulkan/view_transformation.cpp
         winlator/renderer/vulkan/xform.cpp
@@ -240,6 +259,7 @@ target_compile_options(vulkan_renderer PRIVATE
 )
 
 target_link_libraries(vulkan_renderer
+        dxbc
         log
         android
         vulkan

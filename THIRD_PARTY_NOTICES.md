@@ -13,3 +13,13 @@ It contains code from these projects, under their own licenses:
 | [lsfg-vk](https://github.com/PancakeTAS/lsfg-vk), Eden Emulator Project | GPL-3.0-or-later | LSFG frame generation (needs the user's own Lossless.dll, not bundled) |
 
 The MIT notices of the Winlator base are kept as required by that license.
+
+## LSFG frame generation (app/src/main/cpp/winlator/lsfg)
+Native Lossless Scaling frame-generation chain, ported from Bannerlator (GPL-3.0), which ported it
+from WinNative's vkr_lsfg.cpp (GPL-3.0-or-later); LSFG port credited to Camille LaVey / the Eden
+Emulator Project, following upstream lsfg-vk. No Lossless Scaling code or shaders are shipped:
+the shaders are read from the user's own Lossless.dll on the device.
+
+## DXVK DXBC translator (app/src/main/cpp/thirdparty/dxbc)
+zlib licence, (c) Philip Rebohle, Joshua Ashton, Robin Kertels, Jeffrey Ellison and contributors.
+See thirdparty/dxbc/LICENSE.md.

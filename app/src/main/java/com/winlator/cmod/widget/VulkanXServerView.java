@@ -67,6 +67,8 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     private boolean pendingFgArmed = false;
     private int     pendingFgMultiplier = 2, pendingFgPreset = 1;
     private float   pendingFgFlow = 0.6f;
+    private int     pendingFgEngine = 0;
+    private String  pendingLsfgCache = null;
     private boolean pendingSwapRB         = false;
 
     private WinlatorHUD hudRef = null;
@@ -130,6 +132,9 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     @FastNative private native void nativeSetSharpness(long handle, float sharpness);
     private native void nativeSetColorAdjust(long handle, float brightness, float contrast, float gamma);
     private native void nativeSetFrameGen(long handle, boolean armed, int multiplier, int preset, float flowScale);
+    private native void nativeSetFrameGenEngine(long handle, int kind, String lsfgCachePath);
+    private native int nativeLsfgProblem(long handle);
+    private native String nativeLsfgReason(long handle);
     private native long[] nativeGetPresentStats(long handle);
 
     /** {real frames, generated frames} presented on screen so far (for the HUD). */
@@ -203,7 +208,9 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
                         nativeSetPostFXMode(nativeHandle, pendingPostFXMode);
                         nativeSetSharpness(nativeHandle, pendingSharpness);
                         nativeSetColorAdjust(nativeHandle, pendingBrightness, pendingContrast, pendingGamma);
-                        nativeSetFrameGen(nativeHandle, pendingFgArmed, pendingFgMultiplier, pendingFgPreset, pendingFgFlow);
+                        nativeSetFrameGenEngine(nativeHandle, pendingFgEngine, pendingLsfgCache);
+                        nativeSetFrameGenEngine(nativeHandle, pendingFgEngine, pendingLsfgCache);
+                    nativeSetFrameGen(nativeHandle, pendingFgArmed, pendingFgMultiplier, pendingFgPreset, pendingFgFlow);
                         updateTransform();
                         nativeSetCursorVisible(nativeHandle, cursorVisible);
                         initComplete = true;
@@ -589,6 +596,23 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     public void setFrameGen(boolean armed, int multiplier, int preset, float flowScale) {
         pendingFgArmed = armed; pendingFgMultiplier = multiplier; pendingFgPreset = preset; pendingFgFlow = flowScale;
         synchronized (lock) { if (nativeHandle != 0) nativeSetFrameGen(nativeHandle, armed, multiplier, preset, flowScale); }
+    }
+
+    /** Frame generation engine: 0 = win-fg, 1 = LSFG (the shader cache built from the user's Lossless.dll). */
+    public void setFrameGenEngine(int kind, String lsfgCachePath) {
+        pendingFgEngine = kind; pendingLsfgCache = lsfgCachePath;
+        synchronized (lock) { if (nativeHandle != 0) nativeSetFrameGenEngine(nativeHandle, kind, lsfgCachePath); }
+    }
+
+    /** Why LSFG can't run here, or null when it can (or hasn't been tried yet). */
+    public String lsfgProblem() {
+        synchronized (lock) {
+            if (nativeHandle == 0) return null;
+            int p = nativeLsfgProblem(nativeHandle);
+            if (p == 0) return null;
+            return p == 1 ? "this GPU / driver lacks a feature LSFG needs (" + nativeLsfgReason(nativeHandle) + ")"
+                    : "the LSFG shaders could not be loaded";
+        }
     }
 
     public void setFilterMode(int mode) {

@@ -222,6 +222,9 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
                 }
             }
 
+            item("framegen-title") { SectionTitle("FRAME GENERATION") }
+            item("framegen") { FrameGenPreferenceCard() }
+
             item("sound-title") { SectionTitle(stringResource(R.string.sound)) }
             item("soundfonts") {
                 SoundFontCard(model.soundFonts, callbacks::onInstallSoundFont, callbacks::onRemoveSoundFont)

@@ -87,6 +87,9 @@ void VulkanRendererContext::loadInstanceDispatch() {
     LOAD_I2(DestroySurfaceKHR);
     LOAD_I2(CreateAndroidSurfaceKHR);
     LOAD_I2(GetDeviceProcAddr);
+    LOAD_I2(GetPhysicalDeviceFeatures2);
+    if (!vk_.GetPhysicalDeviceFeatures2) vk_.GetPhysicalDeviceFeatures2 = (PFN_vkGetPhysicalDeviceFeatures2)i("vkGetPhysicalDeviceFeatures2KHR");
+    LOAD_I2(GetPhysicalDeviceFormatProperties);
 }
 
 void VulkanRendererContext::loadDeviceDispatch() {
@@ -161,6 +164,11 @@ void VulkanRendererContext::loadDeviceDispatch() {
     LOAD_D2(WaitForFences);
     LOAD_D2(ResetFences);
     LOAD_D2(GetFenceStatus);
+    LOAD_D2(CmdDispatch);
+    LOAD_D2(CmdClearColorImage);
+    LOAD_D2(CreateComputePipelines);
+    LOAD_D2(UnmapMemory);
+    LOAD_D2(ResetDescriptorPool);
 
     vk_.GetAndroidHardwareBufferPropertiesANDROID =
         (PFN_vkGetAndroidHardwareBufferPropertiesANDROID)d("vkGetAndroidHardwareBufferPropertiesANDROID");
@@ -226,10 +234,10 @@ void VulkanRendererContext::createLogicalDevice() {
 
     PFN_vkEnumerateDeviceExtensionProperties enumDevExts =
         (PFN_vkEnumerateDeviceExtensionProperties)gipa(instance, "vkEnumerateDeviceExtensionProperties");
+    std::vector<VkExtensionProperties> av;
     { uint32_t n=0; if(enumDevExts) enumDevExts(physicalDevice,nullptr,&n,nullptr);
-      std::vector<VkExtensionProperties> av(n);
-      if(enumDevExts) enumDevExts(physicalDevice,nullptr,&n,av.data());
-      for (auto& e:av) { (void)e; } }
+      av.resize(n);
+      if(enumDevExts && n) enumDevExts(physicalDevice,nullptr,&n,av.data()); }
     std::vector<const char*> extList = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME
@@ -244,9 +252,47 @@ void VulkanRendererContext::createLogicalDevice() {
     fgStorageFeatures = supported.shaderStorageImageExtendedFormats == VK_TRUE;
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
+
+    // LSFG (the user's Lossless.dll, translated to SPIR-V 1.6) also needs the Vulkan memory
+    // model: chained through VkPhysicalDeviceFeatures2 only when the device offers everything.
+    lsfgCaps = lsfg::Caps{};
+    lsfgCaps.features = lsfg::queryFeatures(vk_, physicalDevice, av, true);
+    const std::vector<const char*> baseExtList = extList;
+    VkPhysicalDeviceVulkan12Features             lsfgV12{};
+    VkPhysicalDeviceVulkanMemoryModelFeaturesKHR lsfgMM{};
+    VkPhysicalDeviceFeatures2                    lsfgF2{};
+    if (lsfgCaps.features.deviceGatesPass()) {
+        const bool khrPath = lsfgCaps.features.deviceApiVersion < VK_API_VERSION_1_2;
+        if (khrPath) {
+            lsfgMM.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR;
+            lsfgMM.vulkanMemoryModel = VK_TRUE;
+            lsfgMM.vulkanMemoryModelDeviceScope = lsfgCaps.features.vulkanMemoryModelDeviceScope ? VK_TRUE : VK_FALSE;
+            for (const char* e : lsfg::extensionNames(lsfgCaps.features)) extList.push_back(e);
+        } else {
+            lsfgV12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            lsfgV12.vulkanMemoryModel = VK_TRUE;
+            lsfgV12.vulkanMemoryModelDeviceScope = lsfgCaps.features.vulkanMemoryModelDeviceScope ? VK_TRUE : VK_FALSE;
+        }
+        lsfgF2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        lsfgF2.pNext = khrPath ? (void*)&lsfgMM : (void*)&lsfgV12;
+        lsfgF2.features = enabled;
+        lsfgF2.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
+        lsfgF2.features.shaderStorageImageExtendedFormats = VK_TRUE;
+        ci.pNext = &lsfgF2;            // pEnabledFeatures must stay null with Features2 chained
+        lsfgCaps.featuresEnabled = true;
+    } else {
+        ci.pEnabledFeatures=&enabled;
+    }
     ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
-    ci.pEnabledFeatures=&enabled;
-    if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) {
+    VkResult dr = vk_.CreateDevice(physicalDevice,&ci,nullptr,&device);
+    if (dr != VK_SUCCESS && lsfgCaps.featuresEnabled) {
+        __android_log_print(ANDROID_LOG_WARN, WLOG_TAG, "device: LSFG feature set refused, retrying without");
+        lsfgCaps.featuresEnabled = false;
+        ci.pNext = nullptr; ci.pEnabledFeatures = &enabled;
+        ci.enabledExtensionCount=(uint32_t)baseExtList.size(); ci.ppEnabledExtensionNames=baseExtList.data();
+        dr = vk_.CreateDevice(physicalDevice,&ci,nullptr,&device);
+    }
+    if (dr != VK_SUCCESS) {
         ci.pEnabledFeatures=nullptr; fgStorageFeatures=false;
         if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) throw std::runtime_error("device");
     }

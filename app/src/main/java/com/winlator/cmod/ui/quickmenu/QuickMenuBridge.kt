@@ -29,7 +29,9 @@ data class QmGyro(
  * Frame generation (win-fg in the renderer). loaded: available (Vulkan renderer), changes apply live;
  * multiplier 2-4; preset 0 Quality / 1 Balanced / 2 Performance; flowScale 0.2-1.
  */
-data class QmFrameGen(val loaded: Boolean, val on: Boolean, val multiplier: Int, val preset: Int, val flowScale: Float)
+/** [engine] "winfg" | "lsfg"; [lsfgImported] the user's Lossless.dll is in Settings. */
+data class QmFrameGen(val loaded: Boolean, val on: Boolean, val multiplier: Int, val preset: Int, val flowScale: Float,
+                      val engine: String = "winfg", val lsfgImported: Boolean = false)
 
 /** Live task manager numbers. */
 data class QmTasks(val cpuPercent: Int, val memory: String, val processes: List<QmProcess>)

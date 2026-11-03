@@ -16,6 +16,8 @@
 
 #include "VulkanRendererContext.h"
 #include "winfg/winfg_engine.h"
+#include "../../lsfg/lsfg_engine.h"
+#include "../../lsfg/lsfg_vkd.h"
 #include <chrono>
 #include <cmath>
 
@@ -23,6 +25,7 @@
 #define FG_ERR(...) __android_log_print(ANDROID_LOG_ERROR, "YurnFrameGen", __VA_ARGS__)
 
 static inline winfg::Engine* fgEng(void* p) { return static_cast<winfg::Engine*>(p); }
+static inline lsfg::Engine* lsEng(void* p) { return static_cast<lsfg::Engine*>(p); }
 
 static int64_t nowNs() {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -36,6 +39,24 @@ void VulkanRendererContext::setFrameGen(bool armed, int multiplier, int preset, 
     fgConfigDirty.store(true);
     fgArmed.store(armed);
     needsRender.store(true); dirtyCV.notify_one();
+}
+
+void VulkanRendererContext::setFrameGenEngine(int kind, const char* path) {
+    {
+        std::lock_guard<std::mutex> lk(fgKindMutex);
+        std::string next = path ? path : "";
+        if (next != lsfgCachePath) { lsfgCachePath = next; lsfgPathDirty = true; }
+    }
+    fgKind.store(kind == 1 ? 1 : 0);
+    fgConfigDirty.store(true);
+    needsRender.store(true); dirtyCV.notify_one();
+}
+
+int VulkanRendererContext::lsfgProblem() const {
+    if (!lsfgCaps.featuresEnabled || !lsfgCaps.features.deviceGatesPass()) return 1;
+    if (lsfgFormatProbed && !lsfgCaps.storageOnSwapchainFormat) return 1;
+    if (lsfgEngineTried && (!lsfgEngine || lsEng(lsfgEngine)->unavailable())) return 2;
+    return 0;
 }
 
 bool VulkanRendererContext::fgMakeImage(FgImage& out, VkImageUsageFlags usage) {
@@ -69,6 +90,7 @@ void VulkanRendererContext::fgDestroyTargets() {
     for (auto& g : fgGen) kill(g);
     fgW = fgH = 0;
     if (fgEngine) fgEng(fgEngine)->reset();
+    if (lsfgEngine) lsEng(lsfgEngine)->reset();
 }
 
 void VulkanRendererContext::fgShutdown() {
@@ -86,6 +108,8 @@ void VulkanRendererContext::fgShutdown() {
     }
     delete fgEng(fgEngine);
     fgEngine = nullptr;
+    delete lsEng(lsfgEngine);
+    lsfgEngine = nullptr;
 }
 
 bool VulkanRendererContext::fgEnsureSync() {
@@ -171,7 +195,45 @@ bool VulkanRendererContext::fgPrepareFrame() {
     if (!swapchainCanBlit || !fgStorageFeatures) return false;
     if (!fgEnsureSync() || !fgEnsureTargets()) return false;
 
-    if (!fgEngine && !fgEngineTried) {
+    fgActiveKind = fgKind.load(std::memory_order_relaxed);
+    if (fgActiveKind == 1) {
+        // LSFG: rebuilt when the cache (the user's Lossless.dll) changes.
+        std::string path;
+        bool dirty;
+        { std::lock_guard<std::mutex> lk(fgKindMutex); path = lsfgCachePath; dirty = lsfgPathDirty; lsfgPathDirty = false; }
+        if (dirty && lsfgEngine) {
+            vk_.DeviceWaitIdle(device);
+            delete lsEng(lsfgEngine); lsfgEngine = nullptr; lsfgEngineTried = false;
+        }
+        if (!lsfgFormatProbed) {
+            lsfgFormatProbed = true;
+            lsfgCaps.probedFormat = swapchainFmt;
+            lsfgCaps.storageOnSwapchainFormat = lsfg::probeStorageFormat(vk_, physicalDevice, swapchainFmt);
+            lsfgCaps.linearBlitOnSwapchainFormat = lsfg::probeLinearBlit(vk_, physicalDevice, swapchainFmt);
+            lsfg::explain(lsfgCaps);
+            FG_LOG("LSFG capability: %s", lsfgCaps.reason);
+        }
+        if (!lsfgEngine && !lsfgEngineTried) {
+            lsfgEngineTried = true;
+            if (!lsfgCaps.supported()) {
+                FG_ERR("LSFG unavailable on this device: %s", lsfgCaps.reason);
+            } else if (path.empty()) {
+                FG_ERR("LSFG: no shader cache (import Lossless.dll in Settings)");
+            } else if (!lsfgVkdInit(vk_)) {
+                FG_ERR("LSFG: Vulkan dispatch incomplete");
+            } else {
+                auto* e = new lsfg::Engine();
+                if (e->init(device, physicalDevice, path, lsfgCaps.features.spirvTarget)) {
+                    lsfgEngine = e;
+                    fgConfigDirty.store(true);
+                    FG_LOG("LSFG engine ready (spirv target 0x%x)", lsfgCaps.features.spirvTarget);
+                } else {
+                    delete e;
+                    FG_ERR("LSFG engine init failed (cache %s)", path.c_str());
+                }
+            }
+        }
+    } else if (!fgEngine && !fgEngineTried) {
         fgEngineTried = true;
         auto* e = new winfg::Engine();
         if (e->init(vk_, physicalDevice, device, graphicsQueueFamilyIndex, graphicsQueue)) {
@@ -182,7 +244,8 @@ bool VulkanRendererContext::fgPrepareFrame() {
             FG_ERR("win-fg engine init failed: frame generation unavailable on this device");
         }
     }
-    winfg::Engine* eng = fgEng(fgEngine);
+    winfg::Engine* eng = fgActiveKind == 0 ? fgEng(fgEngine) : nullptr;
+    lsfg::Engine* ls = fgActiveKind == 1 ? lsEng(lsfgEngine) : nullptr;
 
     // Everything below reuses the same images every frame: start from an idle GPU.
     vk_.DeviceWaitIdle(device);
@@ -191,7 +254,7 @@ bool VulkanRendererContext::fgPrepareFrame() {
     uint64_t serial = contentSerial.load(std::memory_order_relaxed);
     fgNewThisFrame = serial != fgLastSerial;
     fgLastSerial = serial;
-    if (!fgNewThisFrame || !eng) return true;
+    if (!fgNewThisFrame || (!eng && !ls)) return true;
 
     int64_t now = nowNs();
     if (fgLastFrameNs) {
@@ -200,6 +263,15 @@ bool VulkanRendererContext::fgPrepareFrame() {
     }
     fgLastFrameNs = now;
 
+    if (ls) {
+        if (fgConfigDirty.exchange(false))
+            ls->configure((uint32_t)fgMultiplier.load(), 0, fgFlowScale.load(), 0.0f);
+        if (containerWidth > 0 && containerHeight > 0) ls->setGuestExtent((uint32_t)containerWidth, (uint32_t)containerHeight);
+        if (!ls->prepare(fgW, fgH, swapchainFmt)) return true;
+        if (fgIntervalNs > 0) ls->setPresentedRate((float)(1e9 / fgIntervalNs) * (float)(fgMultiplier.load()));
+        fgGensThisFrame = std::min<uint32_t>(ls->plan(3, ++lsfgSourceFrames), 3);
+        return true;
+    }
     if (fgConfigDirty.exchange(false))
         eng->configure((uint32_t)fgMultiplier.load(), 3, fgPreset.load(), fgFlowScale.load());
     if (!eng->prepare(fgW, fgH, swapchainFmt)) return true;
@@ -240,8 +312,13 @@ void VulkanRendererContext::fgBlitToSwapchain(VkCommandBuffer cb, VkImage src, u
 }
 
 void VulkanRendererContext::fgRecordTail(VkCommandBuffer cb, uint32_t imgIdx) {
-    winfg::Engine* eng = fgEng(fgEngine);
-    if (eng && fgNewThisFrame && eng->valid()) {
+    lsfg::Engine* ls = fgActiveKind == 1 ? lsEng(lsfgEngine) : nullptr;
+    winfg::Engine* eng = fgActiveKind == 0 ? fgEng(fgEngine) : nullptr;
+    if (ls && fgNewThisFrame && ls->valid()) {
+        ls->process(cb, fgComposite.img, fgW, fgH, fgGensThisFrame);
+        for (uint32_t k = 0; k < fgGensThisFrame; k++)
+            ls->generateInto(cb, k, k, fgGen[k].img, fgGen[k].view, fgW, fgH);
+    } else if (eng && fgNewThisFrame && eng->valid()) {
         eng->process(cb, fgComposite.img, fgW, fgH, fgGensThisFrame);
         for (uint32_t k = 0; k < fgGensThisFrame; k++)
             eng->generateInto(cb, k, fgGensThisFrame, fgGen[k].img, fgGen[k].view, fgW, fgH);

@@ -6,6 +6,7 @@
 
 #include "view_transformation.hpp"
 #include "xform.hpp"
+#include "../../lsfg/lsfg_probe.h"
 
 struct VkTable {
 
@@ -94,6 +95,15 @@ struct VkTable {
     PFN_vkGetFenceStatus GetFenceStatus;
 
     PFN_vkGetAndroidHardwareBufferPropertiesANDROID GetAndroidHardwareBufferPropertiesANDROID;
+
+    // LSFG (Lossless.dll frame generation, winlator/lsfg): compute + feature probing.
+    PFN_vkGetPhysicalDeviceFeatures2 GetPhysicalDeviceFeatures2;
+    PFN_vkGetPhysicalDeviceFormatProperties GetPhysicalDeviceFormatProperties;
+    PFN_vkCmdDispatch CmdDispatch;
+    PFN_vkCmdClearColorImage CmdClearColorImage;
+    PFN_vkCreateComputePipelines CreateComputePipelines;
+    PFN_vkUnmapMemory UnmapMemory;
+    PFN_vkResetDescriptorPool ResetDescriptorPool;
 };
 
 #include <android/log.h>
@@ -471,6 +481,20 @@ public:
     // each new game frame win-fg synthesises 1-3 frames between the previous and this one, and
     // they are presented first, spaced over the measured frame interval, then the real frame.
     void setFrameGen(bool armed, int multiplier, int preset, float flowScale);
+    // Engine: 0 = win-fg (built in), 1 = LSFG (shaders from the user's Lossless.dll, cache path).
+    void setFrameGenEngine(int kind, const char* lsfgCachePath);
+    /** 0 = LSFG usable, 1 = the device lacks a required feature (lsfgCaps.reason), 2 = the engine failed. */
+    int lsfgProblem() const;
+    lsfg::Caps    lsfgCaps{};
+    std::atomic<int> fgKind{0};
+    std::mutex    fgKindMutex;
+    std::string   lsfgCachePath;
+    bool          lsfgPathDirty = false;
+    void*         lsfgEngine = nullptr;        // lsfg::Engine*, owned
+    bool          lsfgEngineTried = false;
+    bool          lsfgFormatProbed = false;
+    uint64_t      lsfgSourceFrames = 0;
+    int           fgActiveKind = 0;            // the engine used for the current frame
     void noteContentFrame() { contentSerial.fetch_add(1, std::memory_order_relaxed); }
     std::atomic<bool>     fgArmed{false};
     std::atomic<int>      fgMultiplier{2};

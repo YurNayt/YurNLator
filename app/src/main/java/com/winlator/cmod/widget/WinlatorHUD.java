@@ -1486,10 +1486,23 @@ public class WinlatorHUD extends View {
 
     /** The driver the game really runs on ("PanVK · FristOneRR 3.0"), shown after the GPU name. */
     public void setDriverLabel(String label) {
-        driverLabel = label;
+        driverLabel = compactDriver(label);
         String base = rawGpuName != null ? rawGpuName : gpuNameLabel;
         gpuNameLabel = "";
         setGpuName(base);
+    }
+
+    /** Short form for the HUD line ("Turnip", "PanVK", "Mesa 26.1"); the full name is in the task manager. */
+    static String compactDriver(String label) {
+        if (label == null) return null;
+        String s = label;
+        int dot = s.indexOf(" · ");
+        if (dot > 0) s = s.substring(0, dot);
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^Mesa (\\d+\\.\\d+)").matcher(s);
+        if (m.find()) return "Mesa " + m.group(1);
+        if (s.startsWith("driver ")) s = s.substring(7);
+        s = s.replaceAll("\\s*\\(.*$", "").trim();
+        return s.length() > 14 ? s.substring(0, 13).trim() + "…" : s;
     }
 
     public void setGpuName(String name) {

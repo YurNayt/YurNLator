@@ -2543,93 +2543,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (waylandMode) Log.i("XServerDisplayActivity", "wayland: "
                 + com.winlator.cmod.session.WaylandSupport.applyGameDriver(this, envVars, adrenoToolsDriverId, wineInfo.path));
 
-        String vulkanVersion = graphicsDriverConfig.get("vulkanVersion");
-        String vulkanVersionPatch = GPUInformation.getVulkanVersion(adrenoToolsDriverId, this).split("\\.")[2];
-        vulkanVersion = vulkanVersion + "." + vulkanVersionPatch;
-        envVars.put("WRAPPER_VK_VERSION", vulkanVersion);
-
-        String blacklistedExtensions = graphicsDriverConfig.get("blacklistedExtensions");
-        envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
-
-        String gpuName = graphicsDriverConfig.get("gpuName");
-        String dxvkVersion = dxwrapperConfig.get("version");
-        if (!gpuName.equals("Device") && (dxvkVersion == null || !dxvkVersion.contains("sarek"))) {
-            envVars.put("WRAPPER_DEVICE_NAME", gpuName);
-            envVars.put("WRAPPER_DEVICE_ID", WineD3DConfigDialog.getDeviceIdFromGPUName(this, gpuName));
-            envVars.put("WRAPPER_VENDOR_ID", WineD3DConfigDialog.getVendorIdFromGPUName(this, gpuName));
-        }
-
-        String maxDeviceMemory = graphicsDriverConfig.get("maxDeviceMemory");
-        if (maxDeviceMemory != null && Integer.parseInt(maxDeviceMemory) > 0)
-            envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory);
-
-        String presentMode = graphicsDriverConfig.get("presentMode");
-        if (presentMode.contains("immediate")) {
-            envVars.put("WRAPPER_MAX_IMAGE_COUNT", "1");
-        }
-        envVars.put("MESA_VK_WSI_PRESENT_MODE", presentMode);
-
-        String resourceType = graphicsDriverConfig.get("resourceType");
-        envVars.put("WRAPPER_RESOURCE_TYPE", resourceType);
-
-        String syncFrame = graphicsDriverConfig.get("syncFrame");
-        if (syncFrame.equals("1"))
-            envVars.put("MESA_VK_WSI_DEBUG", "forcesync");
-
-        String disablePresentWait = graphicsDriverConfig.get("disablePresentWait");
-        envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait);
-
-        String bcnEmulation = graphicsDriverConfig.get("bcnEmulation");
-        String bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType");
-        if (bcnEmulation == null) bcnEmulation = "auto";
-        if (bcnEmulationType == null || bcnEmulationType.isEmpty()) bcnEmulationType = "compute";
-
-        switch (bcnEmulation) {
-            case "auto" -> envVars.put("WRAPPER_EMULATE_BCN", "3");
-            case "full" -> envVars.put("WRAPPER_EMULATE_BCN", "2");
-            case "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0");
-            default -> envVars.put("WRAPPER_EMULATE_BCN", "1");
-        }
-
-        String bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache");
-        envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache != null && !bcnEmulationCache.isEmpty() ? bcnEmulationCache : "1");
-
-        // BCn texture layer from Winlator Mali 1.2.1 (leegao's bcn_layer, modified by WinMali-Dev):
-        // Mali / non-Adreno GPUs have no BC1-BC7 in hardware, the layer transcodes them (ASTC /
-        // ETC2). Adreno decodes BCn natively, so the layer is never loaded there.
-        boolean bcnLayer = !"none".equals(bcnEmulation) && "compute".equals(bcnEmulationType)
-                && GPUInformation.getVendorID(null, null) != 0x5143;
-        if (bcnLayer) {
-            boolean legacy = "legacy".equals(graphicsDriverConfig.get("bcnVersion"));
-            // Benchmark-named builds (antutu…): the Mali driver answers differently there and the
-            // Winlator Mali wrappers fail to create the device when the current layer asks for
-            // ASTC HDR (winevulkan assert). The legacy layer doesn't ask for it.
-            String wrapperId = graphicsDriverConfig.get("wrapper");
-            if (!legacy && MaliCompat.forcesLegacyBcn(this, wrapperId)) {
-                Log.d("BCn", "Spoofed package + Winlator Mali wrapper " + wrapperId + ": legacy BCn layer");
-                legacy = true;
-            }
-            installBcnLayer(rootDir, legacy);
-            envVars.put("ENABLE_BCN_COMPUTE", "1");
-            if (legacy) {
-                // September build: one target format at a quality preset.
-                envVars.put("BCN_COMPUTE_AUTO", "1");
-                String transcode = graphicsDriverConfig.get("bcnTranscode");
-                envVars.put("etc2".equals(transcode) ? "BCN_TRANSCODE_TO_ETC2"
-                        : "etc1".equals(transcode) ? "BCN_TRANSCODE_TO_ETC1" : "BCN_TRANSCODE_TO_ASTC", "1");
-                String quality = graphicsDriverConfig.get("bcnQuality");
-                if (quality != null && !quality.isEmpty() && !"auto".equals(quality)) envVars.put("BCN_QUALITY_PRESET", quality);
-            } else {
-                // Current build: the layer picks per texture; "full" emulation forces compute.
-                envVars.put("BCN_COMPUTE_AUTO", "full".equals(bcnEmulation) ? "0" : "1");
-            }
-        } else {
-            envVars.put("DISABLE_BCN_COMPUTE", "1");
-        }
-
-        if (xServer.getSurfaceFormat() == Drawable.HAL_PIXEL_FORMAT_RGBA_8888) {
-            envVars.put("WRAPPER_SURFACE_FORMAT", "rgba8");
-        }
+        // Wrapper / BCn environment: session/WrapperEnv (YurNLator base, part 2).
+        com.winlator.cmod.session.WrapperEnv.Result wenv = com.winlator.cmod.session.WrapperEnv.apply(this, graphicsDriverConfig,
+                dxwrapperConfig, envVars, adrenoToolsDriverId, xServer.getSurfaceFormat() == Drawable.HAL_PIXEL_FORMAT_RGBA_8888);
+        if (wenv.bcnLayer) installBcnLayer(rootDir, wenv.bcnLegacy);
 
         if (!vkbasaltConfig.isEmpty()) {
             envVars.put("ENABLE_VKBASALT", "1");
@@ -3176,16 +3093,52 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return v.isEmpty() ? fallback : v;
     }
 
-    /** Frame generation runs in the host Vulkan renderer (win-fg), switched live. */
+    /** Frame generation runs in the host Vulkan renderer (win-fg or LSFG), switched live. */
     private void applyFrameGen() {
         if (!(xServerView instanceof VulkanXServerView)) return;
+        VulkanXServerView view = (VulkanXServerView) xServerView;
         int mult = 2, preset = 1;
         float flow = 0.6f;
         try { mult = Integer.parseInt(frameGenSetting("frameGenMultiplier", "2")); } catch (Exception ignored) {}
         try { preset = Integer.parseInt(frameGenSetting("frameGenPreset", "1")); } catch (Exception ignored) {}
         try { flow = Float.parseFloat(frameGenSetting("frameGenFlowScale", "0.6")); } catch (Exception ignored) {}
         boolean on = WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF));
-        ((VulkanXServerView) xServerView).setFrameGen(on, mult, preset, flow);
+        final int fMult = mult, fPreset = preset;
+        final float fFlow = flow;
+        if (on && WinFrameGen.ENGINE_LSFG.equals(frameGenEngine())) {
+            if (!com.winlator.cmod.core.LsfgNative.isDllAvailable(this)) {
+                Toast.makeText(this, "LSFG: import your Lossless.dll in Settings › Frame generation. Using Win-FG.", Toast.LENGTH_LONG).show();
+                view.setFrameGenEngine(0, null);
+                view.setFrameGen(true, mult, preset, flow);
+                return;
+            }
+            // The shader cache is built at import; checked (and rebuilt if the DLL changed) off the UI thread.
+            Executors.newSingleThreadExecutor().execute(() -> {
+                int status = com.winlator.cmod.core.LsfgNative.ensureCache(this, true);
+                runOnUiThread(() -> {
+                    if (status == com.winlator.cmod.core.LsfgNative.STATUS_OK) {
+                        view.setFrameGenEngine(1, com.winlator.cmod.core.LsfgNative.cacheFile(this).getAbsolutePath());
+                    } else {
+                        Toast.makeText(this, "LSFG: " + com.winlator.cmod.core.LsfgNative.explain(status) + ". Using Win-FG.", Toast.LENGTH_LONG).show();
+                        view.setFrameGenEngine(0, null);
+                    }
+                    view.setFrameGen(true, fMult, fPreset, fFlow);
+                    // The engine starts on the next frame: report a device that can't run it.
+                    xServerView.postDelayed(() -> {
+                        String why = view.lsfgProblem();
+                        if (why != null) Toast.makeText(this, "LSFG can't run: " + why, Toast.LENGTH_LONG).show();
+                    }, 2500);
+                });
+            });
+            return;
+        }
+        view.setFrameGenEngine(0, null);
+        view.setFrameGen(on, mult, preset, flow);
+    }
+
+    private String frameGenEngine() {
+        String e = frameGenSetting("frameGenEngine", "");
+        return e.isEmpty() ? WinFrameGen.defaultEngine(this) : e;
     }
 
     // FPS follows the window that actually renders: games often draw into a new window after a
@@ -3425,7 +3378,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             int preset = parseInt(frameGenSetting("frameGenPreset", "1"), 1);
             float flow;
             try { flow = Float.parseFloat(frameGenSetting("frameGenFlowScale", "0.6")); } catch (Exception e) { flow = 0.6f; }
-            return new QmFrameGen(xServerView instanceof VulkanXServerView, WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF)), mult, preset, flow);
+            return new QmFrameGen(xServerView instanceof VulkanXServerView, WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF)), mult, preset, flow,
+                    frameGenEngine(), com.winlator.cmod.core.LsfgNative.isDllAvailable(XServerDisplayActivity.this));
         }
 
         @Override public void setFrameGen(QmFrameGen fg) {
@@ -3437,7 +3391,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 {"frameGen", state},
                 {"frameGenMultiplier", String.valueOf(fg.getMultiplier())},
                 {"frameGenPreset", String.valueOf(fg.getPreset())},
-                {"frameGenFlowScale", String.format(java.util.Locale.US, "%.2f", fg.getFlowScale())}
+                {"frameGenFlowScale", String.format(java.util.Locale.US, "%.2f", fg.getFlowScale())},
+                {"frameGenEngine", fg.getEngine()}
             };
             for (String[] kv : values) {
                 if (perGame) shortcut.putExtra(kv[0], kv[1]);
@@ -3601,7 +3556,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         @Override public java.util.List<QmInfo> sessionInfo() {
             ArrayList<QmInfo> out = new ArrayList<>();
             out.add(new QmInfo("Wine", wineInfo != null ? wineInfo.toString() : (container != null ? container.getWineVersion() : "")));
-            out.add(new QmInfo("Display backend", "X11"));
+            out.add(new QmInfo("Display backend", waylandMode ? "Wayland (compositor)" : "X11"
+                    + (launchConfig != null && launchConfig.getWayland() ? " (Wayland not available with this Proton)" : "")));
             out.add(new QmInfo("DX wrapper", dxwrapper != null ? dxwrapper.toUpperCase(java.util.Locale.ENGLISH) : ""));
             String renderer = xServerView instanceof VulkanXServerView ? "Vulkan"
                     : xServerView instanceof EGLXServerView ? "OpenGL (EGL)" : "Native display";
@@ -3610,8 +3566,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 String driver = graphicsDriverConfig.get("version");
                 if (driver != null && !driver.isEmpty()) out.add(new QmInfo("Graphics driver", driver));
                 if (actualDriver != null) out.add(new QmInfo("Running on", actualDriver));
-                out.add(new QmInfo("Display", waylandMode ? "Wayland (compositor)" : "X11"
-                        + (launchConfig != null && launchConfig.getWayland() ? " (Wayland not available with this Proton)" : "")));
                 String wrapper = graphicsDriverConfig.get("wrapper");
                 if (wrapper != null && !wrapper.isEmpty()) out.add(new QmInfo("Vulkan wrapper", wrapper));
             }

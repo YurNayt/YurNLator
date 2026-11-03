@@ -386,6 +386,31 @@ Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetFrameGen(
     if (r) r->setFrameGen(armed == JNI_TRUE, (int)multiplier, (int)preset, (float)flowScale);
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetFrameGenEngine(
+    JNIEnv* env, jobject, jlong handle, jint kind, jstring jPath)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return;
+    const char* path = jPath ? env->GetStringUTFChars(jPath, nullptr) : nullptr;
+    r->setFrameGenEngine((int)kind, path);
+    if (path) env->ReleaseStringUTFChars(jPath, path);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_winlator_cmod_widget_VulkanXServerView_nativeLsfgProblem(JNIEnv*, jobject, jlong handle)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jint)r->lsfgProblem() : 0;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_winlator_cmod_widget_VulkanXServerView_nativeLsfgReason(JNIEnv* env, jobject, jlong handle)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return env->NewStringUTF(r ? r->lsfgCaps.reason : "");
+}
+
 extern "C" JNIEXPORT jlongArray JNICALL
 Java_com_winlator_cmod_widget_VulkanXServerView_nativeGetPresentStats(JNIEnv* env, jobject, jlong handle)
 {

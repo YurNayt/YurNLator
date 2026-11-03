@@ -675,7 +675,7 @@ private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
     Card {
         SwitchRow(
             "Frame generation",
-            "Win-FG: generated frames between real ones, shown by the emulator",
+            (if (fg.engine == "lsfg") "LSFG" else "Win-FG") + ": generated frames between real ones, shown by the emulator",
             checked = fg.on
         ) { update(fg.copy(on = it)) }
         if (!fg.loaded) {
@@ -683,10 +683,18 @@ private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
         if (fg.on) {
+            Label("Engine")
+            Chips(listOf("winfg" to "Win-FG", "lsfg" to "LSFG (Lossless.dll)"), fg.engine) { update(fg.copy(engine = it)) }
+            if (fg.engine == "lsfg" && !fg.lsfgImported) {
+                Text("Import your own Lossless.dll in Settings › Frame generation first; until then Win-FG runs.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
             Label("Multiplier")
             Chips(listOf(2 to "2×", 3 to "3×", 4 to "4×"), fg.multiplier) { update(fg.copy(multiplier = it)) }
-            Label("Mode")
-            Chips(listOf(0 to "Quality", 1 to "Balanced", 2 to "Performance"), fg.preset) { update(fg.copy(preset = it)) }
+            if (fg.engine != "lsfg") {
+                Label("Mode")
+                Chips(listOf(0 to "Quality", 1 to "Balanced", 2 to "Performance"), fg.preset) { update(fg.copy(preset = it)) }
+            }
             Text("Works best when the game holds a steady FPS: set the FPS limit to half (2×) of the screen rate.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
