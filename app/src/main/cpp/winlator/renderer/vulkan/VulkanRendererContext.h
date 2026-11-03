@@ -481,16 +481,21 @@ public:
     // each new game frame win-fg synthesises 1-3 frames between the previous and this one, and
     // they are presented first, spaced over the measured frame interval, then the real frame.
     void setFrameGen(bool armed, int multiplier, int preset, float flowScale);
-    // Engine: 0 = win-fg (built in), 1 = LSFG (shaders from the user's Lossless.dll, cache path).
+    // Engine: 0 = win-fg (built in), 1 = LSFG (shaders from the user's Lossless.dll, cache path), 2 = WFG.
     void setFrameGenEngine(int kind, const char* lsfgCachePath);
     /** 0 = LSFG usable, 1 = the device lacks a required feature (lsfgCaps.reason), 2 = the engine failed. */
     int lsfgProblem() const;
+    void setFrameGenRefresh(float hz);       // panel refresh rate: generated frames fit into it
+    std::atomic<float> fgRefreshHz{0.f};
     lsfg::Caps    lsfgCaps{};
     std::atomic<int> fgKind{0};
     std::mutex    fgKindMutex;
     std::string   lsfgCachePath;
     bool          lsfgPathDirty = false;
     void*         lsfgEngine = nullptr;        // lsfg::Engine*, owned
+    void*         wfgEngine = nullptr;         // WFG (VkrDis*), owned
+    bool          wfgEngineTried = false;
+    uint64_t      wfgSourceFrames = 0;
     bool          lsfgEngineTried = false;
     bool          lsfgFormatProbed = false;
     uint64_t      lsfgSourceFrames = 0;

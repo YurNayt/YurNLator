@@ -83,7 +83,7 @@ fun FrameGenPreferenceCard() {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Default engine", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(WinFrameGen.ENGINE_WINFG to "Win-FG (built in)", WinFrameGen.ENGINE_LSFG to "LSFG").forEach { (id, label) ->
+                listOf(WinFrameGen.ENGINE_WINFG to "Win-FG", WinFrameGen.ENGINE_WFG to "WFG", WinFrameGen.ENGINE_LSFG to "LSFG").forEach { (id, label) ->
                     FilterChip(selected = engine == id, onClick = {
                         engine = id
                         WinFrameGen.setDefaultEngine(context, id)
@@ -91,7 +91,7 @@ fun FrameGenPreferenceCard() {
                 }
             }
             Text(
-                "Turn frame generation on in the in-game menu (Vulkan renderer). A container or game can choose its own engine there.",
+                "Win-FG and WFG are built in; LSFG uses your Lossless.dll. Turn frame generation on in the in-game menu (Vulkan renderer); a container or game can choose its own engine there.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f))

@@ -3147,7 +3147,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             });
             return;
         }
-        view.setFrameGenEngine(0, null);
+        view.setFrameGenEngine(WinFrameGen.ENGINE_WFG.equals(frameGenEngine()) ? 2 : 0, null);
         view.setFrameGen(on, mult, preset, flow);
     }
 

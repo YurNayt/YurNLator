@@ -397,6 +397,13 @@ Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetFrameGenEngine(
     if (path) env->ReleaseStringUTFChars(jPath, path);
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_VulkanXServerView_nativeSetFrameGenRefresh(JNIEnv*, jobject, jlong handle, jfloat hz)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenRefresh((float)hz);
+}
+
 extern "C" JNIEXPORT jint JNICALL
 Java_com_winlator_cmod_widget_VulkanXServerView_nativeLsfgProblem(JNIEnv*, jobject, jlong handle)
 {

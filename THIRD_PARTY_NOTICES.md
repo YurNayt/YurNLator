@@ -23,3 +23,9 @@ the shaders are read from the user's own Lossless.dll on the device.
 ## DXVK DXBC translator (app/src/main/cpp/thirdparty/dxbc)
 zlib licence, (c) Philip Rebohle, Joshua Ashton, Robin Kertels, Jeffrey Ellison and contributors.
 See thirdparty/dxbc/LICENSE.md.
+
+## WFG frame generation (app/src/main/cpp/wfg)
+WFG — WinNative/Winlator Frame Generator, (c) 2026 qwertypower (DEVAR Entertainment LLC), MIT
+(wfg/LICENSE), from WinNative (github.com/WinNative-Emu/WinNative). A Vulkan compute realisation
+of Dense Inverse Search optical flow; algorithm and reference from OpenCV's DISOpticalFlow
+(Till Kroeger's OF_DIS). vkshim/vk_dispatch.h and bin2c.cmake are from WinNative (GPL-3.0).

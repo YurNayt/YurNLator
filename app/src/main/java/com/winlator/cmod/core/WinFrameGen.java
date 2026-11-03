@@ -20,6 +20,8 @@ public final class WinFrameGen {
     public static final String ON = "on";
     public static final String ENGINE_WINFG = "winfg";
     public static final String ENGINE_LSFG = "lsfg";
+    /** WFG: WinNative/Winlator Frame Generator (qwertypower, MIT), Dense Inverse Search optical flow. */
+    public static final String ENGINE_WFG = "wfg";
     private static final String PREF_ENGINE = "frame_gen_engine";
 
     private WinFrameGen() {}
@@ -31,7 +33,13 @@ public final class WinFrameGen {
     public static String defaultEngine(Context context) {
         String v = PreferenceManager.getDefaultSharedPreferences(context).getString(PREF_ENGINE, "");
         if (v.isEmpty()) return LsfgNative.isDllAvailable(context) ? ENGINE_LSFG : ENGINE_WINFG;
+        if (ENGINE_WFG.equals(v)) return ENGINE_WFG;
         return ENGINE_LSFG.equals(v) && LsfgNative.isDllAvailable(context) ? ENGINE_LSFG : ENGINE_WINFG;
+    }
+
+    /** Renderer engine id: 0 win-fg, 1 LSFG, 2 WFG. */
+    public static int engineKind(String engine) {
+        return ENGINE_LSFG.equals(engine) ? 1 : ENGINE_WFG.equals(engine) ? 2 : 0;
     }
 
     public static void setDefaultEngine(Context context, String engine) {
@@ -39,6 +47,6 @@ public final class WinFrameGen {
     }
 
     public static String engineLabel(String engine) {
-        return ENGINE_LSFG.equals(engine) ? "LSFG" : "Win-FG";
+        return ENGINE_LSFG.equals(engine) ? "LSFG" : ENGINE_WFG.equals(engine) ? "WFG" : "Win-FG";
     }
 }

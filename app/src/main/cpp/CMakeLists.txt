@@ -11,6 +11,8 @@ add_subdirectory(adrenotools)
 add_subdirectory(waylandcomp)
 # DXVK's DXBC->SPIR-V translator (zlib), for LSFG: Lossless.dll's shaders are translated on device.
 add_subdirectory(thirdparty/dxbc)
+# WFG frame generation (WinNative, qwertypower / DEVAR Entertainment, MIT): Dense Inverse Search.
+add_subdirectory(wfg)
 
 add_library(winlator SHARED
         xr/engine.c
@@ -241,6 +243,7 @@ add_library(vulkan_renderer SHARED
         winlator/lsfg/lsfg_engine.cpp
         winlator/lsfg/lsfg_governor.cpp
         winlator/lsfg/lsfg_jni.cpp
+        winlator/renderer/vulkan/VulkanRendererWfg.cpp
 
         winlator/renderer/vulkan/view_transformation.cpp
         winlator/renderer/vulkan/xform.cpp
@@ -259,6 +262,7 @@ target_compile_options(vulkan_renderer PRIVATE
 )
 
 target_link_libraries(vulkan_renderer
+        wfg
         dxbc
         log
         android

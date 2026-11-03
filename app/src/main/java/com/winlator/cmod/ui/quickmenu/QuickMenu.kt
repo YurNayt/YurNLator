@@ -679,7 +679,7 @@ private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
     Card {
         SwitchRow(
             "Frame generation",
-            (if (fg.engine == "lsfg") "LSFG" else "Win-FG") + ": generated frames between real ones, shown by the emulator",
+            (when (fg.engine) { "lsfg" -> "LSFG"; "wfg" -> "WFG"; else -> "Win-FG" }) + ": generated frames between real ones, shown by the emulator",
             checked = fg.on
         ) { update(fg.copy(on = it)) }
         if (!fg.loaded) {
@@ -688,7 +688,7 @@ private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
         }
         if (fg.on) {
             Label("Engine")
-            Chips(listOf("winfg" to "Win-FG", "lsfg" to "LSFG (Lossless.dll)"), fg.engine) { update(fg.copy(engine = it)) }
+            Chips(listOf("winfg" to "Win-FG", "wfg" to "WFG", "lsfg" to "LSFG"), fg.engine) { update(fg.copy(engine = it)) }
             if (fg.engine == "lsfg" && !fg.lsfgImported) {
                 Text("Import your own Lossless.dll in Settings › Frame generation first; until then Win-FG runs.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
@@ -696,14 +696,14 @@ private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
             Label("Multiplier")
             Chips(listOf(2 to "2×", 3 to "3×", 4 to "4×"), fg.multiplier) { update(fg.copy(multiplier = it)) }
             if (fg.engine != "lsfg") {
-                Label("Mode")
+                Label(if (fg.engine == "wfg") "Motion search (detail vs speed)" else "Mode")
                 Chips(listOf(0 to "Quality", 1 to "Balanced", 2 to "Performance"), fg.preset) { update(fg.copy(preset = it)) }
             }
             Text("Works best when the game holds a steady FPS: set the FPS limit to half (2×) of the screen rate.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-    if (fg.on) {
+    if (fg.on && fg.engine != "wfg") {
         StepSlider("Motion detail", (fg.flowScale - 0.2f) / 0.8f, "${(fg.flowScale * 100).roundToInt()}%", step = 0.05f,
             onChange = { f -> fg = fg.copy(flowScale = 0.2f + f * 0.8f) },
             onCommit = { bridge.setFrameGen(fg) })

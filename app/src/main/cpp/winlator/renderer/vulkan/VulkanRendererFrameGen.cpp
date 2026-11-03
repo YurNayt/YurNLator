@@ -18,6 +18,7 @@
 #include "winfg/winfg_engine.h"
 #include "../../lsfg/lsfg_engine.h"
 #include "../../lsfg/lsfg_vkd.h"
+#include "wfg_bridge.h"
 #include <chrono>
 #include <cmath>
 
@@ -47,10 +48,12 @@ void VulkanRendererContext::setFrameGenEngine(int kind, const char* path) {
         std::string next = path ? path : "";
         if (next != lsfgCachePath) { lsfgCachePath = next; lsfgPathDirty = true; }
     }
-    fgKind.store(kind == 1 ? 1 : 0);
+    fgKind.store(kind == 1 || kind == 2 ? kind : 0);
     fgConfigDirty.store(true);
     needsRender.store(true); dirtyCV.notify_one();
 }
+
+void VulkanRendererContext::setFrameGenRefresh(float hz) { fgRefreshHz.store(hz); fgConfigDirty.store(true); }
 
 int VulkanRendererContext::lsfgProblem() const {
     if (!lsfgCaps.featuresEnabled || !lsfgCaps.features.deviceGatesPass()) return 1;
@@ -91,6 +94,7 @@ void VulkanRendererContext::fgDestroyTargets() {
     fgW = fgH = 0;
     if (fgEngine) fgEng(fgEngine)->reset();
     if (lsfgEngine) lsEng(lsfgEngine)->reset();
+    if (wfgEngine) wfgb::reset(wfgEngine);
 }
 
 void VulkanRendererContext::fgShutdown() {
@@ -110,6 +114,8 @@ void VulkanRendererContext::fgShutdown() {
     fgEngine = nullptr;
     delete lsEng(lsfgEngine);
     lsfgEngine = nullptr;
+    wfgb::destroy(wfgEngine);
+    wfgEngine = nullptr;
 }
 
 bool VulkanRendererContext::fgEnsureSync() {
@@ -164,7 +170,7 @@ bool VulkanRendererContext::fgEnsureTargets() {
                                   | VK_IMAGE_USAGE_SAMPLED_BIT;
     if (!fgMakeImage(fgComposite, usage)) { FG_ERR("composite image failed"); fgTargetsFailed = true; fgDestroyTargets(); return false; }
     for (auto& g : fgGen) {
-        if (!fgMakeImage(g, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)) {
+        if (!fgMakeImage(g, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)) {
             FG_ERR("generated-frame image failed (storage on format %d unsupported?)", (int)swapchainFmt);
             fgTargetsFailed = true; fgDestroyTargets(); return false;
         }
@@ -233,6 +239,13 @@ bool VulkanRendererContext::fgPrepareFrame() {
                 }
             }
         }
+    } else if (fgActiveKind == 2) {
+        if (!wfgEngine && !wfgEngineTried) {
+            wfgEngineTried = true;
+            wfgEngine = wfgb::create(vk_, device, physicalDevice);
+            if (wfgEngine) { fgConfigDirty.store(true); FG_LOG("WFG engine ready"); }
+            else FG_ERR("WFG engine init failed: frame generation unavailable on this device");
+        }
     } else if (!fgEngine && !fgEngineTried) {
         fgEngineTried = true;
         auto* e = new winfg::Engine();
@@ -246,6 +259,7 @@ bool VulkanRendererContext::fgPrepareFrame() {
     }
     winfg::Engine* eng = fgActiveKind == 0 ? fgEng(fgEngine) : nullptr;
     lsfg::Engine* ls = fgActiveKind == 1 ? lsEng(lsfgEngine) : nullptr;
+    void* wfg = fgActiveKind == 2 ? wfgEngine : nullptr;
 
     // Everything below reuses the same images every frame: start from an idle GPU.
     vk_.DeviceWaitIdle(device);
@@ -254,7 +268,7 @@ bool VulkanRendererContext::fgPrepareFrame() {
     uint64_t serial = contentSerial.load(std::memory_order_relaxed);
     fgNewThisFrame = serial != fgLastSerial;
     fgLastSerial = serial;
-    if (!fgNewThisFrame || (!eng && !ls)) return true;
+    if (!fgNewThisFrame || (!eng && !ls && !wfg)) return true;
 
     int64_t now = nowNs();
     if (fgLastFrameNs) {
@@ -263,9 +277,20 @@ bool VulkanRendererContext::fgPrepareFrame() {
     }
     fgLastFrameNs = now;
 
+    if (wfg) {
+        // Flow resolution on the shorter side: Quality 252, Balanced 216, Performance 180.
+        static const uint32_t kSide[3] = {252, 216, 180};
+        uint32_t side = kSide[std::clamp(fgPreset.load(), 0, 2)];
+        fgConfigDirty.store(false);
+        wfgb::configure(wfg, side, 0, fgRefreshHz.load() > 1.f ? fgRefreshHz.load() : 60.f);
+        if (!wfgb::prepare(wfg, fgW, fgH, swapchainFmt)) return true;
+        uint32_t want = (uint32_t)std::clamp(fgMultiplier.load(), 2, 4) - 1;
+        fgGensThisFrame = std::min<uint32_t>(wfgb::plan(wfg, want, ++wfgSourceFrames), 3);
+        return true;
+    }
     if (ls) {
         if (fgConfigDirty.exchange(false))
-            ls->configure((uint32_t)fgMultiplier.load(), 0, fgFlowScale.load(), 0.0f);
+            ls->configure((uint32_t)fgMultiplier.load(), 0, fgFlowScale.load(), fgRefreshHz.load());
         if (containerWidth > 0 && containerHeight > 0) ls->setGuestExtent((uint32_t)containerWidth, (uint32_t)containerHeight);
         if (!ls->prepare(fgW, fgH, swapchainFmt)) return true;
         if (fgIntervalNs > 0) ls->setPresentedRate((float)(1e9 / fgIntervalNs) * (float)(fgMultiplier.load()));
@@ -314,7 +339,13 @@ void VulkanRendererContext::fgBlitToSwapchain(VkCommandBuffer cb, VkImage src, u
 void VulkanRendererContext::fgRecordTail(VkCommandBuffer cb, uint32_t imgIdx) {
     lsfg::Engine* ls = fgActiveKind == 1 ? lsEng(lsfgEngine) : nullptr;
     winfg::Engine* eng = fgActiveKind == 0 ? fgEng(fgEngine) : nullptr;
-    if (ls && fgNewThisFrame && ls->valid()) {
+    void* wfg = fgActiveKind == 2 ? wfgEngine : nullptr;
+    if (wfg && fgNewThisFrame) {
+        // Every real frame goes in (it primes the history), generated or not.
+        wfgb::process(wfg, cb, fgComposite.img, fgW, fgH, fgGensThisFrame);
+        for (uint32_t k = 0; k < fgGensThisFrame; k++)
+            wfgb::generateInto(wfg, cb, k, fgGen[k].img, fgGen[k].view, fgW, fgH, fgComposite.img);
+    } else if (ls && fgNewThisFrame && ls->valid()) {
         ls->process(cb, fgComposite.img, fgW, fgH, fgGensThisFrame);
         for (uint32_t k = 0; k < fgGensThisFrame; k++)
             ls->generateInto(cb, k, k, fgGen[k].img, fgGen[k].view, fgW, fgH);
