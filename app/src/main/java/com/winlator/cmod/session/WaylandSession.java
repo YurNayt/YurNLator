@@ -49,6 +49,21 @@ public final class WaylandSession {
     private WaylandClipboardSync clipboard;
     private WaylandTextInput textInput;
     private volatile boolean pointerLocked = false;
+    /** Picture fills the screen (aspect ignored) instead of letterboxed. */
+    private volatile boolean stretch = false;
+    /** The guest's own cursor (wl_pointer.set_cursor), polled while the session runs. */
+    private final int[] cursorBuf = new int[WaylandCompositor.CURSOR_BUF_INTS];
+    private int cursorSerial = -1;
+    private boolean guestHidesCursor = false;
+    private int hotX = 0, hotY = 0;
+    private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable cursorPoll = new Runnable() {
+        @Override public void run() {
+            if (!vsyncRunning) return;
+            syncGuestCursor();
+            ui.postDelayed(this, 150);
+        }
+    };
     private boolean vsyncRunning = false;
 
     private final Choreographer.FrameCallback vsync = new Choreographer.FrameCallback() {
@@ -75,7 +90,8 @@ public final class WaylandSession {
      * Starts the compositor on a new SurfaceView put right above the X server's view (index
      * [aboveIndex]), so touch overlays, HUD and on-screen controls stay on top.
      */
-    public void start(FrameLayout rootView, int aboveIndex, String driverPath, String libraryName, Listener listener) {
+    public void start(FrameLayout rootView, int aboveIndex, String driverPath, String libraryName, boolean stretch, Listener listener) {
+        this.stretch = stretch;
         File rt = runtimeDir(activity);
         // The guest needs the keymap to read our evdev codes.
         try { FileUtils.copy(activity, "wayland/keymap.xkb", new File(rt, "keymap.xkb")); }
@@ -109,6 +125,9 @@ public final class WaylandSession {
             }
             @Override public void onPointerDelta(int dx, int dy) {
                 WaylandCompositor.sendPointerDelta(dx, dy);
+                // Relative mouse without a pointer lock: the compositor moved its pointer by the
+                // delta, the overlay follows the X pointer that moved the same way.
+                if (!pointerLocked) activity.runOnUiThread(() -> placeCursor(xServer.pointer.getX(), xServer.pointer.getY()));
             }
             @Override public void onPointerButton(Pointer.Button button, boolean pressed) {
                 switch (button) {
@@ -138,6 +157,8 @@ public final class WaylandSession {
                     WaylandCompositor.nativeStartWithSurface(h.getSurface(), rt.getPath(), driverPath, libraryName, nativeLibDir);
                     vsyncRunning = true;
                     Choreographer.getInstance().postFrameCallback(vsync);
+                    ui.post(cursorPoll);
+                    setStretch(stretch);
                     Log.i(TAG, "compositor started (driver " + (libraryName != null ? libraryName : "system") + ")");
                 } else {
                     WaylandCompositor.nativeSetSurface(h.getSurface());
@@ -165,21 +186,56 @@ public final class WaylandSession {
         textInput.start();
     }
 
-    /** Scene pixel -> view pixel for the overlay arrow (the compositor letterboxes the scene). */
+    /** Letterboxed (fit) or filling the screen (stretch); also live from the quick menu. */
+    public void setStretch(boolean on) {
+        stretch = on;
+        try { WaylandCompositor.nativeSetScaleMode(on ? 2 /* STRETCH */ : 1 /* FIT */, 0 /* center */); }
+        catch (Throwable t) { Log.w(TAG, "scale mode", t); }
+    }
+
+    /** Scene pixel -> view pixel for the overlay arrow, the same mapping the compositor draws with. */
     private void placeCursor(int x, int y) {
         if (surfaceView == null || cursorView == null || pointerLocked) return;
         int vw = surfaceView.getWidth(), vh = surfaceView.getHeight();
         int sw = xServer.screenInfo.width, sh = xServer.screenInfo.height;
         if (vw <= 0 || vh <= 0 || sw <= 0 || sh <= 0) return;
-        float scale = Math.min((float) vw / sw, (float) vh / sh);
-        float ox = (vw - sw * scale) / 2f, oy = (vh - sh * scale) / 2f;
-        cursorView.setX(ox + x * scale);
-        cursorView.setY(oy + y * scale);
-        if (cursorView.getVisibility() != View.VISIBLE) cursorView.setVisibility(View.VISIBLE);
+        float px, py;
+        if (stretch) {
+            px = x * (float) vw / sw;
+            py = y * (float) vh / sh;
+        } else {
+            float scale = Math.min((float) vw / sw, (float) vh / sh);
+            px = (vw - sw * scale) / 2f + x * scale;
+            py = (vh - sh * scale) / 2f + y * scale;
+        }
+        cursorView.setX(px - hotX);
+        cursorView.setY(py - hotY);
+        int want = guestHidesCursor ? View.GONE : View.VISIBLE;
+        if (cursorView.getVisibility() != want) cursorView.setVisibility(want);
+    }
+
+    /** The guest's cursor image, and hidden when the game hides it (mouse-look). Main thread. */
+    private void syncGuestCursor() {
+        if (cursorView == null) return;
+        int n;
+        try { n = WaylandCompositor.cursorSnapshot(cursorBuf); } catch (Throwable t) { return; }
+        if (n < 6) return;
+        int serial = cursorBuf[0];
+        if (serial == 0 || serial == cursorSerial) return;
+        cursorSerial = serial;
+        guestHidesCursor = cursorBuf[1] != 0;
+        if (guestHidesCursor) { cursorView.setVisibility(View.GONE); return; }
+        int w = cursorBuf[2], h = cursorBuf[3];
+        if (w <= 0 || h <= 0 || n < 6 + w * h) return;
+        hotX = cursorBuf[4];
+        hotY = cursorBuf[5];
+        try { cursorView.setImageBitmap(Bitmap.createBitmap(cursorBuf, 6, w, w, h, Bitmap.Config.ARGB_8888)); }
+        catch (Exception e) { Log.e(TAG, "cursor bitmap", e); }
     }
 
     public void stop() {
         vsyncRunning = false;
+        ui.removeCallbacks(cursorPoll);
         xServer.setInputSink(null);
         WaylandCompositor.setFirstFrameListener(null);
         WaylandCompositor.setGameListener(null);

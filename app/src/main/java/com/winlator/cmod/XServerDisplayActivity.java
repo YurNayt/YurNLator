@@ -987,6 +987,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         waylandSession = new com.winlator.cmod.session.WaylandSession(this, xServer);
         waylandSession.start(rootView, rootView.indexOfChild(xServerView) + 1, driverPath, libraryName,
+                launchConfig != null && launchConfig.getFullscreenStretched(),
                 new com.winlator.cmod.session.WaylandSession.Listener() {
             @Override public void onFirstFrame() { preloaderDialog.closeOnUiThread(); }
             @Override public void onGameFrame() { if (modernHud != null) modernHud.onFrame(); }
@@ -3440,6 +3441,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (touchpadView != null) touchpadView.toggleFullscreen();
             }
             softStretchEnabled = mode == 2;
+            if (waylandSession != null) waylandSession.setStretch(mode >= 1);
             VulkanXServerView vk = vk();
             if (vk != null) vk.setStretchMode(softStretchEnabled ? 1 : 0);
         }
