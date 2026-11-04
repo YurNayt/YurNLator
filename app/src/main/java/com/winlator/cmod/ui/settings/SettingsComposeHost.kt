@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import android.widget.Toast
+import androidx.compose.material.icons.outlined.Download
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -161,6 +163,13 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
     val configuration = LocalConfiguration.current
     val landscape = configuration.screenWidthDp > configuration.screenHeightDp
     val activity = context as? MainActivity
+    var devOptions by remember { mutableStateOf(DeveloperOptions.enabled(context)) }
+    var versionTaps by remember { mutableStateOf(0) }
+    var showDriverSaver by remember { mutableStateOf(false) }
+    val appVersion = remember {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+    }
+    if (showDriverSaver) DriverSaverDialog { showDriverSaver = false }
 
     DisposableEffect(activity, landscape) {
         if (landscape) {
@@ -309,6 +318,35 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             item("about-title") { SectionTitle("ABOUT") }
             item("about") {
                 NavigationRow(Icons.Outlined.Info, "About", null) { activity?.showAboutDialog() }
+            }
+            // Tapping the version five times unlocks the developer options (like Android's build number).
+            item("version") {
+                NavigationRow(Icons.Outlined.Info, "Version", appVersion.ifBlank { "—" }) {
+                    if (devOptions) {
+                        Toast.makeText(context, "Developer options are already on", Toast.LENGTH_SHORT).show()
+                    } else {
+                        versionTaps++
+                        val left = DeveloperOptions.TAPS - versionTaps
+                        if (left <= 0) {
+                            DeveloperOptions.setEnabled(context, true); devOptions = true
+                            Toast.makeText(context, "Developer options are on", Toast.LENGTH_SHORT).show()
+                        } else if (left <= 3) {
+                            Toast.makeText(context, "$left more to unlock developer options", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            if (devOptions) {
+                item("dev-title") { SectionTitle("DEVELOPER") }
+                item("dev-drivers") {
+                    NavigationRow(Icons.Outlined.Download, "Save GPU drivers to storage",
+                        "Every driver author's builds as .zip in ${DeveloperOptions.FOLDER}") { showDriverSaver = true }
+                }
+                item("dev-off") {
+                    NavigationRow(Icons.Outlined.Info, "Hide developer options", null) {
+                        DeveloperOptions.setEnabled(context, false); devOptions = false; versionTaps = 0
+                    }
+                }
             }
         }
     }
