@@ -84,6 +84,8 @@ typedef struct { double avg, low1, low01, frameMs; int frames; double seconds; d
  * 60-70 FPS here). A ring of RING frames is read back without waiting.
  */
 #define RING 6
+static ID3D11Device *dev;            /* defined again with the other D3D objects (C tentative definitions) */
+static ID3D11DeviceContext *ctx;
 static ID3D11Query *qDisjoint[RING], *qBegin[RING], *qEnd[RING];
 static int qPending[RING];
 static int qFrame = 0;
