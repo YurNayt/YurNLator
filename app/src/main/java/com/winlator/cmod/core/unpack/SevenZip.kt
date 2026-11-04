@@ -231,7 +231,7 @@ object SevenZip {
         val firstBin = if (freeArc) firstFreeArcVolume(installer) else null
         val route = when {
             !freeArc -> InnoRoute.INNOEXTRACT
-            firstBin != null && Unarc.isAvailable(context) -> InnoRoute.FREEARC_NATIVE
+            false -> InnoRoute.FREEARC_NATIVE // unarc isn't bundled in YurNLator
             else -> InnoRoute.CONTAINER_ONLY
         }
         return InnoClassification(
