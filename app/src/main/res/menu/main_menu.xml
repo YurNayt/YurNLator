@@ -7,5 +7,6 @@
         <item android:icon="@drawable/icon_gamepad" android:id="@+id/main_menu_input_controls" android:title="@string/input_controls" />
         <item android:icon="@drawable/icon_settings" android:id="@+id/main_menu_settings" android:title="@string/settings" />
         <item android:icon="@drawable/icon_info" android:id="@+id/main_menu_about" android:title="@string/about" />
+        <item android:icon="@drawable/ui_nav_bench" android:id="@+id/main_menu_bench" android:title="Bundle finder" android:visible="false" />
     </group>
 </menu>

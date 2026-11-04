@@ -68,7 +68,10 @@ jobs:
       - name: Install native build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y glslang-tools ninja-build zstd
+          sudo apt-get install -y glslang-tools ninja-build zstd mingw-w64
+
+      - name: Build YurnBench (bundle finder benchmark, x86_64 Windows)
+        run: sh tools/yurnbench/build.sh app/src/main/assets/yurnbench/yurnbench.exe
 
       - name: Restore signing key (if configured)
         env:

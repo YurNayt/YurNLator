@@ -155,12 +155,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             else if (item.getItemId() == R.id.bottom_nav_containers) target = R.id.main_menu_containers;
             else if (item.getItemId() == R.id.bottom_nav_controls) target = R.id.main_menu_input_controls;
             else if (item.getItemId() == R.id.bottom_nav_settings) target = R.id.main_menu_settings;
+            else if (item.getItemId() == R.id.bottom_nav_bench) target = R.id.main_menu_bench;
             else return false;
             MenuItem destination = navigationView.getMenu().findItem(target);
             navigationView.setCheckedItem(target);
             return onNavigationItemSelected(destination);
         });
         updateStorageFooter();
+        updateBenchTab();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setStatusBarColor(Color.BLACK);
             getWindow().setNavigationBarColor(Color.BLACK);
@@ -405,6 +407,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             case R.id.main_menu_settings:
                 show(new SettingsFragment(), false);
                 break;
+            case R.id.main_menu_bench:
+                show(new com.winlator.cmod.bench.BenchFragment(), false);
+                break;
             case R.id.main_menu_about:
                 showAboutDialog();
                 break;
@@ -420,11 +425,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         else if (menuItemId == R.id.main_menu_containers) bottomId = R.id.bottom_nav_containers;
         else if (menuItemId == R.id.main_menu_input_controls) bottomId = R.id.bottom_nav_controls;
         else if (menuItemId == R.id.main_menu_settings) bottomId = R.id.bottom_nav_settings;
+        else if (menuItemId == R.id.main_menu_bench) bottomId = R.id.bottom_nav_bench;
         if (bottomId != 0 && bottomNavigation.getSelectedItemId() != bottomId) {
             syncingBottomNavigation = true;
             bottomNavigation.setSelectedItemId(bottomId);
             syncingBottomNavigation = false;
         }
+    }
+
+    /** The bundle finder's tab (hidden developer option), rightmost in the bottom bar. */
+    public void updateBenchTab() {
+        if (bottomNavigation == null) return;
+        MenuItem item = bottomNavigation.getMenu().findItem(R.id.bottom_nav_bench);
+        if (item != null) item.setVisible(com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(this));
     }
 
     public void setBottomNavigationVisible(boolean visible) {

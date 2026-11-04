@@ -81,6 +81,16 @@ object DeveloperOptions {
     fun setEnabled(context: Context, on: Boolean) =
         PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean(KEY, on).apply()
 
+    private const val KEY_BUNDLES = "yurn_bundle_finder"
+
+    /** The bundle finder tab (rightmost in the bottom bar). */
+    @JvmStatic
+    fun bundleFinder(context: Context): Boolean =
+        enabled(context) && PreferenceManager.getDefaultSharedPreferences(context).getBoolean(KEY_BUNDLES, false)
+
+    fun setBundleFinder(context: Context, on: Boolean) =
+        PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean(KEY_BUNDLES, on).apply()
+
     const val FOLDER = "Download/YurNLator/drivers"
 
     /** Streams [url] into Download/YurNLator/drivers/[name]; progress 0..1 (-1 = unknown size). Null on success, else why not. */

@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui
 
+import androidx.compose.material.icons.outlined.Speed
 import android.app.Activity
 import android.content.res.Configuration
 import android.os.Build
@@ -152,6 +153,11 @@ fun LandscapeMainNavigation(
         }
         Destination(Icons.Outlined.Settings, "Settings", selected == R.id.main_menu_settings) {
             activity?.navigateToMainDestination(R.id.main_menu_settings)
+        }
+        if (activity != null && com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(activity)) {
+            Destination(Icons.Outlined.Speed, "Bundles", selected == R.id.main_menu_bench) {
+                activity.navigateToMainDestination(R.id.main_menu_bench)
+            }
         }
     }
 }

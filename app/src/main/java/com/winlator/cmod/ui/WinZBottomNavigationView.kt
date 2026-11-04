@@ -67,7 +67,8 @@ class WinZBottomNavigationView @JvmOverloads constructor(
             current is ContainersFragment ||
             current is InputControlsFragment ||
             current is SettingsFragment ||
-            current is FileManagerFragment
+            current is FileManagerFragment ||
+            current is com.winlator.cmod.bench.BenchFragment
         if (topLevel && visibility != View.VISIBLE) visibility = View.VISIBLE
     }
 }

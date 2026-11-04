@@ -475,6 +475,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             shortcut = new Shortcut(container, new File(shortcutPath));
         }
 
+        // Bundle finder run: end the session by itself when YurnBench is done, crashed or hung.
+        if (getIntent().getBooleanExtra(com.winlator.cmod.bench.Bench.EXTRA_BENCH, false)) {
+            com.winlator.cmod.bench.Watchdog.start(this, container, () -> runOnUiThread(this::exit));
+        }
+
         // Settings of this launch: the game's own where set, else the container's (session/LaunchConfig).
         launchConfig = com.winlator.cmod.session.LaunchConfig.resolve(container, shortcut);
         final com.winlator.cmod.session.LaunchConfig lc = launchConfig;
