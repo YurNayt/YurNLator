@@ -301,6 +301,9 @@ private fun ResultCard(r: RunResult, best: Boolean, apply: () -> Unit) {
             if (r.ok) {
                 Text("GPU ${f(r.gpu.avg)} FPS (1% low ${f(r.gpu.low1)}) · CPU+GPU ${f(r.mix.avg)} FPS (1% low ${f(r.mix.low1)})",
                     style = MaterialTheme.typography.bodySmall)
+                if (r.gpu.gpuMs > 0) Text("GPU work ${String.format("%.1f", r.gpu.gpuMs)} ms per frame → ${r.gpu.gpuFps.toInt()} FPS if only the GPU limited" +
+                    (if (r.mix.gpuMs > 0) " · CPU+GPU phase ${String.format("%.1f", r.mix.gpuMs)} ms" else ""),
+                    style = MaterialTheme.typography.bodySmall)
                 Text("CPU ${r.cpuSt.toInt()} / ${r.cpuMt.toInt()} Mops (1 core / all)" +
                     (if (r.cpuPerMcycle > 0) " · ${String.format("%.2f", r.cpuPerMcycle)} ops per CPU cycle" else ""),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

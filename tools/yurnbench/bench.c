@@ -76,7 +76,78 @@ static LRESULT CALLBACK wndproc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
 
 /* ---- frame statistics ---- */
 
-typedef struct { double avg, low1, low01, frameMs; int frames; double seconds; } Stats;
+typedef struct { double avg, low1, low01, frameMs; int frames; double seconds; double gpuMs; int gpuSamples; } Stats;
+
+/*
+ * GPU time per frame from timestamp queries on the GPU itself: what the frame costs the GPU,
+ * whatever caps the presented frame rate (the X server / compositor path often does, around
+ * 60-70 FPS here). A ring of RING frames is read back without waiting.
+ */
+#define RING 6
+static ID3D11Query *qDisjoint[RING], *qBegin[RING], *qEnd[RING];
+static int qPending[RING];
+static int qFrame = 0;
+static double gpuMsSum = 0;
+static int gpuMsCount = 0;
+static int gpuMeasure = 0;
+
+static void initQueries(void) {
+    D3D11_QUERY_DESC d = {0};
+    for (int i = 0; i < RING; i++) {
+        d.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+        ID3D11Device_CreateQuery(dev, &d, &qDisjoint[i]);
+        d.Query = D3D11_QUERY_TIMESTAMP;
+        ID3D11Device_CreateQuery(dev, &d, &qBegin[i]);
+        ID3D11Device_CreateQuery(dev, &d, &qEnd[i]);
+    }
+}
+
+static void collectQueries(int wait);
+
+/* GetData never blocks: at the end of a phase, flush and poll for a little while. */
+static void drainQueries(void) {
+    for (int tries = 0; tries < 60; tries++) {
+        int left = 0;
+        for (int i = 0; i < RING; i++) left += qPending[i];
+        if (!left) break;
+        ID3D11DeviceContext_Flush(ctx);
+        collectQueries(1);
+        Sleep(5);
+    }
+}
+
+static void collectQueries(int wait) {
+    for (int i = 0; i < RING; i++) {
+        if (!qPending[i] || !qDisjoint[i] || !qBegin[i] || !qEnd[i]) continue;
+        D3D11_QUERY_DATA_TIMESTAMP_DISJOINT dj;
+        UINT64 b, e;
+        UINT flags = wait ? 0 : D3D11_ASYNC_GETDATA_DONOTFLUSH;
+        if (ID3D11DeviceContext_GetData(ctx, (ID3D11Asynchronous *)qDisjoint[i], &dj, sizeof dj, flags) != S_OK) continue;
+        if (ID3D11DeviceContext_GetData(ctx, (ID3D11Asynchronous *)qBegin[i], &b, sizeof b, flags) != S_OK) continue;
+        if (ID3D11DeviceContext_GetData(ctx, (ID3D11Asynchronous *)qEnd[i], &e, sizeof e, flags) != S_OK) continue;
+        qPending[i] = 0;
+        if (dj.Disjoint || dj.Frequency == 0 || e <= b) continue;
+        double ms = (double)(e - b) * 1000.0 / (double)dj.Frequency;
+        if (gpuMeasure && ms > 0 && ms < 2000) { gpuMsSum += ms; gpuMsCount++; }
+    }
+}
+
+static int frameBegin(void) {
+    int k = qFrame % RING;
+    if (qPending[k]) collectQueries(0);
+    if (qPending[k] || !qDisjoint[k]) return -1;    /* still in flight: skip timing this frame */
+    ID3D11DeviceContext_Begin(ctx, (ID3D11Asynchronous *)qDisjoint[k]);
+    ID3D11DeviceContext_End(ctx, (ID3D11Asynchronous *)qBegin[k]);
+    return k;
+}
+
+static void frameEnd(int k) {
+    qFrame++;
+    if (k < 0) return;
+    ID3D11DeviceContext_End(ctx, (ID3D11Asynchronous *)qEnd[k]);
+    ID3D11DeviceContext_End(ctx, (ID3D11Asynchronous *)qDisjoint[k]);
+    qPending[k] = 1;
+}
 static float frameTimes[MAX_FRAMES];
 
 static int cmpDesc(const void *a, const void *b) {
@@ -272,6 +343,7 @@ static int initD3D(HWND hwnd) {
 
     D3D11_VIEWPORT vp = { 0, 0, W, H, 0, 1 };
     ID3D11DeviceContext_RSSetViewports(ctx, 1, &vp);
+    initQueries();
     return 1;
 }
 
@@ -349,24 +421,34 @@ static int runCpu(void) {
 static Stats runGpu(double warm, double len) {
     phase = "gpu";
     phaseFrames = 0;
+    gpuMsSum = 0; gpuMsCount = 0;
     double start = now(), last = start, measureFrom = start + warm;
     int n = 0;
     while (1) {
         if (!pump()) break;
         double t = now();
         if (t - start > warm + len) break;
+        gpuMeasure = t >= measureFrom;
+        int q = frameBegin();
         clear(0, 0, 0);
         drawFull((float)t, 64.f);
         drawParticles(instGpu, GPU_PARTICLES);
         drawFull((float)t * 0.5f, 24.f);
         drawParticles(instGpu, GPU_PARTICLES / 2);
+        frameEnd(q);
         IDXGISwapChain_Present(swap, 0, 0);
         double t2 = now();
         if (t2 >= measureFrom && n < MAX_FRAMES) frameTimes[n++] = (float)(t2 - last);
         last = t2;
         phaseFrames++;
     }
-    return stats(n, now() - measureFrom);
+    gpuMeasure = 1;
+    drainQueries();
+    gpuMeasure = 0;
+    Stats st = stats(n, now() - measureFrom);
+    st.gpuSamples = gpuMsCount;
+    st.gpuMs = gpuMsCount ? gpuMsSum / gpuMsCount : 0;
+    return st;
 }
 
 static float *sim;      /* x, y, vx, vy per particle */
@@ -374,6 +456,7 @@ static float *sim;      /* x, y, vx, vy per particle */
 static Stats runMix(double warm, double len) {
     phase = "mix";
     phaseFrames = 0;
+    gpuMsSum = 0; gpuMsCount = 0;
     if (!sim) {
         sim = (float *)malloc(sizeof(float) * 4 * MIX_PARTICLES);
         unsigned x = 999;
@@ -407,21 +490,31 @@ static Stats runMix(double warm, double len) {
             o[i * 4] = s[0]; o[i * 4 + 1] = s[1]; o[i * 4 + 2] = 0.008f; o[i * 4 + 3] = (i % 89) / 89.f;
         }
         ID3D11DeviceContext_Unmap(ctx, (ID3D11Resource *)instMix, 0);
+        gpuMeasure = t >= measureFrom;
+        int q = frameBegin();
         clear(0, 0, 0);
         drawFull((float)t, 12.f);
         drawParticles(instMix, MIX_PARTICLES);
+        frameEnd(q);
         IDXGISwapChain_Present(swap, 0, 0);
         double t2 = now();
         if (t2 >= measureFrom && n < MAX_FRAMES) frameTimes[n++] = (float)(t2 - last);
         last = t2;
         phaseFrames++;
     }
-    return stats(n, now() - measureFrom);
+    gpuMeasure = 1;
+    drainQueries();
+    gpuMeasure = 0;
+    Stats st = stats(n, now() - measureFrom);
+    st.gpuSamples = gpuMsCount;
+    st.gpuMs = gpuMsCount ? gpuMsSum / gpuMsCount : 0;
+    return st;
 }
 
 static void writeStats(FILE *f, const char *name, Stats s) {
-    fprintf(f, "\"%s\":{\"avg\":%.2f,\"low1\":%.2f,\"low01\":%.2f,\"frame_ms\":%.3f,\"frames\":%d,\"seconds\":%.2f}",
-            name, s.avg, s.low1, s.low01, s.frameMs, s.frames, s.seconds);
+    fprintf(f, "\"%s\":{\"avg\":%.2f,\"low1\":%.2f,\"low01\":%.2f,\"frame_ms\":%.3f,\"frames\":%d,\"seconds\":%.2f,"
+               "\"gpu_ms\":%.3f,\"gpu_samples\":%d}",
+            name, s.avg, s.low1, s.low01, s.frameMs, s.frames, s.seconds, s.gpuMs, s.gpuSamples);
 }
 
 static void writeResult(int ok, Stats g, Stats x) {
@@ -430,7 +523,7 @@ static void writeResult(int ok, Stats g, Stats x) {
     path(tmp, "result.tmp");
     FILE *f = fopen(tmp, "w");
     if (!f) return;
-    fprintf(f, "{\"version\":2,\"done\":%s,\"error\":\"%s\",\"adapter\":\"%s\",\"cores\":%d,",
+    fprintf(f, "{\"version\":3,\"done\":%s,\"error\":\"%s\",\"adapter\":\"%s\",\"cores\":%d,",
             ok ? "true" : "false", errorText, adapterName, cores);
     fprintf(f, "\"cpu\":{\"st\":%.1f,\"mt\":%.1f},", cpuSt, cpuMt);
     writeStats(f, "gpu", g);

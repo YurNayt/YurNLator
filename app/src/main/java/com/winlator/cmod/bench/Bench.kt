@@ -46,9 +46,15 @@ data class Combo(
     }
 }
 
-data class Phase(val avg: Double, val low1: Double, val frames: Int) {
+data class Phase(val avg: Double, val low1: Double, val frames: Int, val gpuMs: Double = 0.0) {
+    /** Frames per second the GPU alone could do (from its own timestamps); 0 when not measured. */
+    val gpuFps: Double get() = if (gpuMs > 0.05) 1000.0 / gpuMs else 0.0
+
+    fun toJson(): JSONObject = JSONObject().put("avg", avg).put("low1", low1).put("frames", frames).put("gpu_ms", gpuMs)
+
     companion object {
-        fun from(o: JSONObject?) = Phase(o?.optDouble("avg", 0.0) ?: 0.0, o?.optDouble("low1", 0.0) ?: 0.0, o?.optInt("frames") ?: 0)
+        fun from(o: JSONObject?) = Phase(o?.optDouble("avg", 0.0) ?: 0.0, o?.optDouble("low1", 0.0) ?: 0.0,
+            o?.optInt("frames") ?: 0, o?.optDouble("gpu_ms", 0.0) ?: 0.0)
     }
 }
 
@@ -96,7 +102,14 @@ data class RunResult(
      * much), the multi-core CPU score adds a little. Same formula for every run, so only the
      * order matters.
      */
-    val score: Int get() = if (!ok) 0 else scoreOf(gpu.avg, mix.avg, gpu.low1, mix.low1, cpuMt)
+    val score: Int get() = if (!ok) 0 else scoreOf(gpuPower, mix.avg, gpu.low1, mix.low1, cpuMt)
+
+    /**
+     * The GPU phase's speed: what the GPU itself can do per its timestamps when measured (the
+     * presented frame rate is often held at 60-70 FPS by the display path and hides the
+     * difference between drivers), else the presented FPS.
+     */
+    val gpuPower: Double get() = if (gpu.gpuFps > 0) gpu.gpuFps else gpu.avg
 
     /**
      * The same score as if the phone had kept its full clocks: each part divided by how far its
@@ -106,7 +119,7 @@ data class RunResult(
         if (!ok) return 0
         fun up(v: Double, r: Double?) = if (r == null) v else v / r.coerceIn(0.5, 1.0)
         val mixR = listOfNotNull(mixGpuRatio, mixCpuRatio).minOrNull()
-        return scoreOf(up(gpu.avg, gpuRatio), up(mix.avg, mixR), up(gpu.low1, gpuRatio), up(mix.low1, mixR), up(cpuMt, cpuMtRatio))
+        return scoreOf(up(gpuPower, gpuRatio), up(mix.avg, mixR), up(gpu.low1, gpuRatio), up(mix.low1, mixR), up(cpuMt, cpuMtRatio))
     }
 
     /** How much was lost to throttling, in percent (0 when the clocks stayed up or are unreadable). */
@@ -114,8 +127,7 @@ data class RunResult(
 
     fun toJson(): JSONObject = JSONObject().put("combo", combo.toJson()).put("status", status).put("detail", detail)
         .put("adapter", adapter).put("cpuSt", cpuSt).put("cpuMt", cpuMt)
-        .put("gpu", JSONObject().put("avg", gpu.avg).put("low1", gpu.low1).put("frames", gpu.frames))
-        .put("mix", JSONObject().put("avg", mix.avg).put("low1", mix.low1).put("frames", mix.frames))
+        .put("gpu", gpu.toJson()).put("mix", mix.toJson())
         .put("seconds", seconds).put("tempBefore", tempBefore.toDouble()).put("tempAfter", tempAfter.toDouble())
         .put("telemetry", telemetry).put("phase", phase)
 
