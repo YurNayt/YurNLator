@@ -2,6 +2,7 @@
 
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.shortcut.ShortcutDriveLettersEditorV2
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import com.winlator.cmod.ui.settings.PresetKind
@@ -868,6 +869,8 @@ private fun ContainerCategoryV2(
                 SettingsDivider()
                 SettingChoice("Mouse Warp Override", s.mouseWarp, listOf("disable", "enable", "force")) { s.mouseWarp = it }
             }
+            // Drive letters (D:–Z: → phone folders); for a new container they can be set once it exists.
+            s.editing?.let { ShortcutDriveLettersEditorV2(it) }
         }
 
         "Video" -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

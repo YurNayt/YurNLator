@@ -193,6 +193,11 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
                     activity?.navigateToMainDestination(R.id.main_menu_input_controls)
                 }
             }
+            item("file-manager") {
+                NavigationRow(Icons.Outlined.FolderOpen, "File Manager", "Containers' drive C: and your phone's folders") {
+                    activity?.navigateToMainDestination(R.id.main_menu_file_manager)
+                }
+            }
             item("components") {
                 NavigationRow(Icons.Outlined.Apps, "Components", "Wine, Proton, DXVK, VKD3D and runtimes", callbacks::onOpenComponents)
             }
