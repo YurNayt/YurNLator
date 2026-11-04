@@ -841,6 +841,8 @@ public class FileManagerFragment extends Fragment {
                 writer.println("container_id:" + container.id);
             }
             Toast.makeText(getContext(), "Game added to Library!", Toast.LENGTH_SHORT).show();
+            // Offer the Windows components the game needs (Visual C++, .NET, PhysX…) that the container lacks.
+            com.winlator.cmod.ui.components.WindowsComponentsDialog.recommendAfterAdding(requireContext(), container, file);
 
             File iconDir64 = container.getIconsDir(64);
             if (!iconDir64.exists()) iconDir64.mkdirs();

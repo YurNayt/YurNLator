@@ -681,6 +681,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 setupWineSystemFiles();
                 extractGraphicsDriverFiles();
                 changeWineAudioDriver();
+                com.winlator.cmod.session.MediaDecoder.applyRegistry(
+                        new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg"), container, shortcut);
                 applyGameRefreshRateUnlock();
                 try {
                     setupXEnvironment();
@@ -1167,6 +1169,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (!envVars.has("WINEESYNC")) {
                 envVars.put("WINEESYNC", "1");
             }
+            com.winlator.cmod.session.MediaDecoder.applyEnv(envVars, container, shortcut);
             // Frame generation (win-fg layer): loaded when the game has it on or ready, then
             // switched live from the quick menu through its conf.toml.
             // (Frame generation now runs in the Vulkan renderer itself, see applyFrameGen().)

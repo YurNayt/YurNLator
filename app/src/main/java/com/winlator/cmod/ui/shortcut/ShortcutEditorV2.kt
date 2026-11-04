@@ -2,6 +2,8 @@
 
 package com.winlator.cmod.ui.shortcut
 
+import com.winlator.cmod.session.MediaDecoder
+import com.winlator.cmod.ui.settings.CodecsRows
 import com.winlator.cmod.ui.settings.PresetKind
 import com.winlator.cmod.ui.settings.SettingSyncChoice
 import com.winlator.cmod.ui.settings.SettingPresetChoice
@@ -1052,6 +1054,13 @@ private fun ShortcutCategoryV2(
                     }
                     if (index != shortcutComponentRowsV2.lastIndex) SettingsDivider()
                 }
+            }
+            run {
+                var decoder by remember { mutableStateOf(s.shortcut.getExtra(MediaDecoder.KEY_BACKEND)) }
+                var software by remember { mutableStateOf(s.shortcut.getExtra(MediaDecoder.KEY_SOFTWARE_DECODING)) }
+                CodecsRows(decoder, software, true,
+                    { decoder = it; s.extra(MediaDecoder.KEY_BACKEND, it.ifBlank { null }) },
+                    { software = it; s.extra(MediaDecoder.KEY_SOFTWARE_DECODING, it.ifBlank { null }) })
             }
         }
     }

@@ -96,7 +96,7 @@ data class CommunityPreset(
         /** Shortcut settings that fall back to a container extra of the same name. */
         private val EXTRA_BACKED = listOf(
             "frameGen", "frameGenEngine", "frameGenMultiplier", "frameGenPreset", "frameGenFlowScale", "frameGenTarget",
-            "oboeProfile", "oboeApi", "oboeAdaptive", "oboeExclusive",
+            "oboeProfile", "oboeApi", "oboeAdaptive", "oboeExclusive", "builtinDecoder", "softwareDecoding",
         )
 
         /** Settings that only exist on the shortcut. */

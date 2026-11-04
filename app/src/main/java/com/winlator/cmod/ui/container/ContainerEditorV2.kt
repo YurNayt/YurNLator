@@ -2,6 +2,8 @@
 
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.session.MediaDecoder
+import com.winlator.cmod.ui.settings.CodecsCard
 import com.winlator.cmod.ui.shortcut.ShortcutDriveLettersEditorV2
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -168,6 +170,8 @@ private class ContainerEditorStateV2(
         WineThemeManager.getUserWallpaperFile(context).takeIf { it.isFile }?.lastModified() ?: 0L
     )
     var mouseWarp by mutableStateOf(editing?.getExtra("mouseWarpOverride", "disable") ?: "disable")
+    var decoder by mutableStateOf(editing?.getExtra(MediaDecoder.KEY_BACKEND, MediaDecoder.BACKEND_GSTREAMER)?.ifBlank { MediaDecoder.BACKEND_GSTREAMER } ?: MediaDecoder.BACKEND_GSTREAMER)
+    var softwareDecoding by mutableStateOf(editing?.getExtra(MediaDecoder.KEY_SOFTWARE_DECODING, "0") == "1")
 
     var renderer by mutableStateOf(
         if (editing?.isRendererNative == true) "EGL" else "Vulkan"
@@ -494,6 +498,8 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         container.setLC_ALL(state.locale)
         container.putExtra("hudMode", state.hudMode.toString())
         container.putExtra("mouseWarpOverride", state.mouseWarp)
+        container.putExtra(MediaDecoder.KEY_BACKEND, state.decoder)
+        container.putExtra(MediaDecoder.KEY_SOFTWARE_DECODING, if (state.softwareDecoding) "1" else "0")
         container.putExtra("openGlDefaultInitialized", if (state.openGlDefaultInitialized) "1" else "0")
         container.putExtra("autoMesaGlVersionOverride", if (state.autoMesaGlVersionOverride) "1" else "0")
         container.saveData()
@@ -1148,6 +1154,16 @@ private fun ContainerCategoryV2(
                     val selected = entries[(s.components[key] ?: 0).coerceIn(0, 1)]
                     SettingChoice(label, selected, entries) { s.components[key] = entries.indexOf(it).coerceAtLeast(0) }
                     if (index != containerComponentRowsV2.lastIndex) SettingsDivider()
+                }
+            }
+            CodecsCard(s.decoder, s.softwareDecoding, { s.decoder = it }, { s.softwareDecoding = it })
+            s.editing?.let { editing ->
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                SettingsCard {
+                    androidx.compose.material3.TextButton(
+                        onClick = { com.winlator.cmod.ui.components.WindowsComponentsDialog.show(ctx, editing) },
+                        modifier = Modifier.fillMaxWidth().padding(4.dp)
+                    ) { Text("Download Windows components (Visual C++, .NET, DirectX, PhysX…)") }
                 }
             }
         }

@@ -29,3 +29,13 @@ WFG — WinNative/Winlator Frame Generator, (c) 2026 qwertypower (DEVAR Entertai
 (wfg/LICENSE), from WinNative (github.com/WinNative-Emu/WinNative). A Vulkan compute realisation
 of Dense Inverse Search optical flow; algorithm and reference from OpenCV's DISOpticalFlow
 (Till Kroeger's OF_DIS). vkshim/vk_dispatch.h and bin2c.cmake are from WinNative (GPL-3.0).
+
+## Windows components installer (app/src/main/java/com/winlator/cmod/components)
+Component catalog reader, offline installer (MSI / cabinet / recorded-snapshot layout without
+running the setup), undo journal, prefix detection and redistributable detection, ported from
+Bannerlator (GPL-3.0). The catalog (components.json) is read from The412Banner/winlator-contents.
+Codec settings (session/MediaDecoder) follow Bannerlator's MediaDecoder.
+
+## 7-Zip (app/src/main/jniLibs/arm64-v8a/lib7zz.so)
+7-Zip 24.08 console, (c) Igor Pavlov, GNU LGPL with unRAR restriction, built for Android/bionic;
+taken from Bannerlator. See NOTICE_7ZIP.txt.

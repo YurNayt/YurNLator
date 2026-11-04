@@ -29,7 +29,7 @@ ALLOWED = {
     "emulator", "fexcoreVersion", "box64Version", "fexcorePreset", "box64Preset", "inputType",
     "exclusiveXInput", "startupSelection", "lc_all", "envVars", "wincomponents", "syncCpuTopology",
     "frameGen", "frameGenEngine", "frameGenMultiplier", "frameGenPreset", "frameGenFlowScale", "frameGenTarget",
-    "oboeProfile", "oboeApi", "oboeAdaptive", "oboeExclusive",
+    "oboeProfile", "oboeApi", "oboeAdaptive", "oboeExclusive", "builtinDecoder", "softwareDecoding",
     "displayBackend", "fullscreenStretched", "disableXinput", "enableRelativeMouse", "disableMouse",
     "simTouchScreen", "sharpnessEffect", "sharpnessLevel", "sharpnessDenoise", "autoMesaGlVersionOverride",
     "useDisplayX", "graphicsFpsPreset", "graphicsPostFXMode", "graphicsSharpness", "graphicsFilterMode",

@@ -144,6 +144,8 @@ public class ContainerManager {
         try {
             int id = findNextContainerId();
             data.put("id", id);
+            // Container ids are reused: the components record of an old container must not carry over.
+            com.winlator.cmod.components.ComponentInstallRecords.reset(context, id);
 
             File containerDir = new File(homeDir, ImageFs.USER+"-"+id);
             if (!containerDir.mkdirs()) {
@@ -211,6 +213,7 @@ public class ContainerManager {
         dstContainer.setDesktopTheme(srcContainer.getDesktopTheme());
         dstContainer.setWineVersion(srcContainer.getWineVersion());
         dstContainer.saveData();
+        com.winlator.cmod.components.ComponentInstallRecords.copy(context, srcContainer.id, id);
 
         maxContainerId = Math.max(maxContainerId, id);
         containers.add(dstContainer);
@@ -218,7 +221,10 @@ public class ContainerManager {
 
 
     private void removeContainer(Container container) {
-        if (FileUtils.delete(container.getRootDir())) containers.remove(container);
+        if (FileUtils.delete(container.getRootDir())) {
+            containers.remove(container);
+            com.winlator.cmod.components.ComponentInstallRecords.reset(context, container.id);
+        }
     }
 
     public ArrayList<Shortcut> loadShortcuts() {
