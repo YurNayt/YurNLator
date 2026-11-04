@@ -137,6 +137,8 @@ private fun BenchScreen(
     val drivers = remember { mutableStateListOf<String>() }
     val dxvks = remember { mutableStateListOf<String>() }
     val emus = remember { mutableStateListOf<Pair<String, String>>() }
+    var conflicts by remember { mutableStateOf(Bench.conflicts(context)) }
+    LaunchedEffect(state.value) { conflicts = Bench.conflicts(context) }
 
     LaunchedEffect(container?.id) {
         val c = container ?: return@LaunchedEffect
@@ -231,13 +233,32 @@ private fun BenchScreen(
                 val combos = drivers.flatMap { d ->
                     dxvks.flatMap { x -> emus.map { e -> Combo(d, ch.drivers.firstOrNull { it.first == d }?.second ?: d, x, e.first, e.second) } }
                 }
-                val minutes = (combos.size * 50 + 59) / 60
-                Text("${combos.size} bundles, about $minutes min." + if (combos.size > 24) " Large series: pick fewer for a first try." else "",
+                val proton = container?.getWineVersion().orEmpty()
+                val known = combos.count { Bench.conflictFor(conflicts, proton, it) != null }
+                val minutes = ((combos.size - known) * 50 + 59) / 60
+                Text("${combos.size} bundles" + (if (known > 0) ", $known skipped as known conflicts" else "") +
+                    ", about $minutes min." + if (combos.size - known > 24) " Large series: pick fewer for a first try." else "",
                     style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(8.dp))
                 Button(enabled = combos.isNotEmpty() && s?.running != true && container != null, onClick = {
                     start(container!!.id, combos)
                 }) { Text("Start") }
+            }
+        }
+        val proton = container?.getWineVersion().orEmpty()
+        val mine = conflicts.filter { it.proton == proton }
+        if (mine.isNotEmpty()) item {
+            Section("Known conflicts with this Proton (${mine.size}): not run again") {
+                mine.forEach { c ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(c.label, style = MaterialTheme.typography.bodyMedium)
+                            Text(c.reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                        }
+                        TextButton(onClick = { Bench.forgetConflict(context, c); conflicts = Bench.conflicts(context) }) { Text("Retry") }
+                    }
+                }
+                TextButton(onClick = { Bench.forgetConflicts(context); conflicts = emptyList() }) { Text("Forget all conflicts") }
             }
         }
     }
@@ -274,13 +295,20 @@ private fun ResultCard(r: RunResult, best: Boolean, apply: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(r.combo.label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                 Text(if (r.ok) "${r.score}" else r.status, fontWeight = FontWeight.Bold,
-                    color = if (r.ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                    color = when { r.ok -> MaterialTheme.colorScheme.primary; r.status == "skipped" -> MaterialTheme.colorScheme.onSurfaceVariant
+                        else -> MaterialTheme.colorScheme.error })
             }
             if (r.ok) {
                 Text("GPU ${f(r.gpu.avg)} FPS (1% low ${f(r.gpu.low1)}) · CPU+GPU ${f(r.mix.avg)} FPS (1% low ${f(r.mix.low1)})",
                     style = MaterialTheme.typography.bodySmall)
-                Text("CPU ${r.cpuSt.toInt()} / ${r.cpuMt.toInt()} Mops (1 core / all) · battery ${f(r.tempBefore.toDouble())}→${f(r.tempAfter.toDouble())} °C" +
-                    (if (r.adapter.isNotBlank()) " · ${r.adapter}" else ""),
+                Text("CPU ${r.cpuSt.toInt()} / ${r.cpuMt.toInt()} Mops (1 core / all)" +
+                    (if (r.cpuPerMcycle > 0) " · ${String.format("%.2f", r.cpuPerMcycle)} ops per CPU cycle" else ""),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(clocks(r), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (r.throttlePercent >= 3) Text("Throttled: ~${r.scoreFullClocks} at full clocks (+${r.throttlePercent}%), an estimate",
+                    style = MaterialTheme.typography.bodySmall, color = Color(0xFFE3B341))
+                Text("Battery ${f(r.tempBefore.toDouble())}→${f(r.tempAfter.toDouble())} °C" +
+                    (if (r.maxCpuTemp > 0) " · CPU up to ${r.maxCpuTemp} °C" else "") + (if (r.adapter.isNotBlank()) " · ${r.adapter}" else ""),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else if (r.detail.isNotBlank()) Text(r.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (best) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -292,3 +320,15 @@ private fun ResultCard(r: RunResult, best: Boolean, apply: () -> Unit) {
 }
 
 private fun f(v: Double) = if (v >= 100) v.toInt().toString() else String.format("%.1f", v)
+
+/** "GPU 640 MHz (71% of max), busy 96% · CPU 2.4 GHz (88%)": clocks per phase from the telemetry. */
+private fun clocks(r: RunResult): String {
+    val parts = ArrayList<String>()
+    val g = r.gpuMhz("gpu")
+    if (g > 0) parts += "GPU ${g.toInt()} MHz" + (r.gpuRatio?.let { " (${(it * 100).toInt()}%)" } ?: "") +
+        r.gpuBusy("gpu").takeIf { it >= 0 }?.let { ", busy ${it.toInt()}%" }.orEmpty()
+    else r.gpuBusy("gpu").takeIf { it >= 0 }?.let { parts += "GPU busy ${it.toInt()}%" }
+    val c = r.cpuMhz("cpu")
+    if (c > 0) parts += "CPU ${String.format("%.2f", c / 1000)} GHz" + (r.cpuMtRatio?.let { " (${(it * 100).toInt()}%)" } ?: "")
+    return if (parts.isEmpty()) "Clocks: not readable on this phone" else parts.joinToString(" · ")
+}

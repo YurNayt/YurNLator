@@ -17,7 +17,8 @@ import java.io.FileWriter;
  *  - no heartbeat within START_LIMIT (Wine, DXVK and the driver getting ready) -> "timeout";
  *  - heartbeat stopped for HANG_LIMIT -> "crash" (the process died or froze);
  *  - longer than TOTAL_LIMIT -> "timeout".
- * The outcome goes to files/bench/outcome.json for the bundle finder tab.
+ * The outcome, with what the phone did per phase (Telemetry: clocks, cycles, GPU load,
+ * temperature), goes to files/bench/outcome.json for the bundle finder tab.
  */
 public final class Watchdog {
     private static final String TAG = "BundleFinder";
@@ -31,11 +32,13 @@ public final class Watchdog {
         File result = new File(folder, "result.json");
         File outcome = Bench.INSTANCE.outcomeFile(context);
         long begin = System.currentTimeMillis();
+        Telemetry telemetry = new Telemetry();
         Thread t = new Thread(() -> {
             String state, detail;
             while (true) {
                 try { Thread.sleep(500); } catch (InterruptedException e) { return; }
                 long now = System.currentTimeMillis();
+                try { telemetry.sample(status.isFile() ? phase(status) : "start"); } catch (Throwable ignored) {}
                 if (result.isFile()) { state = "done"; detail = ""; break; }
                 long beat = status.isFile() ? status.lastModified() : 0;
                 if (beat == 0 && now - begin > START_LIMIT) { state = "timeout"; detail = "the benchmark didn't start in " + START_LIMIT / 1000 + " s"; break; }
@@ -44,7 +47,9 @@ public final class Watchdog {
             }
             try (FileWriter w = new FileWriter(outcome)) {
                 w.write(new JSONObject().put("status", state).put("detail", detail)
-                        .put("seconds", (System.currentTimeMillis() - begin) / 1000.0).toString());
+                        .put("seconds", (System.currentTimeMillis() - begin) / 1000.0)
+                        .put("phase", status.isFile() ? phase(status) : "start")
+                        .put("telemetry", telemetry.toJson()).toString());
             } catch (Exception e) {
                 Log.w(TAG, "outcome", e);
             }

@@ -3,7 +3,8 @@
  *
  * Three phases, always the same scene and the same amount of work:
  *   cpu  - 2 s single thread, then 4 s on every core: integer + float mixing over a small array.
- *   gpu  - a heavy full-screen pixel shader and 20k instanced particles; the CPU does almost nothing.
+ *   gpu  - two heavy full-screen pixel shader passes and 180k large blended particles (fill rate and
+ *          shader ALU); the CPU does almost nothing.
  *   mix  - 60k particles simulated on the CPU every frame, uploaded and drawn, plus a lighter shader.
  * Each GPU phase starts with 1.5 s of warm-up (shader compilation, DXVK pipelines) that is not counted.
  *
@@ -24,7 +25,7 @@
 
 #define W 1280
 #define H 720
-#define GPU_PARTICLES 20000
+#define GPU_PARTICLES 120000
 #define MIX_PARTICLES 60000
 #define MAX_FRAMES 30000
 
@@ -237,12 +238,12 @@ static int initD3D(HWND hwnd) {
     ID3D11Device_CreateBuffer(dev, &bd, NULL, &cb);
 
     /* Particles for the GPU phase: fixed, generated once from a fixed seed. */
-    float *p = (float *)malloc(sizeof(float) * 4 * MIX_PARTICLES);
+    float *p = (float *)malloc(sizeof(float) * 4 * (GPU_PARTICLES > MIX_PARTICLES ? GPU_PARTICLES : MIX_PARTICLES));
     unsigned x = 12345;
     for (int i = 0; i < GPU_PARTICLES; i++) {
         x = x * 1664525u + 1013904223u; p[i * 4 + 0] = ((x >> 8) & 0xffff) / 32768.f - 1.f;
         x = x * 1664525u + 1013904223u; p[i * 4 + 1] = ((x >> 8) & 0xffff) / 32768.f - 1.f;
-        p[i * 4 + 2] = 0.01f + (i % 7) * 0.004f;
+        p[i * 4 + 2] = 0.02f + (i % 9) * 0.008f;   /* big blended sprites: heavy overdraw */
         p[i * 4 + 3] = (i % 97) / 97.f;
     }
     D3D11_SUBRESOURCE_DATA init = { p, 0, 0 };
@@ -355,8 +356,10 @@ static Stats runGpu(double warm, double len) {
         double t = now();
         if (t - start > warm + len) break;
         clear(0, 0, 0);
-        drawFull((float)t, 48.f);
+        drawFull((float)t, 64.f);
         drawParticles(instGpu, GPU_PARTICLES);
+        drawFull((float)t * 0.5f, 24.f);
+        drawParticles(instGpu, GPU_PARTICLES / 2);
         IDXGISwapChain_Present(swap, 0, 0);
         double t2 = now();
         if (t2 >= measureFrom && n < MAX_FRAMES) frameTimes[n++] = (float)(t2 - last);
@@ -427,7 +430,7 @@ static void writeResult(int ok, Stats g, Stats x) {
     path(tmp, "result.tmp");
     FILE *f = fopen(tmp, "w");
     if (!f) return;
-    fprintf(f, "{\"version\":1,\"done\":%s,\"error\":\"%s\",\"adapter\":\"%s\",\"cores\":%d,",
+    fprintf(f, "{\"version\":2,\"done\":%s,\"error\":\"%s\",\"adapter\":\"%s\",\"cores\":%d,",
             ok ? "true" : "false", errorText, adapterName, cores);
     fprintf(f, "\"cpu\":{\"st\":%.1f,\"mt\":%.1f},", cpuSt, cpuMt);
     writeStats(f, "gpu", g);
