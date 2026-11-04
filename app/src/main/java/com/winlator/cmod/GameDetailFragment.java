@@ -105,6 +105,12 @@ public class GameDetailFragment extends Fragment {
                     }
 
                     @Override
+                    public void onComponents() {
+                        com.winlator.cmod.ui.components.WindowsComponentsDialog.showForGame(requireContext(), shortcut.container,
+                                com.winlator.cmod.ui.components.WindowsComponentsDialog.exeOf(shortcut));
+                    }
+
+                    @Override
                     public void onPresets() {
                         CommunityPresetsDialog.show(requireContext(), shortcut);
                     }

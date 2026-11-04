@@ -65,6 +65,7 @@ import com.winlator.cmod.components.ComponentInstallRecords
 import com.winlator.cmod.components.ComponentInstaller
 import com.winlator.cmod.components.ComponentUninstaller
 import com.winlator.cmod.components.DependencyDetector
+import com.winlator.cmod.components.GameImports
 import com.winlator.cmod.components.PrefixInstalledDetector
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.ui.theme.WinZTheme
@@ -90,26 +91,59 @@ object WindowsComponentsDialog {
      * there are some, offers them. Does nothing (shows nothing) otherwise.
      */
     @JvmStatic
-    fun recommendAfterAdding(context: Context, container: Container, exe: File) {
+    fun recommendAfterAdding(context: Context, container: Container, exe: File) = check(context, container, exe, false)
+
+    /** The game's exe on the phone: a Unix path as written by the file manager, or C:\… / D:\… mapped through the container. */
+    @JvmStatic
+    fun exeOf(shortcut: com.winlator.cmod.container.Shortcut): File? {
+        val p = shortcut.path.trim().trim('"')
+        if (p.startsWith("/")) return File(p)
+        if (p.length < 3 || p[1] != ':') return null
+        val letter = p[0].uppercaseChar()
+        val rest = p.substring(3).replace('\\', '/')
+        val root = if (letter == 'C') File(shortcut.container.rootDir, ".wine/drive_c")
+        else shortcut.container.drivesIterator().firstOrNull { it[0].equals(letter.toString(), true) }?.let { File(it[1]) } ?: return null
+        return File(root, rest)
+    }
+
+    /** The game page's button: what this game needs, installed or not. */
+    @JvmStatic
+    fun showForGame(context: Context, container: Container, exe: File?) {
+        if (exe == null || !exe.isFile) { show(context, container); return }
+        check(context, container, exe, true)
+    }
+
+    private fun check(context: Context, container: Container, exe: File, always: Boolean) {
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        if (always) Toast.makeText(context, "Checking what ${exe.name} needs…", Toast.LENGTH_SHORT).show()
         Thread {
-            val recs = runCatching { recommendations(context, container, exe) }.getOrDefault(emptyList())
-            if (recs.isEmpty()) return@Thread
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                runCatching { open(context, container, exe, recs) }
+            val recs = runCatching { recommendations(context, container, exe, always) }.getOrNull()
+            main.post {
+                runCatching {
+                    when {
+                        recs == null -> if (always) open(context, container, null, emptyList())
+                        recs.isNotEmpty() -> open(context, container, exe, recs)
+                        always -> { Toast.makeText(context, "${exe.name}: no extra components found", Toast.LENGTH_LONG).show(); open(context, container, null, emptyList()) }
+                        else -> Toast.makeText(context, "Windows components: nothing missing for ${exe.name}", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }.start()
     }
 
-    private fun recommendations(context: Context, container: Container, exe: File): List<DependencyDetector.Recommendation> {
+    /** What [exe] needs (its imports, its folders' redistributables); null when the catalog can't be read. */
+    private fun recommendations(context: Context, container: Container, exe: File, withInstalled: Boolean): List<DependencyDetector.Recommendation>? {
         val catalog = ComponentCatalog.load().associateBy { it.name }
-        if (catalog.isEmpty()) return emptyList()
+        if (catalog.isEmpty()) return null
         val have = installedNames(context, container)
         val found = LinkedHashMap<String, DependencyDetector.Recommendation>()
-        (DependencyDetector.detectForExe(exe) + (exe.parentFile?.let { DependencyDetector.detect(it) } ?: emptyList()))
+        val folder = runCatching { DependencyDetector.detectForExe(exe) }.getOrDefault(emptyList())
+        (runCatching { GameImports.detect(exe) }.getOrDefault(emptyList()) + folder)
             .forEach { r -> if (r.componentName !in found) found[r.componentName] = r }
+        android.util.Log.i("WindowsComponents", "${exe.name}: found ${found.keys}, container has $have")
         return found.values.filter { r ->
             val c = catalog[r.componentName] ?: return@filter false
-            r.componentName !in have && ComponentInstaller.isInstallable(c)
+            (withInstalled || r.componentName !in have) && ComponentInstaller.isInstallable(c)
         }.sortedBy { DependencyDetector.orderOf(it.componentName) }
     }
 
