@@ -1,5 +1,8 @@
 package com.winlator.cmod.bench
 
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.Switch
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -190,6 +193,30 @@ private fun BenchScreen(
         }
 
         item {
+            var rootOn by remember { mutableStateOf(RootMode.enabled(context)) }
+            var checking by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
+            Section("Precise measurements (root)") {
+                Text("With root: real CPU cycles and instructions (Android's simpleperf) and the GPU clock and load " +
+                    "the system hides from apps. Without root: the game's own CPU time and the CPU clocks.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (rootOn) "On" else "Off", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                    if (checking) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else Switch(checked = rootOn, onCheckedChange = { want ->
+                        if (!want) { rootOn = false; RootMode.setEnabled(context, false); return@Switch }
+                        checking = true
+                        scope.launch {
+                            val ok = withContext(Dispatchers.IO) { RootMode.available() }
+                            checking = false
+                            if (ok) { rootOn = true; RootMode.setEnabled(context, true) }
+                            else Toast.makeText(context, "No root access (or it was denied)", Toast.LENGTH_LONG).show()
+                        }
+                    })
+                }
+            }
+        }
+        item {
             Section("Container (its Proton stays for the whole series)") {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     containers.forEach { c ->
@@ -301,12 +328,16 @@ private fun ResultCard(r: RunResult, best: Boolean, apply: () -> Unit) {
             if (r.ok) {
                 Text("GPU ${f(r.gpu.avg)} FPS (1% low ${f(r.gpu.low1)}) · CPU+GPU ${f(r.mix.avg)} FPS (1% low ${f(r.mix.low1)})",
                     style = MaterialTheme.typography.bodySmall)
-                if (r.gpu.gpuMs > 0) Text("GPU work ${String.format("%.1f", r.gpu.gpuMs)} ms per frame → ${r.gpu.gpuFps.toInt()} FPS if only the GPU limited" +
+                if (r.gpu.gpuMs > 0) Text("GPU work ${String.format("%.1f", r.gpu.gpuMs)} ms per scene → ${r.gpu.gpuFps.toInt()} FPS" +
+                    (if (r.gpu.gpuLow1 > 0) " (1% low ${r.gpu.gpuLow1.toInt()})" else "") +
+                    (if (r.gpuReps > 1) " at full GPU load (${r.gpuReps} scenes per frame)" else " if only the GPU limited") +
                     (if (r.mix.gpuMs > 0) " · CPU+GPU phase ${String.format("%.1f", r.mix.gpuMs)} ms" else ""),
                     style = MaterialTheme.typography.bodySmall)
                 Text("CPU ${r.cpuSt.toInt()} / ${r.cpuMt.toInt()} Mops (1 core / all)" +
-                    (if (r.cpuPerMcycle > 0) " · ${String.format("%.2f", r.cpuPerMcycle)} ops per CPU cycle" else ""),
+                    (if (r.cpuPerMcycle > 0) " · ${String.format("%.2f", r.cpuPerMcycle)} ops per CPU cycle" +
+                        when (r.cyclesSource) { "hw" -> " (hardware counters)"; "busy" -> " (game's CPU time)"; else -> " (from clocks)" } else ""),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                cpuUse(r)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 Text(clocks(r), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (r.throttlePercent >= 3) Text("Throttled: ~${r.scoreFullClocks} at full clocks (+${r.throttlePercent}%), an estimate",
                     style = MaterialTheme.typography.bodySmall, color = Color(0xFFE3B341))
@@ -334,4 +365,16 @@ private fun clocks(r: RunResult): String {
     val c = r.cpuMhz("cpu")
     if (c > 0) parts += "CPU ${String.format("%.2f", c / 1000)} GHz" + (r.cpuMtRatio?.let { " (${(it * 100).toInt()}%)" } ?: "")
     return if (parts.isEmpty()) "Clocks: not readable on this phone" else parts.joinToString(" · ")
+}
+
+/** "Game CPU: 87% of all cores, 21.4 s CPU time · IPC 1.42" from the CPU and CPU+GPU phases. */
+private fun cpuUse(r: RunResult): String? {
+    val parts = ArrayList<String>()
+    val load = r.cpuLoad("cpu")
+    if (load >= 0) parts += "Game CPU load ${(load * 100).toInt()}% of all cores (CPU phase), ${String.format("%.1f", r.procCpu("cpu") + r.procCpu("gpu") + r.procCpu("mix"))} s CPU time"
+    val mixLoad = r.cpuLoad("mix")
+    if (mixLoad >= 0) parts += "${(mixLoad * 100).toInt()}% in CPU+GPU"
+    if (r.ipc("cpu") > 0) parts += "IPC ${String.format("%.2f", r.ipc("cpu"))}"
+    if (r.rootUsed && r.rootNote.isNotBlank()) parts += "root: ${r.rootNote}"
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }

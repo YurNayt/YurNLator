@@ -9,7 +9,7 @@ import java.io.File
  * (did the system throttle?), CPU cycles spent (core clocks × time), GPU load and temperature.
  * Sampled every 0.5 s by the bench watchdog. Readings the system doesn't allow stay at -1.
  */
-class Telemetry {
+class Telemetry(private val root: RootShell? = null) {
     class PhaseStats {
         var samples = 0
         var cpuMeanMhz = 0.0      // sum of the per-sample mean core clock
@@ -23,6 +23,11 @@ class Telemetry {
         var busySamples = 0
         var gpuBusy = 0.0
         var maxCpuTemp = -1
+        var seconds = 0.0
+        var procCpu = 0.0          // CPU seconds the game's processes used (all their threads)
+        var busyMcycles = 0.0      // procCpu × the mean core clock: cycles actually spent, estimated
+        var hwCycles = 0.0         // root: hardware counters (simpleperf), whole system
+        var hwInstructions = 0.0
 
         fun toJson(): JSONObject = JSONObject().apply {
             put("samples", samples)
@@ -34,21 +39,55 @@ class Telemetry {
             if (gpuSamples > 0) { put("gpu_mhz", gpuMhz / gpuSamples); put("gpu_ratio", gpuRatio / gpuSamples) }
             if (busySamples > 0) put("gpu_busy", gpuBusy / busySamples)
             put("cpu_temp", maxCpuTemp)
+            put("seconds", seconds)
+            if (procCpu > 0) {
+                put("proc_cpu_s", procCpu)
+                put("cpu_load", if (seconds > 0) procCpu / (seconds * CORES) else 0.0)
+                put("busy_mcycles", busyMcycles)
+            }
+            if (hwCycles > 0) { put("hw_mcycles", hwCycles / 1e6); put("hw_minstr", hwInstructions / 1e6); put("ipc", hwInstructions / hwCycles) }
         }
     }
 
     private val phases = LinkedHashMap<String, PhaseStats>()
     private val cpuMax: IntArray = IntArray(Runtime.getRuntime().availableProcessors()) { CPUStatus.getMaxClockSpeed(it).toInt() }
+    // Files apps may read directly; with root, the rest through the root shell.
     private val gpuCur: String? = first(GPU_CUR)
-    private val gpuMaxMhz: Double = first(GPU_MAX)?.let { mhz(it) } ?: -1.0
     private val busyPath: String? = first(GPU_BUSY)
+    private val rootGpuCur: String? = if (gpuCur == null) firstRoot(GPU_CUR) else null
+    private val rootBusy: String? = if (busyPath == null) firstRoot(GPU_BUSY) else null
+    private val gpuMaxMhz: Double = first(GPU_MAX)?.let { mhz(it) } ?: firstRoot(GPU_MAX)?.let { p -> root?.read(listOf(p))?.firstOrNull()?.let(::mhzOf) } ?: -1.0
+    private val procTime = ProcTime()
     private var last = 0L
+
+    /** Where root mode got its readings from (for the result card). */
+    val sources: String get() = listOfNotNull(
+        (gpuCur ?: rootGpuCur)?.let { "gpu clock" + if (gpuCur == null) " (root)" else "" },
+        (busyPath ?: rootBusy)?.let { "gpu load" + if (busyPath == null) " (root)" else "" },
+    ).joinToString(", ")
+
+    private fun firstRoot(paths: List<String>): String? {
+        val r = root ?: return null
+        val values = r.read(paths)
+        return paths.indices.firstOrNull { values.getOrNull(it) != null }?.let { paths[it] }
+    }
+
+    /** Adds the hardware counters simpleperf counted per phase. */
+    fun addCounters(perPhase: Map<String, PerfStat.Counts>) {
+        perPhase.forEach { (name, c) ->
+            val p = phases.getOrPut(name) { PhaseStats() }
+            p.hwCycles += c.cycles; p.hwInstructions += c.instructions
+        }
+    }
 
     fun sample(phase: String) {
         val now = System.currentTimeMillis()
         val dt = if (last == 0L) 0.5 else ((now - last) / 1000.0).coerceIn(0.1, 2.0)
         last = now
         val p = phases.getOrPut(phase) { PhaseStats() }
+        p.seconds += dt
+        val used = runCatching { procTime.delta() }.getOrDefault(0.0)
+        p.procCpu += used
         val clocks = CPUStatus.getCurrentClockSpeeds()
         var sum = 0.0; var top = 0.0; var ratioSum = 0.0; var topRatio = 0.0; var n = 0
         for (i in clocks.indices) {
@@ -61,15 +100,17 @@ class Telemetry {
             p.cpuCycles += cur * dt
         }
         if (n > 0) {
+            p.busyMcycles += used * (sum / n)
             p.samples++
             p.cpuMeanMhz += sum / n; p.cpuTopMhz += top
             p.cpuMeanRatio += ratioSum / n; p.cpuTopRatio += topRatio
         }
-        gpuCur?.let { path ->
-            val cur = mhz(path)
-            if (cur > 0) { p.gpuSamples++; p.gpuMhz += cur; if (gpuMaxMhz > 0) p.gpuRatio += (cur / gpuMaxMhz).coerceAtMost(1.0) }
-        }
-        busyPath?.let { path -> busy(path)?.let { p.busySamples++; p.gpuBusy += it } }
+        val rootValues = if (rootGpuCur != null || rootBusy != null) root?.read(listOfNotNull(rootGpuCur, rootBusy)) else null
+        val cur = gpuCur?.let { mhz(it) } ?: rootGpuCur?.let { rootValues?.getOrNull(0)?.let(::mhzOf) } ?: -1.0
+        if (cur > 0) { p.gpuSamples++; p.gpuMhz += cur; if (gpuMaxMhz > 0) p.gpuRatio += (cur / gpuMaxMhz).coerceAtMost(1.0) }
+        val b = busyPath?.let { busy(it) }
+            ?: rootBusy?.let { path -> rootValues?.getOrNull(if (rootGpuCur != null) 1 else 0)?.let { busyOf(it, path) } }
+        if (b != null) { p.busySamples++; p.gpuBusy += b }
         val t = CPUStatus.getCpuTempC()
         if (t > p.maxCpuTemp) p.maxCpuTemp = t
     }
@@ -100,9 +141,13 @@ class Telemetry {
 
         private fun first(paths: List<String>): String? = paths.firstOrNull { read(it) != null }
 
+        private val CORES = Runtime.getRuntime().availableProcessors()
+
         /** A clock file in Hz, kHz or MHz (or "123 MHz"), as MHz; -1 when unreadable. */
-        private fun mhz(path: String): Double {
-            val v = read(path)?.split(Regex("\\s+"))?.firstOrNull()?.toDoubleOrNull() ?: return -1.0
+        private fun mhz(path: String): Double = read(path)?.let(::mhzOf) ?: -1.0
+
+        private fun mhzOf(text: String): Double {
+            val v = text.trim().split(Regex("\\s+")).firstOrNull()?.toDoubleOrNull() ?: return -1.0
             return when {
                 v > 10_000_000 -> v / 1_000_000   // Hz
                 v > 10_000 -> v / 1000            // kHz
@@ -111,8 +156,10 @@ class Telemetry {
         }
 
         /** "45", "45 %", or kgsl's "busy total" pair → percent. */
-        private fun busy(path: String): Double? {
-            val parts = read(path)?.replace("%", "")?.trim()?.split(Regex("\\s+")) ?: return null
+        private fun busy(path: String): Double? = read(path)?.let { busyOf(it, path) }
+
+        private fun busyOf(text: String, path: String): Double? {
+            val parts = text.replace("%", "").trim().split(Regex("\\s+"))
             val a = parts.getOrNull(0)?.toDoubleOrNull() ?: return null
             val b = parts.getOrNull(1)?.toDoubleOrNull()
             return if (b != null && b > 0 && parts.size == 2 && path.endsWith("gpubusy")) 100 * a / b else a.coerceIn(0.0, 100.0)

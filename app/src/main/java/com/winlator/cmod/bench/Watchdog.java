@@ -32,24 +32,41 @@ public final class Watchdog {
         File result = new File(folder, "result.json");
         File outcome = Bench.INSTANCE.outcomeFile(context);
         long begin = System.currentTimeMillis();
-        Telemetry telemetry = new Telemetry();
         Thread t = new Thread(() -> {
+            // Root mode: GPU readings through su and the hardware CPU counters (simpleperf).
+            boolean rootMode = RootMode.INSTANCE.enabled(context) && RootMode.INSTANCE.available();
+            RootShell root = rootMode ? RootShell.Companion.open() : null;
+            Telemetry telemetry = new Telemetry(root);
+            final String[] current = {"start"};
+            PerfStat perf = rootMode ? new PerfStat(() -> current[0]) : null;
+            if (perf != null) perf.start();
             String state, detail;
             while (true) {
                 try { Thread.sleep(500); } catch (InterruptedException e) { return; }
                 long now = System.currentTimeMillis();
-                try { telemetry.sample(status.isFile() ? phase(status) : "start"); } catch (Throwable ignored) {}
+                current[0] = status.isFile() ? phase(status) : "start";
+                try { telemetry.sample(current[0]); } catch (Throwable ignored) {}
                 if (result.isFile()) { state = "done"; detail = ""; break; }
                 long beat = status.isFile() ? status.lastModified() : 0;
                 if (beat == 0 && now - begin > START_LIMIT) { state = "timeout"; detail = "the benchmark didn't start in " + START_LIMIT / 1000 + " s"; break; }
                 if (beat > 0 && now - beat > HANG_LIMIT) { state = "crash"; detail = "crash or hang during " + phase(status); break; }
                 if (now - begin > TOTAL_LIMIT) { state = "timeout"; detail = "over " + TOTAL_LIMIT / 1000 + " s"; break; }
             }
+            if (perf != null) {
+                perf.stop();
+                synchronized (perf.getPerPhase()) { telemetry.addCounters(perf.getPerPhase()); }
+            }
+            if (root != null) root.close();
+            JSONObject rootInfo = new JSONObject();
+            try {
+                rootInfo.put("enabled", rootMode).put("sources", telemetry.getSources())
+                        .put("perf_error", perf != null && perf.getError() != null ? perf.getError() : "");
+            } catch (Exception ignored) {}
             try (FileWriter w = new FileWriter(outcome)) {
                 w.write(new JSONObject().put("status", state).put("detail", detail)
                         .put("seconds", (System.currentTimeMillis() - begin) / 1000.0)
                         .put("phase", status.isFile() ? phase(status) : "start")
-                        .put("telemetry", telemetry.toJson()).toString());
+                        .put("telemetry", telemetry.toJson()).put("root", rootInfo).toString());
             } catch (Exception e) {
                 Log.w(TAG, "outcome", e);
             }

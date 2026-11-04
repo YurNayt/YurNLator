@@ -46,15 +46,15 @@ data class Combo(
     }
 }
 
-data class Phase(val avg: Double, val low1: Double, val frames: Int, val gpuMs: Double = 0.0) {
+data class Phase(val avg: Double, val low1: Double, val frames: Int, val gpuMs: Double = 0.0, val gpuLow1: Double = 0.0) {
     /** Frames per second the GPU alone could do (from its own timestamps); 0 when not measured. */
     val gpuFps: Double get() = if (gpuMs > 0.05) 1000.0 / gpuMs else 0.0
 
-    fun toJson(): JSONObject = JSONObject().put("avg", avg).put("low1", low1).put("frames", frames).put("gpu_ms", gpuMs)
+    fun toJson(): JSONObject = JSONObject().put("avg", avg).put("low1", low1).put("frames", frames).put("gpu_ms", gpuMs).put("gpu_low1", gpuLow1)
 
     companion object {
         fun from(o: JSONObject?) = Phase(o?.optDouble("avg", 0.0) ?: 0.0, o?.optDouble("low1", 0.0) ?: 0.0,
-            o?.optInt("frames") ?: 0, o?.optDouble("gpu_ms", 0.0) ?: 0.0)
+            o?.optInt("frames") ?: 0, o?.optDouble("gpu_ms", 0.0) ?: 0.0, o?.optDouble("gpu_low1", 0.0) ?: 0.0)
     }
 }
 
@@ -93,16 +93,38 @@ data class RunResult(
     fun gpuBusy(name: String): Double = ph(name)?.optDouble("gpu_busy", -1.0) ?: -1.0
     val maxCpuTemp: Int get() = listOf("cpu", "gpu", "mix").maxOf { ph(it)?.optInt("cpu_temp", -1) ?: -1 }
 
-    /** CPU work per megacycle spent in the CPU phase: how well the emulator uses the clocks it gets. */
-    val cpuPerMcycle: Double get() = ph("cpu")?.optDouble("cpu_mcycles", 0.0)?.takeIf { it > 0 }
-        ?.let { cyc -> (cpuSt * 2 + cpuMt * 4) / cyc } ?: 0.0
+    /**
+     * CPU work per cycle in the CPU phase: how well the emulator turns cycles into work.
+     * Cycles from the hardware counters (root), else the game's CPU time × clock, else all cores' clocks.
+     */
+    val cpuPerMcycle: Double get() = cpuCycles.takeIf { it > 0 }?.let { cyc -> (cpuSt * 2 + cpuMt * 4) / cyc } ?: 0.0
+
+    /** Megacycles spent in the CPU phase and where the number comes from: "hw", "busy" or "clocks". */
+    val cpuCycles: Double get() = ph("cpu")?.let { p ->
+        p.optDouble("hw_mcycles", 0.0).takeIf { it > 0 } ?: p.optDouble("busy_mcycles", 0.0).takeIf { it > 0 }
+            ?: p.optDouble("cpu_mcycles", 0.0)
+    } ?: 0.0
+    val cyclesSource: String get() = ph("cpu")?.let { p ->
+        when { p.optDouble("hw_mcycles", 0.0) > 0 -> "hw"; p.optDouble("busy_mcycles", 0.0) > 0 -> "busy"; else -> "clocks" }
+    } ?: ""
+    fun cpuLoad(name: String): Double = ph(name)?.optDouble("cpu_load", -1.0) ?: -1.0
+    fun procCpu(name: String): Double = ph(name)?.optDouble("proc_cpu_s", 0.0) ?: 0.0
+    fun ipc(name: String): Double = ph(name)?.optDouble("ipc", 0.0) ?: 0.0
+    val rootUsed: Boolean get() = telemetry.optJSONObject("root")?.optBoolean("enabled") == true
+    val rootNote: String get() = telemetry.optJSONObject("root")?.let { r ->
+        listOfNotNull(r.optString("sources").takeIf { it.isNotBlank() }, r.optString("perf_error").takeIf { it.isNotBlank() }).joinToString(" · ")
+    }.orEmpty()
+    val gpuReps: Int get() = telemetry.optInt("gpu_reps", 0)
 
     /**
      * One number to sort by: frame rates weigh most (GPU and CPU+GPU, their 1% lows half as
      * much), the multi-core CPU score adds a little. Same formula for every run, so only the
      * order matters.
      */
-    val score: Int get() = if (!ok) 0 else scoreOf(gpuPower, mix.avg, gpu.low1, mix.low1, cpuMt)
+    val score: Int get() = if (!ok) 0 else scoreOf(gpuPower, mix.avg, gpuLowPower, mix.low1, cpuMt)
+
+    /** The GPU phase's 1% low: per scene on the GPU when measured (the presented one is capped / batched). */
+    val gpuLowPower: Double get() = if (gpu.gpuLow1 > 0) gpu.gpuLow1 else gpu.low1
 
     /**
      * The GPU phase's speed: what the GPU itself can do per its timestamps when measured (the
@@ -119,7 +141,7 @@ data class RunResult(
         if (!ok) return 0
         fun up(v: Double, r: Double?) = if (r == null) v else v / r.coerceIn(0.5, 1.0)
         val mixR = listOfNotNull(mixGpuRatio, mixCpuRatio).minOrNull()
-        return scoreOf(up(gpuPower, gpuRatio), up(mix.avg, mixR), up(gpu.low1, gpuRatio), up(mix.low1, mixR), up(cpuMt, cpuMtRatio))
+        return scoreOf(up(gpuPower, gpuRatio), up(mix.avg, mixR), up(gpuLowPower, gpuRatio), up(mix.low1, mixR), up(cpuMt, cpuMtRatio))
     }
 
     /** How much was lost to throttling, in percent (0 when the clocks stayed up or are unreadable). */
@@ -355,7 +377,10 @@ object Bench {
             result?.optJSONObject("cpu")?.optDouble("st", 0.0) ?: 0.0, result?.optJSONObject("cpu")?.optDouble("mt", 0.0) ?: 0.0,
             Phase.from(result?.optJSONObject("gpu")), Phase.from(result?.optJSONObject("mix")),
             outcome?.optDouble("seconds", 0.0) ?: 0.0, s.tempBefore, temperature(context),
-            outcome?.optJSONObject("telemetry") ?: JSONObject(), outcome?.optString("phase").orEmpty(),
+            (outcome?.optJSONObject("telemetry") ?: JSONObject()).also { t ->
+                outcome?.optJSONObject("root")?.let { t.put("root", it) }
+                result?.optJSONObject("gpu")?.optInt("reps")?.let { t.put("gpu_reps", it) }
+            }, outcome?.optString("phase").orEmpty(),
         )
         if (!run.ok && container != null) recordConflict(context, container.getWineVersion().orEmpty(), run)
         val next = s.copy(results = s.results + run, next = s.next + 1, awaiting = false)

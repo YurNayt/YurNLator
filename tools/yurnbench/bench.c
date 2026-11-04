@@ -4,7 +4,7 @@
  * Three phases, always the same scene and the same amount of work:
  *   cpu  - 2 s single thread, then 4 s on every core: integer + float mixing over a small array.
  *   gpu  - two heavy full-screen pixel shader passes and 180k large blended particles (fill rate and
- *          shader ALU); the CPU does almost nothing.
+ *          shader ALU), repeated per frame until the GPU is busy all the time; timed on the GPU.
  *   mix  - 60k particles simulated on the CPU every frame, uploaded and drawn, plus a lighter shader.
  * Each GPU phase starts with 1.5 s of warm-up (shader compilation, DXVK pipelines) that is not counted.
  *
@@ -76,7 +76,7 @@ static LRESULT CALLBACK wndproc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
 
 /* ---- frame statistics ---- */
 
-typedef struct { double avg, low1, low01, frameMs; int frames; double seconds; double gpuMs; int gpuSamples; } Stats;
+typedef struct { double avg, low1, low01, frameMs; int frames; double seconds; double gpuMs; int gpuSamples; double gpuLow1; int reps; } Stats;
 
 /*
  * GPU time per frame from timestamp queries on the GPU itself: what the frame costs the GPU,
@@ -92,6 +92,13 @@ static int qFrame = 0;
 static double gpuMsSum = 0;
 static int gpuMsCount = 0;
 static int gpuMeasure = 0;
+/* Scenes drawn per presented frame in the GPU phase, tuned in the warm-up so the GPU is busy all
+ * the time (the governor then runs it at full clock and the driver, not the governor, decides). */
+static int reps = 1;
+static double calibSum = 0;
+static int calibCount = 0;
+static float gpuSceneMs[30000];
+static int gpuSceneN = 0;
 
 static void initQueries(void) {
     D3D11_QUERY_DESC d = {0};
@@ -130,7 +137,11 @@ static void collectQueries(int wait) {
         qPending[i] = 0;
         if (dj.Disjoint || dj.Frequency == 0 || e <= b) continue;
         double ms = (double)(e - b) * 1000.0 / (double)dj.Frequency;
-        if (gpuMeasure && ms > 0 && ms < 2000) { gpuMsSum += ms; gpuMsCount++; }
+        if (ms <= 0 || ms >= 2000) continue;
+        if (gpuMeasure) {
+            gpuMsSum += ms / reps; gpuMsCount++;
+            if (gpuSceneN < 30000) gpuSceneMs[gpuSceneN++] = (float)(ms / reps);
+        } else { calibSum += ms; calibCount++; }
     }
 }
 
@@ -420,10 +431,21 @@ static int runCpu(void) {
     return 1;
 }
 
+static double sceneLow1(void) {
+    if (gpuSceneN <= 0) return 0;
+    qsort(gpuSceneMs, gpuSceneN, sizeof(float), cmpDesc);
+    int k = gpuSceneN / 100 > 0 ? gpuSceneN / 100 : 1;
+    double sum = 0;
+    for (int i = 0; i < k; i++) sum += gpuSceneMs[i];
+    return sum > 0 ? 1000.0 * k / sum : 0;
+}
+
 static Stats runGpu(double warm, double len) {
     phase = "gpu";
     phaseFrames = 0;
-    gpuMsSum = 0; gpuMsCount = 0;
+    gpuMsSum = 0; gpuMsCount = 0; gpuSceneN = 0;
+    calibSum = 0; calibCount = 0; reps = 1;
+    double nextTune = now() + 0.5;
     double start = now(), last = start, measureFrom = start + warm;
     int n = 0;
     while (1) {
@@ -431,12 +453,22 @@ static Stats runGpu(double warm, double len) {
         double t = now();
         if (t - start > warm + len) break;
         gpuMeasure = t >= measureFrom;
+        if (!gpuMeasure && t >= nextTune && calibCount >= 3) {
+            /* Aim at ~30 ms of GPU work per presented frame: well past the display path's cap. */
+            double perFrame = calibSum / calibCount;
+            int want = (int)(reps * 30.0 / (perFrame > 0.5 ? perFrame : 0.5) + 0.5);
+            reps = want < 1 ? 1 : want > 24 ? 24 : want;
+            calibSum = 0; calibCount = 0;
+            nextTune = t + 0.5;
+        }
         int q = frameBegin();
         clear(0, 0, 0);
-        drawFull((float)t, 64.f);
-        drawParticles(instGpu, GPU_PARTICLES);
-        drawFull((float)t * 0.5f, 24.f);
-        drawParticles(instGpu, GPU_PARTICLES / 2);
+        for (int r = 0; r < reps; r++) {
+            drawFull((float)t + r, 64.f);
+            drawParticles(instGpu, GPU_PARTICLES);
+            drawFull((float)t * 0.5f + r, 24.f);
+            drawParticles(instGpu, GPU_PARTICLES / 2);
+        }
         frameEnd(q);
         IDXGISwapChain_Present(swap, 0, 0);
         double t2 = now();
@@ -450,6 +482,9 @@ static Stats runGpu(double warm, double len) {
     Stats st = stats(n, now() - measureFrom);
     st.gpuSamples = gpuMsCount;
     st.gpuMs = gpuMsCount ? gpuMsSum / gpuMsCount : 0;
+    st.gpuLow1 = sceneLow1();
+    st.reps = reps;
+    reps = 1;
     return st;
 }
 
@@ -458,7 +493,7 @@ static float *sim;      /* x, y, vx, vy per particle */
 static Stats runMix(double warm, double len) {
     phase = "mix";
     phaseFrames = 0;
-    gpuMsSum = 0; gpuMsCount = 0;
+    gpuMsSum = 0; gpuMsCount = 0; gpuSceneN = 0; reps = 1;
     if (!sim) {
         sim = (float *)malloc(sizeof(float) * 4 * MIX_PARTICLES);
         unsigned x = 999;
@@ -515,8 +550,8 @@ static Stats runMix(double warm, double len) {
 
 static void writeStats(FILE *f, const char *name, Stats s) {
     fprintf(f, "\"%s\":{\"avg\":%.2f,\"low1\":%.2f,\"low01\":%.2f,\"frame_ms\":%.3f,\"frames\":%d,\"seconds\":%.2f,"
-               "\"gpu_ms\":%.3f,\"gpu_samples\":%d}",
-            name, s.avg, s.low1, s.low01, s.frameMs, s.frames, s.seconds, s.gpuMs, s.gpuSamples);
+               "\"gpu_ms\":%.3f,\"gpu_samples\":%d,\"gpu_low1\":%.2f,\"reps\":%d}",
+            name, s.avg, s.low1, s.low01, s.frameMs, s.frames, s.seconds, s.gpuMs, s.gpuSamples, s.gpuLow1, s.reps);
 }
 
 static void writeResult(int ok, Stats g, Stats x) {
@@ -525,7 +560,7 @@ static void writeResult(int ok, Stats g, Stats x) {
     path(tmp, "result.tmp");
     FILE *f = fopen(tmp, "w");
     if (!f) return;
-    fprintf(f, "{\"version\":3,\"done\":%s,\"error\":\"%s\",\"adapter\":\"%s\",\"cores\":%d,",
+    fprintf(f, "{\"version\":4,\"done\":%s,\"error\":\"%s\",\"adapter\":\"%s\",\"cores\":%d,",
             ok ? "true" : "false", errorText, adapterName, cores);
     fprintf(f, "\"cpu\":{\"st\":%.1f,\"mt\":%.1f},", cpuSt, cpuMt);
     writeStats(f, "gpu", g);
@@ -558,7 +593,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmd, int show) {
     if (!initD3D(hwnd)) { heartbeat(1); writeResult(0, none, none); return 2; }
 
     if (!runCpu()) { writeResult(0, none, none); return 3; }
-    Stats g = runGpu(1.5, 8.0);
+    Stats g = runGpu(3.0, 8.0);   /* longer warm-up: the scenes per frame are tuned in it */
     Stats x = runMix(1.5, 8.0);
     phase = "done";
     heartbeat(1);
