@@ -30,19 +30,30 @@ import java.io.File
 data class Combo(
     val driverId: String,
     val driverLabel: String,
+    /** For DX12 runs: the container's DXVK (its dxgi.dll presents for VKD3D); not compared. */
     val dxvk: String,
     /** "FEXCore" or "Box64" (WOWBox64 on arm64ec is stored as Box64, like the editors do). */
     val emulator: String,
     val emulatorVersion: String,
+    /** "d3d11" (DXVK) or "d3d12" (VKD3D). */
+    val api: String = API11,
+    val vkd3d: String = "",
 ) {
-    val label: String get() = "$driverLabel · DXVK $dxvk · ${if (emulator == "FEXCore") "FEX" else "Box64"} $emulatorVersion"
+    val dx12: Boolean get() = api == API12
+    /** DXVK for DX11 runs, VKD3D for DX12 runs: the translation layer the run compares. */
+    val layer: String get() = if (dx12) "VKD3D $vkd3d" else "DXVK $dxvk"
+    val label: String get() = "$driverLabel · $layer · ${if (emulator == "FEXCore") "FEX" else "Box64"} $emulatorVersion"
+    /** Same bundle (for averaging repeated runs). */
+    val key: String get() = listOf(api, driverId, if (dx12) vkd3d else dxvk, emulator, emulatorVersion).joinToString("|")
 
     fun toJson(): JSONObject = JSONObject().put("driver", driverId).put("driverLabel", driverLabel).put("dxvk", dxvk)
-        .put("emulator", emulator).put("emulatorVersion", emulatorVersion)
+        .put("emulator", emulator).put("emulatorVersion", emulatorVersion).put("api", api).put("vkd3d", vkd3d)
 
     companion object {
+        const val API11 = "d3d11"
+        const val API12 = "d3d12"
         fun from(o: JSONObject) = Combo(o.optString("driver"), o.optString("driverLabel"), o.optString("dxvk"),
-            o.optString("emulator"), o.optString("emulatorVersion"))
+            o.optString("emulator"), o.optString("emulatorVersion"), o.optString("api").ifEmpty { API11 }, o.optString("vkd3d"))
     }
 }
 
@@ -176,9 +187,15 @@ data class BenchState(
     val awaiting: Boolean,
     val results: List<RunResult>,
     val tempBefore: Float = 0f,
+    /** Confirmation series: longer phases (YurnBench --long), each bundle several times, cooling down in between. */
+    val long: Boolean = false,
+    /** Temperatures when the series started: the cooling target. */
+    val baseBattery: Float = 0f,
+    val baseCpu: Int = -1,
 ) {
     fun toJson(): JSONObject = JSONObject().put("containerId", containerId).put("next", next).put("running", running)
-        .put("awaiting", awaiting).put("tempBefore", tempBefore.toDouble())
+        .put("awaiting", awaiting).put("tempBefore", tempBefore.toDouble()).put("long", long)
+        .put("baseBattery", baseBattery.toDouble()).put("baseCpu", baseCpu)
         .put("combos", JSONArray().apply { combos.forEach { put(it.toJson()) } })
         .put("results", JSONArray().apply { results.forEach { put(it.toJson()) } })
 
@@ -189,7 +206,8 @@ data class BenchState(
             return BenchState(
                 o.optInt("containerId"), (0 until c.length()).map { Combo.from(c.getJSONObject(it)) }, o.optInt("next"),
                 o.optBoolean("running"), o.optBoolean("awaiting"), (0 until r.length()).map { RunResult.from(r.getJSONObject(it)) },
-                o.optDouble("tempBefore", 0.0).toFloat(),
+                o.optDouble("tempBefore", 0.0).toFloat(), o.optBoolean("long"),
+                o.optDouble("baseBattery", 0.0).toFloat(), o.optInt("baseCpu", -1),
             )
         }
     }
@@ -202,23 +220,28 @@ data class BenchState(
  */
 data class Conflict(
     val proton: String, val driver: String, val dxvk: String, val emulator: String, val emulatorVersion: String,
-    val reason: String, val date: Long,
+    val reason: String, val date: Long, val api: String = Combo.API11, val vkd3d: String = "",
 ) {
-    fun matches(proton: String, c: Combo): Boolean = this.proton == proton &&
-        (driver.isEmpty() || driver == c.driverId) && (dxvk.isEmpty() || dxvk == c.dxvk) &&
+    fun matches(proton: String, c: Combo): Boolean = this.proton == proton && api == c.api &&
+        (driver.isEmpty() || driver == c.driverId) &&
+        (if (c.dx12) vkd3d.isEmpty() || vkd3d == c.vkd3d else dxvk.isEmpty() || dxvk == c.dxvk) &&
         (emulator.isEmpty() || (emulator == c.emulator && emulatorVersion == c.emulatorVersion))
 
     val label: String get() = listOfNotNull(
-        driver.takeIf { it.isNotEmpty() }, dxvk.takeIf { it.isNotEmpty() }?.let { "DXVK $it" },
+        if (api == Combo.API12) "DX12" else null,
+        driver.takeIf { it.isNotEmpty() },
+        if (api == Combo.API12) vkd3d.takeIf { it.isNotEmpty() }?.let { "VKD3D $it" } else dxvk.takeIf { it.isNotEmpty() }?.let { "DXVK $it" },
         emulator.takeIf { it.isNotEmpty() }?.let { (if (it == "FEXCore") "FEX " else "Box64 ") + emulatorVersion },
     ).joinToString(" · ") + if (emulator.isEmpty()) " (any FEX / Box64)" else ""
 
     fun toJson(): JSONObject = JSONObject().put("proton", proton).put("driver", driver).put("dxvk", dxvk)
         .put("emulator", emulator).put("emulatorVersion", emulatorVersion).put("reason", reason).put("date", date)
+        .put("api", api).put("vkd3d", vkd3d)
 
     companion object {
         fun from(o: JSONObject) = Conflict(o.optString("proton"), o.optString("driver"), o.optString("dxvk"),
-            o.optString("emulator"), o.optString("emulatorVersion"), o.optString("reason"), o.optLong("date"))
+            o.optString("emulator"), o.optString("emulatorVersion"), o.optString("reason"), o.optLong("date"),
+            o.optString("api").ifEmpty { Combo.API11 }, o.optString("vkd3d"))
     }
 }
 
@@ -264,10 +287,13 @@ object Bench {
     private fun recordConflict(context: Context, proton: String, run: RunResult) {
         val c = run.combo
         // No D3D11 device / shaders / buffers: the driver and DXVK don't work together, whatever FEX does.
-        val pair = run.status == "failed" && listOf("D3D11CreateDevice", "shader", "buffers").any { run.detail.startsWith(it) }
-        val conflict = if (pair) Conflict(proton, c.driverId, c.dxvk, "", "", run.detail, System.currentTimeMillis() / 1000)
-        else Conflict(proton, c.driverId, c.dxvk, c.emulator, c.emulatorVersion,
-            "${run.status}${run.phase.takeIf { it.isNotBlank() }?.let { " in $it" } ?: ""}: ${run.detail}", System.currentTimeMillis() / 1000)
+        val pair = run.status == "failed" && listOf("D3D11CreateDevice", "D3D12CreateDevice", "Create", "D3D12Serialize", "IDXGISwapChain",
+            "GetBuffer", "shader", "buffers", "upload buffer").any { run.detail.startsWith(it) }
+        val now = System.currentTimeMillis() / 1000
+        val dxvk = if (c.dx12) "" else c.dxvk
+        val conflict = if (pair) Conflict(proton, c.driverId, dxvk, "", "", run.detail, now, c.api, c.vkd3d)
+        else Conflict(proton, c.driverId, dxvk, c.emulator, c.emulatorVersion,
+            "${run.status}${run.phase.takeIf { it.isNotBlank() }?.let { " in $it" } ?: ""}: ${run.detail}", now, c.api, c.vkd3d)
         val list = conflicts(context)
         if (list.none { it.matches(proton, c) && it.emulator.isEmpty() == conflict.emulator.isEmpty() }) saveConflicts(context, list + conflict)
     }
@@ -293,7 +319,7 @@ object Bench {
     }
 
     /** Copies YurnBench into the container and writes the run's shortcut. */
-    private fun prepare(context: Context, container: Container, combo: Combo): File {
+    private fun prepare(context: Context, container: Container, combo: Combo, long: Boolean): File {
         val folder = benchFolder(container).apply { mkdirs() }
         listOf("status.json", "result.json", "status.tmp", "result.tmp").forEach { File(folder, it).delete() }
         val exe = File(folder, "yurnbench.exe")
@@ -304,7 +330,10 @@ object Bench {
         val extras = linkedMapOf(
             "graphicsDriverConfig" to writeConfig(container.getGraphicsDriverConfig(), "version", combo.driverId, ';'),
             "dxwrapper" to dxwrapper,
-            "dxwrapperConfig" to writeConfig(container.getDXWrapperConfig(), "version", combo.dxvk, ','),
+            "dxwrapperConfig" to writeConfig(container.getDXWrapperConfig(), "version", combo.dxvk, ',').let {
+                if (combo.dx12) writeConfig(it, "vkd3dVersion", combo.vkd3d, ',') else it
+            },
+            "execArgs" to listOfNotNull(if (combo.dx12) "--dx12" else null, if (long) "--long" else null).joinToString(" "),
             "emulator" to combo.emulator,
             if (combo.emulator == "FEXCore") "fexcoreVersion" to combo.emulatorVersion else "box64Version" to combo.emulatorVersion,
         )
@@ -336,7 +365,7 @@ object Bench {
                 0.0, 0.0, Phase(0.0, 0.0, 0), Phase(0.0, 0.0, 0), 0.0, 0f, 0f)))
             return launchNext(activity)
         }
-        val shortcut = try { prepare(activity, container, combo) } catch (e: Exception) {
+        val shortcut = try { prepare(activity, container, combo, s.long) } catch (e: Exception) {
             Log.e(TAG, "prepare", e)
             save(activity, s.copy(results = s.results + RunResult(combo, "failed", "couldn't prepare: ${e.message}", "", 0.0, 0.0,
                 Phase(0.0, 0.0, 0), Phase(0.0, 0.0, 0), 0.0, 0f, 0f), next = s.next + 1))
@@ -388,12 +417,52 @@ object Bench {
         return next.running && next.next < next.combos.size
     }
 
+    /** CPU temperature in °C, or -1 when the system doesn't show it. */
+    fun cpuTemp(): Int = com.winlator.cmod.core.CPUStatus.getCpuTempC()
+
+    /**
+     * Whether the phone should cool down before the next run of [s]: the CPU back within 5 °C of
+     * where the series started (or under 45 °C), else the battery within 1.5 °C.
+     */
+    fun tooHot(context: Context, s: BenchState): String? {
+        val cpu = cpuTemp()
+        if (cpu > 0 && s.baseCpu > 0) return if (cpu > maxOf(s.baseCpu + 5, 45)) "CPU $cpu °C → ${maxOf(s.baseCpu + 5, 45)} °C" else null
+        val bat = temperature(context)
+        if (bat > 0 && s.baseBattery > 0 && bat > s.baseBattery + 1.5f) return "battery ${"%.1f".format(bat)} °C → ${"%.1f".format(s.baseBattery + 1.5f)} °C"
+        return null
+    }
+
+    /**
+     * Groups repeated runs of the same bundle: mean score and the spread (lowest / highest),
+     * best first. Failed runs count against a bundle only when it never succeeded.
+     */
+    data class Aggregate(val combo: Combo, val runs: List<RunResult>) {
+        val ok: List<RunResult> get() = runs.filter { it.ok }
+        val score: Int get() = ok.takeIf { it.isNotEmpty() }?.map { it.score }?.average()?.toInt() ?: 0
+        val min: Int get() = ok.minOfOrNull { it.score } ?: 0
+        val max: Int get() = ok.maxOfOrNull { it.score } ?: 0
+        val spreadPercent: Int get() = if (score > 0) (max - min) * 50 / score else 0
+    }
+
+    fun aggregate(results: List<RunResult>): List<Aggregate> =
+        results.groupBy { it.combo.key }.map { (_, runs) -> Aggregate(runs.first().combo, runs) }.sortedByDescending { it.score }
+
+    /** Top [n] working bundles per API of [s], as a confirmation series: each [repeats] times, long phases. */
+    fun confirmation(s: BenchState, n: Int = 3, repeats: Int = 3): List<Combo> {
+        val top = aggregate(s.results).filter { it.ok.isNotEmpty() }.groupBy { it.combo.api }.values
+            .flatMap { it.take(n) }.map { it.combo }
+        // Rounds, not one bundle three times in a row: warming up over the series favours no one.
+        return (0 until repeats).flatMap { top }
+    }
+
     /** Makes [combo] the container's own settings. */
     fun apply(context: Context, containerId: Int, combo: Combo): Boolean {
         val c = ContainerManager(context).getContainerById(containerId) ?: return false
         c.setGraphicsDriverConfig(writeConfig(c.getGraphicsDriverConfig(), "version", combo.driverId, ';'))
         if (!c.getDXWrapper().contains("dxvk")) c.setDXWrapper("dxvk+vkd3d")
-        c.setDXWrapperConfig(writeConfig(c.getDXWrapperConfig(), "version", combo.dxvk, ','))
+        c.setDXWrapperConfig(writeConfig(c.getDXWrapperConfig(), "version", combo.dxvk, ',').let {
+            if (combo.dx12) writeConfig(it, "vkd3dVersion", combo.vkd3d, ',') else it
+        })
         c.setEmulator(combo.emulator)
         if (combo.emulator == "FEXCore") c.setFEXCoreVersion(combo.emulatorVersion) else c.setBox64Version(combo.emulatorVersion)
         c.saveData()

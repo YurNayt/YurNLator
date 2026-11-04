@@ -62,12 +62,14 @@ import kotlinx.coroutines.withContext
 /** The bundle finder tab (hidden developer option, rightmost in the bottom bar). */
 class BenchFragment : Fragment() {
     private val state = mutableStateOf<BenchState?>(null)
+    private val cooling = mutableStateOf<String?>(null)
     private val handler = Handler(Looper.getMainLooper())
     private var pendingLaunch: Runnable? = null
+    private var coolSince = 0L
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View =
         ComposeView(requireContext()).apply {
-            setContent { WinZTheme { BenchScreen(state, ::start, ::stop, ::reset) } }
+            setContent { WinZTheme { BenchScreen(state, cooling, ::start, ::stop, ::reset) } }
         }
 
     override fun onResume() {
@@ -84,21 +86,38 @@ class BenchFragment : Fragment() {
         pendingLaunch = null
     }
 
-    /** A few seconds between runs: the last session's Wine processes are gone and the phone settles. */
-    private fun scheduleNext() {
+    /**
+     * Between runs: a few seconds for the last session's Wine processes to go, then the phone
+     * cools down to where the series started (up to 1.5 min, 4 min in a confirmation series).
+     */
+    private fun scheduleNext(delay: Long = 4000) {
         pendingLaunch?.let(handler::removeCallbacks)
         val r = Runnable {
             pendingLaunch = null
             val a = activity ?: return@Runnable
+            val s = Bench.load(a)
+            val hot = s?.let { Bench.tooHot(a, it) }
+            val limit = if (s?.long == true) 240_000L else 90_000L
+            if (hot != null && s.running) {
+                if (coolSince == 0L) coolSince = System.currentTimeMillis()
+                if (System.currentTimeMillis() - coolSince < limit) {
+                    cooling.value = "Cooling down: $hot"
+                    scheduleNext(10_000)
+                    return@Runnable
+                }
+            }
+            coolSince = 0L
+            cooling.value = null
             if (!Bench.launchNext(a)) state.value = Bench.load(a)
         }
         pendingLaunch = r
-        handler.postDelayed(r, 4000)
+        handler.postDelayed(r, delay)
     }
 
-    private fun start(containerId: Int, combos: List<Combo>) {
+    private fun start(containerId: Int, combos: List<Combo>, long: Boolean) {
         val ctx = context ?: return
-        Bench.save(ctx, BenchState(containerId, combos, 0, running = true, awaiting = false, results = emptyList()))
+        Bench.save(ctx, BenchState(containerId, combos, 0, running = true, awaiting = false, results = emptyList(),
+            long = long, baseBattery = Bench.temperature(ctx), baseCpu = Bench.cpuTemp()))
         state.value = Bench.load(ctx)
         scheduleNext()
     }
@@ -107,6 +126,8 @@ class BenchFragment : Fragment() {
         val ctx = context ?: return
         pendingLaunch?.let(handler::removeCallbacks)
         pendingLaunch = null
+        cooling.value = null
+        coolSince = 0L
         Bench.load(ctx)?.let { Bench.save(ctx, it.copy(running = false)) }
         state.value = Bench.load(ctx)
     }
@@ -123,13 +144,15 @@ private data class Choices(
     val drivers: List<Pair<String, String>>,   // id to label
     val dxvk: List<String>,
     val emulators: List<Pair<String, String>>, // emulator to version
+    val vkd3d: List<String> = emptyList(),
 )
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BenchScreen(
     state: MutableState<BenchState?>,
-    start: (Int, List<Combo>) -> Unit,
+    cooling: MutableState<String?>,
+    start: (Int, List<Combo>, Boolean) -> Unit,
     stop: () -> Unit,
     reset: () -> Unit,
 ) {
@@ -140,13 +163,16 @@ private fun BenchScreen(
     val drivers = remember { mutableStateListOf<String>() }
     val dxvks = remember { mutableStateListOf<String>() }
     val emus = remember { mutableStateListOf<Pair<String, String>>() }
+    val vkd3ds = remember { mutableStateListOf<String>() }
+    var dx11 by remember { mutableStateOf(true) }
+    var dx12 by remember { mutableStateOf(false) }
     var conflicts by remember { mutableStateOf(Bench.conflicts(context)) }
     LaunchedEffect(state.value) { conflicts = Bench.conflicts(context) }
 
     LaunchedEffect(container?.id) {
         val c = container ?: return@LaunchedEffect
         choices = null
-        drivers.clear(); dxvks.clear(); emus.clear()
+        drivers.clear(); dxvks.clear(); emus.clear(); vkd3ds.clear()
         val arm64 = c.getWineVersion().orEmpty().contains("arm64ec", true)
         val cat = withContext(Dispatchers.IO) { runCatching { loadSettingsCatalog(context, arm64, allowNetwork = false) }.getOrNull() }
         if (cat == null) { choices = Choices(emptyList(), emptyList(), emptyList()); return@LaunchedEffect }
@@ -156,12 +182,15 @@ private fun BenchScreen(
             cat.drivers.filter { it.installed }.map { it.id to it.label },
             cat.dxvk.installed.filter { it.isNotBlank() && !it.equals("None", true) },
             emuList,
+            cat.vkd3d.installed.filter { it.isNotBlank() && !it.equals("None", true) },
         )
         // Start from what the container uses now.
         val cfgDriver = Regex("(?:^|;)version=([^;]*)").find(c.getGraphicsDriverConfig())?.groupValues?.get(1).orEmpty()
         choices?.drivers?.firstOrNull { it.first.equals(cfgDriver, true) }?.let { drivers += it.first }
         val cfgDxvk = Regex("(?:^|,)version=([^,]*)").find(c.getDXWrapperConfig())?.groupValues?.get(1).orEmpty()
         if (cfgDxvk in (choices?.dxvk ?: emptyList())) dxvks += cfgDxvk
+        val cfgVkd3d = Regex("(?:^|,)vkd3dVersion=([^,]*)").find(c.getDXWrapperConfig())?.groupValues?.get(1).orEmpty()
+        if (cfgVkd3d in (choices?.vkd3d ?: emptyList())) vkd3ds += cfgVkd3d
         val cur = if (c.getEmulator().equals("FEXCore", true)) "FEXCore" to c.getFEXCoreVersion().orEmpty() else "Box64" to c.getBox64Version().orEmpty()
         if (cur in emuList) emus += cur
     }
@@ -179,13 +208,28 @@ private fun BenchScreen(
         }
 
         if (s != null && (s.running || s.results.isNotEmpty())) {
-            item { Progress(s, stop, reset) }
-            val ranked = s.results.sortedByDescending { it.score }
-            val best = ranked.firstOrNull { it.ok }
-            items(ranked.size) { i ->
-                val r = ranked[i]
-                ResultCard(r, r === best) {
-                    if (Bench.apply(context, s.containerId, r.combo)) Toast.makeText(context, "Applied to the container", Toast.LENGTH_SHORT).show()
+            item { Progress(s, cooling.value, stop, reset) }
+            if (!s.running && !s.long && s.results.any { it.ok }) item {
+                Section("Confirm the best") {
+                    Text("Runs the 3 best bundles of each API 3 times each with phases 2.5× longer, cooling down in between, " +
+                        "and shows the average and the spread. Takes about ${Bench.confirmation(s).size * 2} min.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Button(onClick = { start(s.containerId, Bench.confirmation(s), true) }) { Text("Confirm best (long runs)") }
+                }
+            }
+            listOf(Combo.API11 to "DX11 (DXVK)", Combo.API12 to "DX12 (VKD3D)").forEach { (api, title) ->
+                val runs = s.results.filter { it.combo.api == api }
+                if (runs.isEmpty()) return@forEach
+                val groups = Bench.aggregate(runs)
+                val bestKey = groups.firstOrNull { it.ok.isNotEmpty() }?.combo?.key
+                item { Text(title + if (s.long) " · confirmation, ${groups.firstOrNull()?.runs?.size ?: 0} runs each" else "",
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+                items(groups.size) { i ->
+                    val g = groups[i]
+                    val shown = g.ok.maxByOrNull { it.score } ?: g.runs.last()
+                    ResultCard(shown, g.combo.key == bestKey, if (g.runs.size > 1) g else null) {
+                        if (Bench.apply(context, s.containerId, g.combo)) Toast.makeText(context, "Applied to the container", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             if (s.running) return@LazyColumn
@@ -240,6 +284,24 @@ private fun BenchScreen(
                 }
             }
             item {
+                Section("API") {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = dx11, onClick = { dx11 = !dx11 }, label = { Text("DX11 (DXVK)") })
+                        FilterChip(selected = dx12, onClick = { dx12 = !dx12 }, label = { Text("DX12 (VKD3D)") })
+                    }
+                    if (dx12) Text("DX12 runs use the container's DXVK for presenting and compare the VKD3D versions.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (dx12) item {
+                Section("VKD3D (${vkd3ds.size})") {
+                    if (ch.vkd3d.isEmpty()) Text("No installed VKD3D.", style = MaterialTheme.typography.bodySmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ch.vkd3d.forEach { v -> FilterChip(selected = v in vkd3ds, onClick = { if (v in vkd3ds) vkd3ds.remove(v) else vkd3ds.add(v) }, label = { Text(v) }) }
+                    }
+                }
+            }
+            if (dx11) item {
                 Section("DXVK (${dxvks.size})") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ch.dxvk.forEach { v -> FilterChip(selected = v in dxvks, onClick = { if (v in dxvks) dxvks.remove(v) else dxvks.add(v) }, label = { Text(v) }) }
@@ -257,9 +319,14 @@ private fun BenchScreen(
                 }
             }
             item {
-                val combos = drivers.flatMap { d ->
-                    dxvks.flatMap { x -> emus.map { e -> Combo(d, ch.drivers.firstOrNull { it.first == d }?.second ?: d, x, e.first, e.second) } }
-                }
+                val c0 = container
+                val currentDxvk = c0?.let { Regex("(?:^|,)version=([^,]*)").find(it.getDXWrapperConfig())?.groupValues?.get(1) }.orEmpty()
+                fun label(d: String) = ch.drivers.firstOrNull { it.first == d }?.second ?: d
+                val combos = (if (dx11) drivers.flatMap { d ->
+                    dxvks.flatMap { x -> emus.map { e -> Combo(d, label(d), x, e.first, e.second) } }
+                } else emptyList()) + (if (dx12) drivers.flatMap { d ->
+                    vkd3ds.flatMap { v -> emus.map { e -> Combo(d, label(d), currentDxvk.ifEmpty { dxvks.firstOrNull().orEmpty() }, e.first, e.second, Combo.API12, v) } }
+                } else emptyList())
                 val proton = container?.getWineVersion().orEmpty()
                 val known = combos.count { Bench.conflictFor(conflicts, proton, it) != null }
                 val minutes = ((combos.size - known) * 50 + 59) / 60
@@ -268,7 +335,7 @@ private fun BenchScreen(
                     style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(8.dp))
                 Button(enabled = combos.isNotEmpty() && s?.running != true && container != null, onClick = {
-                    start(container!!.id, combos)
+                    start(container!!.id, combos, false)
                 }) { Text("Start") }
             }
         }
@@ -303,8 +370,10 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Progress(s: BenchState, stop: () -> Unit, reset: () -> Unit) {
-    Section(if (s.running) "Running: ${minOf(s.next + 1, s.combos.size)} of ${s.combos.size}" else "Series: ${s.results.size} of ${s.combos.size} done") {
+private fun Progress(s: BenchState, cooling: String?, stop: () -> Unit, reset: () -> Unit) {
+    Section((if (s.long) "Confirmation. " else "") +
+        if (s.running) "Running: ${minOf(s.next + 1, s.combos.size)} of ${s.combos.size}" else "Series: ${s.results.size} of ${s.combos.size} done") {
+        cooling?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Color(0xFF58A6FF)) }
         LinearProgressIndicator(progress = { if (s.combos.isEmpty()) 0f else s.results.size.toFloat() / s.combos.size }, modifier = Modifier.fillMaxWidth())
         if (s.running) s.combos.getOrNull(s.next)?.let { Text("Next: " + it.label, style = MaterialTheme.typography.bodySmall) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -315,16 +384,19 @@ private fun Progress(s: BenchState, stop: () -> Unit, reset: () -> Unit) {
 }
 
 @Composable
-private fun ResultCard(r: RunResult, best: Boolean, apply: () -> Unit) {
+private fun ResultCard(r: RunResult, best: Boolean, agg: Bench.Aggregate?, apply: () -> Unit) {
     val border = if (best) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(if (best) 2.dp else 1.dp, border)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(r.combo.label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                Text(if (r.ok) "${r.score}" else r.status, fontWeight = FontWeight.Bold,
+                Text(if (agg != null && agg.ok.isNotEmpty()) "${agg.score}" else if (r.ok) "${r.score}" else r.status, fontWeight = FontWeight.Bold,
                     color = when { r.ok -> MaterialTheme.colorScheme.primary; r.status == "skipped" -> MaterialTheme.colorScheme.onSurfaceVariant
                         else -> MaterialTheme.colorScheme.error })
             }
+            if (agg != null) Text("Average of ${agg.ok.size} of ${agg.runs.size} runs: ${agg.min}–${agg.max} (±${agg.spreadPercent}%)" +
+                (if (agg.ok.size < agg.runs.size) " · ${agg.runs.size - agg.ok.size} failed" else "") + ". Details: the best run.",
+                style = MaterialTheme.typography.bodySmall, color = Color(0xFF58A6FF))
             if (r.ok) {
                 Text("GPU ${f(r.gpu.avg)} FPS (1% low ${f(r.gpu.low1)}) · CPU+GPU ${f(r.mix.avg)} FPS (1% low ${f(r.mix.low1)})",
                     style = MaterialTheme.typography.bodySmall)
