@@ -62,7 +62,7 @@ class RootShell private constructor(private val proc: java.lang.Process) {
         out
     }.getOrDefault(paths.map { null })
 
-    fun close() = runCatching { writer.write("exit\n"); writer.flush(); proc.destroy() }
+    fun close() { runCatching { writer.write("exit\n"); writer.flush(); proc.destroy() } }
 
     companion object {
         fun open(): RootShell? = runCatching { RootShell(ProcessBuilder("su").redirectErrorStream(true).start()) }.getOrNull()
