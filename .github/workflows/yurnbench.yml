@@ -1,0 +1,19 @@
+name: YurnBench
+
+# Quick check of the benchmark alone (the app build compiles it too).
+on:
+  push:
+    paths: ['tools/yurnbench/**']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y mingw-w64
+      - run: sh tools/yurnbench/build.sh out/yurnbench.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yurnbench
+          path: out/yurnbench.exe
