@@ -10,7 +10,8 @@
  *
  * Next to the exe it writes status.json (a heartbeat every 0.5 s: the app's watchdog treats a
  * heartbeat that stops as a crash or a hang) and result.json at the end, then exits.
- * Build: x86_64-w64-mingw32-gcc -O2 -mwindows bench.c -ld3d11 -ldxgi -ld3dcompiler_47 -static
+ * Arguments: --dx12 (the Direct3D 12 path, bench12.c), --long (measured phases 2.5 times longer).
+ * Build: tools/yurnbench/build.sh
  */
 #define COBJMACROS
 #define WIN32_LEAN_AND_MEAN
@@ -34,6 +35,8 @@ static LARGE_INTEGER freq, t0;
 static const char *phase = "start";
 static int phaseFrames = 0;
 static char errorText[512] = "";
+static int api12 = 0;          /* --dx12: the Direct3D 12 path (bench12.c) */
+static double lenScale = 1.0;  /* --long: every measured phase 2.5 times longer */
 
 static double now(void) {
     LARGE_INTEGER t;
@@ -410,14 +413,16 @@ static int runCpu(void) {
     if (cores < 1) cores = 1;
     for (int pass = 0; pass < 2; pass++) {
         int n = pass == 0 ? 1 : cores;
-        double len = pass == 0 ? 2.0 : 4.0;
+        double len = (pass == 0 ? 2.0 : 4.0) * lenScale;
         HANDLE th[64];
         for (int i = 0; i < n; i++) { w[i].stop = 0; w[i].ops = 0; w[i].seed = 777 + i; th[i] = CreateThread(NULL, 0, cpuThread, &w[i], 0, NULL); }
         double start = now();
         while (now() - start < len) {
             if (!pump()) return 0;
-            clear(0.05f, 0.05f, 0.1f + 0.1f * (float)pass);
-            IDXGISwapChain_Present(swap, 1, 0);
+            if (!api12) {
+                clear(0.05f, 0.05f, 0.1f + 0.1f * (float)pass);
+                IDXGISwapChain_Present(swap, 1, 0);
+            }
             Sleep(30);
         }
         double secs = now() - start;
@@ -560,8 +565,8 @@ static void writeResult(int ok, Stats g, Stats x) {
     path(tmp, "result.tmp");
     FILE *f = fopen(tmp, "w");
     if (!f) return;
-    fprintf(f, "{\"version\":4,\"done\":%s,\"error\":\"%s\",\"adapter\":\"%s\",\"cores\":%d,",
-            ok ? "true" : "false", errorText, adapterName, cores);
+    fprintf(f, "{\"version\":5,\"api\":\"%s\",\"long\":%s,\"done\":%s,\"error\":\"%s\",\"adapter\":\"%s\",\"cores\":%d,",
+            api12 ? "d3d12" : "d3d11", lenScale > 1 ? "true" : "false", ok ? "true" : "false", errorText, adapterName, cores);
     fprintf(f, "\"cpu\":{\"st\":%.1f,\"mt\":%.1f},", cpuSt, cpuMt);
     writeStats(f, "gpu", g);
     fputc(',', f);
@@ -571,8 +576,12 @@ static void writeResult(int ok, Stats g, Stats x) {
     MoveFileExA(tmp, p, MOVEFILE_REPLACE_EXISTING);
 }
 
+#include "bench12.c"
+
 int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmd, int show) {
-    (void)prev; (void)cmd; (void)show;
+    (void)prev; (void)show;
+    if (cmd && strstr(cmd, "--dx12")) api12 = 1;
+    if (cmd && strstr(cmd, "--long")) lenScale = 2.5;
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&t0);
     GetModuleFileNameA(NULL, dir, MAX_PATH);
@@ -590,11 +599,12 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmd, int show) {
     Stats none = {0};
     phase = "init";
     if (!hwnd) { strcpy(errorText, "CreateWindow"); writeResult(0, none, none); return 1; }
-    if (!initD3D(hwnd)) { heartbeat(1); writeResult(0, none, none); return 2; }
+    if (!(api12 ? init12(hwnd) : initD3D(hwnd))) { heartbeat(1); writeResult(0, none, none); return 2; }
 
     if (!runCpu()) { writeResult(0, none, none); return 3; }
-    Stats g = runGpu(3.0, 8.0);   /* longer warm-up: the scenes per frame are tuned in it */
-    Stats x = runMix(1.5, 8.0);
+    /* The GPU phase's warm-up is longer: the scenes per frame are tuned in it. */
+    Stats g = api12 ? run12(0, 3.0, 8.0 * lenScale) : runGpu(3.0, 8.0 * lenScale);
+    Stats x = api12 ? run12(1, 1.5, 8.0 * lenScale) : runMix(1.5, 8.0 * lenScale);
     phase = "done";
     heartbeat(1);
     writeResult(g.frames > 0 && x.frames > 0, g, x);
