@@ -221,13 +221,15 @@ private fun BenchScreen(
                 val runs = s.results.filter { it.combo.api == api }
                 if (runs.isEmpty()) return@forEach
                 val groups = Bench.aggregate(runs)
-                val bestKey = groups.firstOrNull { it.ok.isNotEmpty() }?.combo?.key
+                val bestGroup = groups.firstOrNull { it.ok.isNotEmpty() }
+                val bestKey = bestGroup?.combo?.key
                 item { Text(title + if (s.long) " · confirmation, ${groups.firstOrNull()?.runs?.size ?: 0} runs each" else "",
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
                 items(groups.size) { i ->
                     val g = groups[i]
                     val shown = g.ok.maxByOrNull { it.score } ?: g.runs.last()
-                    ResultCard(shown, g.combo.key == bestKey, if (g.runs.size > 1) g else null) {
+                    val tie = bestGroup != null && g.ok.isNotEmpty() && Bench.tie(g, bestGroup)
+                    ResultCard(shown, g.combo.key == bestKey, if (g.runs.size > 1) g else null, tie) {
                         if (Bench.apply(context, s.containerId, g.combo)) Toast.makeText(context, "Applied to the container", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -355,6 +357,7 @@ private fun BenchScreen(
                 TextButton(onClick = { Bench.forgetConflicts(context); conflicts = emptyList() }) { Text("Forget all conflicts") }
             }
         }
+        item { HistorySection() }
     }
 }
 
@@ -384,7 +387,7 @@ private fun Progress(s: BenchState, cooling: String?, stop: () -> Unit, reset: (
 }
 
 @Composable
-private fun ResultCard(r: RunResult, best: Boolean, agg: Bench.Aggregate?, apply: () -> Unit) {
+private fun ResultCard(r: RunResult, best: Boolean, agg: Bench.Aggregate?, tie: Boolean = false, apply: () -> Unit) {
     val border = if (best) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(if (best) 2.dp else 1.dp, border)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -394,6 +397,7 @@ private fun ResultCard(r: RunResult, best: Boolean, agg: Bench.Aggregate?, apply
                     color = when { r.ok -> MaterialTheme.colorScheme.primary; r.status == "skipped" -> MaterialTheme.colorScheme.onSurfaceVariant
                         else -> MaterialTheme.colorScheme.error })
             }
+            if (tie) Text("≈ as good as the best: within 1%, the run-to-run noise", style = MaterialTheme.typography.bodySmall, color = Color(0xFF3FB950))
             if (agg != null) Text("Average of ${agg.ok.size} of ${agg.runs.size} runs: ${agg.min}–${agg.max} (±${agg.spreadPercent}%)" +
                 (if (agg.ok.size < agg.runs.size) " · ${agg.runs.size - agg.ok.size} failed" else "") + ". Details: the best run.",
                 style = MaterialTheme.typography.bodySmall, color = Color(0xFF58A6FF))
@@ -449,4 +453,32 @@ private fun cpuUse(r: RunResult): String? {
     if (r.ipc("cpu") > 0) parts += "IPC ${String.format("%.2f", r.ipc("cpu"))}"
     if (r.rootUsed && r.rootNote.isNotBlank()) parts += "root: ${r.rootNote}"
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+}
+
+@Composable
+private fun HistorySection() {
+    val context = LocalContext.current
+    var history by remember { mutableStateOf(Bench.history(context)) }
+    var open by remember { mutableStateOf(false) }
+    if (history.isEmpty()) return
+    Section("History of best bundles (${history.size})") {
+        TextButton(onClick = { open = !open }) { Text(if (open) "Hide" else "Show") }
+        if (open) {
+            val fmt = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT)
+            history.forEach { h ->
+                Column(Modifier.padding(vertical = 4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text((if (h.api == Combo.API12) "DX12 · " else "DX11 · ") + h.label, Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text("${h.score}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Text(listOf(fmt.format(java.util.Date(h.date * 1000)),
+                        if (h.long) "confirmed, ${h.runs} runs ±${h.spread}%" else "best of ${h.bundles}",
+                        "GPU ${h.gpuFps.toInt()} · CPU+GPU ${f(h.mixFps)} FPS", h.container + " · " + h.proton)
+                        .joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            TextButton(onClick = { Bench.clearHistory(context); history = emptyList() }) { Text("Clear history") }
+        }
+    }
 }

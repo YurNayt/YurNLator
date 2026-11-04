@@ -352,6 +352,7 @@ object Bench {
     fun launchNext(activity: Activity): Boolean {
         val s = load(activity) ?: return false
         if (!s.running || s.next >= s.combos.size) {
+            if (s.running && s.next >= s.combos.size) recordHistory(activity, s)
             save(activity, s.copy(running = false, awaiting = false))
             return false
         }
@@ -438,14 +439,67 @@ object Bench {
      */
     data class Aggregate(val combo: Combo, val runs: List<RunResult>) {
         val ok: List<RunResult> get() = runs.filter { it.ok }
-        val score: Int get() = ok.takeIf { it.isNotEmpty() }?.map { it.score }?.average()?.toInt() ?: 0
+        /** Exact mean (the shown score is rounded; ties are broken on this). */
+        val mean: Double get() = ok.takeIf { it.isNotEmpty() }?.map { it.score.toDouble() }?.average() ?: 0.0
+        val score: Int get() = mean.toInt()
         val min: Int get() = ok.minOfOrNull { it.score } ?: 0
         val max: Int get() = ok.maxOfOrNull { it.score } ?: 0
         val spreadPercent: Int get() = if (score > 0) (max - min) * 50 / score else 0
+        val fullClocks: Double get() = ok.takeIf { it.isNotEmpty() }?.map { it.scoreFullClocks.toDouble() }?.average() ?: 0.0
     }
 
+    /**
+     * Best first: the exact mean score; equal means go to the steadier bundle (smaller spread),
+     * then to the one that loses less to throttling.
+     */
     fun aggregate(results: List<RunResult>): List<Aggregate> =
-        results.groupBy { it.combo.key }.map { (_, runs) -> Aggregate(runs.first().combo, runs) }.sortedByDescending { it.score }
+        results.groupBy { it.combo.key }.map { (_, runs) -> Aggregate(runs.first().combo, runs) }
+            .sortedWith(compareByDescending<Aggregate> { it.mean }.thenBy { it.max - it.min }.thenByDescending { it.fullClocks })
+
+    /** Within 1% of [best]: the difference is inside run-to-run noise. */
+    fun tie(a: Aggregate, best: Aggregate): Boolean = best.mean > 0 && a !== best && (best.mean - a.mean) <= best.mean * 0.01
+
+    // ── history of series' best bundles ──────────────────────────────────────────────────
+
+    data class HistoryEntry(
+        val date: Long, val api: String, val label: String, val score: Int, val spread: Int, val runs: Int,
+        val long: Boolean, val proton: String, val container: String, val gpuFps: Double, val mixFps: Double, val bundles: Int,
+    ) {
+        fun toJson(): JSONObject = JSONObject().put("date", date).put("api", api).put("label", label).put("score", score)
+            .put("spread", spread).put("runs", runs).put("long", long).put("proton", proton).put("container", container)
+            .put("gpuFps", gpuFps).put("mixFps", mixFps).put("bundles", bundles)
+
+        companion object {
+            fun from(o: JSONObject) = HistoryEntry(o.optLong("date"), o.optString("api"), o.optString("label"), o.optInt("score"),
+                o.optInt("spread"), o.optInt("runs"), o.optBoolean("long"), o.optString("proton"), o.optString("container"),
+                o.optDouble("gpuFps"), o.optDouble("mixFps"), o.optInt("bundles"))
+        }
+    }
+
+    private fun historyFile(context: Context) = File(dir(context), "history.json")
+
+    fun history(context: Context): List<HistoryEntry> = runCatching {
+        val a = JSONArray(historyFile(context).readText())
+        (0 until a.length()).map { HistoryEntry.from(a.getJSONObject(it)) }
+    }.getOrDefault(emptyList())
+
+    fun clearHistory(context: Context) { historyFile(context).delete() }
+
+    /** A finished series: its best bundle per API goes to the history (newest first, 100 kept). */
+    private fun recordHistory(context: Context, s: BenchState) {
+        val container = ContainerManager(context).getContainerById(s.containerId)
+        val now = System.currentTimeMillis() / 1000
+        val entries = aggregate(s.results).filter { it.ok.isNotEmpty() }.groupBy { it.combo.api }.values.mapNotNull { list ->
+            val best = list.first()
+            val run = best.ok.maxByOrNull { it.score } ?: return@mapNotNull null
+            HistoryEntry(now, best.combo.api, best.combo.label, best.score, best.spreadPercent, best.ok.size, s.long,
+                container?.getWineVersion().orEmpty(), container?.name.orEmpty(), run.gpuPower, run.mix.avg,
+                list.size)
+        }
+        if (entries.isEmpty()) return
+        val all = (entries + history(context)).take(100)
+        historyFile(context).writeText(JSONArray().apply { all.forEach { put(it.toJson()) } }.toString())
+    }
 
     /** Top [n] working bundles per API of [s], as a confirmation series: each [repeats] times, long phases. */
     fun confirmation(s: BenchState, n: Int = 3, repeats: Int = 3): List<Combo> {

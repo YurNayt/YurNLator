@@ -2630,46 +2630,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void extractWinComponentFiles() {
-        Log.d("XServerDisplayActivity", "Extracting WinComponents");
-        File rootDir = imageFs.getRootDir();
-        File windowsDir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows");
-        File systemRegFile = new File(rootDir, ImageFs.WINEPREFIX + "/system.reg");
-
-        try {
-            JSONObject wincomponentsJSONObject = new JSONObject(
-                    FileUtils.readString(this, "wincomponents/wincomponents.json"));
-            ArrayList<String> dlls = new ArrayList<>();
-            String wincomponents = launchConfig.getWinComponents();
-
-            Iterator<String[]> oldWinComponentsIter = new KeyValueSet(
-                    container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator();
-
-            for (String[] wincomponent : new KeyValueSet(wincomponents)) {
-                if (wincomponent[1].equals(oldWinComponentsIter.next()[1]) && !firstTimeBoot)
-                    continue;
-                String identifier = wincomponent[0];
-                boolean useNative = wincomponent[1].equals("1");
-
-                if (useNative) {
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this,
-                            "wincomponents/" + identifier + ".tzst", windowsDir, onExtractFileListener);
-                } else {
-                    JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
-                    for (int i = 0; i < dlnames.length(); i++) {
-                        String dlname = dlnames.getString(i);
-                        dlls.add(!dlname.endsWith(".exe") ? dlname + ".dll" : dlname);
-                    }
-                }
-                Log.d("XServerDisplayActivity",
-                        "Setting wincomponent " + identifier + " to " + String.valueOf(useNative));
-                WineUtils.overrideWinComponentDlls(this, container, identifier, useNative);
-                WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative, this);
-            }
-
-            if (!dlls.isEmpty())
-                restoreOriginalDllFiles(dlls.toArray(new String[0]));
-        } catch (JSONException e) {
-        }
+        com.winlator.cmod.session.WinComponentFiles.apply(this, imageFs, container, launchConfig.getWinComponents(),
+                container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS), firstTimeBoot,
+                onExtractFileListener, this::restoreOriginalDllFiles);
     }
 
     private void restoreOriginalDllFiles(final String... dlls) {
@@ -2777,15 +2740,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     private void changeWineAudioDriver() {
         if (!audioDriver.equals(container.getExtra("audioDriver"))) {
-            File rootDir = imageFs.getRootDir();
-            File userRegFile = new File(rootDir, ImageFs.WINEPREFIX + "/user.reg");
-            try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
-                if (audioDriver.equals("alsa")) {
-                    registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa");
-                } else if (audioDriver.equals("pulseaudio") || audioDriver.equals("pulse-audio-gn")) {
-                    registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse");
-                }
-            }
+            com.winlator.cmod.session.WinComponentFiles.applyAudioDriver(imageFs, audioDriver);
             container.putExtra("audioDriver", audioDriver);
             container.saveData();
         }
