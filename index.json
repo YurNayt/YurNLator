@@ -1,5 +1,24 @@
 {
  "version": 1,
- "updated": 1793743792,
- "presets": []
+ "updated": 1793782834,
+ "presets": [
+  {
+   "id": "ebb102f467e7",
+   "game": "NeedForSpeedPayback",
+   "game_key": "needforspeedpayback",
+   "exe": "needforspeedpayback.exe",
+   "title": "8g3 20-30fps",
+   "author": "YurNayt",
+   "device": "meizu MEIZU 21",
+   "soc": "SM8650",
+   "gpu": "Adreno 750",
+   "created": 1793782795,
+   "app_version": "0.1.0-dev.78",
+   "issue": 3,
+   "likes": 0,
+   "comments": 0,
+   "login": "YurNayt",
+   "published": 1793782834
+  }
+ ]
 }
