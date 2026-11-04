@@ -4,6 +4,7 @@
  * Two frames in flight; GPU time per frame from D3D12 timestamp queries resolved to a readback
  * buffer and read once the frame's fence has passed.
  */
+#include <initguid.h>   /* the D3D12 / DXGI 1.4 interface ids aren't in mingw's libuuid */
 #include <d3d12.h>
 #include <dxgi1_4.h>
 
