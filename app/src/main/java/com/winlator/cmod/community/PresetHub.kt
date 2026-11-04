@@ -140,12 +140,20 @@ object PresetHub {
 
     // ── publishing ──────────────────────────────────────────────────────────────────────────
 
+    fun serviceUrl(context: Context): String? = uploadUrl(context)
+
+    @Volatile private var service: Pair<Long, String?>? = null
+
+    /** The service address from the library's config.json, re-read at most every 10 minutes. */
     private fun uploadUrl(context: Context): String? {
-        val body = get(RAW + "config.json?t=" + System.currentTimeMillis() / 600_000)
-            ?: File(cacheDir(context), "config.json").takeIf { it.isFile }?.readText()
-        val url = runCatching { JSONObject(body ?: return null).optString("upload_url") }.getOrNull()
-        if (body != null) runCatching { File(cacheDir(context), "config.json").writeText(body) }
-        return url?.trim()?.takeIf { it.startsWith("https://") }
+        service?.let { (time, url) -> if (System.currentTimeMillis() - time < 10 * 60_000L) return url }
+        val fetched = get(RAW + "config.json?t=" + System.currentTimeMillis() / 600_000)
+        val body = fetched ?: File(cacheDir(context), "config.json").takeIf { it.isFile }?.readText()
+        if (fetched != null) runCatching { File(cacheDir(context), "config.json").writeText(fetched) }
+        val url = body?.let { runCatching { JSONObject(it).optString("upload_url") }.getOrNull() }
+            ?.trim()?.takeIf { it.startsWith("https://") }
+        service = System.currentTimeMillis() to url
+        return url
     }
 
     fun savedAuthor(context: Context): String =
@@ -241,6 +249,68 @@ object PresetHub {
             if (ok) { forgetMine(context, id); return Publish.Sent(0) }
         }
         return Publish.OpenBrowser("https://github.com/$REPO/issues/new?title=" + Uri.encode(title) + "&body=" + Uri.encode(body))
+    }
+
+    // ── likes and comments (the presets service; null / empty when it isn't set up) ─────────
+
+    data class Social(val likes: Int, val comments: Int, val liked: Boolean)
+    data class Comment(val id: Long, val name: String, val hw: String, val text: String, val created: Long, val mine: Boolean)
+
+    /** A random id for this install: one like per phone, and "you" on your own comments. */
+    fun deviceId(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_MINE + "_device", Context.MODE_PRIVATE)
+        prefs.getString("id", null)?.let { return it }
+        val id = CommunityPreset.newToken()
+        prefs.edit().putString("id", id).apply()
+        return id
+    }
+
+    private fun myTag(context: Context): String = CommunityPreset.sha256("yurn:" + deviceId(context)).take(12)
+
+    private fun post(url: String, body: JSONObject): JSONObject? = runCatching {
+        http.newCall(Request.Builder().url(url).post(body.toString().toRequestBody("application/json".toMediaType())).build())
+            .execute().use { r -> r.body?.string()?.let { JSONObject(it) } }
+    }.getOrNull()
+
+    /** Likes / comments from the service for [ids], or null when there is no service or it's unreachable. */
+    fun social(context: Context, ids: List<String>): Map<String, Social>? {
+        val service = uploadUrl(context)?.trimEnd('/') ?: return null
+        val out = HashMap<String, Social>()
+        for (chunk in ids.distinct().chunked(150)) {
+            val body = get("$service/social?ids=" + chunk.joinToString(",") + "&device=" + deviceId(context)) ?: return out.ifEmpty { null }
+            val o = runCatching { JSONObject(body) }.getOrNull() ?: continue
+            o.keys().forEach { k -> o.optJSONObject(k)?.let { out[k] = Social(it.optInt("likes"), it.optInt("comments"), it.optBoolean("liked")) } }
+        }
+        return out
+    }
+
+    /** Toggles this phone's like; the new (likes, liked), or null on failure. */
+    fun toggleLike(context: Context, id: String): Pair<Int, Boolean>? {
+        val service = uploadUrl(context)?.trimEnd('/') ?: return null
+        val r = post("$service/like", JSONObject().put("id", id).put("device", deviceId(context))) ?: return null
+        return if (r.optBoolean("ok")) r.optInt("likes") to r.optBoolean("liked") else null
+    }
+
+    fun comments(context: Context, id: String): List<Comment>? {
+        val service = uploadUrl(context)?.trimEnd('/') ?: return null
+        val body = get("$service/comments?id=$id") ?: return null
+        val arr = runCatching { JSONArray(body) }.getOrNull() ?: return null
+        val tag = myTag(context)
+        return (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { parseComment(it, tag) } }
+    }
+
+    private fun parseComment(o: JSONObject, tag: String) = Comment(
+        o.optLong("id"), o.optString("name"), o.optString("hw"), o.optString("text"), o.optLong("created"), o.optString("tag") == tag
+    )
+
+    /** Posts a comment; the stored comment, or an error message. */
+    fun postComment(context: Context, id: String, name: String, text: String, hw: String): Pair<Comment?, String?> {
+        val service = uploadUrl(context)?.trimEnd('/') ?: return null to "The presets service isn't set up"
+        val r = post("$service/comment", JSONObject().put("id", id).put("device", deviceId(context))
+            .put("name", name.trim().take(40)).put("text", text.trim().take(1000)).put("hw", hw.take(80)))
+            ?: return null to "No connection"
+        if (!r.optBoolean("ok")) return null to if (r.optString("error") == "rate_limited") "Too many comments, try later" else "Not sent"
+        return r.optJSONObject("comment")?.let { parseComment(it, myTag(context)) } to null
     }
 
     /** A preset as a file / text anyone can import (also offline: Telegram, Discord…). */

@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -144,6 +145,7 @@ private fun PresetsScreen(shortcut: Shortcut, close: () -> Unit) {
     var reload by remember { mutableIntStateOf(0) }
     val soc = remember { CommunityPreset.soc() }
     val gpu = remember { mutableStateOf("") }
+    var social by remember { mutableStateOf<Map<String, PresetHub.Social>>(emptyMap()) }
 
     LaunchedEffect(reload) {
         loading = true
@@ -154,6 +156,9 @@ private fun PresetsScreen(shortcut: Shortcut, close: () -> Unit) {
         offline = list == null
         all = list ?: all ?: emptyList()
         loading = false
+        all?.takeIf { it.isNotEmpty() }?.let { entries ->
+            social = withContext(Dispatchers.IO) { PresetHub.social(context, entries.map { it.id }) } ?: social
+        }
     }
 
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -188,9 +193,10 @@ private fun PresetsScreen(shortcut: Shortcut, close: () -> Unit) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(.5f))
         Box(Modifier.fillMaxSize()) {
             when (val p = page) {
-                is Page.List -> PresetList(shortcut, all, loading, offline, soc, gpu.value,
+                is Page.List -> PresetList(shortcut, all, social, loading, offline, soc, gpu.value,
                     open = { page = Page.Detail(it, null) }, share = { page = Page.Share })
-                is Page.Detail -> PresetDetail(shortcut, p.entry, p.local, done = { page = Page.List; reload++ })
+                is Page.Detail -> PresetDetail(shortcut, p.entry, p.local, p.entry?.let { social[it.id] },
+                    onSocial = { id, v -> social = social + (id to v) }, done = { page = Page.List; reload++ })
                 is Page.Share -> ShareForm(shortcut, done = { page = Page.List; reload++ })
             }
         }
@@ -199,7 +205,7 @@ private fun PresetsScreen(shortcut: Shortcut, close: () -> Unit) {
 
 @Composable
 private fun PresetList(
-    shortcut: Shortcut, all: List<PresetHub.IndexEntry>?, loading: Boolean, offline: Boolean,
+    shortcut: Shortcut, all: List<PresetHub.IndexEntry>?, social: Map<String, PresetHub.Social>, loading: Boolean, offline: Boolean,
     soc: String, gpu: String, open: (PresetHub.IndexEntry) -> Unit, share: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -269,7 +275,7 @@ private fun PresetList(
         }
         items(list, key = { it.id }) { e ->
             PresetCard(e, sameChip = soc.isNotBlank() && e.soc.equals(soc, true), sameGpu = gpu.isNotBlank() && e.gpu.equals(gpu, true),
-                mine = e.id in mine, showGame = everything) { open(e) }
+                mine = e.id in mine, showGame = everything, social = social[e.id]) { open(e) }
         }
     }
 }
@@ -282,7 +288,7 @@ private fun Badge(text: String, color: Color) {
 }
 
 @Composable
-private fun PresetCard(e: PresetHub.IndexEntry, sameChip: Boolean, sameGpu: Boolean, mine: Boolean, showGame: Boolean, onClick: () -> Unit) {
+private fun PresetCard(e: PresetHub.IndexEntry, sameChip: Boolean, sameGpu: Boolean, mine: Boolean, showGame: Boolean, social: PresetHub.Social?, onClick: () -> Unit) {
     Surface(
         Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
@@ -298,10 +304,11 @@ private fun PresetCard(e: PresetHub.IndexEntry, sameChip: Boolean, sameGpu: Bool
             Text(listOf(e.author.ifBlank { "anonymous" }, e.device, e.hardware).filter { it.isNotBlank() }.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.ThumbUp, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(" ${e.likes}   ", style = MaterialTheme.typography.labelMedium)
+                Icon(if (social?.liked == true) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp, null, Modifier.size(14.dp),
+                    tint = if (social?.liked == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(" ${e.likes + (social?.likes ?: 0)}   ", style = MaterialTheme.typography.labelMedium)
                 Icon(Icons.Outlined.ChatBubbleOutline, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(" ${e.comments}", style = MaterialTheme.typography.labelMedium)
+                Text(" ${e.comments + (social?.comments ?: 0)}", style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.weight(1f))
                 Text(listOf(e.appVersion, date(e.created)).filter { it.isNotBlank() }.joinToString(" · "),
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -311,7 +318,10 @@ private fun PresetCard(e: PresetHub.IndexEntry, sameChip: Boolean, sameGpu: Bool
 }
 
 @Composable
-private fun PresetDetail(shortcut: Shortcut, entry: PresetHub.IndexEntry?, local: CommunityPreset?, done: () -> Unit) {
+private fun PresetDetail(
+    shortcut: Shortcut, entry: PresetHub.IndexEntry?, local: CommunityPreset?, social: PresetHub.Social?,
+    onSocial: (String, PresetHub.Social) -> Unit, done: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var preset by remember { mutableStateOf(local) }
@@ -320,8 +330,14 @@ private fun PresetDetail(shortcut: Shortcut, entry: PresetHub.IndexEntry?, local
     var busy by remember { mutableStateOf<String?>(null) }
     var result by remember { mutableStateOf<List<String>?>(null) }
     var showAll by remember { mutableStateOf(false) }
+    var hasService by remember { mutableStateOf(false) }
+    var comments by remember { mutableStateOf<List<PresetHub.Comment>?>(null) }
 
     LaunchedEffect(entry) {
+        if (entry != null) {
+            hasService = withContext(Dispatchers.IO) { PresetHub.serviceUrl(context) } != null
+            if (hasService) comments = withContext(Dispatchers.IO) { PresetHub.comments(context, entry.id) }
+        }
         if (preset == null && entry != null) {
             preset = withContext(Dispatchers.IO) { PresetHub.fetch(context, entry) }
             failed = preset == null
@@ -396,12 +412,23 @@ private fun PresetDetail(shortcut: Shortcut, entry: PresetHub.IndexEntry?, local
                     Toast.makeText(context, "Preset applied to ${shortcut.name}", Toast.LENGTH_SHORT).show()
                 }
             }) { Text(if (result == null) "Apply to this game" else "Apply again") }
-            if (p.issue > 0) OutlinedButton(onClick = { openUrl(context, PresetHub.issueUrl(p.issue)) }) {
+            if (entry != null && hasService) {
+                val liked = social?.liked == true
+                OutlinedButton(onClick = {
+                    scope.launch {
+                        val r = withContext(Dispatchers.IO) { PresetHub.toggleLike(context, entry.id) }
+                        if (r == null) Toast.makeText(context, "No connection", Toast.LENGTH_SHORT).show()
+                        else onSocial(entry.id, PresetHub.Social(r.first, social?.comments ?: comments?.size ?: 0, r.second))
+                    }
+                }) {
+                    Icon(if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("${entry.likes + (social?.likes ?: 0)}")
+                }
+            } else if (p.issue > 0) OutlinedButton(onClick = { openUrl(context, PresetHub.issueUrl(p.issue)) }) {
                 Icon(Icons.Outlined.ThumbUp, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Like / comment")
             }
         }
-        if (p.issue > 0) Text("Likes and comments live on the preset's GitHub page (👍 on it is a like).",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { shareText(context, "YurNLator preset: ${p.game}", PresetHub.exportText(p)) }) {
                 Icon(Icons.Outlined.Share, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Send")
@@ -421,6 +448,15 @@ private fun PresetDetail(shortcut: Shortcut, entry: PresetHub.IndexEntry?, local
                 Icon(Icons.Outlined.DeleteOutline, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error); Spacer(Modifier.width(6.dp))
                 Text("Remove from library", color = MaterialTheme.colorScheme.error)
             }
+        }
+
+        if (entry != null && hasService) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(.5f))
+            CommentsSection(entry.id, comments, onAdded = { c ->
+                val list = comments.orEmpty() + c
+                comments = list
+                onSocial(entry.id, PresetHub.Social(social?.likes ?: 0, list.size, social?.liked == true))
+            })
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(.5f))
@@ -523,5 +559,48 @@ private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
             }) { Icon(Icons.Outlined.Share, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Send") }
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun CommentsSection(id: String, comments: List<PresetHub.Comment>?, onAdded: (PresetHub.Comment) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var text by remember { mutableStateOf("") }
+    var sending by remember { mutableStateOf(false) }
+    val hw = remember { listOf(android.os.Build.MODEL, CommunityPreset.soc()).filter { it.isNotBlank() }.joinToString(" · ") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Comments" + (comments?.let { " (${it.size})" } ?: ""), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        when {
+            comments == null -> Text("Couldn't load comments.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            comments.isEmpty() -> Text("No comments yet. Tried it? Say what FPS you got and on which phone.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else -> comments.forEach { c ->
+                Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, if (c.mine) MaterialTheme.colorScheme.primary.copy(.5f) else MaterialTheme.colorScheme.outlineVariant)) {
+                    Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(listOf(c.name + if (c.mine) " (you)" else "", c.hw, date(c.created)).filter { it.isNotBlank() }.joinToString(" · "),
+                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(c.text, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
+        OutlinedTextField(text, { text = it.take(1000) }, Modifier.fillMaxWidth(), label = { Text("Your comment") },
+            placeholder = { Text("FPS, what works, what to change") }, minLines = 2)
+        Button(enabled = !sending && text.trim().length >= 2, onClick = {
+            scope.launch {
+                sending = true
+                val (c, err) = withContext(Dispatchers.IO) {
+                    PresetHub.postComment(context, id, PresetHub.savedAuthor(context).ifBlank { "anonymous" }, text, hw)
+                }
+                sending = false
+                if (c != null) { onAdded(c); text = "" }
+                else Toast.makeText(context, err ?: "Not sent", Toast.LENGTH_SHORT).show()
+            }
+        }) { Text(if (sending) "Sending…" else "Send comment") }
+        Text("Shown as \"${PresetHub.savedAuthor(context).ifBlank { "anonymous" }}\" — the name from Share my settings.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

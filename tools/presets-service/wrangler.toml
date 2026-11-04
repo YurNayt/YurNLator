@@ -4,3 +4,8 @@ compatibility_date = "2025-01-01"
 
 [vars]
 REPO = "YurNayt/YurNLator"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "yurnlator-presets"
+database_id = "put-the-id-from-wrangler-d1-create-here"
