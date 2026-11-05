@@ -58,7 +58,7 @@ internal fun ContainerWrapperInline(containerId: Int, callbacks: ContainerInline
     val initial = remember(container.getDXWrapperConfig()) { parseInlineConfig(container.getDXWrapperConfig()) }
     var dxvkVersion by remember { mutableStateOf(initial["version"].orEmpty().ifBlank { DefaultVersion.DXVK }) }
     var vkd3dVersion by remember { mutableStateOf(initial["vkd3dVersion"].orEmpty().ifBlank { DefaultVersion.VKD3D }) }
-    var vkd3dLevel by remember { mutableStateOf(initial["vkd3dLevel"] ?: "12_1") }
+    var vkd3dLevel by remember { mutableStateOf(initial["vkd3dLevel"] ?: "12_0") }
     var frameRate by remember { mutableStateOf(initial["framerate"] ?: "0") }
     var maxLatency by remember { mutableStateOf(initial["maxFrameLatency"] == "1") }
     var asyncShaders by remember { mutableStateOf(initial["async"] == "1") }

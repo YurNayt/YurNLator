@@ -274,7 +274,7 @@ private fun ContainerSectionScreen(
     var vkd3dVersion by remember(initialWrapperConfig) {
         mutableStateOf(initialWrapperValues["vkd3dVersion"].orEmpty().ifBlank { DefaultVersion.VKD3D })
     }
-    var vkd3dLevel by remember(initialWrapperConfig) { mutableStateOf(initialWrapperValues["vkd3dLevel"] ?: "12_1") }
+    var vkd3dLevel by remember(initialWrapperConfig) { mutableStateOf(initialWrapperValues["vkd3dLevel"] ?: "12_0") }
     var frameRate by remember(initialWrapperConfig) { mutableStateOf(initialWrapperValues["framerate"] ?: "0") }
     var maxFrameLatency by remember(initialWrapperConfig) { mutableStateOf(initialWrapperValues["maxFrameLatency"] == "1") }
     var async by remember(initialWrapperConfig) { mutableStateOf(initialWrapperValues["async"] == "1") }

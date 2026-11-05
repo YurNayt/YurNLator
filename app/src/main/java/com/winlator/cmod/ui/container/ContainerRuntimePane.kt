@@ -92,7 +92,7 @@ internal fun ContainerRuntimePane(
     var wrapperConfig by remember { mutableStateOf(container.getDXWrapperConfig()) }
     var dxvkVersion by remember { mutableStateOf(readConfig(wrapperConfig, "version", ',').ifBlank { "" }) }
     var vkd3dVersion by remember { mutableStateOf(readConfig(wrapperConfig, "vkd3dVersion", ',').ifBlank { "None" }) }
-    var vkd3dLevel by remember { mutableStateOf(readConfig(wrapperConfig, "vkd3dLevel", ',').ifBlank { "12_1" }) }
+    var vkd3dLevel by remember { mutableStateOf(readConfig(wrapperConfig, "vkd3dLevel", ',').ifBlank { "12_0" }) }
     var frameRate by remember { mutableStateOf(readConfig(wrapperConfig, "framerate", ',').ifBlank { "0" }) }
     var maxFrameLatency by remember { mutableStateOf(readConfig(wrapperConfig, "maxFrameLatency", ',') == "1") }
     var async by remember { mutableStateOf(readConfig(wrapperConfig, "async", ',') == "1") }
