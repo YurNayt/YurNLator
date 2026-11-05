@@ -66,12 +66,13 @@ jobs:
           cache: gradle
 
       - name: Install native build dependencies
-        timeout-minutes: 15
+        timeout-minutes: 30
         run: |
-          # apt on the runner sometimes hangs on a mirror: each try is cut off at 4 min and retried.
+          # apt on the runner sometimes hangs on a mirror: each try is cut off and retried. Only the
+          # x86-64 MinGW compiler (YurnBench), not all of mingw-w64 (270 MB).
           for i in 1 2 3; do
             if timeout 240 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
-              && timeout 240 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y glslang-tools ninja-build zstd mingw-w64; then
+              && timeout 420 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends glslang-tools ninja-build zstd gcc-mingw-w64-x86-64-win32; then
               exit 0
             fi
             echo "apt try $i failed, retrying"; sleep 10
