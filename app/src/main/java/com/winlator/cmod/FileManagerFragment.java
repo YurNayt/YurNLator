@@ -401,11 +401,15 @@ public class FileManagerFragment extends Fragment {
         if (driveOptionsPanel == null) return;
         driveOptionsPanel.removeAllViews();
 
-        File dRoot = Environment.getExternalStorageDirectory();
+        // Same letters as a new container's drives: D: = Download, F: = the whole internal storage.
+        File fRoot = Environment.getExternalStorageDirectory();
         File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File dTarget = downloads.exists() ? downloads : dRoot;
+        File dRoot = downloads.exists() ? downloads : fRoot;
         driveOptionsPanel.addView(createDriveOptionRow(
-                "Drive D:", "Downloads", samePath(currentDriveRoot, dRoot), () -> openDrive(dTarget, dRoot)));
+                "Drive D:", "Downloads", samePath(currentDriveRoot, dRoot), () -> openDrive(dRoot, dRoot)));
+        driveOptionsPanel.addView(createDriveOptionRow(
+                "Drive F:", "Internal storage", samePath(currentDriveRoot, fRoot) && !samePath(dRoot, fRoot),
+                () -> openDrive(fRoot, fRoot)));
 
         boolean inDriveC = currentDir != null && normalizeFilePath(currentDir.getAbsolutePath()).contains("/.wine/drive_c");
         driveOptionsPanel.addView(createDriveOptionRow(
@@ -446,6 +450,9 @@ public class FileManagerFragment extends Fragment {
         if (directory == null) return Environment.getExternalStorageDirectory();
         String path = normalizeFilePath(directory.getAbsolutePath());
         String primary = normalizeFilePath(Environment.getExternalStorageDirectory().getAbsolutePath());
+        File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        String dl = normalizeFilePath(downloads.getAbsolutePath());
+        if (path.equals(dl) || path.startsWith(dl + File.separator)) return downloads;
         if (path.equals(primary) || path.startsWith(primary + File.separator)) {
             return Environment.getExternalStorageDirectory();
         }
@@ -560,7 +567,11 @@ public class FileManagerFragment extends Fragment {
 
         File[] files = dir.listFiles();
         List<File> fileList = new ArrayList<>();
-        if (files != null) fileList.addAll(Arrays.asList(files));
+        // Android's shared storage (FUSE) can list a folder twice; names in one folder are unique.
+        if (files != null) {
+            java.util.HashSet<String> seen = new java.util.HashSet<>();
+            for (File f : files) if (seen.add(f.getName())) fileList.add(f);
+        }
 
         Collections.sort(fileList, (f1, f2) -> {
             if (f1.isDirectory() && !f2.isDirectory()) return -1;
@@ -584,11 +595,15 @@ public class FileManagerFragment extends Fragment {
 
         String path = normalizeFilePath(dir.getAbsolutePath());
         String primary = normalizeFilePath(Environment.getExternalStorageDirectory().getAbsolutePath());
+        String dl = normalizeFilePath(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath());
         if (path.contains("/.wine/drive_c")) {
             tvDriveName.setText("Drive C:");
             ivDriveIcon.setImageResource(R.drawable.icon_wine);
-        } else if (path.equals(primary) || path.startsWith(primary + File.separator)) {
+        } else if (path.equals(dl) || path.startsWith(dl + File.separator)) {
             tvDriveName.setText("Drive D:");
+            ivDriveIcon.setImageResource(R.drawable.ic_internal_storage);
+        } else if (path.equals(primary) || path.startsWith(primary + File.separator)) {
+            tvDriveName.setText("Drive F:");
             ivDriveIcon.setImageResource(R.drawable.ic_internal_storage);
         } else if (path.startsWith("/storage/") && !path.startsWith("/storage/emulated")) {
             tvDriveName.setText("External Storage");

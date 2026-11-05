@@ -1052,15 +1052,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     private void setupXEnvironment() throws PackageManager.NameNotFoundException {
 
-        envVars.put("LC_ALL", lc_all);
-        envVars.put("WINEPREFIX", imageFs.wineprefix);
-
-        boolean enableWineDebug = preferences.getBoolean("enable_wine_debug", false);
-        String wineDebugChannels = preferences.getString("wine_debug_channels",
-                SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS);
-        envVars.put("WINEDEBUG", enableWineDebug && !wineDebugChannels.isEmpty()
-                ? "+" + wineDebugChannels.replace(",", ",+")
-                : "-all");
+        // Environment and command of the launch: session/LaunchEnv (YurNLator base, part 6).
+        com.winlator.cmod.session.LaunchEnv.base(envVars, preferences, lc_all, imageFs.wineprefix);
 
         String rootPath = imageFs.getRootDir().getPath();
         FileUtils.clear(imageFs.getTmpDir());
@@ -1077,7 +1070,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             guestProgramLauncherComponent.setContainer(this.container);
             guestProgramLauncherComponent.setWineInfo(this.wineInfo);
 
-            String guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " + getWineStartCommand();
+            String guestExecutable = com.winlator.cmod.session.LaunchEnv.guestExecutable(xServer.screenInfo,
+                    com.winlator.cmod.session.LaunchEnv.startCommand(shortcut, getOverrideEnvVars()));
 
             guestProgramLauncherComponent.setGuestExecutable(guestExecutable);
             // First line of the log: what was launched (and the shortcut's path), so a game
@@ -1089,27 +1083,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (shortcut != null) debugDialog.call("[YurNLator] shortcut path: " + shortcut.path);
             }
 
-            envVars.putAll(container.getEnvVars());
-
-            if (shortcut != null)
-                envVars.putAll(shortcut.getExtra("envVars"));
-
+            com.winlator.cmod.session.LaunchEnv.user(envVars, container, shortcut);
             applyOpenGLDriverEnvVars();
-
-            if (!wineCpuTopologyValue.isEmpty()) {
-                envVars.put("WINE_CPU_TOPOLOGY", wineCpuTopologyValue);
-            }
-
-            if (!envVars.has("WINEESYNC")) {
-                envVars.put("WINEESYNC", "1");
-            }
-            com.winlator.cmod.session.MediaDecoder.applyEnv(envVars, container, shortcut);
-            // Frame generation (win-fg layer): loaded when the game has it on or ready, then
-            // switched live from the quick menu through its conf.toml.
-            // (Frame generation now runs in the Vulkan renderer itself, see applyFrameGen().)
-            if (!envVars.has("WINE_FAST_YIELD")) {
-                envVars.put("WINE_FAST_YIELD", "1");
-            }
+            com.winlator.cmod.session.LaunchEnv.defaults(envVars, container, shortcut, wineCpuTopologyValue);
 
             ArrayList<String> bindingPaths = new ArrayList<>();
             for (String[] drive : container.drivesIterator()) {
@@ -2514,61 +2490,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         dxWrapperFiles().restoreOriginal(dlls);
     }
 
-    private String getWineStartCommand() {
-
-        EnvVars envVars = getOverrideEnvVars();
-
-        String args = "";
-
-        if (shortcut != null) {
-            String execArgs = shortcut.getExtra("execArgs");
-            execArgs = !execArgs.isEmpty() ? " " + execArgs : "";
-
-            if (shortcut.path.endsWith(".lnk")) {
-                args += "\"" + shortcut.path + "\"" + execArgs;
-            } else {
-                String fullPath = shortcut.path.replace("\"", "");
-                String exeDir;
-                String filename;
-
-                if (fullPath.contains("\\")) {
-                    int lastSlash = fullPath.lastIndexOf("\\");
-                    if (lastSlash != -1) {
-                        exeDir = fullPath.substring(0, lastSlash);
-                        filename = fullPath.substring(lastSlash + 1);
-                    } else {
-                        exeDir = "D:\\";
-                        filename = fullPath;
-                    }
-                } else {
-                    exeDir = FileUtils.getDirname(fullPath);
-                    filename = FileUtils.getName(fullPath);
-                }
-
-                int dotIndex = filename.lastIndexOf(".");
-                int spaceIndex = (dotIndex != -1) ? filename.indexOf(" ", dotIndex) : -1;
-
-                if (spaceIndex != -1) {
-                    execArgs = filename.substring(spaceIndex + 1) + execArgs;
-                    filename = filename.substring(0, spaceIndex);
-                }
-
-                args += "/dir " + StringUtils.escapeDOSPath(exeDir) + " \"" + filename + "\"" + execArgs;
-            }
-        } else {
-
-            if (envVars.has("EXTRA_EXEC_ARGS")) {
-                args += " " + envVars.get("EXTRA_EXEC_ARGS");
-                envVars.remove("EXTRA_EXEC_ARGS");
-            } else {
-                args += "\"wfm.exe\"";
-            }
-        }
-
-        String command = "winhandler.exe " + args;
-
-        return command;
-    }
 
     private String getExecutable() {
         String filename = "wfm.exe";
