@@ -514,6 +514,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (enableLogs) {
             LogView.setFilename(getExecutable());
             ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
+            // Time marks in the log (it has no timestamps): where a slow start loses its time.
+            final long logStart = android.os.SystemClock.elapsedRealtime();
+            final long[] lastMark = {logStart};
+            final DebugDialog log = debugDialog;
+            ProcessHelper.addDebugCallback(line -> {
+                long now = android.os.SystemClock.elapsedRealtime();
+                if (now - lastMark[0] < 5000) return;
+                lastMark[0] = now;
+                log.call("[YurNLator +" + ((now - logStart) / 1000) + "s]");
+            });
         }
         // Which API and layer the game uses (VKD3D · DX12, DXVK · DX11…): the HUD's first item.
         ProcessHelper.addDebugCallback(line -> {

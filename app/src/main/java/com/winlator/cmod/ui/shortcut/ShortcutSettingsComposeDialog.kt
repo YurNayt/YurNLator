@@ -33,7 +33,10 @@ object ShortcutSettingsComposeDialog {
             decorView.systemUiVisibility = immersiveUiFlagsV2()
         }
         dialog.setContentView(ComposeView(fragment.requireContext()).apply {
-            setContent { WinZTheme { ShortcutEditorV2(fragment, shortcut, dialog::dismiss) } }
+            // Read the file again: the library keeps the Shortcut it loaded before the game ran, and
+            // the game saves to the file (e.g. the FPS limit from the quick menu / sidebar).
+            val fresh = runCatching { com.winlator.cmod.container.Shortcut(shortcut.container, shortcut.file) }.getOrDefault(shortcut)
+            setContent { WinZTheme { ShortcutEditorV2(fragment, fresh, dialog::dismiss) } }
         })
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
     }
