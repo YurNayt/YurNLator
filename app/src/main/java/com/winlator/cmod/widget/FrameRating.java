@@ -92,9 +92,18 @@ public class FrameRating extends FrameLayout implements Runnable {
         return StringUtils.formatBytes(usedKb * 1024L, false);
     }
 
+    private String apiLabel = null;
+
     public void setRenderer(String renderer) {
-        lastKnownRenderer = renderer; 
+        if (apiLabel != null) renderer = apiLabel;
+        lastKnownRenderer = renderer;
         tvRenderer.setText(renderer);
+    }
+
+    /** API and layer from the game's log ("VKD3D 3.1 · DX12"): wins over the engine name. */
+    public void setApiLabel(String label) {
+        apiLabel = label;
+        setRenderer(label);
     }
 
     public void setGpuName (String gpuName) {

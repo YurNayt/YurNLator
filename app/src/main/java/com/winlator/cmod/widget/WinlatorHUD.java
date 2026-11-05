@@ -152,6 +152,8 @@ public class WinlatorHUD extends View {
     private volatile String strGpu = "N/A", strCpuUsage = "N/A", strCpuTemp = "";
     private volatile String strRam = "N/A", strPwr = "N/A", strTmp = "", strFps = "0";
     private volatile String strRend = "Vulkan", gpuNameLabel = "";
+    /** API and layer from the game's log ("VKD3D 3.1 · DX12"): wins over the engine name / backend. */
+    private volatile String apiLabel = null;
 
     private volatile float wDynGpu, wDynCpuUsage, wDynCpuTemp, wDynRam, wDynPwr;
     private volatile float wDynTmp, wDynFps, wDynRend, wDynGpuName;
@@ -370,7 +372,7 @@ public class WinlatorHUD extends View {
     private void refreshBackendRenderer(boolean relayout) {
         if (mesaRendererActive) return;
         rendererLabel = resolveBackendRenderer();
-        strRend = rendererLabel;
+        strRend = apiLabel != null ? apiLabel : rendererLabel;
         wDynRend = pRend.measureText(strRend);
         if (relayout) requestRelayout();
     }
@@ -1414,7 +1416,7 @@ public class WinlatorHUD extends View {
             if (name != null && !name.trim().isEmpty()) {
                 mesaRendererActive = true;
                 rendererLabel = name.trim();
-                strRend = rendererLabel;
+                strRend = apiLabel != null ? apiLabel : rendererLabel;
                 wDynRend = pRend.measureText(strRend);
                 requestRelayout();
             } else {
@@ -1459,6 +1461,18 @@ public class WinlatorHUD extends View {
         }, 400);
     }
 
+    /** Shows the API / layer the game uses; doesn't show the HUD by itself. */
+    public void setApiLabel(String label) {
+        if (label == null || label.trim().isEmpty()) return;
+        apiLabel = label.trim();
+        uiHandler.post(() -> {
+            strRend = apiLabel;
+            wDynRend = pRend.measureText(strRend);
+            requestRelayout();
+            scheduleRedraw();
+        });
+    }
+
     public void setRenderer(String name) {
         if (name == null || name.trim().isEmpty()) return;
 
@@ -1467,7 +1481,7 @@ public class WinlatorHUD extends View {
         uiHandler.post(() -> {
             mesaRendererActive = true;
             rendererLabel = clean;
-            strRend = rendererLabel;
+            strRend = apiLabel != null ? apiLabel : rendererLabel;
             wDynRend = pRend.measureText(strRend);
             requestRelayout();
 
@@ -1498,6 +1512,9 @@ public class WinlatorHUD extends View {
      */
     static String compactGpu(String name, String driver) {
         if (name == null) return "";
+        // Freedreno's / the wrapper's short chip name: "FD750" -> "Adreno 750".
+        java.util.regex.Matcher fd = java.util.regex.Pattern.compile("(?i)^\\s*FD(\\d{3})\\s*$").matcher(name);
+        if (fd.find()) return "Adreno " + fd.group(1);
         String s = name.replaceAll("(?i)\\((tm|r)\\)", " ")
                 .replaceAll("\\s*\\([^)]*\\)", " ")
                 .replaceAll("(?i)\\b(qualcomm|arm|turnip|freedreno|panvk|panfrost|mesa|wrapper|vulkan|driver)\\b", " ")

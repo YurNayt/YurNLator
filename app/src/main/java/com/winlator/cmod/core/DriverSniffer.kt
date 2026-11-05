@@ -13,6 +13,8 @@ class DriverSniffer(private val onFound: (String) -> Unit) : Callback<String> {
     private val nonConformant = Regex("""(\w+) is not a conformant Vulkan implementation""")
     private val mesaBuild = Regex("""^([A-Za-z][\w .\-]{1,40}?) \(Mesa (\d+\.\d+[\w.\-]*)\)""")
     private val dxvkDriver = Regex("""^info:\s+Driver\s*:?\s*(?:Wrapper driver\s*)?([\w .\-]+)$""")
+    /** DXVK's adapter line, printed for DX12 games too: "Found device: Wrapper(Turnip Adreno (TM) 750) (Wrapper driver 26.99.99)". */
+    private val foundDevice = Regex("""Found device:\s*(.+?)\s*\((?:Wrapper driver|driver)\s*([\w.\-]+)\)""")
     private var family: String? = null
     private var build: String? = null
     private var version: String? = null
@@ -31,6 +33,19 @@ class DriverSniffer(private val onFound: (String) -> Unit) : Callback<String> {
             changed = true
         }
         if (version == null) dxvkDriver.find(line.trim())?.let { version = it.groupValues[1].trim(); changed = true }
+        foundDevice.find(line)?.let {
+            val dev = it.groupValues[1]
+            if (family == null) {
+                val f = when {
+                    dev.contains("Turnip", true) -> "Turnip"
+                    dev.contains("PanVK", true) -> "PanVK"
+                    dev.contains("Panfrost", true) -> "Panfrost"
+                    else -> null
+                }
+                if (f != null) { family = f; changed = true }
+            }
+            if (version == null) { version = it.groupValues[2]; changed = true }
+        }
         if (!changed) return
         val label = when {
             family != null && build != null -> "$family · $build"

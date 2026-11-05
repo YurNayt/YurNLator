@@ -511,6 +511,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             LogView.setFilename(getExecutable());
             ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
         }
+        // Which API and layer the game uses (VKD3D · DX12, DXVK · DX11…): the HUD's first item.
+        ProcessHelper.addDebugCallback(new com.winlator.cmod.core.ApiSniffer(lc.getDxwrapperConfig(), label -> {
+            if (modernHud != null) modernHud.setApiLabel(label);
+            if (classicHud != null) runOnUiThread(() -> classicHud.setApiLabel(label));
+            return kotlin.Unit.INSTANCE;
+        }));
         // Which driver the game really runs on (a wrapper may load its own): HUD + session info.
         ProcessHelper.addDebugCallback(new com.winlator.cmod.core.DriverSniffer(found -> {
             // Only a version number ("driver 26.99.99" from DXVK): name the configured driver.
