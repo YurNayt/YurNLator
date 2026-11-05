@@ -186,6 +186,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private com.winlator.cmod.session.WaylandSession waylandSession;
     /** The Vulkan driver the game reported at start (DriverSniffer); null until then. */
     private volatile String actualDriver;
+    /** From the game's log: "VKD3D 3.1 · DX12" (HUD + session info). */
+    private volatile String actualApi;
+    /** Full DXVK build from its banner: "3.1.1-1-gplasync-arm64ec". */
+    private volatile String dxvkBuild;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
     private HashMap<String, String> graphicsDriverConfig;
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
@@ -512,7 +516,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
         }
         // Which API and layer the game uses (VKD3D · DX12, DXVK · DX11…): the HUD's first item.
+        ProcessHelper.addDebugCallback(line -> {
+            if (dxvkBuild == null && line != null) {
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("^info:\\s+DXVK:\\s+v?(\\S+)").matcher(line.trim());
+                if (m.find()) dxvkBuild = m.group(1);
+            }
+        });
         ProcessHelper.addDebugCallback(new com.winlator.cmod.core.ApiSniffer(lc.getDxwrapperConfig(), label -> {
+            actualApi = label;
             if (modernHud != null) modernHud.setApiLabel(label);
             if (classicHud != null) runOnUiThread(() -> classicHud.setApiLabel(label));
             return kotlin.Unit.INSTANCE;
@@ -738,66 +749,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void handleCapturedPointer(MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_BUTTON_PRESS: {
-                int button = event.getActionButton();
-                if (button == MotionEvent.BUTTON_PRIMARY) {
-                    if (xServer.isRelativeMouseMovement()) winHandler.mouseEvent(MouseEventFlags.LEFTDOWN, 0, 0, 0);
-                    else xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
-                } else if (button == MotionEvent.BUTTON_SECONDARY) {
-                    if (xServer.isRelativeMouseMovement()) winHandler.mouseEvent(MouseEventFlags.RIGHTDOWN, 0, 0, 0);
-                    else xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT);
-                } else if (button == MotionEvent.BUTTON_TERTIARY) {
-                    if (xServer.isRelativeMouseMovement()) winHandler.mouseEvent(MouseEventFlags.MIDDLEDOWN, 0, 0, 0);
-                    else xServer.injectPointerButtonPress(Pointer.Button.BUTTON_MIDDLE);
-                }
-                break;
-            }
-            case MotionEvent.ACTION_BUTTON_RELEASE: {
-                int button = event.getActionButton();
-                if (button == MotionEvent.BUTTON_PRIMARY) {
-                    if (xServer.isRelativeMouseMovement()) winHandler.mouseEvent(MouseEventFlags.LEFTUP, 0, 0, 0);
-                    else xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
-                } else if (button == MotionEvent.BUTTON_SECONDARY) {
-                    if (xServer.isRelativeMouseMovement()) winHandler.mouseEvent(MouseEventFlags.RIGHTUP, 0, 0, 0);
-                    else xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
-                } else if (button == MotionEvent.BUTTON_TERTIARY) {
-                    if (xServer.isRelativeMouseMovement()) winHandler.mouseEvent(MouseEventFlags.MIDDLEUP, 0, 0, 0);
-                    else xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_MIDDLE);
-                }
-                break;
-            }
-            case MotionEvent.ACTION_MOVE:
-            case MotionEvent.ACTION_HOVER_MOVE: {
-                float[] p = XForm.transformPoint(xform, event.getX(), event.getY());
-                int dx = (int) p[0];
-                int dy = (int) p[1];
-                if (xServer.isRelativeMouseMovement())
-                    winHandler.mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
-                else
-                    xServer.injectPointerMoveDelta(dx, dy);
-                break;
-            }
-            case MotionEvent.ACTION_SCROLL: {
-                float scrollY = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
-                if (scrollY <= -1.0f) {
-                    if (xServer.isRelativeMouseMovement()) {
-                        winHandler.mouseEvent(MouseEventFlags.WHEEL, 0, 0, (int) scrollY * 270);
-                    } else {
-                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_DOWN);
-                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_DOWN);
-                    }
-                } else if (scrollY >= 1.0f) {
-                    if (xServer.isRelativeMouseMovement()) {
-                        winHandler.mouseEvent(MouseEventFlags.WHEEL, 0, 0, (int) scrollY * 270);
-                    } else {
-                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_UP);
-                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_UP);
-                    }
-                }
-                break;
-            }
-        }
+        com.winlator.cmod.session.CapturedMouse.handle(event, xServer, winHandler, xform);
     }
 
     @Override
@@ -1888,7 +1840,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             int savedFpsPos = savedFps.isEmpty() ? 0 : Integer.parseInt(savedFps);
             if (savedFpsPos < 0 || savedFpsPos >= fpsLabels.length) savedFpsPos = 0;
             spNativeFPS.setSelection(savedFpsPos);
-            int initialFpsLimit = savedFpsPos < fpsValues.length ? fpsValues[savedFpsPos] : 0;
+            int initialFpsLimit = com.winlator.cmod.session.FpsLimit.saved(container);
             if (vkRenderer != null) vkRenderer.setFpsLimit(initialFpsLimit);
             if (eglRenderer != null) eglRenderer.setFpsLimit(initialFpsLimit);
             if (displayXRenderer != null) displayXRenderer.setFpsLimit(initialFpsLimit);
@@ -1900,10 +1852,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     if (vkRenderer != null) vkRenderer.setFpsLimit(fpsLimit);
                     if (eglRenderer != null) eglRenderer.setFpsLimit(fpsLimit);
                     if (displayXRenderer != null) displayXRenderer.setFpsLimit(fpsLimit);
-                    if (!isVulkanRenderer && container != null) {
-                        container.putExtra("graphicsFpsPreset", String.valueOf(pos));
-                        container.saveData();
-                    }
+                    if (!isVulkanRenderer) com.winlator.cmod.session.FpsLimit.save(container, fpsLimit);
                 }
                 @Override public void onNothingSelected(AdapterView<?> p) {}
             });
@@ -2726,61 +2675,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private boolean quickMenuLogs = false;
 
     /** Frame generation setting: the game's own value first, then the container's. */
+    private com.winlator.cmod.session.FrameGenSession frameGen() {
+        return new com.winlator.cmod.session.FrameGenSession(shortcut, container);
+    }
+
     private String frameGenSetting(String key, String fallback) {
-        String v = shortcut != null ? shortcut.getExtra(key, "") : "";
-        if (v.isEmpty() && container != null) v = container.getExtra(key, "");
-        return v.isEmpty() ? fallback : v;
+        return frameGen().setting(key, fallback);
     }
 
     /** Frame generation runs in the host Vulkan renderer (win-fg or LSFG), switched live. */
     private void applyFrameGen() {
-        if (!(xServerView instanceof VulkanXServerView)) return;
-        VulkanXServerView view = (VulkanXServerView) xServerView;
-        int mult = 2, preset = 1;
-        float flow = 0.6f;
-        try { mult = Integer.parseInt(frameGenSetting("frameGenMultiplier", "2")); } catch (Exception ignored) {}
-        try { preset = Integer.parseInt(frameGenSetting("frameGenPreset", "1")); } catch (Exception ignored) {}
-        try { flow = Float.parseFloat(frameGenSetting("frameGenFlowScale", "0.6")); } catch (Exception ignored) {}
-        boolean on = WinFrameGen.ON.equals(frameGenSetting("frameGen", WinFrameGen.OFF));
-        int target = 0;
-        try { target = Integer.parseInt(frameGenSetting("frameGenTarget", "0")); } catch (Exception ignored) {}
-        view.setFrameGenTarget(target);
-        final int fMult = mult, fPreset = preset;
-        final float fFlow = flow;
-        if (on && WinFrameGen.ENGINE_LSFG.equals(frameGenEngine())) {
-            if (!com.winlator.cmod.core.LsfgNative.isDllAvailable(this)) {
-                Toast.makeText(this, "LSFG: import your Lossless.dll in Settings › Frame generation. Using Win-FG.", Toast.LENGTH_LONG).show();
-                view.setFrameGenEngine(0, null);
-                view.setFrameGen(true, mult, preset, flow);
-                return;
-            }
-            // The shader cache is built at import; checked (and rebuilt if the DLL changed) off the UI thread.
-            Executors.newSingleThreadExecutor().execute(() -> {
-                int status = com.winlator.cmod.core.LsfgNative.ensureCache(this, true);
-                runOnUiThread(() -> {
-                    if (status == com.winlator.cmod.core.LsfgNative.STATUS_OK) {
-                        view.setFrameGenEngine(1, com.winlator.cmod.core.LsfgNative.cacheFile(this).getAbsolutePath());
-                    } else {
-                        Toast.makeText(this, "LSFG: " + com.winlator.cmod.core.LsfgNative.explain(status) + ". Using Win-FG.", Toast.LENGTH_LONG).show();
-                        view.setFrameGenEngine(0, null);
-                    }
-                    view.setFrameGen(true, fMult, fPreset, fFlow);
-                    // The engine starts on the next frame: report a device that can't run it.
-                    xServerView.postDelayed(() -> {
-                        String why = view.lsfgProblem();
-                        if (why != null) Toast.makeText(this, "LSFG can't run: " + why, Toast.LENGTH_LONG).show();
-                    }, 2500);
-                });
-            });
-            return;
-        }
-        view.setFrameGenEngine(WinFrameGen.ENGINE_WFG.equals(frameGenEngine()) ? 2 : 0, null);
-        view.setFrameGen(on, mult, preset, flow);
+        if (xServerView instanceof VulkanXServerView) frameGen().apply(this, (VulkanXServerView) xServerView);
     }
 
     private String frameGenEngine() {
-        String e = frameGenSetting("frameGenEngine", "");
-        return e.isEmpty() ? WinFrameGen.defaultEngine(this) : e;
+        return frameGen().engine(this);
     }
 
     // FPS follows the window that actually renders: games often draw into a new window after a
@@ -2932,20 +2841,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         @Override public int fpsLimit() {
-            String v = extra("graphicsFpsLimit");
-            if (!v.isEmpty()) return parseInt(v, 0);
-            int idx = parseInt(extra("graphicsFpsPreset"), 0);
-            return idx >= 0 && idx < LEGACY_FPS.length ? LEGACY_FPS[idx] : 0;
+            return com.winlator.cmod.session.FpsLimit.saved(container);
         }
 
         @Override public void setFpsLimit(int fps) {
             applyFps(fps);
-            if (container == null) return;
-            int legacy = 0;
-            for (int i = 0; i < LEGACY_FPS.length; i++) if (LEGACY_FPS[i] == fps) legacy = i;
-            container.putExtra("graphicsFpsPreset", String.valueOf(legacy));
-            container.putExtra("graphicsFpsLimit", String.valueOf(fps));
-            container.saveData();
+            com.winlator.cmod.session.FpsLimit.save(container, fps);
         }
 
         // ---- Screen ----
@@ -3197,13 +3098,37 @@ public class XServerDisplayActivity extends AppCompatActivity {
         @Override public void showKeyboard() { AppUtils.showKeyboard(XServerDisplayActivity.this); }
         @Override public void vibrationSettings() { showVibrationDialog(); }
 
+        /** "DXVK 3.1.1-1-gplasync-arm64ec + VKD3D 3.1-arm64ec": names and full versions, not just "DXVK+VKD3D". */
+        private String dxWrapperFullName() {
+            if (dxwrapper == null) return "";
+            String cfg = launchConfig != null ? launchConfig.getDxwrapperConfig() : "";
+            String dxvk = dxvkBuild != null ? dxvkBuild : cfgValue(cfg, "version");
+            String vkd3d = cfgValue(cfg, "vkd3dVersion");
+            String w = dxwrapper.toLowerCase(java.util.Locale.ENGLISH);
+            ArrayList<String> parts = new ArrayList<>();
+            if (w.contains("dxvk")) parts.add("DXVK" + (dxvk.isEmpty() ? "" : " " + dxvk));
+            if (w.contains("vkd3d")) parts.add("VKD3D" + (vkd3d.isEmpty() ? "" : " " + vkd3d));
+            if (w.contains("wined3d")) parts.add("WineD3D");
+            return parts.isEmpty() ? dxwrapper : android.text.TextUtils.join(" + ", parts);
+        }
+
+        private String cfgValue(String cfg, String key) {
+            if (cfg == null) return "";
+            for (String kv : cfg.split(",")) {
+                int i = kv.indexOf('=');
+                if (i > 0 && kv.substring(0, i).trim().equals(key)) return kv.substring(i + 1).trim();
+            }
+            return "";
+        }
+
         // ---- Tasks ----
         @Override public java.util.List<QmInfo> sessionInfo() {
             ArrayList<QmInfo> out = new ArrayList<>();
             out.add(new QmInfo("Wine", wineInfo != null ? wineInfo.toString() : (container != null ? container.getWineVersion() : "")));
             out.add(new QmInfo("Display backend", waylandMode ? "Wayland (compositor)" : "X11"
                     + (launchConfig != null && launchConfig.getWayland() ? " (Wayland not available with this Proton)" : "")));
-            out.add(new QmInfo("DX wrapper", dxwrapper != null ? dxwrapper.toUpperCase(java.util.Locale.ENGLISH) : ""));
+            out.add(new QmInfo("DX wrapper", dxWrapperFullName()));
+            if (actualApi != null) out.add(new QmInfo("Game uses", actualApi));
             String renderer = xServerView instanceof VulkanXServerView ? "Vulkan"
                     : xServerView instanceof EGLXServerView ? "OpenGL (EGL)" : "Native display";
             out.add(new QmInfo("Renderer", renderer));
