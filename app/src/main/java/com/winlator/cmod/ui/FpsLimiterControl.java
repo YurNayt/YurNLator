@@ -226,6 +226,9 @@ public class FpsLimiterControl extends LinearLayout {
         }
 
         if ("0".equals(oldEnabled)) limit = 0;
+        // The quick menu saves the limit here: it's the current one.
+        if (!container.getExtra("graphicsFpsLimit", "").isEmpty())
+            limit = com.winlator.cmod.session.FpsLimit.saved(container);
 
         if (limit >= SLIDER_MAX_FPS || (limit > 0 && limit % STEP_FPS != 0)) {
             slider.setProgress(CUSTOM_POSITION);
@@ -260,18 +263,19 @@ public class FpsLimiterControl extends LinearLayout {
         }
 
         XServerRendererView renderer = activity.getXServerView();
-        if (renderer != null) renderer.setFpsLimit(chosen);
+        if (container != null) com.winlator.cmod.session.FpsLimit.save(container, chosen);
+        activity.applyFpsLimit(chosen);
     }
 
     private void applyCurrentLimit() {
         XServerDisplayActivity activity = findActivity();
-        if (activity != null && activity.getXServerView() != null) {
-            activity.getXServerView().setFpsLimit(getChosenLimit());
-        }
+        if (activity != null) activity.applyFpsLimit(getChosenLimit());
     }
 
     private void applyEffectiveLimit(XServerRendererView renderer) {
-        renderer.setFpsLimit(getChosenLimit());
+        XServerDisplayActivity activity = findActivity();
+        if (activity != null) activity.applyFpsLimit(getChosenLimit());
+        else renderer.setFpsLimit(getChosenLimit());
     }
 
     private int getChosenLimit() {

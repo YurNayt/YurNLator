@@ -31,6 +31,12 @@ public final class FpsLimit {
         return 0;
     }
 
+    /** The Wayland compositor holds each released buffer to the limit's cadence. */
+    public static void applyWayland(int fps) {
+        try { com.winlator.cmod.wayland.WaylandCompositor.nativeSetFpsLimit(Math.max(0, fps)); }
+        catch (Throwable t) { android.util.Log.w("FpsLimit", "wayland limit: " + t); }
+    }
+
     public static void save(Container container, int fps) {
         if (container == null) return;
         container.putExtra("graphicsFpsPreset", String.valueOf(legacyIndex(fps)));

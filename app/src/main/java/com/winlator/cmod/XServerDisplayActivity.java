@@ -1840,19 +1840,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
             int savedFpsPos = savedFps.isEmpty() ? 0 : Integer.parseInt(savedFps);
             if (savedFpsPos < 0 || savedFpsPos >= fpsLabels.length) savedFpsPos = 0;
             spNativeFPS.setSelection(savedFpsPos);
-            int initialFpsLimit = com.winlator.cmod.session.FpsLimit.saved(container);
-            if (vkRenderer != null) vkRenderer.setFpsLimit(initialFpsLimit);
-            if (eglRenderer != null) eglRenderer.setFpsLimit(initialFpsLimit);
-            if (displayXRenderer != null) displayXRenderer.setFpsLimit(initialFpsLimit);
+            applyFpsLimit(com.winlator.cmod.session.FpsLimit.saved(container));
+            final int initialPos = savedFpsPos;
             spNativeFPS.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                // A spinner reports its initial selection once laid out: that isn't a choice, and it
+                // used to replace a limit saved from the quick menu (e.g. 45) with the legacy one.
+                boolean first = true;
                 @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                    if (first) { first = false; if (pos == initialPos) return; }
                     if (llStandardOptions != null) llStandardOptions.setVisibility(isVulkanRenderer ? View.VISIBLE : View.GONE);
                     if (llFrameGenOptions != null) llFrameGenOptions.setVisibility(View.GONE);
                     int fpsLimit = pos < fpsValues.length ? fpsValues[pos] : 0;
-                    if (vkRenderer != null) vkRenderer.setFpsLimit(fpsLimit);
-                    if (eglRenderer != null) eglRenderer.setFpsLimit(fpsLimit);
-                    if (displayXRenderer != null) displayXRenderer.setFpsLimit(fpsLimit);
-                    if (!isVulkanRenderer) com.winlator.cmod.session.FpsLimit.save(container, fpsLimit);
+                    applyFpsLimit(fpsLimit);
+                    com.winlator.cmod.session.FpsLimit.save(container, fpsLimit);
                 }
                 @Override public void onNothingSelected(AdapterView<?> p) {}
             });
@@ -2430,6 +2430,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
     }
 
+    /** The host FPS limit: X11 paces the game's Present idles, Wayland its buffer releases. */
+    public void applyFpsLimit(int fps) {
+        if (xServerView != null) xServerView.setFpsLimit(fps);
+        if (waylandMode) com.winlator.cmod.session.FpsLimit.applyWayland(fps);
+    }
+
     public InputControlsView getInputControlsView() {
         return inputControlsView;
     }
@@ -2837,7 +2843,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         @Override public void resetHud() { if (modernHud != null) modernHud.forceReset(); }
 
         private void applyFps(int fps) {
-            if (xServerView != null) xServerView.setFpsLimit(fps);
+            applyFpsLimit(fps);
         }
 
         @Override public int fpsLimit() {
@@ -3105,6 +3111,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             String dxvk = dxvkBuild != null ? dxvkBuild : cfgValue(cfg, "version");
             String vkd3d = cfgValue(cfg, "vkd3dVersion");
             String w = dxwrapper.toLowerCase(java.util.Locale.ENGLISH);
+            // Once the game showed which layer it uses: that one, in full, with the API.
+            String api = actualApi;
+            if (api != null && api.contains(" · ")) {
+                String apiName = api.substring(api.lastIndexOf(" · ") + 3);
+                if (api.startsWith("VKD3D")) return "VKD3D" + (vkd3d.isEmpty() ? "" : " " + vkd3d) + " · " + apiName;
+                if (api.startsWith("DXVK")) return "DXVK" + (dxvk.isEmpty() ? "" : " " + dxvk) + " · " + apiName;
+            }
             ArrayList<String> parts = new ArrayList<>();
             if (w.contains("dxvk")) parts.add("DXVK" + (dxvk.isEmpty() ? "" : " " + dxvk));
             if (w.contains("vkd3d")) parts.add("VKD3D" + (vkd3d.isEmpty() ? "" : " " + vkd3d));
@@ -3128,14 +3141,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
             out.add(new QmInfo("Display backend", waylandMode ? "Wayland (compositor)" : "X11"
                     + (launchConfig != null && launchConfig.getWayland() ? " (Wayland not available with this Proton)" : "")));
             out.add(new QmInfo("DX wrapper", dxWrapperFullName()));
-            if (actualApi != null) out.add(new QmInfo("Game uses", actualApi));
             String renderer = xServerView instanceof VulkanXServerView ? "Vulkan"
                     : xServerView instanceof EGLXServerView ? "OpenGL (EGL)" : "Native display";
             out.add(new QmInfo("Renderer", renderer));
             if (graphicsDriverConfig != null) {
                 String driver = graphicsDriverConfig.get("version");
                 if (driver != null && !driver.isEmpty()) out.add(new QmInfo("Graphics driver", driver));
-                if (actualDriver != null) out.add(new QmInfo("Running on", actualDriver));
+                // Only when it says something the configured driver's name doesn't ("Turnip" vs "Mesa Turnip v27…").
+                if (actualDriver != null && (driver == null || !driver.toLowerCase(java.util.Locale.ENGLISH)
+                        .contains(actualDriver.toLowerCase(java.util.Locale.ENGLISH))))
+                    out.add(new QmInfo("Running on", actualDriver));
                 String wrapper = graphicsDriverConfig.get("wrapper");
                 if (wrapper != null && !wrapper.isEmpty()) out.add(new QmInfo("Vulkan wrapper", wrapper));
             }
