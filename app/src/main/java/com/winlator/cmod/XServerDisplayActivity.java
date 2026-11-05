@@ -992,7 +992,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 shortcut != null,
                 new com.winlator.cmod.session.WaylandSession.Listener() {
             @Override public void onFirstFrame() { preloaderDialog.closeOnUiThread(); }
-            @Override public void onGameFrame() { if (modernHud != null) modernHud.onFrame(); }
+            private boolean shown = false;
+            @Override public void onGameFrame() {
+                // Also a game frame closes the loading screen (in case the compositor's first-frame signal is missed).
+                if (!shown) { shown = true; preloaderDialog.closeOnUiThread(); }
+                if (modernHud != null) modernHud.onFrame();
+            }
             @Override public void onGameSurface(String window, String gpuName) {
                 if (window != null && gpuName != null && modernHud != null) {
                     modernHud.setGpuName(gpuName);
@@ -2427,6 +2432,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        // Quick menu / sidebar open: its text fields (custom FPS…) get the keys first. The game's
+        // keyboard took them before, and nothing could be typed there.
+        if (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START)
+                && event.getKeyCode() != KeyEvent.KEYCODE_BACK
+                && event.getKeyCode() != KeyEvent.KEYCODE_BUTTON_MODE
+                && event.getKeyCode() != KeyEvent.KEYCODE_BUTTON_SELECT
+                && !ExternalController.isGameController(event.getDevice())) {
+            return super.dispatchKeyEvent(event);
+        }
 
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE || event.getKeyCode() == KeyEvent.KEYCODE_HOME

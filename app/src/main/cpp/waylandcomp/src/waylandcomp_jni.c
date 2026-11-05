@@ -645,6 +645,15 @@ Java_com_winlator_cmod_wayland_WaylandCompositor_nativeSetLookName(JNIEnv *env, 
     free(s);
 }
 
+/* A new game session in the same app process: the first-frame signal (which dismisses the
+ * loading screen) is one-shot per process, so a second launch kept the loading screen up over
+ * a running game (its sound playing). */
+extern void vkp_reset_first_frame(void);
+JNIEXPORT void JNICALL
+Java_com_winlator_cmod_wayland_WaylandCompositor_nativeResetFirstFrame(JNIEnv *env, jclass clazz) {
+    vkp_reset_first_frame();
+}
+
 /* The in-game FPS limiter: frames per second, 0 = unlimited. */
 JNIEXPORT void JNICALL
 Java_com_winlator_cmod_wayland_WaylandCompositor_nativeSetFpsLimit(JNIEnv *env, jclass clazz, jint fps) {

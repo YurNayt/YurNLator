@@ -100,6 +100,7 @@ public final class WaylandSession {
         try { FileUtils.copy(activity, "wayland/keymap.xkb", new File(rt, "keymap.xkb")); }
         catch (Exception e) { Log.e(TAG, "keymap extract failed", e); }
 
+        try { WaylandCompositor.nativeResetFirstFrame(); } catch (Throwable t) { Log.w(TAG, "first frame reset", t); }
         WaylandCompositor.setFirstFrameListener(() -> activity.runOnUiThread(listener::onFirstFrame));
         WaylandCompositor.setGameListener(new WaylandCompositor.GameListener() {
             @Override public void onGameSurface(String window, String gpuName) { listener.onGameSurface(window, gpuName); }
