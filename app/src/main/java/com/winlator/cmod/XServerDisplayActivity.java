@@ -1040,85 +1040,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * server and would win Wine's driver choice, so it is hidden (renamed) on Wayland and restored on
      * the next X11 launch (Bannerlator's approach).
      */
-    private void setWineDisplayDriver() {
-        File userReg = new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg");
-        try (WineRegistryEditor reg = new WineRegistryEditor(userReg)) {
-            if (waylandMode) {
-                reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "wayland");
-                reg.setStringValue("Software\\Wine\\Explorer", "Desktop", "shell");
-                reg.setStringValue("Software\\Wine\\Explorer\\Desktops", "shell", String.valueOf(xServer.screenInfo));
-            } else if ("wayland".equals(reg.getStringValue("Software\\Wine\\Drivers", "Graphics", ""))) {
-                reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "x11");
-                if ("shell".equals(reg.getStringValue("Software\\Wine\\Explorer", "Desktop", ""))) {
-                    reg.removeValue("Software\\Wine\\Explorer", "Desktop");
-                    reg.removeValue("Software\\Wine\\Explorer\\Desktops", "shell");
-                }
-            }
-        } catch (Exception e) {
-            Log.e("XServerDisplayActivity", "wayland: registry", e);
-        }
-        if (wineInfo == null || wineInfo.path == null) return;
-        for (String arch : new String[]{"aarch64-windows", "i386-windows", "x86_64-windows"}) {
-            File drv = new File(wineInfo.path, "lib/wine/" + arch + "/winex11.drv");
-            File bak = new File(wineInfo.path, "lib/wine/" + arch + "/winex11.drv.bak");
-            if (waylandMode) { if (drv.exists() && !bak.exists()) drv.renameTo(bak); }
-            else if (bak.exists() && !drv.exists()) bak.renameTo(drv);
-        }
-    }
 
+    /** Gets the prefix ready for this launch: session/PrefixSetup (YurNLator base, part 5). */
     private void setupWineSystemFiles() {
-        String imgVersion = String.valueOf(imageFs.getVersion());
-        boolean containerDataChanged = false;
-        setWineDisplayDriver();
-
-        if (!container.getExtra("imgVersion").equals(imgVersion)) {
-            applyGeneralPatches(container);
-            container.putExtra("imgVersion", imgVersion);
-            containerDataChanged = true;
-        }
-
-        DxWrapperFiles dxFiles = dxWrapperFiles();
-        String dxwrapper = DxWrapperFiles.wrapperId(this.dxwrapper, dxwrapperConfig.get("version"),
-                dxwrapperConfig.get("vkd3dVersion"), dxwrapperConfig.get("ddrawrapper"));
-        if (dxFiles.filesMissing(dxwrapper) || !dxwrapper.equals(container.getExtra("dxwrapper"))) {
-            dxFiles.install(dxwrapper, envVars);
-            container.putExtra("dxwrapper", dxwrapper);
-            containerDataChanged = true;
-        }
-
-        String wincomponents = launchConfig.getWinComponents();
-        if (!wincomponents.equals(container.getExtra("wincomponents"))) {
-            extractWinComponentFiles();
-            container.putExtra("wincomponents", wincomponents);
-            containerDataChanged = true;
-        }
-
-        String desktopTheme = container.getDesktopTheme();
-        if (!(desktopTheme + "," + xServer.screenInfo).equals(container.getExtra("desktopTheme"))) {
-            WineThemeManager.apply(this, new WineThemeManager.ThemeInfo(desktopTheme), xServer.screenInfo);
-            container.putExtra("desktopTheme", desktopTheme + "," + xServer.screenInfo);
-            containerDataChanged = true;
-        }
-
-        WineStartMenuCreator.create(this, container);
-        WineUtils.createDosdevicesSymlinks(container);
-
-        int inputType = launchConfig.getInputType();
-        boolean dinputEnabled = (inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT;
-
-        boolean exclusiveXInput = launchConfig.getExclusiveXInput();
-
-        WineUtils.setJoystickRegistryKeys(container, dinputEnabled, exclusiveXInput);
-
         startupSelection = launchConfig.getStartupSelection();
-
-        if (!startupSelection.equals(container.getExtra("startupSelection"))) {
-            WineUtils.changeServicesStatus(container, startupSelection);
-            container.putExtra("startupSelection", startupSelection);
-            containerDataChanged = true;
-        }
-        if (containerDataChanged)
-            container.saveData();
+        String wrapperId = DxWrapperFiles.wrapperId(this.dxwrapper, dxwrapperConfig.get("version"),
+                dxwrapperConfig.get("vkd3dVersion"), dxwrapperConfig.get("ddrawrapper"));
+        new com.winlator.cmod.session.PrefixSetup(this, imageFs, wineInfo, container, launchConfig, xServer.screenInfo,
+                waylandMode, firstTimeBoot, onExtractFileListener, dxWrapperFiles()).run(wrapperId, envVars);
     }
 
     private void setupXEnvironment() throws PackageManager.NameNotFoundException {
@@ -2431,28 +2360,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private String getSelectedOpenGLDriver() {
-        return "freedreno".equalsIgnoreCase(graphicsDriver) ? "freedreno" : "zink";
-    }
-
-    private void extractOpenGLDriver(File rootDir) {
-        String selectedDriver = getSelectedOpenGLDriver();
-        String installedDriver = container.getExtra("installedOpenGLDriver", "");
-
-        if (!firstTimeBoot && selectedDriver.equals(installedDriver))
-            return;
-
-        Log.d("XServerDisplayActivity", "Installing OpenGL driver " + selectedDriver
-                + " (installed: '" + installedDriver + "')");
-
-        boolean extracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this,
-                "graphics_driver/opengl_" + selectedDriver + ".tzst", rootDir);
-        if (!extracted) {
-            Log.e("XServerDisplayActivity", "Failed to extract OpenGL driver " + selectedDriver);
-            return;
-        }
-
-        container.putExtra("installedOpenGLDriver", selectedDriver);
-        container.saveData();
+        return com.winlator.cmod.session.GraphicsDriverFiles.openGLDriver(graphicsDriver);
     }
 
     private boolean isMesaGlVersionOverrideManual() {
@@ -2493,19 +2401,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    /** Puts the chosen BCn layer build into the image (only when it changed since last time). */
     private void installBcnLayer(File rootDir, boolean legacy) {
-        String asset = legacy ? "graphics_driver/leegao_bcn_legacy.tzst" : "graphics_driver/leegao_bcn.tzst";
-        File marker = new File(rootDir, "usr/lib/.yurn-bcn-layer");
-        String want = asset + ":" + FileUtils.getSize(this, asset);
-        String have = marker.isFile() ? FileUtils.readString(marker).trim() : "";
-        if (want.equals(have) && new File(rootDir, "usr/lib/libbcn_layer.so").isFile()) return;
-        // version.txt at the root would overwrite the graphics driver's own: skip it.
-        com.winlator.cmod.core.OnExtractFileListener skipVersion = (file, size) ->
-                file.getName().equals("version.txt") && rootDir.equals(file.getParentFile()) ? null : file;
-        if (TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, asset, rootDir, skipVersion)) {
-            FileUtils.writeString(marker, want);
-        }
+        com.winlator.cmod.session.GraphicsDriverFiles.installBcnLayer(this, rootDir, legacy);
     }
 
     private void extractGraphicsDriverFiles() {
@@ -2533,26 +2430,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
 
-        File graphicsRuntimeMarker = new File(rootDir,
-                "usr/lib/.winlator-graphics-runtime-c7474f7e-25b50a11-v2");
-        boolean builtinWrapperExtracted = false;
-        if (firstTimeBoot || !graphicsRuntimeMarker.isFile()) {
-            builtinWrapperExtracted = true;
-            Log.d("XServerDisplayActivity", "Installing paired Pipetto wrapper and common graphics runtime");
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst",
-                    rootDir);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers" + ".tzst", rootDir);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs" + ".tzst",
-                    rootDir);
-            FileUtils.writeString(graphicsRuntimeMarker,
-                    "wrapper=c7474f7e;extra_libs=25b50a11;layers=9d57736d;opengl=split-v1");
-        }
-
-        // YurNLator: the container / game's chosen Vulkan wrapper ("wrapper=" in the graphics
-        // driver config; built-in when unset). Only re-extracted when it changes.
-        WrapperManager.applySelected(this, rootDir, graphicsDriverConfig.get("wrapper"), builtinWrapperExtracted);
-
-        extractOpenGLDriver(rootDir);
+        // Graphics runtime, chosen wrapper and OpenGL driver: session/GraphicsDriverFiles (base, part 5).
+        com.winlator.cmod.session.GraphicsDriverFiles.installRuntime(this, rootDir, firstTimeBoot, graphicsDriverConfig.get("wrapper"));
+        com.winlator.cmod.session.GraphicsDriverFiles.installOpenGL(this, rootDir, container, graphicsDriver, firstTimeBoot);
 
         if (!"System".equals(adrenoToolsDriverId)) {
             AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
@@ -2629,11 +2509,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return new DxWrapperFiles(this, imageFs, wineInfo, contentsManager, onExtractFileListener);
     }
 
-    private void extractWinComponentFiles() {
-        com.winlator.cmod.session.WinComponentFiles.apply(this, imageFs, container, launchConfig.getWinComponents(),
-                container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS), firstTimeBoot,
-                onExtractFileListener, this::restoreOriginalDllFiles);
-    }
 
     private void restoreOriginalDllFiles(final String... dlls) {
         dxWrapperFiles().restoreOriginal(dlls);
@@ -2831,13 +2706,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return -1;
     }
 
-    private void applyGeneralPatches(Container container) {
-        File rootDir = imageFs.getRootDir();
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "container_pattern_common.tzst", rootDir);
-        WineUtils.applySystemTweaks(this, wineInfo);
-        container.putExtra("graphicsDriver", null);
-        container.putExtra("desktopTheme", null);
-    }
 
     private void assignTaskAffinity(Window window) {
         if (taskAffinityMask == 0 || taskAffinityMaskWoW64 == 0)
