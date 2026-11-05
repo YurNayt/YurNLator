@@ -1836,11 +1836,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             ArrayAdapter<String> a = createSidebarSpinnerAdapter(fpsLabels);
             a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spNativeFPS.setAdapter(a);
-            String savedFps = container != null ? container.getExtra("graphicsFpsPreset") : "";
-            int savedFpsPos = savedFps.isEmpty() ? 0 : Integer.parseInt(savedFps);
+            int savedFpsPos = com.winlator.cmod.session.FpsLimit.legacyIndex(com.winlator.cmod.session.FpsLimit.saved(container, shortcut));
             if (savedFpsPos < 0 || savedFpsPos >= fpsLabels.length) savedFpsPos = 0;
             spNativeFPS.setSelection(savedFpsPos);
-            applyFpsLimit(com.winlator.cmod.session.FpsLimit.saved(container));
+            applyFpsLimit(com.winlator.cmod.session.FpsLimit.saved(container, shortcut));
             final int initialPos = savedFpsPos;
             spNativeFPS.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 // A spinner reports its initial selection once laid out: that isn't a choice, and it
@@ -1852,7 +1851,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     if (llFrameGenOptions != null) llFrameGenOptions.setVisibility(View.GONE);
                     int fpsLimit = pos < fpsValues.length ? fpsValues[pos] : 0;
                     applyFpsLimit(fpsLimit);
-                    com.winlator.cmod.session.FpsLimit.save(container, fpsLimit);
+                    com.winlator.cmod.session.FpsLimit.save(container, shortcut, fpsLimit);
                 }
                 @Override public void onNothingSelected(AdapterView<?> p) {}
             });
@@ -2344,7 +2343,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         File rootDir = imageFs.getRootDir();
 
         if (dxwrapper.contains("dxvk")) {
-            DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
+            // The FPS limit is the host's (session/FpsLimit), changeable during play: DXVK's own
+            // limiter reads it once at start and would keep capping at the start value.
+            KeyValueSet dxvkConfig = new KeyValueSet(dxwrapperConfig.toString());
+            dxvkConfig.put("framerate", "0");
+            DXVKConfigDialog.setEnvVars(this, dxvkConfig, envVars);
             String version = dxwrapperConfig.get("version");
             if (version != null && version.contains("sarek")) {
                 Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
@@ -2435,6 +2438,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (xServerView != null) xServerView.setFpsLimit(fps);
         if (waylandMode) com.winlator.cmod.session.FpsLimit.applyWayland(fps);
     }
+
+    public Shortcut getShortcut() { return shortcut; }
 
     public InputControlsView getInputControlsView() {
         return inputControlsView;
@@ -2783,8 +2788,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         /** Re-applies what the menu saved last time (after the old sidebar applied its own). */
         void applySaved() {
-            String fps = extra("graphicsFpsLimit");
-            if (!fps.isEmpty()) applyFps(parseInt(fps, 0));
+            applyFps(com.winlator.cmod.session.FpsLimit.saved(container, shortcut));
             int filter = parseInt(extra("graphicsFilterMode"), 0);
             upscalerMode = filter >= 2 ? filter - 2 : -1;
             sharp = parseInt(extra("graphicsSharpness"), 50);
@@ -2847,12 +2851,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         @Override public int fpsLimit() {
-            return com.winlator.cmod.session.FpsLimit.saved(container);
+            return com.winlator.cmod.session.FpsLimit.saved(container, shortcut);
         }
 
         @Override public void setFpsLimit(int fps) {
             applyFps(fps);
-            com.winlator.cmod.session.FpsLimit.save(container, fps);
+            com.winlator.cmod.session.FpsLimit.save(container, shortcut, fps);
         }
 
         // ---- Screen ----

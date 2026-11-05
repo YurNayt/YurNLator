@@ -197,38 +197,8 @@ public class FpsLimiterControl extends LinearLayout {
     private void loadState(Container container) {
         initializing = true;
 
-        String savedLimit;
-        String oldPreset;
-        String oldEnabled;
-
-        Shortcut shortcutStore = openShortcutStore(container);
-        if (shortcutStore != null) {
-            savedLimit = shortcutStore.getExtra(EXTRA_LIMIT, "");
-            oldPreset = shortcutStore.getExtra("graphicsFpsPreset", "");
-            oldEnabled = shortcutStore.getExtra(EXTRA_ENABLED, "");
-
-            if (savedLimit.isEmpty() && oldPreset.isEmpty() && oldEnabled.isEmpty()) {
-                savedLimit = container.getExtra(EXTRA_LIMIT, "");
-                oldPreset = container.getExtra("graphicsFpsPreset", "");
-                oldEnabled = container.getExtra(EXTRA_ENABLED, "");
-            }
-        } else {
-            savedLimit = container.getExtra(EXTRA_LIMIT, "");
-            oldPreset = container.getExtra("graphicsFpsPreset", "");
-            oldEnabled = container.getExtra(EXTRA_ENABLED, "");
-        }
-
-        int limit = parsePositiveOrZero(savedLimit);
-        if (savedLimit.isEmpty()) {
-            int oldIndex = parsePositiveOrZero(oldPreset);
-            int[] oldValues = {0, 30, 60, 90, 120};
-            limit = oldIndex >= 0 && oldIndex < oldValues.length ? oldValues[oldIndex] : 0;
-        }
-
-        if ("0".equals(oldEnabled)) limit = 0;
-        // The quick menu saves the limit here: it's the current one.
-        if (!container.getExtra("graphicsFpsLimit", "").isEmpty())
-            limit = com.winlator.cmod.session.FpsLimit.saved(container);
+        XServerDisplayActivity host = findActivity();
+        int limit = com.winlator.cmod.session.FpsLimit.saved(container, host != null ? host.getShortcut() : null);
 
         if (limit >= SLIDER_MAX_FPS || (limit > 0 && limit % STEP_FPS != 0)) {
             slider.setProgress(CUSTOM_POSITION);
@@ -245,25 +215,8 @@ public class FpsLimiterControl extends LinearLayout {
     private void saveAndApply() {
         XServerDisplayActivity activity = findActivity();
         if (activity == null) return;
-
         int chosen = getChosenLimit();
-        Container container = activity.getContainer();
-        if (container != null) {
-            resolveShortcutFile(activity);
-            Shortcut shortcutStore = openShortcutStore(container);
-            if (shortcutStore != null) {
-                shortcutStore.putExtra(EXTRA_ENABLED, null);
-                shortcutStore.putExtra(EXTRA_LIMIT, String.valueOf(chosen));
-                shortcutStore.saveData();
-            } else {
-                container.putExtra(EXTRA_ENABLED, null);
-                container.putExtra(EXTRA_LIMIT, String.valueOf(chosen));
-                container.saveData();
-            }
-        }
-
-        XServerRendererView renderer = activity.getXServerView();
-        if (container != null) com.winlator.cmod.session.FpsLimit.save(container, chosen);
+        com.winlator.cmod.session.FpsLimit.save(activity.getContainer(), activity.getShortcut(), chosen);
         activity.applyFpsLimit(chosen);
     }
 
