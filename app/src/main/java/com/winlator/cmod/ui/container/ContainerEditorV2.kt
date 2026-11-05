@@ -216,7 +216,7 @@ private class ContainerEditorStateV2(
     var wrapperConfig by mutableStateOf(editing?.dxWrapperConfig ?: Container.DEFAULT_DXWRAPPERCONFIG)
     var dxvkVersion by mutableStateOf(readConfig(wrapperConfig, "version", ',').ifBlank { DefaultVersion.DXVK })
     var vkd3dVersion by mutableStateOf(readConfig(wrapperConfig, "vkd3dVersion", ',').ifBlank { DefaultVersion.VKD3D })
-    var vkd3dLevel by mutableStateOf(readConfig(wrapperConfig, "vkd3dLevel", ',').ifBlank { "12_0" })
+    var vkd3dLevel by mutableStateOf(readConfig(wrapperConfig, "vkd3dLevel", ',').ifBlank { "12_1" })
     var frameRate by mutableStateOf(readConfig(wrapperConfig, "framerate", ',').ifBlank { "0" })
     var maxFrameLatency by mutableStateOf(readConfig(wrapperConfig, "maxFrameLatency", ',') == "1")
     var async by mutableStateOf(readConfig(wrapperConfig, "async", ',') == "1")
@@ -1058,8 +1058,8 @@ private fun ContainerCategoryV2(
                     SettingChoice("VKD3D Feature Level", s.vkd3dLevel, listOf("12_0", "12_1", "12_2", "11_1", "11_0", "10_1", "10_0", "9_3", "9_2", "9_1")) {
                         s.vkd3dLevel = it; s.wrapperValue("vkd3dLevel", it)
                     }
-                    if (s.vkd3dLevel == "12_1" || s.vkd3dLevel == "12_2") androidx.compose.material3.Text(
-                        "12_1 / 12_2 need GPU features Turnip and PanVK often lack: a DX12 game then crashes at start. 12_0 is the safe choice.",
+                    if (s.vkd3dLevel == "12_2") androidx.compose.material3.Text(
+                        "12_2 needs GPU features Turnip and PanVK lack (mesh shaders, newer shader models): DX12 games then crash at start. Use 12_1 or 12_0.",
                         modifier = androidx.compose.ui.Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         color = androidx.compose.material3.MaterialTheme.colorScheme.error)
