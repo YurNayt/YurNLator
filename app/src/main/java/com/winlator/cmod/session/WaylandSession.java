@@ -100,6 +100,8 @@ public final class WaylandSession {
         try { FileUtils.copy(activity, "wayland/keymap.xkb", new File(rt, "keymap.xkb")); }
         catch (Exception e) { Log.e(TAG, "keymap extract failed", e); }
 
+        // The first-frame signal (it closes the loading screen) is one-shot per app process: re-armed
+        // for each session, or a second launch kept the loading screen over the running game.
         try { WaylandCompositor.nativeResetFirstFrame(); } catch (Throwable t) { Log.w(TAG, "first frame reset", t); }
         WaylandCompositor.setFirstFrameListener(() -> activity.runOnUiThread(listener::onFirstFrame));
         WaylandCompositor.setGameListener(new WaylandCompositor.GameListener() {
