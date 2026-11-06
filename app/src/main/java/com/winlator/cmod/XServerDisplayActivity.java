@@ -2274,7 +2274,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     /** Frame generation runs in the host Vulkan renderer (win-fg or LSFG), switched live. */
     void applyFrameGen() {
-        if (waylandMode) { frameGen().applyWayland(this); return; }
+        if (waylandMode) {
+            com.winlator.cmod.session.FrameGenSession fg = frameGen();
+            fg.applyWayland(this);
+            if (fg.on()) com.winlator.cmod.session.FrameGenSession.reportWaylandProblem(this,
+                    line -> { if (debugDialog != null) debugDialog.call(line); });
+            return;
+        }
         if (xServerView instanceof VulkanXServerView) frameGen().apply(this, (VulkanXServerView) xServerView);
     }
 

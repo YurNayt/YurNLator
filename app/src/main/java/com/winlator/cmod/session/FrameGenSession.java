@@ -132,6 +132,33 @@ public final class FrameGenSession {
         WaylandCompositor.nativeSetFrameGenArmed(true, mult);
     }
 
+    /** A few seconds after arming: says why the compositor's engine doesn't run, if it doesn't
+     *  (the device lacks a feature, or the engine failed to start). */
+    public static void reportWaylandProblem(Activity activity, java.util.function.Consumer<String> log) {
+        android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
+        h.postDelayed(new Runnable() {
+            int tries = 0;
+            @Override public void run() {
+                int p;
+                try { p = WaylandCompositor.nativeFrameGenProblem(); } catch (Throwable t) { return; }
+                if (p == -1 && ++tries < 10) { h.postDelayed(this, 3000); return; }   // compositor device not up yet
+                String why = null;
+                if (p == 1) {
+                    String r = "";
+                    try { r = WaylandCompositor.nativeFrameGenCapsReason(); } catch (Throwable ignored) {}
+                    why = "this GPU / driver lacks what it needs" + (r == null || r.isEmpty() ? "" : ": " + r);
+                } else if (p == 2) {
+                    why = "the engine failed to start (details in Download/Wayland-logs)";
+                } else if (p == -1) {
+                    why = "the compositor's GPU device didn't start";
+                }
+                String line = "[YurNLator] Wayland frame generation: " + (why == null ? "running" : "not running, " + why);
+                if (log != null) log.accept(line);
+                if (why != null) Toast.makeText(activity, "Frame generation (Wayland) not running: " + why, Toast.LENGTH_LONG).show();
+            }
+        }, 4000);
+    }
+
     private static int parseInt(String s, int fallback) {
         try { return Integer.parseInt(s.trim()); } catch (Exception e) { return fallback; }
     }
