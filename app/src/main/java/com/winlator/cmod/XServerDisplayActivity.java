@@ -968,6 +968,42 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * Wayland: the compositor goes right above the X server's view. It imports the game's frames with
      * the container's Mesa driver (Turnip / PanVK); System works on Mali only (experimental).
      */
+    /**
+     * Wayland: a window shows on the compositor only once it presents its first frame, so the
+     * loading screen stayed up through the game's own loading (34.8 s vs 5 s on X11 for NFS
+     * Payback). X11 closes it when the game's window first gets content, which is right after the
+     * game starts: here it closes when the game's process is running.
+     */
+    private void closeLoadingWhenGameRuns() {
+        if (shortcut == null || shortcut.path == null) return;
+        String p = shortcut.path.replace('\\', '/');
+        final String exe = p.substring(p.lastIndexOf('/') + 1).toLowerCase(java.util.Locale.ROOT);
+        if (!exe.endsWith(".exe")) return;
+        final int uid = android.os.Process.myUid();
+        Thread t = new Thread(() -> {
+            long until = android.os.SystemClock.uptimeMillis() + 180_000;
+            while (android.os.SystemClock.uptimeMillis() < until && !isFinishing()) {
+                if (preloaderDialog == null || !preloaderDialog.isShowing()) return;
+                String[] pids = new File("/proc").list();
+                if (pids != null) for (String pid : pids) {
+                    if (pid.isEmpty() || !Character.isDigit(pid.charAt(0))) continue;
+                    try {
+                        if (android.system.Os.stat("/proc/" + pid).st_uid != uid) continue;
+                        byte[] raw = java.nio.file.Files.readAllBytes(new File("/proc/" + pid + "/cmdline").toPath());
+                        String cmd = new String(raw, java.nio.charset.StandardCharsets.UTF_8).toLowerCase(java.util.Locale.ROOT);
+                        if (cmd.contains(exe) && !cmd.contains("winhandler")) {
+                            preloaderDialog.closeOnUiThread();
+                            return;
+                        }
+                    } catch (Throwable ignored) {}
+                }
+                try { Thread.sleep(500); } catch (InterruptedException e) { return; }
+            }
+        }, "WaylandLoading");
+        t.setDaemon(true);
+        t.start();
+    }
+
     private void startWaylandSession(FrameLayout rootView) {
         String driverId = graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null;
         String driverPath = null, libraryName = null;
@@ -1211,7 +1247,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         rootView.addView(xServerView);
-        if (waylandMode) startWaylandSession(rootView);
+        if (waylandMode) {
+            startWaylandSession(rootView);
+            closeLoadingWhenGameRuns();
+        }
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
         touchpadView = new TouchpadView(this, xServer, timeoutHandler, hideControlsRunnable);
