@@ -1098,7 +1098,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
 
             // Game-specific fixes in the game's own files (TLOU's address-space reservation).
-            com.winlator.cmod.session.GameFixes.apply(this, container, shortcut,
+            com.winlator.cmod.session.GameFixes.apply(this, container, shortcut, envVars,
                     line -> { if (debugDialog != null) debugDialog.call(line); });
             com.winlator.cmod.session.LaunchEnv.user(envVars, container, shortcut);
             applyOpenGLDriverEnvVars();

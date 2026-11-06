@@ -29,13 +29,26 @@ public final class GameFixes {
     private static final byte[] TLOU_FIXED = {(byte) 0xBA, 0, 0, 0, 0, 0x30, 0, 0, 0, 0x48};
 
     /** Applies what the game in [shortcut] needs; [log] gets one line per fix. */
-    public static void apply(android.content.Context context, Container container, Shortcut shortcut, Consumer<String> log) {
+    public static void apply(android.content.Context context, Container container, Shortcut shortcut,
+                             com.winlator.cmod.core.EnvVars env, Consumer<String> log) {
         if (container == null || shortcut == null || shortcut.path == null) return;
         File exe = unixPath(container, shortcut.path);
         if (exe == null) return;
         File dir = exe.getParentFile();
         if (dir == null) return;
         String name = exe.getName().toLowerCase(Locale.ROOT);
+        boolean tlou = name.startsWith("tlou-i") || (name.equals("launcher.exe")
+                && (new File(dir, "tlou-i.exe").isFile() || new File(dir, "tlou-ii.exe").isFile()));
+        if (tlou && env != null) {
+            // The game (and its launcher) use AVX / AVX2 from the start: FEX must expose them, or
+            // it stops at the first one with an illegal instruction (8 Elite, Oryon: no SVE).
+            // Set here before the game's own variables: FEX_HOSTFEATURES there still wins.
+            String hf = env.get("FEX_HOSTFEATURES");
+            if (hf == null || hf.isEmpty() || hf.equalsIgnoreCase("off")) {
+                env.put("FEX_HOSTFEATURES", "enableavx");
+                say(log, "TLOU: FEX_HOSTFEATURES=enableavx (the game needs AVX)");
+            }
+        }
         boolean part2 = name.startsWith("tlou-ii") || (name.equals("launcher.exe") && new File(dir, "tlou-ii.exe").isFile());
         if (part2) {
             for (String n : new String[]{"tlou-ii.exe", "tlou-ii-l.exe"}) {
