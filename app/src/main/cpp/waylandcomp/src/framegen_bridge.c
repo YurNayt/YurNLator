@@ -375,6 +375,18 @@ int vkp_framegen_run(VkCommandBuffer cmd, VkImage scene, VkImageView scene_view,
 
     uint32_t n_gen = fge_plan(g_ring_n, ++g_source_frames, g_presented_rate);
     if (n_gen > g_ring_n) n_gen = g_ring_n;
+    /* Never more presents per game frame than the screen can show: with FIFO each one takes a
+     * refresh, so x4 at 40 fps on 120 Hz queued 160 presents a second, the swapchain ran out of
+     * images, an acquire timed out and the swapchain was rebuilt - black frames. */
+    {
+        float hz;
+        pthread_mutex_lock(&g_lock); hz = g_refresh_hz; pthread_mutex_unlock(&g_lock);
+        if (hz > 1.0f && g_source_rate > 1.0f) {
+            int fit = (int)(hz * 1.03f / g_source_rate);    /* presents per game frame that fit */
+            uint32_t cap = fit > 1 ? (uint32_t)(fit - 1) : 0u;
+            if (n_gen > cap) n_gen = cap;
+        }
+    }
     g_planned = n_gen;
 
     /* The scene image was just written (blits, and whatever the effects chain did); make that

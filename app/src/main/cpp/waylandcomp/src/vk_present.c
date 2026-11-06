@@ -1638,7 +1638,10 @@ static int acquire_image(struct frame_slot *fs, int k, int first, uint32_t *img,
         /* A bounded wait: a surface that went away without telling us must not park the
          * compositor thread forever (clients are paced from this thread). */
         const int64_t t_acq = perf_now();
-        VkResult ar = g_vk.AcquireNextImageKHR(g_dev, g_swapchain, 1000000000ULL, fs->acqs[k], VK_NULL_HANDLE, img);
+        /* Generated frames (not first) wait at most 50 ms: a busy swapchain ends the frame's run
+         * early instead of holding the compositor thread (and every client it paces). */
+        VkResult ar = g_vk.AcquireNextImageKHR(g_dev, g_swapchain, first ? 1000000000ULL : 50000000ULL,
+                                               fs->acqs[k], VK_NULL_HANDLE, img);
         perf_add(&g_perf.acquire_ns, &g_perf.acquire_max_ns, &g_perf.acquires, perf_now() - t_acq);
         if (ar == VK_SUCCESS || ar == VK_SUBOPTIMAL_KHR) { *ar_out = ar; return 0; }
         if (ar == VK_ERROR_DEVICE_LOST) { device_lost("acquire"); return -1; }
@@ -2009,7 +2012,9 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
             VkResult ark;
             if (acquire_image(fs, k, 0, &img, &ark) != 0) {
                 banner_log("framegen", "present %d/%d: no swapchain image; the frame ends early", k + 1, presents);
-                pr = VK_ERROR_OUT_OF_DATE_KHR;
+                /* Only a lost swapchain needs a rebuild (acquire_image already dropped it); a
+                 * busy one just ends this frame's run - rebuilding it showed black frames. */
+                if (!g_swapchain) pr = VK_ERROR_OUT_OF_DATE_KHR;
                 break;
             }
             if (ark == VK_SUBOPTIMAL_KHR) ar = ark;
