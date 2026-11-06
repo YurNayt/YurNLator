@@ -698,8 +698,15 @@ public class WinlatorHUD extends View {
         if (raw == 0L || raw == Long.MIN_VALUE) return -1f;
 
         long magnitude = Math.abs(raw);
-        return magnitude < 20000L ? magnitude / 1000f : magnitude / 1_000_000f;
+        // Android reports µA; some kernels mA. Values >= 20000 can only be µA, and once seen the
+        // unit stays µA: a small µA reading (charging cut back for heat: 15000 µA = 15 mA) was
+        // taken for 15 A, and the HUD showed 57 W.
+        if (magnitude >= 20000L) currentInMicroAmps = true;
+        if (currentInMicroAmps || magnitude > 12000L) return magnitude / 1_000_000f;
+        return magnitude / 1000f;
     }
+
+    private boolean currentInMicroAmps = false;
 
     private long readFirstSysFsLong(String[] paths) {
         for (String path : paths) {

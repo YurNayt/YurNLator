@@ -263,6 +263,26 @@ target_compile_options(vulkan_renderer PRIVATE
         -Wall -Wextra -fvisibility=hidden -std=c++17
 )
 
+# Win-FG's synthesis pass from source (static-overlay keep), for the X11 renderer and the
+# Wayland compositor; without the header both fall back to the embedded SPIR-V.
+set(WFG_GEN_DIR ${CMAKE_BINARY_DIR}/wfg_gen)
+file(MAKE_DIRECTORY ${WFG_GEN_DIR})
+add_custom_command(
+    OUTPUT ${WFG_GEN_DIR}/wfg_synth_comp.h
+    COMMAND glslangValidator -V --target-env vulkan1.1 --vn wfg_synth_comp_code
+            -x -o ${WFG_GEN_DIR}/wfg_synth_comp.h
+            ${VULKAN_RENDERER_DIR}/winfg/wfg_synth.comp
+    DEPENDS ${VULKAN_RENDERER_DIR}/winfg/wfg_synth.comp
+    COMMENT "Compiling wfg_synth.comp → wfg_synth_comp.h"
+)
+add_custom_target(wfg_synth_spv DEPENDS ${WFG_GEN_DIR}/wfg_synth_comp.h)
+add_dependencies(vulkan_renderer wfg_synth_spv)
+target_include_directories(vulkan_renderer PRIVATE ${WFG_GEN_DIR})
+if (TARGET bannerwayland)
+    add_dependencies(bannerwayland wfg_synth_spv)
+    target_include_directories(bannerwayland PRIVATE ${WFG_GEN_DIR})
+endif()
+
 target_link_libraries(vulkan_renderer
         wfg
         dxbc

@@ -2,6 +2,13 @@
 #include "framegen.hpp"
 #include "embedded_shaders.hpp"
 #include "log.hpp"
+#include <cstdint>
+#if defined(__has_include)
+#  if __has_include("wfg_synth_comp.h")
+#    include "wfg_synth_comp.h"   // generated at build time from wfg_synth.comp
+#    define WFG_SYNTH_LOCAL 1
+#  endif
+#endif
 #include <cmath>
 #include <cstdio>
 
@@ -80,6 +87,10 @@ bool FrameGen::makePipe(Pipe& p, int shaderId,
     embedded::Blob b = embedded::blob((embedded::Shader)shaderId);
     VkShaderModuleCreateInfo mi{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
     mi.codeSize = b.words * 4; mi.pCode = b.code;
+#ifdef WFG_SYNTH_LOCAL
+    // The synthesis pass built from wfg_synth.comp in this tree (static-overlay keep).
+    if (shaderId == embedded::WFG_SYNTH) { mi.codeSize = sizeof(wfg_synth_comp_code); mi.pCode = wfg_synth_comp_code; }
+#endif
     VKOK(dd_->CreateShaderModule(device_, &mi, nullptr, &p.module));
     VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
     li.setLayoutCount = 1; li.pSetLayouts = &p.setLayout;
