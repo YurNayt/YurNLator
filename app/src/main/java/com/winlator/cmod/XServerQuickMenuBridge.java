@@ -669,7 +669,7 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
             }
             cpuPercent = max == 0 ? 0 : (int) (((float) (total / clocks.length) / max) * 100f);
         }
-        android.app.ActivityManager am = (android.app.ActivityManager) a.getSystemService(ACTIVITY_SERVICE);
+        android.app.ActivityManager am = (android.app.ActivityManager) a.getSystemService(android.content.Context.ACTIVITY_SERVICE);
         android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
         am.getMemoryInfo(mi);
         double gib = 1024.0 * 1024.0 * 1024.0;
