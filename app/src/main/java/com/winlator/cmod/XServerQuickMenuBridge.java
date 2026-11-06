@@ -581,6 +581,8 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
                 + (a.xServer.displayMode != null && a.xServer.displayMode.isActive()
                     ? " · game " + a.xServer.displayMode.getWidth() + "x" + a.xServer.displayMode.getHeight() + " (scaled to fit)" : "")));
         String soc = Build.VERSION.SDK_INT >= 31 ? " · " + Build.SOC_MODEL : "";
+        int vaBits = com.winlator.cmod.session.GameFixes.userAddressBits();
+        if (vaBits > 0) out.add(new QmInfo("Address space", vaBits + "-bit" + (vaBits <= 39 ? " (512 GiB: some games need fixes)" : "")));
         out.add(new QmInfo("Device", Build.MANUFACTURER.toUpperCase(java.util.Locale.ENGLISH) + " " + Build.MODEL + soc
                 + " · " + Runtime.getRuntime().availableProcessors() + "c · Android " + Build.VERSION.RELEASE));
         return out;

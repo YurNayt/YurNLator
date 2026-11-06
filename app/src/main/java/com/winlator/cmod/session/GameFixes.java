@@ -41,7 +41,14 @@ public final class GameFixes {
                 File f = new File(dir, n);
                 if (f.isFile()) tlouAddressSpace(f, log);
             }
-            if (new File(dir, "tlou-i.exe").isFile()) tlouHook(context, container, shortcut.getExtra("envVars", ""), dir, log);
+            if (new File(dir, "tlou-i.exe").isFile()) {
+                int bits = userAddressBits();
+                say(log, "device: " + (bits > 0 ? bits + "-bit" : "unknown") + " user address space");
+                // 39 bits (512 GiB) can't hold the game's fixed high reservations: the hook moves them.
+                // A larger address space needs only the exe patch (as GameHub does).
+                if (bits == 0 || bits <= 39) tlouHook(context, container, shortcut.getExtra("envVars", ""), dir, log, false);
+                else tlouHook(context, container, shortcut.getExtra("envVars", ""), dir, log, true);
+            }
         }
     }
 
@@ -87,20 +94,22 @@ public final class GameFixes {
      * address requirements and fills a NULL pipeline-library name; DXVK's dxgi.dll goes next to
      * it as dxgi_dxvk.dll. Set TLOUHOOK=0 in the game's variables to leave it out.
      */
-    private static void tlouHook(android.content.Context context, Container container, String shortcutEnv, File dir, Consumer<String> log) {
+    private static void tlouHook(android.content.Context context, Container container, String shortcutEnv, File dir,
+                                 Consumer<String> log, boolean notNeeded) {
         File hook = new File(dir, "dxgi.dll");
         File proxied = new File(dir, "dxgi_dxvk.dll");
         File marker = new File(dir, "dxgi.dll.yurnlator");
         try {
             String env = (container.getEnvVars() != null ? container.getEnvVars() : "") + " "
                     + (shortcutEnv != null ? shortcutEnv : "");
-            boolean off = env.contains("TLOUHOOK=0");
+            // TLOUHOOK=1 forces it on a large address space, TLOUHOOK=0 leaves it out on any.
+            boolean off = env.contains("TLOUHOOK=0") || (notNeeded && !env.contains("TLOUHOOK=1"));
             if (off) {
                 if (marker.isFile() && hook.isFile()) {
                     hook.delete(); marker.delete();
                     File bak = new File(dir, "dxgi.dll.YurNLator.bak");
                     if (bak.isFile()) bak.renameTo(hook);
-                    say(log, "TLOU: hook removed (TLOUHOOK=0)");
+                    say(log, "TLOU: hook removed (" + (notNeeded ? "not needed with this address space" : "TLOUHOOK=0") + ")");
                 }
                 return;
             }
@@ -128,6 +137,32 @@ public final class GameFixes {
         } catch (Exception e) {
             say(log, "TLOU: couldn't install the hook: " + e.getMessage());
         }
+    }
+
+    private static int cachedBits = -1;
+
+    /**
+     * Bits of the user address space this kernel gives a process (39 = 512 GiB, 48 = 256 TiB),
+     * from the highest mapping of this process (the stack sits at the top); 0 = unknown.
+     */
+    public static synchronized int userAddressBits() {
+        if (cachedBits >= 0) return cachedBits;
+        long top = 0;
+        try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader("/proc/self/maps"))) {
+            String line;
+            while ((line = r.readLine()) != null) {
+                int dash = line.indexOf('-'), sp = line.indexOf(' ');
+                if (dash <= 0 || sp <= dash) continue;
+                try {
+                    long end = Long.parseUnsignedLong(line.substring(dash + 1, sp), 16);
+                    if (Long.compareUnsigned(end, 0xffff000000000000L) < 0 && Long.compareUnsigned(end, top) > 0) top = end;
+                } catch (NumberFormatException ignored) {}
+            }
+        } catch (Exception ignored) {}
+        int bits = 0;
+        if (top > 0) bits = 64 - Long.numberOfLeadingZeros(top - 1);
+        cachedBits = bits;
+        return bits;
     }
 
     /** {first offset, count} of [pattern] in the file. */
