@@ -815,6 +815,41 @@ static long WINAPI veh(struct exptrs *ep)
    return 0;   /* EXCEPTION_CONTINUE_SEARCH */
 }
 
+/* ------------------------------------------------------- dxgi exports
+ * Real functions, not export forwarders: NVIDIA Streamline (TLOU Part II's sl.interposer)
+ * walks dxgi.dll's export table itself and jumped to the forwarder STRING
+ * ("dxgi_dxvk.CreateDXGIFactory2") as if it were code. Each export loads DXVK's dxgi
+ * (dxgi_dxvk.dll next to this one) once and passes the call on; x64 passes the first four
+ * arguments in registers, so four u64s carry any of these signatures. */
+IMP HMODULE WINAPI LoadLibraryW(const WCHAR *);
+typedef u64 (*pfx)(u64, u64, u64, u64);
+static HMODULE g_real;
+static void *real_fn(const char *name)
+{
+   if (!g_real) {
+      WCHAR path[300]; u32 n = GetModuleFileNameW(g_self, path, 280);
+      while (n && path[n - 1] != '\\') n--;
+      const char *f = "dxgi_dxvk.dll";
+      for (int i = 0; f[i]; i++) path[n++] = f[i];
+      path[n] = 0;
+      g_real = LoadLibraryW(path);
+      if (!g_real) { logf("dxgi_dxvk.dll not found next to the hook"); return 0; }
+   }
+   return GetProcAddress(g_real, name);
+}
+#define FWD(name) \
+   __declspec(dllexport) u64 name(u64 a, u64 b, u64 c, u64 d) { \
+      static pfx f; if (!f) f = (pfx)real_fn(#name); \
+      return f ? f(a, b, c, d) : 0x80004001ull /* E_NOTIMPL */; }
+FWD(CreateDXGIFactory)
+FWD(CreateDXGIFactory1)
+FWD(CreateDXGIFactory2)
+FWD(DXGIDeclareAdapterRemovalSupport)
+FWD(DXGIDisableVBlankVirtualization)
+FWD(DXGIGetDebugInterface)
+FWD(DXGIGetDebugInterface1)
+FWD(DXGIReportAdapterConfiguration)
+
 /* ---------------------------------------------------------- init */
 static void open_log(HMODULE self)
 {

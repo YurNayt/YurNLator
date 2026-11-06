@@ -1,10 +1,10 @@
 LIBRARY dxgi.dll
 EXPORTS
-  CreateDXGIFactory=dxgi_dxvk.CreateDXGIFactory
-  CreateDXGIFactory1=dxgi_dxvk.CreateDXGIFactory1
-  CreateDXGIFactory2=dxgi_dxvk.CreateDXGIFactory2
-  DXGIDeclareAdapterRemovalSupport=dxgi_dxvk.DXGIDeclareAdapterRemovalSupport
-  DXGIDisableVBlankVirtualization=dxgi_dxvk.DXGIDisableVBlankVirtualization
-  DXGIGetDebugInterface=dxgi_dxvk.DXGIGetDebugInterface
-  DXGIGetDebugInterface1=dxgi_dxvk.DXGIGetDebugInterface1
-  DXGIReportAdapterConfiguration=dxgi_dxvk.DXGIReportAdapterConfiguration
+  CreateDXGIFactory
+  CreateDXGIFactory1
+  CreateDXGIFactory2
+  DXGIDeclareAdapterRemovalSupport
+  DXGIDisableVBlankVirtualization
+  DXGIGetDebugInterface
+  DXGIGetDebugInterface1
+  DXGIReportAdapterConfiguration
