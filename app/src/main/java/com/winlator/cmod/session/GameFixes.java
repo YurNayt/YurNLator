@@ -36,7 +36,27 @@ public final class GameFixes {
         File dir = exe.getParentFile();
         if (dir == null) return;
         String name = exe.getName().toLowerCase(Locale.ROOT);
-        if (name.startsWith("tlou-i") || name.equals("launcher.exe")) {
+        boolean part2 = name.startsWith("tlou-ii") || (name.equals("launcher.exe") && new File(dir, "tlou-ii.exe").isFile());
+        if (part2) {
+            for (String n : new String[]{"tlou-ii.exe", "tlou-ii-l.exe"}) {
+                File f = new File(dir, n);
+                if (f.isFile()) tlou2AddressSpace(f, log);
+            }
+            // As GameHub's tloull1: the game's own Agility SDK D3D12 goes aside, VKD3D's is used.
+            for (String n : new String[]{"d3d12.dll", "d3d12core.dll"}) {
+                File f = new File(dir, n);
+                if (f.isFile()) {
+                    File to = new File(dir, n + ".disabled_by_tlou2_patch");
+                    say(log, "TLOU2: " + n + (to.exists() || !f.renameTo(to) ? " couldn't be moved aside" : " moved aside (VKD3D's is used)"));
+                }
+            }
+            int bits = userAddressBits();
+            say(log, "device: " + (bits > 0 ? bits + "-bit" : "unknown") + " user address space");
+            // The Part I hook on a 39-bit address space: its generic part (high reservations,
+            // 40-bit address requirements) applies here too; its Part I trap checks the code first.
+            if (new File(dir, "tlou-ii.exe").isFile())
+                tlouHook(context, container, shortcut.getExtra("envVars", ""), dir, log, !(bits == 0 || bits <= 39));
+        } else if (name.startsWith("tlou-i") || name.equals("launcher.exe")) {
             for (String n : new String[]{"tlou-i.exe", "tlou-i-l.exe"}) {
                 File f = new File(dir, n);
                 if (f.isFile()) tlouAddressSpace(f, log);
@@ -163,6 +183,52 @@ public final class GameFixes {
         if (top > 0) bits = 64 - Long.numberOfLeadingZeros(top - 1);
         cachedBits = bits;
         return bits;
+    }
+
+    // Part II, from GameHub's tloull1 (four builds): "48 BA" + imm64 0x8000000000 -> 0x3000000000.
+    private static final byte[] TLOU2_ORIG  = {0x48, (byte) 0xBA, 0, 0, 0, 0, (byte) 0x80, 0, 0, 0};
+    private static final byte[] TLOU2_FIXED = {0x48, (byte) 0xBA, 0, 0, 0, 0, 0x30, 0, 0, 0};
+    private static final Object[][] TLOU2_BUILDS = {
+            {"tlou-ii.exe", 0x3ca5878L, 0x1267732L},
+            {"tlou-ii-l.exe", 0x3cde070L, 0x1279fc2L},
+            {"tlou-ii.exe", 0x3cb18c0L, 0x126b532L},
+            {"tlou-ii-l.exe", 0x3cea0c0L, 0x127ddf2L},
+    };
+
+    private static void tlou2AddressSpace(File exe, Consumer<String> log) {
+        try (RandomAccessFile raf = new RandomAccessFile(exe, "r")) {
+            long offset = -1;
+            for (Object[] b : TLOU2_BUILDS) {
+                if (!exe.getName().equalsIgnoreCase((String) b[0]) || raf.length() != (Long) b[1]) continue;
+                byte[] cur = new byte[TLOU2_ORIG.length];
+                raf.seek((Long) b[2]);
+                raf.readFully(cur);
+                if (Arrays.equals(cur, TLOU2_FIXED)) { say(log, "TLOU2: " + exe.getName() + " already patched"); return; }
+                if (Arrays.equals(cur, TLOU2_ORIG)) offset = (Long) b[2];
+            }
+            if (offset < 0) {
+                long[] found = find(raf, TLOU2_ORIG);
+                long[] fixed = find(raf, TLOU2_FIXED);
+                if (found[1] == 0 && fixed[1] >= 1) { say(log, "TLOU2: " + exe.getName() + " already patched"); return; }
+                if (found[1] != 1) {
+                    say(log, "TLOU2: " + exe.getName() + " (" + raf.length() + " bytes): address-space patch not applied, "
+                            + (found[1] == 0 ? "sequence not found" : "sequence found " + found[1] + " times"));
+                    return;
+                }
+                offset = found[0];
+            }
+            raf.close();
+            File bak = new File(exe.getPath() + ".YurNLator.bak");
+            if (!bak.exists()) copy(exe, bak);
+            try (RandomAccessFile w = new RandomAccessFile(exe, "rw")) {
+                w.seek(offset);
+                w.write(TLOU2_FIXED);
+            }
+            say(log, "TLOU2: patched " + exe.getName() + " at 0x" + Long.toHexString(offset)
+                    + " (address-space reservation 512 -> 192 GiB; backup " + bak.getName() + ")");
+        } catch (Exception e) {
+            say(log, "TLOU2: couldn't patch " + exe.getName() + ": " + e.getMessage());
+        }
     }
 
     /** {first offset, count} of [pattern] in the file. */
