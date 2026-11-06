@@ -2346,6 +2346,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         private volatile int cpuPercent = 0;
         private volatile String memoryText = "…";
 
+        /** Wayland: the compositor draws the game, so the picture settings go to it too. */
+        private void syncWayland() {
+            if (waylandMode) com.winlator.cmod.session.WaylandEffects.apply(upscalerMode, sharp, shaderId,
+                    colorBrightness, colorContrast, colorGamma);
+        }
+
         private VulkanXServerView vk() {
             return xServerView instanceof VulkanXServerView ? (VulkanXServerView) xServerView : null;
         }
@@ -2375,6 +2381,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             colorBrightness = parseInt(extra("screenBrightness"), 0);
             colorContrast = parseInt(extra("screenContrast"), 0);
             try { colorGamma = extra("screenGamma").isEmpty() ? 1f : Float.parseFloat(extra("screenGamma")); } catch (Exception e) { colorGamma = 1f; }
+            if (shaderId >= 10) upscalerMode = -1;
+            syncWayland();
             VulkanXServerView vk = vk();
             if (vk == null) return;
             applyColor(vk);
@@ -2453,6 +2461,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             vk.setFilterMode(mode >= 0 ? mode + 2 : (container != null ? container.getRendererFilterMode() : 0));
             vk.setSharpness(sharp / 100f);
             putExtra("graphicsFilterMode", String.valueOf(mode >= 0 ? mode + 2 : 0));
+            syncWayland();
         }
 
         @Override public int sharpness() { return sharp; }
@@ -2461,6 +2470,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             sharp = Math.max(0, Math.min(100, value));
             VulkanXServerView vk = vk();
             if (vk != null) vk.setSharpness(sharp / 100f);
+            syncWayland();
             if (save) putExtra("graphicsSharpness", String.valueOf(sharp));
         }
 
@@ -2480,6 +2490,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             vk.setPostFXMode(id);
             if (container != null) container.putExtra("graphicsPostFXMode", String.valueOf(id <= 4 ? id : 0));
             putExtra("graphicsShader", String.valueOf(id));
+            syncWayland();
         }
 
         private void applyColor(VulkanXServerView vk) {
@@ -2496,6 +2507,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             colorGamma = Math.max(0.5f, Math.min(2.5f, gamma));
             VulkanXServerView vk = vk();
             if (vk != null) applyColor(vk);
+            syncWayland();
             if (save && container != null) {
                 container.putExtra("screenBrightness", String.valueOf(colorBrightness));
                 container.putExtra("screenContrast", String.valueOf(colorContrast));

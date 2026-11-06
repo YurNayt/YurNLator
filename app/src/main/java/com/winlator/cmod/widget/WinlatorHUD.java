@@ -1274,6 +1274,17 @@ public class WinlatorHUD extends View {
     }
 
     private void savePosition() {
+        // Keep at least a grab-able part on screen: a HUD dragged off the edge couldn't be reached.
+        android.view.ViewParent parent = getParent();
+        if (parent instanceof View) {
+            View p = (View) parent;
+            float w = getWidth() * getScaleX(), h = getHeight() * getScaleY();
+            float keep = 48f * getResources().getDisplayMetrics().density;
+            float minX = -Math.max(0f, w - keep), maxX = Math.max(0f, p.getWidth() - keep);
+            float minY = -Math.max(0f, h - keep), maxY = Math.max(0f, p.getHeight() - keep);
+            if (p.getWidth() > 0) setX(Math.max(minX, Math.min(maxX, getX())));
+            if (p.getHeight() > 0) setY(Math.max(minY, Math.min(maxY, getY())));
+        }
         prefs.edit().putFloat(KEY_X, getX()).putFloat(KEY_Y, getY()).apply();
     }
 
@@ -1622,6 +1633,10 @@ public class WinlatorHUD extends View {
             lastFpsNs = 0;
             dragging = false;
             touchDownMs = 0;
+            // Back to the top-left corner (the reset button: a HUD dragged off screen).
+            setX(16f);
+            setY(16f);
+            prefs.edit().putFloat(KEY_X, 16f).putFloat(KEY_Y, 16f).apply();
             rendererActive = true;
             userEnabled = true;
             prefs.edit().putBoolean(KEY_VIS, true).apply();
