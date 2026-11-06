@@ -786,6 +786,7 @@ static void apply_zorder(void) {
     restack_popups();
 }
 
+static int is_shell_window(const struct surface *s);
 static void map_toplevel(struct surface *s) {
     int w, h;
     if (s->mapped) return;
@@ -800,6 +801,10 @@ static void map_toplevel(struct surface *s) {
     wl_list_insert(g_toplevels.prev, &s->toplevel_link); /* new windows start on top */
     apply_zorder();
     focus_new_window(s);
+    /* A program's window opened: the app's loading screen goes, as on X11 (at the window's first
+     * content), not only at the game's first rendered frame, which kept it up through the game's
+     * own loading. Wine's shell (explorer's desktop / taskbar) doesn't count. */
+    if (s != g_desktop && !is_shell_window(s) && w >= 64 && h >= 64) vkp_signal_first_frame();
 }
 
 /* Popups take no keyboard focus of their own (no xdg_popup.grab is honoured): the window

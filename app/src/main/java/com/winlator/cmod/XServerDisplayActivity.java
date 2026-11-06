@@ -160,7 +160,6 @@ import cn.sherlock.com.sun.media.sound.SF2Soundbank;
 
 public class XServerDisplayActivity extends AppCompatActivity {
 
-    private static final boolean DISABLE_TOUCHSCREEN_AUTO_HIDE = true;
     private static final HashMap<String, Boolean> WINE_XRANDR_SUPPORT_CACHE = new HashMap<>();
 
     public static String NOTIFICATION_CHANNEL_ID = "Winlator";
@@ -242,6 +241,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     private Handler timeoutHandler = new Handler(Looper.getMainLooper());
     private Runnable hideControlsRunnable;
+    private com.winlator.cmod.ui.ingame.TouchControls touchControls;
 
     private boolean isDarkMode;
 
@@ -347,18 +347,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         };
         handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
 
-        hideControlsRunnable = () -> {
-            if (DISABLE_TOUCHSCREEN_AUTO_HIDE) {
-                return;
-            }
-
-            if (preferences.getBoolean("touchscreen_timeout_enabled", false)
-                    && inputControlsView != null
-                    && inputControlsView.getProfile() != null) {
-                inputControlsView.setVisibility(View.GONE);
-                Log.d("XServerDisplayActivity", "Touchscreen controls hidden after timeout.");
-            }
-        };
+        // On-screen controls: ui/ingame/TouchControls (YurNLator base, part 10).
+        touchControls = new com.winlator.cmod.ui.ingame.TouchControls(preferences, timeoutHandler,
+                () -> inputControlsView, () -> touchpadView, () -> winHandler, () -> globalCursorSpeed);
+        hideControlsRunnable = touchControls.hideRunnable();
 
         contentsManager = new ContentsManager(this);
         contentsManager.syncContents();
@@ -999,6 +991,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (modernHud != null) modernHud.onFrame();
             }
             @Override public void onGameSurface(String window, String gpuName) {
+                // The game's window is up: close the loading screen as X11 does (at the window's first
+                // content), not only at its first rendered frame, which kept it up through the
+                // game's own loading.
+                if (window != null) preloaderDialog.closeOnUiThread();
                 if (window != null && gpuName != null && modernHud != null) {
                     modernHud.setGpuName(gpuName);
                     runOnUiThread(() -> modernHud.onRendererDetected("Wayland"));
@@ -1979,119 +1975,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-        private void setupSidebarInputControls() {
-        if (inputControlsView == null || inputControlsManager == null) return;
-
-        Spinner spInputControlsProfile = findViewById(R.id.SPInputControlsProfile);
-        Switch swShowTouchscreenControls = findViewById(R.id.SWShowTouchscreenControls);
-        Switch swEnableTimeout = findViewById(R.id.SWEnableTouchscreenTimeout);
-        Switch swEnableHaptics = findViewById(R.id.SWEnableTouchscreenHaptics);
-        View btInputControlsSettings = findViewById(R.id.BTInputControlsSettings);
-        SeekBar sbControlsOpacity = findViewById(R.id.SBControlsOpacity);
-
-        if (spInputControlsProfile == null)
-            return;
-
-        Runnable loadProfileSpinner = () -> {
-            ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
-            ArrayList<String> profileItems = new ArrayList<>();
-            int selectedPosition = 0;
-            profileItems.add("-- " + getString(R.string.disabled) + " --");
-            for (int i = 0; i < profiles.size(); i++) {
-                ControlsProfile profile = profiles.get(i);
-                if (inputControlsView.getProfile() != null && profile.id == inputControlsView.getProfile().id)
-                    selectedPosition = i + 1;
-                profileItems.add(profile.getName());
-            }
-
-            ArrayAdapter<String> adapter = createSidebarSpinnerAdapter(profileItems.toArray(new String[0]));
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spInputControlsProfile.setAdapter(adapter);
-            spInputControlsProfile.setSelection(selectedPosition, false);
-        };
-        loadProfileSpinner.run();
-
-        if (swShowTouchscreenControls != null)
-            swShowTouchscreenControls.setChecked(inputControlsView.isShowTouchscreenControls());
-        if (swEnableTimeout != null)
-            swEnableTimeout.setChecked(preferences.getBoolean("touchscreen_timeout_enabled", false));
-        if (swEnableHaptics != null)
-            swEnableHaptics.setChecked(preferences.getBoolean("touchscreen_haptics_enabled", false));
-
-        if (sbControlsOpacity != null) {
-            sbControlsOpacity.setValue(preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY) * 100f);
-            sbControlsOpacity.setOnValueChangeListener((sb, v) -> {
-                float opacity = v / 100f;
-                preferences.edit().putFloat("overlay_opacity", opacity).apply();
-                inputControlsView.setOverlayOpacity(opacity);
-                inputControlsView.invalidate();
-            });
-        }
-
-        Runnable applySidebarInputControls = () -> {
-            if (swShowTouchscreenControls != null) {
-                boolean showControls = swShowTouchscreenControls.isChecked();
-                inputControlsView.setShowTouchscreenControls(showControls);
-                preferences.edit().putBoolean("show_touchscreen_controls_enabled", showControls).apply();
-            }
-
-            boolean isTimeoutEnabled = swEnableTimeout != null && swEnableTimeout.isChecked();
-            boolean isHapticsEnabled = swEnableHaptics != null && swEnableHaptics.isChecked();
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putBoolean("touchscreen_timeout_enabled", isTimeoutEnabled);
-            editor.putBoolean("touchscreen_haptics_enabled", isHapticsEnabled);
-            editor.putInt("selected_profile_index", spInputControlsProfile.getSelectedItemPosition() - 1);
-            editor.apply();
-
-            int position = spInputControlsProfile.getSelectedItemPosition();
-            ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles();
-            if (position > 0 && position - 1 < profiles.size()) {
-                showInputControls(profiles.get(position - 1));
-            } else {
-                hideInputControls();
-            }
-
-            if (isTimeoutEnabled && inputControlsView.getVisibility() == View.VISIBLE) {
-                startTouchscreenTimeout();
-            } else if (touchpadView != null) {
-                touchpadView.setOnTouchListener(null);
-            }
-        };
-
-        spInputControlsProfile.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                applySidebarInputControls.run();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
-
-        if (swShowTouchscreenControls != null)
-            swShowTouchscreenControls.setOnCheckedChangeListener((buttonView, isChecked) -> applySidebarInputControls.run());
-        if (swEnableTimeout != null)
-            swEnableTimeout.setOnCheckedChangeListener((buttonView, isChecked) -> applySidebarInputControls.run());
-        if (swEnableHaptics != null)
-            swEnableHaptics.setOnCheckedChangeListener((buttonView, isChecked) -> applySidebarInputControls.run());
-
-        if (btInputControlsSettings != null) {
-            btInputControlsSettings.setOnClickListener(v -> {
-                int position = spInputControlsProfile.getSelectedItemPosition();
-                Intent intent = new Intent(this, MainActivity.class);
+    private void setupSidebarInputControls() {
+        com.winlator.cmod.ui.ingame.SidebarInputPanel.setup(new com.winlator.cmod.ui.ingame.SidebarInputPanel.Host() {
+            @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
+            @Override public InputControlsView controls() { return inputControlsView; }
+            @Override public InputControlsManager manager() { return inputControlsManager; }
+            @Override public SharedPreferences prefs() { return preferences; }
+            @Override public com.winlator.cmod.ui.ingame.TouchControls touch() { return touchControls; }
+            @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return createSidebarSpinnerAdapter(items); }
+            @Override public void openEditor(int profileId, Runnable onBack) {
+                Intent intent = new Intent(XServerDisplayActivity.this, MainActivity.class);
                 intent.putExtra("edit_input_controls", true);
-                intent.putExtra("selected_profile_id",
-                        position > 0 ? inputControlsManager.getProfiles().get(position - 1).id : 0);
-                editInputControlsCallback = () -> {
-                    hideInputControls();
-                    inputControlsManager.loadProfiles(true);
-                    loadProfileSpinner.run();
-                    applySidebarInputControls.run();
-                };
+                intent.putExtra("selected_profile_id", profileId);
+                editInputControlsCallback = onBack;
                 controlsEditorActivityResultLauncher.launch(intent);
-            });
-        }
+            }
+            @Override public void clearTouchpadListener() { if (touchpadView != null) touchpadView.setOnTouchListener(null); }
+        });
     }
 
     private void showInputControlsDialog() {
@@ -2221,88 +2121,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         Log.d("XServerDisplayActivity", "Input controls simulated confirmation executed.");
     }
 
-    private void startTouchscreenTimeout() {
-        if (timeoutHandler != null && hideControlsRunnable != null) {
-            timeoutHandler.removeCallbacks(hideControlsRunnable);
-        }
+    private void startTouchscreenTimeout() { touchControls.startTimeout(); }
 
-        if (DISABLE_TOUCHSCREEN_AUTO_HIDE) {
-            Log.d("XServerDisplayActivity", "Touchscreen auto-hide disabled; controls remain visible.");
-            if (touchpadView != null) {
-                touchpadView.setOnTouchListener(null);
-            }
-            if (inputControlsView != null && inputControlsView.getProfile() != null) {
-                inputControlsView.setVisibility(View.VISIBLE);
-            }
-            return;
-        }
+    private void showInputControls(ControlsProfile profile) { touchControls.show(profile); }
 
-        boolean isTimeoutEnabled = preferences.getBoolean("touchscreen_timeout_enabled", false);
-
-        if (isTimeoutEnabled) {
-            if (inputControlsView != null && inputControlsView.getProfile() != null) {
-                inputControlsView.setVisibility(View.VISIBLE);
-            }
-            Log.d("XServerDisplayActivity", "Timeout is enabled, setting up timeout logic.");
-
-            touchpadView.setOnTouchListener((v, event) -> {
-                int action = event.getActionMasked();
-                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
-                    if (inputControlsView != null && inputControlsView.getProfile() != null) {
-                        inputControlsView.setVisibility(View.VISIBLE);
-                    }
-
-                    timeoutHandler.removeCallbacks(hideControlsRunnable);
-                    timeoutHandler.postDelayed(hideControlsRunnable, 5000);
-                }
-
-                return false;
-            });
-
-            timeoutHandler.postDelayed(hideControlsRunnable, 5000);
-        } else {
-            Log.d("XServerDisplayActivity", "Timeout is disabled, controls will stay visible.");
-
-            if (inputControlsView != null && inputControlsView.getProfile() != null) {
-                inputControlsView.setVisibility(View.VISIBLE);
-            }
-            timeoutHandler.removeCallbacks(hideControlsRunnable);
-            touchpadView.setOnTouchListener(null);
-        }
-    }
-
-    private void showInputControls(ControlsProfile profile) {
-        if (timeoutHandler != null && hideControlsRunnable != null) {
-            timeoutHandler.removeCallbacks(hideControlsRunnable);
-        }
-
-        inputControlsView.setProfile(profile);
-        inputControlsView.setVisibility(View.VISIBLE);
-        inputControlsView.requestFocus();
-
-        touchpadView.setSensitivity(profile.getCursorSpeed() * globalCursorSpeed);
-        touchpadView.setPointerButtonRightEnabled(false);
-
-        inputControlsView.invalidate();
-        winHandler.sendGamepadState();
-    }
-
-    private void hideInputControls() {
-        if (timeoutHandler != null && hideControlsRunnable != null) {
-            timeoutHandler.removeCallbacks(hideControlsRunnable);
-        }
-
-        inputControlsView.setShowTouchscreenControls(true);
-        inputControlsView.setVisibility(View.GONE);
-        inputControlsView.setProfile(null);
-
-        touchpadView.setSensitivity(globalCursorSpeed);
-        touchpadView.setPointerButtonLeftEnabled(true);
-        touchpadView.setPointerButtonRightEnabled(true);
-
-        inputControlsView.invalidate();
-        winHandler.sendGamepadState();
-    }
+    private void hideInputControls() { touchControls.hide(); }
 
     private String getSelectedOpenGLDriver() {
         return com.winlator.cmod.session.GraphicsDriverFiles.openGLDriver(graphicsDriver);
