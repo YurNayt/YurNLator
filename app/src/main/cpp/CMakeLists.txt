@@ -7,10 +7,12 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function
 add_subdirectory(OpenXR-SDK)
 add_subdirectory(patchelf)
 add_subdirectory(adrenotools)
+# DXVK's DXBC->SPIR-V translator (zlib), for LSFG: Lossless.dll's shaders are translated on device.
+# Before the compositor: its frame-generation engines need the dxbc target (else it got the stub
+# and frame generation never ran on Wayland).
+add_subdirectory(thirdparty/dxbc)
 # Wayland display backend: Bannerlator's embedded compositor (libbannerwayland.so).
 add_subdirectory(waylandcomp)
-# DXVK's DXBC->SPIR-V translator (zlib), for LSFG: Lossless.dll's shaders are translated on device.
-add_subdirectory(thirdparty/dxbc)
 # WFG frame generation (WinNative, qwertypower / DEVAR Entertainment, MIT): Dense Inverse Search.
 add_subdirectory(wfg)
 

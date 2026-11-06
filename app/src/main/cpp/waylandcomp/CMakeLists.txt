@@ -53,7 +53,7 @@ target_include_directories(bannerwayland PRIVATE
 # which only the app build has: the standalone build (standalone/) gets the stub, which reports
 # every engine unavailable and generates nothing.
 set(BANNER_FRAMEGEN_LSFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/lsfg)
-set(BANNER_FRAMEGEN_WINFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/winfg)
+set(BANNER_FRAMEGEN_WINFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/renderer/vulkan/winfg)
 if (TARGET dxbc AND EXISTS ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_engine.cpp
         AND EXISTS ${BANNER_FRAMEGEN_WINFG_DIR}/winfg_engine.cpp)
     message(STATUS "bannerwayland: frame-generation engines built in (LSFG Native, Win-FG Native)")
@@ -81,7 +81,8 @@ if (TARGET dxbc AND EXISTS ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_engine.cpp
     )
     target_include_directories(bannerwayland PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/..            # <thirdparty/...> as the winlator target sees it
-            ${CMAKE_CURRENT_SOURCE_DIR}/../winlator   # VulkanRendererContext.h (VkTable), lsfg/, winfg/
+            ${CMAKE_CURRENT_SOURCE_DIR}/../winlator   # lsfg/
+            ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/renderer/vulkan   # VulkanRendererContext.h (VkTable), winfg/
     )
     target_compile_options(bannerwayland PRIVATE
             $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -fvisibility=hidden>)

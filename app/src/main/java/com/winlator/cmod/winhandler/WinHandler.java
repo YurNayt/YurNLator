@@ -95,9 +95,18 @@ public class WinHandler {
 
     /** Gamepad button pressed on the last used real controller or the on-screen gamepad. */
     public boolean isGamepadButtonPressed(int index) {
-        if (lastController != null && lastController.state.isPressed(index)) return true;
+        if (lastController != null && pressed(lastController.state, index)) return true;
         ControlsProfile profile = activity.getInputControlsView() != null ? activity.getInputControlsView().getProfile() : null;
-        return profile != null && profile.isVirtualGamepad() && profile.getGamepadState().isPressed(index);
+        return profile != null && profile.isVirtualGamepad() && pressed(profile.getGamepadState(), index);
+    }
+
+    /** LT / RT are analog triggers (triggerL / triggerR), not bits of the button mask: as gyro
+     *  activation buttons they never read as pressed. */
+    private static boolean pressed(com.winlator.cmod.inputcontrols.GamepadState state, int index) {
+        if (state == null) return false;
+        if (index == com.winlator.cmod.inputcontrols.ExternalController.IDX_BUTTON_L2 && state.triggerL > 0.25f) return true;
+        if (index == com.winlator.cmod.inputcontrols.ExternalController.IDX_BUTTON_R2 && state.triggerR > 0.25f) return true;
+        return state.isPressed(index);
     }
 
     /** Re-sends the gamepad with the new gyro stick values. */

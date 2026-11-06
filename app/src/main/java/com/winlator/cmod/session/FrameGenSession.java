@@ -7,6 +7,7 @@ import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.core.LsfgNative;
 import com.winlator.cmod.core.WinFrameGen;
+import com.winlator.cmod.wayland.WaylandCompositor;
 import com.winlator.cmod.widget.VulkanXServerView;
 
 import java.util.concurrent.Executors;
@@ -80,6 +81,55 @@ public final class FrameGenSession {
         }
         view.setFrameGenEngine(WinFrameGen.ENGINE_WFG.equals(engine) ? 2 : 0, null);
         view.setFrameGen(on, mult, preset, flow);
+    }
+
+    /**
+     * Wayland: the compositor presents the game, so frame generation runs there (its LSFG /
+     * Win-FG engines on the compositor's Turnip device); the X11 renderer's engines never saw
+     * the game's frames.
+     */
+    public void applyWayland(Activity activity) {
+        final int mult = Math.max(2, Math.min(4, multiplier()));
+        final boolean on = on();
+        float refresh = 60f;
+        try { refresh = activity.getWindowManager().getDefaultDisplay().getRefreshRate(); } catch (Throwable ignored) {}
+        final float hz = refresh;
+        try {
+            if (!on) { WaylandCompositor.nativeSetFrameGenArmed(false, mult); return; }
+            WaylandCompositor.nativeSetFrameGenTuning(Math.max(0.25f, Math.min(1f, flowScale())), hz);
+            if (WinFrameGen.ENGINE_LSFG.equals(engine(activity))) {
+                if (!LsfgNative.isDllAvailable(activity)) {
+                    Toast.makeText(activity, "LSFG: import your Lossless.dll in Settings › Frame generation. Using Win-FG.", Toast.LENGTH_LONG).show();
+                    armWinFg(mult);
+                    return;
+                }
+                Executors.newSingleThreadExecutor().execute(() -> {
+                    int status = LsfgNative.ensureCache(activity, true);
+                    activity.runOnUiThread(() -> {
+                        try {
+                            if (status == LsfgNative.STATUS_OK) {
+                                WaylandCompositor.nativeSetLsfgCachePath(LsfgNative.cacheFile(activity).getAbsolutePath());
+                                WaylandCompositor.nativeSetFrameGenEngine(WaylandCompositor.FG_ENGINE_LSFG);
+                                WaylandCompositor.nativeSetFrameGenArmed(true, mult);
+                            } else {
+                                Toast.makeText(activity, "LSFG: " + LsfgNative.explain(status) + ". Using Win-FG.", Toast.LENGTH_LONG).show();
+                                armWinFg(mult);
+                            }
+                        } catch (Throwable t) { android.util.Log.w("FrameGen", "wayland lsfg: " + t); }
+                    });
+                });
+                return;
+            }
+            armWinFg(mult);
+        } catch (Throwable t) {
+            android.util.Log.w("FrameGen", "wayland: " + t);
+        }
+    }
+
+    private void armWinFg(int mult) {
+        WaylandCompositor.nativeSetWinFgTuning(4, Math.max(0, Math.min(2, preset())));
+        WaylandCompositor.nativeSetFrameGenEngine(WaylandCompositor.FG_ENGINE_WINFG);
+        WaylandCompositor.nativeSetFrameGenArmed(true, mult);
     }
 
     private static int parseInt(String s, int fallback) {

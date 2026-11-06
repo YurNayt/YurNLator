@@ -69,6 +69,8 @@ public class GyroInput implements SensorEventListener {
     private long lastTimestamp = 0;
     private float remainderX = 0, remainderY = 0;
     private volatile float stickX = 0, stickY = 0;
+    private float sentX = 0, sentY = 0;
+    private long lastSendNs = 0;
 
     public GyroInput(Activity activity, Output output) {
         this.activity = activity;
@@ -130,6 +132,8 @@ public class GyroInput implements SensorEventListener {
         if (stickX != 0 || stickY != 0) {
             stickX = 0;
             stickY = 0;
+            sentX = 0;
+            sentY = 0;
             if (target != TARGET_MOUSE) output.stickChanged();
         }
     }
@@ -207,9 +211,22 @@ public class GyroInput implements SensorEventListener {
             float y = v * 0.35f * sensitivity;
             if (Math.abs(x) < 0.02f) x = 0;
             if (Math.abs(y) < 0.02f) y = 0;
-            stickX = clamp(x);
-            stickY = clamp(y);
-            output.stickChanged();
+            x = clamp(x);
+            y = clamp(y);
+            // Sent at most every 8 ms (and at once when the stick returns to the centre): every
+            // sensor event (up to ~500 a second) was written to the game's gamepad device, the
+            // game read them behind and the stick lagged far behind the phone.
+            long now = System.nanoTime();
+            boolean centre = x == 0 && y == 0 && (sentX != 0 || sentY != 0);
+            stickX = x;
+            stickY = y;
+            if (centre || now - lastSendNs >= 8_000_000L) {
+                if (x == sentX && y == sentY) return;
+                lastSendNs = now;
+                sentX = x;
+                sentY = y;
+                output.stickChanged();
+            }
         }
     }
 
