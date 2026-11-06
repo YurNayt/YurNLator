@@ -29,7 +29,7 @@ public final class GameFixes {
     private static final byte[] TLOU_FIXED = {(byte) 0xBA, 0, 0, 0, 0, 0x30, 0, 0, 0, 0x48};
 
     /** Applies what the game in [shortcut] needs; [log] gets one line per fix. */
-    public static void apply(Container container, Shortcut shortcut, Consumer<String> log) {
+    public static void apply(android.content.Context context, Container container, Shortcut shortcut, Consumer<String> log) {
         if (container == null || shortcut == null || shortcut.path == null) return;
         File exe = unixPath(container, shortcut.path);
         if (exe == null) return;
@@ -41,6 +41,7 @@ public final class GameFixes {
                 File f = new File(dir, n);
                 if (f.isFile()) tlouAddressSpace(f, log);
             }
+            if (new File(dir, "tlou-i.exe").isFile()) tlouHook(context, container, shortcut.getExtra("envVars", ""), dir, log);
         }
     }
 
@@ -77,6 +78,55 @@ public final class GameFixes {
                     + " (address-space reservation 512 -> 192 GiB; backup " + bak.getName() + ")");
         } catch (Exception e) {
             say(log, "TLOU: couldn't patch " + exe.getName() + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * The rest the game needs on Android's 39-bit address space (tools/tlouhook): a proxy
+     * dxgi.dll in the game folder that moves its fixed high reservations down, clamps its 40-bit
+     * address requirements and fills a NULL pipeline-library name; DXVK's dxgi.dll goes next to
+     * it as dxgi_dxvk.dll. Set TLOUHOOK=0 in the game's variables to leave it out.
+     */
+    private static void tlouHook(android.content.Context context, Container container, String shortcutEnv, File dir, Consumer<String> log) {
+        File hook = new File(dir, "dxgi.dll");
+        File proxied = new File(dir, "dxgi_dxvk.dll");
+        File marker = new File(dir, "dxgi.dll.yurnlator");
+        try {
+            String env = (container.getEnvVars() != null ? container.getEnvVars() : "") + " "
+                    + (shortcutEnv != null ? shortcutEnv : "");
+            boolean off = env.contains("TLOUHOOK=0");
+            if (off) {
+                if (marker.isFile() && hook.isFile()) {
+                    hook.delete(); marker.delete();
+                    File bak = new File(dir, "dxgi.dll.YurNLator.bak");
+                    if (bak.isFile()) bak.renameTo(hook);
+                    say(log, "TLOU: hook removed (TLOUHOOK=0)");
+                }
+                return;
+            }
+            File sys = new File(container.getRootDir(), ".wine/drive_c/windows/system32/dxgi.dll");
+            if (!sys.isFile()) { say(log, "TLOU: no system32 dxgi.dll, hook not installed"); return; }
+            if (!proxied.isFile() || proxied.length() != sys.length()) copy(sys, proxied);
+            byte[] asset;
+            try (java.io.InputStream in = context.getAssets().open("gamefixes/tlou_dxgi.dll")) {
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                byte[] b = new byte[65536]; int n;
+                while ((n = in.read(b)) > 0) out.write(b, 0, n);
+                asset = out.toByteArray();
+            }
+            if (hook.isFile() && !marker.isFile() && hook.length() != asset.length) {
+                File bak = new File(dir, "dxgi.dll.YurNLator.bak");
+                if (!bak.exists()) copy(hook, bak);
+            }
+            if (!hook.isFile() || hook.length() != asset.length || !Arrays.equals(java.nio.file.Files.readAllBytes(hook.toPath()), asset)) {
+                try (FileOutputStream out = new FileOutputStream(hook)) { out.write(asset); }
+                new FileOutputStream(marker).close();
+                say(log, "TLOU: hook installed (dxgi.dll -> dxgi_dxvk.dll; log: tlouhook.log in the game folder)");
+            } else {
+                say(log, "TLOU: hook in place");
+            }
+        } catch (Exception e) {
+            say(log, "TLOU: couldn't install the hook: " + e.getMessage());
         }
     }
 
