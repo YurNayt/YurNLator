@@ -62,6 +62,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -272,6 +273,11 @@ private fun StepSlider(
     onCommit: () -> Unit = {}
 ) {
     val scheme = MaterialTheme.colorScheme
+    // The gesture handlers live as long as the bar's width doesn't change: they must call the
+    // latest callbacks, not the ones of the first composition (a drag on Brightness changed the
+    // picture through a stale callback while the bar's own state stayed where it was).
+    val change by rememberUpdatedState(onChange)
+    val commit by rememberUpdatedState(onCommit)
     Card {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
@@ -284,11 +290,11 @@ private fun StepSlider(
                 Canvas(
                     Modifier.fillMaxSize()
                         .pointerInput(widthPx) {
-                            detectTapGestures { o -> onChange((o.x / widthPx).coerceIn(0f, 1f)); onCommit() }
+                            detectTapGestures { o -> change((o.x / widthPx).coerceIn(0f, 1f)); commit() }
                         }
                         .pointerInput(widthPx) {
-                            detectHorizontalDragGestures(onDragEnd = onCommit) { change, _ ->
-                                onChange((change.position.x / widthPx).coerceIn(0f, 1f))
+                            detectHorizontalDragGestures(onDragEnd = { commit() }) { pointer, _ ->
+                                change((pointer.position.x / widthPx).coerceIn(0f, 1f))
                             }
                         }
                 ) {

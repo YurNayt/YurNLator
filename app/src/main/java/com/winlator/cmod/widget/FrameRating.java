@@ -145,17 +145,37 @@ public class FrameRating extends FrameLayout implements Runnable {
         return userEnabled;
     }
 
+    /** The renderer's count of the game's presented frames (Vulkan renderer), as the modern HUD uses. */
+    private volatile java.util.function.Supplier<long[]> presentCounter;
+    private long lastPresents = -1;
+
+    public void setPresentCounter(java.util.function.Supplier<long[]> counter) {
+        presentCounter = counter;
+        lastPresents = -1;
+    }
+
+    /** Called for each frame of the HUD's window. The window's content updates came both from X
+     *  drawing and from the game's direct presents, so counting calls read wrong (often double):
+     *  with the renderer's present counter the FPS is the game's own. */
     public void update() {
         if (!userEnabled) return;
-        if (lastTime == 0) lastTime = SystemClock.elapsedRealtime();
-        long time = SystemClock.elapsedRealtime();
-        if (time >= lastTime + 500) {
-            lastFPS = ((float)(frameCount * 1000) / (time - lastTime));
-            post(this);
-            lastTime = time;
-            frameCount = 0;
-        }
         frameCount++;
+        long time = SystemClock.elapsedRealtime();
+        if (lastTime == 0) lastTime = time;
+        if (time < lastTime + 500) return;
+        long[] stats = null;
+        java.util.function.Supplier<long[]> counter = presentCounter;
+        if (counter != null) try { stats = counter.get(); } catch (Throwable ignored) {}
+        if (stats != null && stats.length >= 1 && stats[0] > 0) {
+            if (lastPresents >= 0 && stats[0] >= lastPresents)
+                lastFPS = (stats[0] - lastPresents) * 1000f / (time - lastTime);
+            lastPresents = stats[0];
+        } else {
+            lastFPS = (frameCount * 1000f) / (time - lastTime);
+        }
+        post(this);
+        lastTime = time;
+        frameCount = 0;
     }
 
     @Override

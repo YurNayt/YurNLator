@@ -989,6 +989,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // Also a game frame closes the loading screen (in case the compositor's first-frame signal is missed).
                 if (!shown) { shown = true; preloaderDialog.closeOnUiThread(); }
                 if (modernHud != null) modernHud.onFrame();
+                if (classicHud != null) classicHud.update();
             }
             @Override public void onGameSurface(String window, String gpuName) {
                 // The game's window is up: close the loading screen as X11 does (at the window's first
@@ -1254,6 +1255,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (hudMode == 1) {
 
                 classicHud = new FrameRating(this, graphicsDriverConfig);
+                if (xServerView instanceof VulkanXServerView) classicHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
                 classicHud.setVisibility(View.GONE);
                 rootView.addView(classicHud);
                 renderer.setFrameRating(classicHud);
@@ -1672,6 +1674,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } else {
             if (classicHud == null) {
                 classicHud = new FrameRating(this, graphicsDriverConfig);
+                if (xServerView instanceof VulkanXServerView) classicHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
                 classicHud.setVisibility(View.GONE);
                 rootView.addView(classicHud);
                 renderer.setFrameRating(classicHud);

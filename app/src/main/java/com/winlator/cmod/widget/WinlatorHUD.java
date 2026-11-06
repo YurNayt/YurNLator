@@ -1649,7 +1649,9 @@ public class WinlatorHUD extends View {
             case 3:
                 return SHOW_CPU_USAGE;
             case 4:
-                return SHOW_POWER;
+                // "Battery and temperature": power, battery temperature and charge state together
+                // (it switched the power item only: the battery temperature stayed).
+                return SHOW_POWER | SHOW_BATTERY_TEMP | SHOW_CHARGE_STATE;
             case 6:
                 return SHOW_RENDERER;
             case 7:
