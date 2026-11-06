@@ -91,6 +91,9 @@ jobs:
       - name: Build YurnBench (bundle finder benchmark, x86_64 Windows)
         run: sh tools/yurnbench/build.sh app/src/main/assets/yurnbench/yurnbench.exe
 
+      - name: Build the TLOU hook (proxy dxgi.dll, x86_64 Windows)
+        run: sh tools/tlouhook/build.sh app/src/main/assets/gamefixes/tlou_dxgi.dll && x86_64-w64-mingw32-objdump -p app/src/main/assets/gamefixes/tlou_dxgi.dll | grep -A9 "Export Address Table --"
+
       - name: Restore signing key (if configured)
         env:
           KEYSTORE_B64: ${{ secrets.YURN_KEYSTORE_BASE64 }}

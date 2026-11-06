@@ -444,17 +444,26 @@ static void patch_module(HMODULE mod)
 {
    u8 *base = (u8 *)mod;
    if (*(u16 *)base != 0x5a4d) return;
-   u8 *nt = base + *(u32 *)(base + 0x3c);
+   u32 lfanew = *(u32 *)(base + 0x3c);
+   if (lfanew > 0x1000) return;
+   u8 *nt = base + lfanew;
    if (*(u32 *)nt != 0x4550 || *(u16 *)(nt + 0x18) != 0x20b) return;  /* PE32+ */
+   /* Every RVA is checked against SizeOfImage: packed / protected modules (TLOU Part II's
+    * steam_api64.dll) have import data the loader never uses, and walking it faulted. */
+   u32 size = *(u32 *)(nt + 0x18 + 0x38);       /* SizeOfImage */
    u32 imp_rva = *(u32 *)(nt + 0x18 + 0x78);   /* DataDirectory[1] */
-   if (!imp_rva) return;
-   int count = 0;
-   for (u32 *d = (u32 *)(base + imp_rva); d[3]; d += 5) {
+   u32 imp_size = *(u32 *)(nt + 0x18 + 0x7c);
+   if (!imp_rva || imp_rva >= size || imp_size > size - imp_rva) return;
+   int count = 0, ndesc = 0;
+   for (u32 *d = (u32 *)(base + imp_rva); (u8 *)(d + 5) <= base + size && d[3] && ndesc < 512; d += 5, ndesc++) {
       u32 oft = d[0] ? d[0] : d[4];
+      if (!oft || oft >= size || !d[4] || d[4] >= size || d[3] >= size) continue;
       u64 *names = (u64 *)(base + oft);
       void **iat = (void **)(base + d[4]);
-      for (int i = 0; names[i]; i++) {
+      for (int i = 0; (u8 *)(names + i + 1) <= base + size && names[i] && i < 4096; i++) {
          if (names[i] >> 63) continue;                 /* by ordinal */
+         if ((u32)names[i] + 2 >= size || (names[i] >> 32)) continue;
+         if ((u8 *)(iat + i + 1) > base + size) break;
          const char *fn = (const char *)(base + (u32)names[i] + 2);
          struct hook *h = find_hook(fn);
          if (!h || iat[i] == h->fn) continue;
@@ -473,11 +482,12 @@ static void patch_module(HMODULE mod)
 
 static void patch_all(void)
 {
-   HMODULE mods[1024]; u32 need = 0;
-   if (!K32EnumProcessModules(GetCurrentProcess(), mods, sizeof(mods), &need)) return;
+   /* static: 8 KB on the stack would skip the guard page (built without stack probes) */
+   static HMODULE mods[1024]; u32 need = 0;
+   if (g_cs_ok) EnterCriticalSection(g_cs);
+   if (!K32EnumProcessModules(GetCurrentProcess(), mods, sizeof(mods), &need)) { if (g_cs_ok) LeaveCriticalSection(g_cs); return; }
    unsigned n = need / sizeof(HMODULE);
    if (n > 1024) n = 1024;
-   if (g_cs_ok) EnterCriticalSection(g_cs);
    for (unsigned i = 0; i < n; i++) {
       HMODULE m = mods[i];
       int seen = 0;
@@ -856,7 +866,15 @@ BOOL WINAPI DllMain(HMODULE inst, u32 reason, void *res)
    logf("exception logger installed");
    if (!oVirtualProtect) { logf("no VirtualProtect, giving up"); return 1; }
    patch_all();
-   install_fastfail_trap();
-   install_strncpy_trap();
+   /* The traps below patch fixed addresses of The Last of Us Part I's exe: only there
+    * (Part II and other games get the address-space part only). */
+   WCHAR exe[300]; exe[0] = 0;
+   GetModuleFileNameW(0, exe, 300);
+   if (wcontains_ci(exe, "\\tlou-i.exe") || wcontains_ci(exe, "\\tlou-i-l.exe")) {
+      install_fastfail_trap();
+      install_strncpy_trap();
+   } else {
+      logf("not Part I (%S): no Part I traps", exe);
+   }
    return 1;
 }
