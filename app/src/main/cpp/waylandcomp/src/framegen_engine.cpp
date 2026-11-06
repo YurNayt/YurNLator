@@ -61,9 +61,9 @@ char g_build[96] = "";
     X(ResetFences) X(GetFenceStatus) X(CreateSemaphore) X(DestroySemaphore)                 \
     X(CreateCommandPool) X(DestroyCommandPool) X(AllocateCommandBuffers)                    \
     X(FreeCommandBuffers) X(BeginCommandBuffer) X(EndCommandBuffer) X(ResetCommandBuffer)   \
-    X(CmdBlitImage) X(CmdCopyBufferToImage) X(FreeDescriptorSets) X(FlushMappedMemoryRanges) \
-    X(GetDeviceQueue) X(CreateQueryPool) X(DestroyQueryPool) X(CmdResetQueryPool)           \
-    X(CmdWriteTimestamp) X(GetQueryPoolResults)
+    X(CmdCopyBufferToImage) X(FreeDescriptorSets) X(FlushMappedMemoryRanges)              \
+    X(GetDeviceQueue)
+/* (This tree's VkTable has no CmdBlitImage / query-pool entries: the engines here don't use them.) */
 
 void fill_instance(PFN_vkGetInstanceProcAddr gipa, VkInstance inst) {
 #define X(n) g_table.n = reinterpret_cast<PFN_vk##n>(gipa(inst, "vk" #n));
