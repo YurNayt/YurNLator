@@ -1097,6 +1097,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (shortcut != null) debugDialog.call("[YurNLator] shortcut path: " + shortcut.path);
             }
 
+            // Game-specific fixes in the game's own files (TLOU's address-space reservation).
+            com.winlator.cmod.session.GameFixes.apply(container, shortcut,
+                    line -> { if (debugDialog != null) debugDialog.call(line); });
             com.winlator.cmod.session.LaunchEnv.user(envVars, container, shortcut);
             applyOpenGLDriverEnvVars();
             com.winlator.cmod.session.LaunchEnv.defaults(envVars, container, shortcut, wineCpuTopologyValue);
