@@ -974,6 +974,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * Payback). X11 closes it when the game's window first gets content, which is right after the
      * game starts: here it closes when the game's process is running.
      */
+    /** The compositor's frame-generation rates for the HUD, only while frame generation is on
+     *  (its presented rate counts every screen update, so with it off the HUD showed a pair). */
+    private float[] waylandFrameGenStats() {
+        if (!frameGen().on()) return null;
+        try { return com.winlator.cmod.wayland.WaylandCompositor.nativeFrameGenStats(); }
+        catch (Throwable t) { return null; }
+    }
+
     private void closeLoadingWhenGameRuns() {
         if (shortcut == null || shortcut.path == null) return;
         String p = shortcut.path.replace('\\', '/');
@@ -1303,7 +1311,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 modernHud = new WinlatorHUD(this);
                 if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
 
-                if (waylandMode) modernHud.setCompositorFrameGen(com.winlator.cmod.wayland.WaylandCompositor::nativeFrameGenStats);
+                if (waylandMode) modernHud.setCompositorFrameGen(this::waylandFrameGenStats);
                 modernHud.setVisibility(View.GONE);
                 rootView.addView(modernHud);
                 modernHud.enableByUser();
@@ -1700,7 +1708,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 modernHud = new WinlatorHUD(this);
                 if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
 
-                if (waylandMode) modernHud.setCompositorFrameGen(com.winlator.cmod.wayland.WaylandCompositor::nativeFrameGenStats);
+                if (waylandMode) modernHud.setCompositorFrameGen(this::waylandFrameGenStats);
                 modernHud.setVisibility(View.GONE);
                 rootView.addView(modernHud);
                 renderer.setFrameRating(modernHud);

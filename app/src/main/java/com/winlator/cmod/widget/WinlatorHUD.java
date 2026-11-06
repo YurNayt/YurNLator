@@ -775,7 +775,7 @@ public class WinlatorHUD extends View {
             // Not by st[0] (generations planned for the LAST frame: 0 every other frame at times,
             // so the pair blinked): by the measured rates, presented above what the game makes.
             if (st != null && st.length >= 4 && st[2] > 0.5f && st[3] > st[2] * 1.15f)
-                value = String.format(Locale.US, "%.0f (%.0f)", st[3], snapFps);
+                value = String.format(Locale.US, "%.0f (%.0f)", st[3], st[2]);
         }
         lastFpsNs = now;
 
