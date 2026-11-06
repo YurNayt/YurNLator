@@ -1629,105 +1629,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void setupSidebarHudControls() {
-        Switch       swHudMaster     = findViewById(R.id.SWHudMaster);
-        Spinner      spHudStyle      = findViewById(R.id.SPHudStyle);
-        LinearLayout llHudStyleRow   = findViewById(R.id.LLHudStyleRow);
-        LinearLayout llModernOptions = findViewById(R.id.LLModernHudOptions);
-        CheckBox     cbFps           = findViewById(R.id.CBHudFps);
-        CheckBox     cbGpu           = findViewById(R.id.CBHudGpu);
-        CheckBox     cbCpuRam        = findViewById(R.id.CBHudCpuRam);
-        CheckBox     cbRam           = findViewById(R.id.CBHudRam);
-        CheckBox     cbBattTemp      = findViewById(R.id.CBHudBattTemp);
-        CheckBox     cbGraph         = findViewById(R.id.CBHudGraph);
-        CheckBox     cbRenderer      = findViewById(R.id.CBHudRenderer);
-        SeekBar      sbScale         = findViewById(R.id.SBHudScale);
-        SeekBar      sbAlpha         = findViewById(R.id.SBHudAlpha);
-        View         btResetHud      = findViewById(R.id.BTResetHud);
-
-        int currentMode = 0;
-        if      (modernHud  != null) currentMode = 2;
-        else if (classicHud != null) currentMode = 1;
-        else if (container  != null) {
-            String extra = container.getExtra("hudMode");
-            if (!extra.isEmpty())           currentMode = Integer.parseInt(extra);
-            else if (container.isShowFPS()) currentMode = 1;
-        }
-
-        boolean hudOn    = currentMode != 0;
-        boolean isModern = currentMode == 2;
-
-        if (spHudStyle != null) {
-            ArrayAdapter<String> styleAdapter = createSidebarSpinnerAdapter(new String[]{"Classic", "Modern"});
-            styleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spHudStyle.setAdapter(styleAdapter);
-            spHudStyle.setSelection(isModern ? 1 : 0, false);
-        }
-        if (llHudStyleRow  != null) llHudStyleRow.setVisibility(hudOn ? View.VISIBLE : View.GONE);
-        if (llModernOptions != null) llModernOptions.setVisibility(isModern ? View.VISIBLE : View.GONE);
-
-        if (modernHud != null) {
-            modernHud.syncCheckboxes(cbFps, cbGpu, cbCpuRam, cbBattTemp, cbGraph, cbRenderer);
-            if (cbRam != null) cbRam.setChecked(true);
-            bindModernHudCheckboxes(cbFps, cbGpu, cbCpuRam, cbRam, cbBattTemp, cbRenderer);
-        }
-        if (sbScale != null) sbScale.setOnValueChangeListener((sb, v) -> {
-            if (modernHud != null) modernHud.setHudScale(1f + (v - 50f) / 50f);
+        com.winlator.cmod.ui.ingame.SidebarHudPanel.setup(new com.winlator.cmod.ui.ingame.SidebarHudPanel.Host() {
+            @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
+            @Override public WinlatorHUD modernHud() { return modernHud; }
+            @Override public FrameRating classicHud() { return classicHud; }
+            @Override public int savedMode() {
+                if (container == null) return 0;
+                String extra = container.getExtra("hudMode");
+                if (!extra.isEmpty()) try { return Integer.parseInt(extra.trim()); } catch (NumberFormatException ignored) {}
+                return container.isShowFPS() ? 1 : 0;
+            }
+            @Override public void enable(int style) { enableHudLazily(style); }
+            @Override public void saveMode(int mode) { saveHudModeToContainer(mode); }
+            @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return createSidebarSpinnerAdapter(items); }
         });
-        if (sbAlpha != null) sbAlpha.setOnValueChangeListener((sb, v) -> {
-            if (modernHud != null) modernHud.setHudAlpha(v / 100f);
-        });
-        if (btResetHud != null) btResetHud.setOnClickListener(v -> {
-            if (modernHud != null) modernHud.forceReset();
-        });
-
-        if (swHudMaster != null) {
-            swHudMaster.setChecked(hudOn);
-            swHudMaster.setOnCheckedChangeListener((btn, checked) -> {
-                int style = resolveSelectedStyle(spHudStyle);
-                if (checked) {
-                    enableHudLazily(style);
-                    if (llHudStyleRow  != null) llHudStyleRow.setVisibility(View.VISIBLE);
-                    if (llModernOptions != null)
-                        llModernOptions.setVisibility(style == 2 ? View.VISIBLE : View.GONE);
-                    if (style == 2 && modernHud != null) {
-                        modernHud.syncCheckboxes(cbFps, cbGpu, cbCpuRam, cbBattTemp, cbGraph, cbRenderer);
-                        if (cbRam != null) cbRam.setChecked(true);
-                        bindModernHudCheckboxes(cbFps, cbGpu, cbCpuRam, cbRam, cbBattTemp, cbRenderer);
-                    }
-                    saveHudModeToContainer(style);
-                } else {
-                    if (classicHud != null) classicHud.disableByUser();
-                    if (modernHud  != null) modernHud.disableByUser();
-                    if (llHudStyleRow  != null) llHudStyleRow.setVisibility(View.GONE);
-                    if (llModernOptions != null) llModernOptions.setVisibility(View.GONE);
-                    saveHudModeToContainer(0);
-                }
-            });
-        }
-
-        if (spHudStyle != null) {
-            spHudStyle.post(() -> spHudStyle.setOnItemSelectedListener(
-                new AdapterView.OnItemSelectedListener() {
-                    @Override
-                    public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                        if (swHudMaster == null || !swHudMaster.isChecked()) return;
-                        int newStyle = (pos == 1) ? 2 : 1;
-                        if (classicHud != null) classicHud.disableByUser(false);
-                        if (modernHud  != null) modernHud.disableByUser(false);
-                        enableHudLazily(newStyle);
-                        if (llModernOptions != null)
-                            llModernOptions.setVisibility(newStyle == 2 ? View.VISIBLE : View.GONE);
-                        if (newStyle == 2 && modernHud != null) {
-                            modernHud.syncCheckboxes(cbFps, cbGpu, cbCpuRam, cbBattTemp, cbGraph, cbRenderer);
-                            if (cbRam != null) cbRam.setChecked(true);
-                            bindModernHudCheckboxes(cbFps, cbGpu, cbCpuRam, cbRam, cbBattTemp, cbRenderer);
-                        }
-                        saveHudModeToContainer(newStyle);
-                    }
-                    @Override public void onNothingSelected(AdapterView<?> p) {}
-                }
-            ));
-        }
     }
 
     private void enableHudLazily(int style) {
@@ -1770,22 +1685,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    private void bindModernHudCheckboxes(CheckBox cbFps, CheckBox cbGpu, CheckBox cbCpuRam,
-            CheckBox cbRam, CheckBox cbBattTemp, CheckBox cbRenderer) {
-        if (modernHud == null) return;
-        if (cbFps      != null) cbFps.setOnCheckedChangeListener((b, v) -> modernHud.toggleElement(0, v));
-        if (cbGpu      != null) cbGpu.setOnCheckedChangeListener((b, v) -> modernHud.toggleElement(2, v));
-        if (cbCpuRam   != null) cbCpuRam.setOnCheckedChangeListener((b, v) -> modernHud.toggleElement(3, v));
-        if (cbRam      != null) cbRam.setOnCheckedChangeListener((b, v) -> modernHud.toggleElement(7, v));
-        if (cbBattTemp != null) cbBattTemp.setOnCheckedChangeListener((b, v) -> modernHud.toggleElement(4, v));
-        if (cbRenderer != null) cbRenderer.setOnCheckedChangeListener((b, v) -> modernHud.toggleElement(6, v));
-    }
-
-    private int resolveSelectedStyle(Spinner spHudStyle) {
-        if (spHudStyle == null) return 1;
-        return spHudStyle.getSelectedItemPosition() == 1 ? 2 : 1;
-    }
-
     private void saveHudModeToContainer(int mode) {
         if (container == null) return;
         container.putExtra("hudMode", String.valueOf(mode));
@@ -1794,185 +1693,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void setupSidebarGraphicsControls() {
-        final boolean isVulkanRenderer = xServerView instanceof VulkanXServerView;
-
-        View reshadePanel = findViewById(R.id.LLSubReshade);
-        View postFxDivider = findViewById(R.id.VPostFXDivider);
-        View postFxOptions = findViewById(R.id.LLPostFXOptions);
-
-        if (reshadePanel != null) {
-            reshadePanel.setVisibility(isVulkanRenderer ? View.VISIBLE : View.GONE);
-        }
-        if (postFxDivider != null) {
-            postFxDivider.setVisibility(isVulkanRenderer ? View.VISIBLE : View.GONE);
-        }
-        if (postFxOptions != null) {
-            postFxOptions.setVisibility(isVulkanRenderer ? View.VISIBLE : View.GONE);
-        }
-
-        final XServerRendererView renderer = xServerView;
-        final VulkanXServerView  vkRenderer = renderer instanceof VulkanXServerView ? (VulkanXServerView) renderer : null;
-        final EGLXServerView     eglRenderer = renderer instanceof EGLXServerView ? (EGLXServerView) renderer : null;
-        final DisplayXServerView displayXRenderer = renderer instanceof DisplayXServerView ? (DisplayXServerView) renderer : null;
-
-        Spinner spNativeFPS        = findViewById(R.id.SPNativeFPS);
-        View    llStandardOptions  = findViewById(R.id.LLStandardOptions);
-        Switch  swEnableFSR        = findViewById(R.id.SWEnableFSR);
-        Spinner spUpscalerMode     = findViewById(R.id.SPUpscalerMode);
-        View    lblSharpnessHeader = findViewById(R.id.LBLSharpnessHeader);
-        SeekBar sbSharpness        = findViewById(R.id.SBSharpness);
-        Spinner spPostFXMode       = findViewById(R.id.SPPostFXMode);
-        Spinner spColorMode        = findViewById(R.id.SPColorMode);
-        View    btSaveGraphicsPreset = findViewById(R.id.BTSaveGraphicsPreset);
-        View    llFrameGenOptions  = findViewById(R.id.LLFrameGenOptions);
-        Spinner spFrameGenFPS      = findViewById(R.id.SPFrameGenFPS);
-
-        if (llFrameGenOptions != null) llFrameGenOptions.setVisibility(View.GONE);
-        if (spFrameGenFPS  != null) spFrameGenFPS.setVisibility(View.GONE);
-        if (spColorMode    != null) spColorMode.setVisibility(View.GONE);
-        if (llStandardOptions != null) llStandardOptions.setVisibility(isVulkanRenderer ? View.VISIBLE : View.GONE);
-        if (btSaveGraphicsPreset != null) btSaveGraphicsPreset.setVisibility(isVulkanRenderer ? View.VISIBLE : View.GONE);
-        if (eglRenderer != null) {
-            if (swEnableFSR        != null) swEnableFSR.setVisibility(View.GONE);
-            if (spUpscalerMode     != null) spUpscalerMode.setVisibility(View.GONE);
-            if (lblSharpnessHeader != null) lblSharpnessHeader.setVisibility(View.GONE);
-            if (sbSharpness        != null) sbSharpness.setVisibility(View.GONE);
-            if (spPostFXMode       != null) spPostFXMode.setVisibility(View.GONE);
-        }
-
-        final int[]    fpsValues = {0, 30, 60, 90, 120};
-        final String[] fpsLabels = {"Off", "30 FPS", "60 FPS", "90 FPS", "120 FPS"};
-
-        if (spNativeFPS != null) {
-            ArrayAdapter<String> a = createSidebarSpinnerAdapter(fpsLabels);
-            a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spNativeFPS.setAdapter(a);
-            int savedFpsPos = com.winlator.cmod.session.FpsLimit.legacyIndex(com.winlator.cmod.session.FpsLimit.saved(container, shortcut));
-            if (savedFpsPos < 0 || savedFpsPos >= fpsLabels.length) savedFpsPos = 0;
-            spNativeFPS.setSelection(savedFpsPos);
-            applyFpsLimit(com.winlator.cmod.session.FpsLimit.saved(container, shortcut));
-            final int initialPos = savedFpsPos;
-            spNativeFPS.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                // A spinner reports its initial selection once laid out: that isn't a choice, and it
-                // used to replace a limit saved from the quick menu (e.g. 45) with the legacy one.
-                boolean first = true;
-                @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                    if (first) { first = false; if (pos == initialPos) return; }
-                    if (llStandardOptions != null) llStandardOptions.setVisibility(isVulkanRenderer ? View.VISIBLE : View.GONE);
-                    if (llFrameGenOptions != null) llFrameGenOptions.setVisibility(View.GONE);
-                    int fpsLimit = pos < fpsValues.length ? fpsValues[pos] : 0;
-                    applyFpsLimit(fpsLimit);
-                    com.winlator.cmod.session.FpsLimit.save(container, shortcut, fpsLimit);
-                }
-                @Override public void onNothingSelected(AdapterView<?> p) {}
-            });
-        }
-
-        if (btSaveGraphicsPreset != null) {
-            btSaveGraphicsPreset.setOnClickListener(v -> {
-                if (container == null) return;
-                container.putExtra("graphicsFpsPreset",
-                    String.valueOf(spNativeFPS != null ? spNativeFPS.getSelectedItemPosition() : 0));
-                if (vkRenderer != null) {
-                    container.putExtra("graphicsFilterMode",
-                        String.valueOf(swEnableFSR != null && swEnableFSR.isChecked()
-                            ? (spUpscalerMode != null ? spUpscalerMode.getSelectedItemPosition() + 2 : 2) : 0));
-                    container.putExtra("graphicsSharpness",
-                        String.valueOf(sbSharpness != null ? sbSharpness.getValue() : 50f));
-                    container.putExtra("graphicsPostFXMode",
-                        String.valueOf(spPostFXMode != null ? spPostFXMode.getSelectedItemPosition() : 0));
-                    container.putExtra("graphicsColorMode", "0");
-                }
-                container.saveData();
-                Toast.makeText(this, "Preset saved", Toast.LENGTH_SHORT).show();
-            });
-        }
-
-        if (vkRenderer == null) return;
-
-        final String[] upscalerLabels = {"SGSR", "FSR"};
-        if (spUpscalerMode != null) {
-            ArrayAdapter<String> a = createSidebarSpinnerAdapter(upscalerLabels);
-            a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spUpscalerMode.setAdapter(a);
-            spUpscalerMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                    if (swEnableFSR != null && swEnableFSR.isChecked())
-                        vkRenderer.setFilterMode(pos + 2);
-                }
-                @Override public void onNothingSelected(AdapterView<?> p) {}
-            });
-        }
-
-        String savedSharp = container != null ? container.getExtra("graphicsSharpness") : "";
-        float  initSharp  = savedSharp.isEmpty() ? 50f : Float.parseFloat(savedSharp);
-        if (sbSharpness != null) {
-            sbSharpness.setValue(initSharp);
-            vkRenderer.setSharpness(initSharp / 100f);
-            sbSharpness.setOnValueChangeListener((sb, v) -> vkRenderer.setSharpness(v / 100f));
-        }
-
-        Runnable updateSharpnessVis = () -> {
-            boolean fsrOn = swEnableFSR  != null && swEnableFSR.isChecked();
-            boolean dlsOn = spPostFXMode != null && spPostFXMode.getSelectedItemPosition() == 1;
-            int vis = (fsrOn || dlsOn) ? View.VISIBLE : View.GONE;
-            if (lblSharpnessHeader != null) lblSharpnessHeader.setVisibility(vis);
-            if (sbSharpness        != null) sbSharpness.setVisibility(vis);
-        };
-
-        String savedFilter = container != null ? container.getExtra("graphicsFilterMode") : "";
-        boolean fsrOn = !savedFilter.isEmpty() && Integer.parseInt(savedFilter) > 0;
-        if (swEnableFSR != null) {
-            swEnableFSR.setChecked(fsrOn);
-            if (spUpscalerMode != null)
-                spUpscalerMode.setVisibility(fsrOn ? View.VISIBLE : View.GONE);
-            if (fsrOn)
-                vkRenderer.setFilterMode(spUpscalerMode != null
-                    ? spUpscalerMode.getSelectedItemPosition() + 2 : 2);
-            swEnableFSR.setOnCheckedChangeListener((btn, checked) -> {
-                if (spUpscalerMode != null)
-                    spUpscalerMode.setVisibility(checked ? View.VISIBLE : View.GONE);
-                vkRenderer.setFilterMode(checked
-                    ? (spUpscalerMode != null ? spUpscalerMode.getSelectedItemPosition() + 2 : 2)
-                    : (container != null ? container.getRendererFilterMode() : 0));
-                updateSharpnessVis.run();
-            });
-        }
-
-        final String[] pfxLabels = {"None", "DLS", "CRT", "HDR", "Natural"};
-        if (spPostFXMode != null) {
-            ArrayAdapter<String> a = createSidebarSpinnerAdapter(pfxLabels);
-            a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spPostFXMode.setAdapter(a);
-
-            String savedPFX = container != null ? container.getExtra("graphicsPostFXMode") : "";
-            int initPFX = savedPFX.isEmpty() ? 0 : Integer.parseInt(savedPFX);
-            if (initPFX < 0 || initPFX >= pfxLabels.length) initPFX = 0;
-
-            spPostFXMode.setSelection(initPFX, false);
-            if (initPFX > 0) vkRenderer.setPostFXMode(initPFX);
-
-            spPostFXMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                    vkRenderer.setPostFXMode(pos);
-                    updateSharpnessVis.run();
-                }
-                @Override public void onNothingSelected(AdapterView<?> p) {}
-            });
-        }
-
-        String savedPFXInit = container != null ? container.getExtra("graphicsPostFXMode") : "";
-        boolean dlsRestored = !savedPFXInit.isEmpty() && Integer.parseInt(savedPFXInit) == 1;
-        int sharpVis = (fsrOn || dlsRestored) ? View.VISIBLE : View.GONE;
-        if (lblSharpnessHeader != null) lblSharpnessHeader.setVisibility(sharpVis);
-        if (sbSharpness        != null) sbSharpness.setVisibility(sharpVis);
-
-        final String[] frameGenLabels = {"2x Interpolation", "Always On"};
-        if (spFrameGenFPS != null) {
-            ArrayAdapter<String> a = createSidebarSpinnerAdapter(frameGenLabels);
-            a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spFrameGenFPS.setAdapter(a);
-        }
+        com.winlator.cmod.ui.ingame.SidebarGraphicsPanel.setup(new com.winlator.cmod.ui.ingame.SidebarGraphicsPanel.Host() {
+            @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
+            @Override public XServerRendererView renderer() { return xServerView; }
+            @Override public Container container() { return container; }
+            @Override public Shortcut shortcut() { return shortcut; }
+            @Override public void applyFpsLimit(int fps) { XServerDisplayActivity.this.applyFpsLimit(fps); }
+            @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return createSidebarSpinnerAdapter(items); }
+        });
     }
 
     private void setupSidebarInputControls() {
