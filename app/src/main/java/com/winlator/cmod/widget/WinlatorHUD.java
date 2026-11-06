@@ -723,6 +723,13 @@ public class WinlatorHUD extends View {
     private volatile java.util.function.Supplier<long[]> presentCounter;
     private long lastReal = -1, lastGen = 0, lastContent = 0;
 
+    private volatile java.util.function.Supplier<float[]> compositorFrameGen;
+
+    /** Wayland: the compositor's frame-generation stats ({planned, planned, real fps, presented fps, ...}). */
+    public void setCompositorFrameGen(java.util.function.Supplier<float[]> stats) {
+        compositorFrameGen = stats;
+    }
+
     public void setPresentCounter(java.util.function.Supplier<long[]> counter) {
         presentCounter = counter;
         lastReal = -1;
@@ -760,6 +767,13 @@ public class WinlatorHUD extends View {
             lastContent = stats[2];
         } else {
             snapFps = frames * 1_000_000_000f / dt;
+            // Wayland: frame generation runs in the compositor; it reports what reaches the
+            // screen (generated frames included): "screen (game)" as on X11.
+            java.util.function.Supplier<float[]> fg = compositorFrameGen;
+            float[] st = null;
+            if (fg != null) try { st = fg.get(); } catch (Throwable ignored) {}
+            if (st != null && st.length >= 4 && st[0] > 0 && st[3] > snapFps + 1f)
+                value = String.format(Locale.US, "%.0f (%.0f)", st[3], snapFps);
         }
         lastFpsNs = now;
 

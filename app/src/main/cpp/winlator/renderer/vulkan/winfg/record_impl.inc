@@ -25,7 +25,11 @@
 namespace {
 struct ScratchState {
     // host-visible UBO buffers
-    VkBuffer synthUbo = VK_NULL_HANDLE; VkDeviceMemory synthUboMem = VK_NULL_HANDLE; void* synthUboPtr = nullptr;
+    // Synth (the output pass): one UBO + set per generation of a frame. x3 / x4 record several
+    // generations into one command buffer; with one set the CPU-side writes (alpha, output view)
+    // were all the LAST generation's when the GPU ran, the earlier targets were never written,
+    // and showed black between real frames.
+    VkBuffer synthUbo[3]{}; VkDeviceMemory synthUboMem[3]{}; void* synthUboPtr[3]{};
     std::vector<VkBuffer> flowUbo; std::vector<VkDeviceMemory> flowUboMem; std::vector<void*> flowUboPtr;
     VkBuffer expandUbo = VK_NULL_HANDLE; VkDeviceMemory expandUboMem = VK_NULL_HANDLE; void* expandUboPtr = nullptr;
     // C2: flow-regularization UBO (shared by all iterations; refreshed per frame).
@@ -43,7 +47,7 @@ struct ScratchState {
     // ping-pong. sFlowReg0: in=flowLvl_[F] (=f0), out=A. sFlowRegAB: in=A, out=B.
     // sFlowRegBA: in=B, out=A. f0 (binding 33) = flowLvl_[F] in all three.
     VkDescriptorSet sFlowReg0 = VK_NULL_HANDLE, sFlowRegAB = VK_NULL_HANDLE, sFlowRegBA = VK_NULL_HANDLE;
-    VkDescriptorSet sSynth = VK_NULL_HANDLE;
+    VkDescriptorSet sSynth[3]{};
     // C1: per-slot reduce set + per-slot per-level prewarp sets
     VkDescriptorSet sGmReduce[winfg::FrameGen::kGmSlots]{};
     std::vector<VkDescriptorSet> sGmPrewarp[winfg::FrameGen::kGmSlots]; // sized kLevels; [flowFinest()..) used
@@ -185,7 +189,7 @@ static void destroyScratch(const DeviceDispatch* dd, VkDevice dev, VkDescriptorP
         b = VK_NULL_HANDLE; m = VK_NULL_HANDLE; p = nullptr;
     };
     auto& S = g_scratch;
-    freeUbo(S.synthUbo,   S.synthUboMem,   S.synthUboPtr);
+    for (int g = 0; g < 3; ++g) freeUbo(S.synthUbo[g], S.synthUboMem[g], S.synthUboPtr[g]);
     freeUbo(S.expandUbo,  S.expandUboMem,  S.expandUboPtr);
     freeUbo(S.flowRegUbo, S.flowRegUboMem, S.flowRegUboPtr);
     for (size_t i = 0; i < S.flowUbo.size(); ++i) freeUbo(S.flowUbo[i], S.flowUboMem[i], S.flowUboPtr[i]);
@@ -322,7 +326,7 @@ bool FrameGen::updateGlobalMotion(uint32_t gmSlot, VkExtent2D fullExtent) {
 }
 
 void FrameGen::record(VkCommandBuffer cmd, VkImageView prevView, VkImageView currView,
-                      VkImageView outView, float alpha, uint32_t gmSlot) {
+                      VkImageView outView, float alpha, uint32_t gmSlot, uint32_t generation) {
     if (!valid()) return;
     if (gmSlot >= (uint32_t)kGmSlots) gmSlot = 0;
     const bool m4 = (cfg_.model == 4);
@@ -364,14 +368,15 @@ void FrameGen::record(VkCommandBuffer cmd, VkImageView prevView, VkImageView cur
     // update UBOs for this frame
     SynthUBO su{cfg_.flowScale, alpha, cfg_.beta, cfg_.lambda, cfg_.epsilon, cfg_.photoScale, 0, 0,
                 cfg_.hudX0, cfg_.hudY0, cfg_.hudX1, cfg_.hudY1};
-    if (g_scratch.synthUboPtr) std::memcpy(g_scratch.synthUboPtr, &su, sizeof(su));
+    const uint32_t gi = generation < 3 ? generation : 2;
+    if (g_scratch.synthUboPtr[gi]) std::memcpy(g_scratch.synthUboPtr[gi], &su, sizeof(su));
 
     // wire per-frame external views
     wImg(dd_, device_, g_scratch.sLumaCurr, 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, currView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     wImg(dd_, device_, g_scratch.sLumaPrev, 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, prevView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    wImg(dd_, device_, g_scratch.sSynth, 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, prevView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    wImg(dd_, device_, g_scratch.sSynth, 33, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, currView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    wImg(dd_, device_, g_scratch.sSynth, 48, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, outView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL);
+    wImg(dd_, device_, g_scratch.sSynth[gi], 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, prevView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    wImg(dd_, device_, g_scratch.sSynth[gi], 33, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, currView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    wImg(dd_, device_, g_scratch.sSynth[gi], 48, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, outView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL);
 
     auto disp = [&](const Pipe& p, VkDescriptorSet set, VkExtent2D e) {
         dd_->CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, p.pipeline);
@@ -513,7 +518,7 @@ void FrameGen::record(VkCommandBuffer cmd, VkImageView prevView, VkImageView cur
     disp(expandP, g_scratch.sExpand[gmSlot], levelExtent(extent_, 0));
     bar(flowExpA_); bar(flowExpB_);
     // 5) synthesise interpolated frame
-    disp(pSynth_, g_scratch.sSynth, levelExtent(extent_, 0));
+    disp(pSynth_, g_scratch.sSynth[gi], levelExtent(extent_, 0));
 }
 
 // ---- lazy scratch builder ----
@@ -533,7 +538,7 @@ static bool ensureScratch(FrameGen* fg, const DeviceDispatch* dd, VkDevice dev,
     S = ScratchState{};
     const auto GEN = VK_IMAGE_LAYOUT_GENERAL;
 
-    makeUbo(dd, dev, mp, sizeof(SynthUBO), S.synthUbo, S.synthUboMem, S.synthUboPtr);
+    for (int g = 0; g < 3; ++g) makeUbo(dd, dev, mp, sizeof(SynthUBO), S.synthUbo[g], S.synthUboMem[g], S.synthUboPtr[g]);
     makeUbo(dd, dev, mp, sizeof(FlowUBO), S.expandUbo, S.expandUboMem, S.expandUboPtr);
     if (S.expandUboPtr) { FlowUBO u{cfg.flowScale, 0, 0.6f, 1.6f}; std::memcpy(S.expandUboPtr, &u, sizeof(u)); }
     // C2: flow-reg UBO (params refreshed each frame in record() for hot-reload).
@@ -642,13 +647,15 @@ static bool ensureScratch(FrameGen* fg, const DeviceDispatch* dd, VkDevice dev,
     }
 
     // synth set: external prev/curr/out wired per frame; flow inputs fixed
-    S.sSynth = allocSet(dd, dev, pool, pSynth.setLayout);
-    wUbo(dd, dev, S.sSynth, 0, S.synthUbo, sizeof(SynthUBO));
-    // GENERAL (not SR): these internal flow images stay in GENERAL across the whole
-    // record() (written as storage by expand, sampled here) — see the discard
-    // transition at the top of record().
-    wImg(dd, dev, S.sSynth, 34, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, expA.view, samp, GEN);
-    wImg(dd, dev, S.sSynth, 35, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, expB.view, samp, GEN);
+    for (int g = 0; g < 3; ++g) {
+        S.sSynth[g] = allocSet(dd, dev, pool, pSynth.setLayout);
+        wUbo(dd, dev, S.sSynth[g], 0, S.synthUbo[g], sizeof(SynthUBO));
+        // GENERAL (not SR): these internal flow images stay in GENERAL across the whole
+        // record() (written as storage by expand, sampled here) — see the discard
+        // transition at the top of record().
+        wImg(dd, dev, S.sSynth[g], 34, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, expA.view, samp, GEN);
+        wImg(dd, dev, S.sSynth[g], 35, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, expB.view, samp, GEN);
+    }
 
     S.builtFor = ext; S.built = true; S.pool = pool;
     return true;

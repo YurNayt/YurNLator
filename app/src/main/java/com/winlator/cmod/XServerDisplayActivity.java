@@ -1255,14 +1255,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (hudMode == 1) {
 
                 classicHud = new FrameRating(this, graphicsDriverConfig);
-                if (xServerView instanceof VulkanXServerView) classicHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
+                if (xServerView instanceof VulkanXServerView && !waylandMode) classicHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
                 classicHud.setVisibility(View.GONE);
                 rootView.addView(classicHud);
                 renderer.setFrameRating(classicHud);
             } else if (hudMode == 2) {
 
                 modernHud = new WinlatorHUD(this);
-                if (xServerView instanceof VulkanXServerView) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
+                if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
+
+                if (waylandMode) modernHud.setCompositorFrameGen(com.winlator.cmod.wayland.WaylandCompositor::nativeFrameGenStats);
                 modernHud.setVisibility(View.GONE);
                 rootView.addView(modernHud);
                 modernHud.enableByUser();
@@ -1657,7 +1659,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (style == 2) {
             if (modernHud == null) {
                 modernHud = new WinlatorHUD(this);
-                if (xServerView instanceof VulkanXServerView) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
+                if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
+
+                if (waylandMode) modernHud.setCompositorFrameGen(com.winlator.cmod.wayland.WaylandCompositor::nativeFrameGenStats);
                 modernHud.setVisibility(View.GONE);
                 rootView.addView(modernHud);
                 renderer.setFrameRating(modernHud);
@@ -1674,7 +1678,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } else {
             if (classicHud == null) {
                 classicHud = new FrameRating(this, graphicsDriverConfig);
-                if (xServerView instanceof VulkanXServerView) classicHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
+                if (xServerView instanceof VulkanXServerView && !waylandMode) classicHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
                 classicHud.setVisibility(View.GONE);
                 rootView.addView(classicHud);
                 renderer.setFrameRating(classicHud);

@@ -149,7 +149,7 @@ void Engine::generateInto(VkCommandBuffer cmd, uint32_t generation, uint32_t cou
     // gmSlot indexes the C1 global-motion SSBO read back on the CPU next
     // frame; kGmSlots (3) >= our frames in flight (2), so rotating per source
     // frame keeps a slot from being read while its reduce is still in flight.
-    fg_.record(cmd, prev.view, curr.view, targetView, alphaFor(generation, count), gmSlot_);
+    fg_.record(cmd, prev.view, curr.view, targetView, alphaFor(generation, count), gmSlot_, generation);
     if (generation + 1 == count) gmSlot_ = (gmSlot_ + 1) % (uint32_t)FrameGen::kGmSlots;
 
     (void)w; (void)h;

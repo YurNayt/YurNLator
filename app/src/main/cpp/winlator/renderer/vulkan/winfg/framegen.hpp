@@ -32,7 +32,7 @@ public:
     // (that guarantees this slot's PREVIOUS reduce has completed and is safe to
     // read on the host — see the decoupled-LK note in record_impl.inc).
     void record(VkCommandBuffer cmd, VkImageView prevView, VkImageView currView,
-                VkImageView outView, float alpha, uint32_t gmSlot = 0);
+                VkImageView outView, float alpha, uint32_t gmSlot = 0, uint32_t generation = 0);
     void destroy();
     bool valid() const { return device_ != VK_NULL_HANDLE && ready_; }
     const Config& config() const { return cfg_; }
