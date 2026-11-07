@@ -830,7 +830,7 @@ private fun ContainerCategoryV2(
                 }
                 SettingsDivider()
                 val hudEntries = listOf("Off", "Classic", "Modern")
-                SettingChoice("Winlator HUD", hudEntries.getOrElse(s.hudMode) { "Off" }, hudEntries) {
+                SettingChoice("YurNLator HUD", hudEntries.getOrElse(s.hudMode) { "Off" }, hudEntries) {
                     s.hudMode = hudEntries.indexOf(it).coerceAtLeast(0)
                 }
             }

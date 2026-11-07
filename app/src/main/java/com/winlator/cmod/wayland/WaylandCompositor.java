@@ -329,7 +329,7 @@ public final class WaylandCompositor {
      *  the session log. A no-op on Android versions without {@code ASurfaceTransaction_setFrameRate}. */
     public static native void nativeSetLayerFrameRate(float hz);
 
-    /** Write one line into the compositor's session log (Download/Wayland-logs) under the "display"
+    /** Write one line into the compositor's session log (Download/YurNLator/Wayland-logs) under the "display"
      *  area, from Java. Used for facts the platform knows and the native side does not — the panel's
      *  HDR capability, which lives behind android.view.Display. Safe before the compositor thread is
      *  up (the line then only reaches logcat) and safe after it has gone. */

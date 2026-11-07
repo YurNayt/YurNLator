@@ -39,16 +39,16 @@ internal fun ClassicWelcomeLandscape(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(.9f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(painterResource(R.drawable.winlator_mark_exact), "Winlator", Modifier.size(132.dp))
+                Image(painterResource(R.drawable.yurn_launcher_art), "YurNLator", Modifier.size(132.dp))
                 Spacer(Modifier.height(14.dp))
-                Text("Welcome to Winlator", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                Text("Welcome to YurNLator", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 Text("Your lightweight PC emulator for Android.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
             Spacer(Modifier.width(36.dp))
             Column(Modifier.weight(1f)) {
                 ClassicWelcomeCard(Icons.Outlined.Apps, "Get started", "Choose components", start)
                 Spacer(Modifier.height(10.dp))
-                ClassicWelcomeCard(Icons.Outlined.SkipNext, "Skip", "Use the components bundled with Winlator and configure everything later.", skip)
+                ClassicWelcomeCard(Icons.Outlined.SkipNext, "Skip", "Use the components bundled with YurNLator and configure everything later.", skip)
                 Spacer(Modifier.height(10.dp))
                 ClassicCoreStatusCard(ready, progress, retry)
             }

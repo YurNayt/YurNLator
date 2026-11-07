@@ -234,7 +234,7 @@ public class PreloaderDialog {
     private File getLaunchBannerFile() {
         String baseName = resolveLaunchBaseName();
         if (TextUtils.isEmpty(baseName)) return null;
-        File dir = new File(Environment.getExternalStorageDirectory(), "Winlator/banners");
+        File dir = new File(Environment.getExternalStorageDirectory(), "YurNLator/banners");
         if (!dir.exists()) dir.mkdirs();
         return new File(dir, baseName + ".png");
     }
@@ -242,7 +242,7 @@ public class PreloaderDialog {
     private File getLaunchCoverFile() {
         String baseName = resolveLaunchBaseName();
         if (TextUtils.isEmpty(baseName)) return null;
-        return new File(new File(Environment.getExternalStorageDirectory(), "Winlator/covers"), baseName + ".png");
+        return new File(new File(Environment.getExternalStorageDirectory(), "YurNLator/covers"), baseName + ".png");
     }
 
     private boolean isUsableImageFile(File file) {

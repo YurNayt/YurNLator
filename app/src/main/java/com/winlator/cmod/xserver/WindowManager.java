@@ -281,6 +281,13 @@ public class WindowManager extends XResourceManager {
 
         Window parent = window.getParent();
         boolean overrideRedirect = window.attributes.isOverrideRedirect();
+        // A game window as big as the screen (fullscreen) belongs at 0,0: after switching the game
+        // to windowed and back, Wine sometimes leaves it where the windowed frame was, and the
+        // picture shows shifted with a black band (Hellblade, X11 + VKD3D).
+        if (parent != null && (x != 0 || y != 0) && isFullscreenSlot(parent)
+                && width >= rootWindow.getWidth() && height >= rootWindow.getHeight()) {
+            x = 0; y = 0;
+        }
         if (!parent.hasEventListenerFor(Event.SUBSTRUCTURE_REDIRECT) || overrideRedirect) {
             changeWindowGeometry(window, x, y, width, height);
 
@@ -292,6 +299,13 @@ public class WindowManager extends XResourceManager {
             parent.sendEvent(Event.SUBSTRUCTURE_NOTIFY, new ConfigureNotify(parent, window, previousSibling, x, y, width, height, borderWidth, overrideRedirect));
         }
         else parent.sendEvent(Event.SUBSTRUCTURE_REDIRECT, new ConfigureRequest(parent, window, window.previousSibling(), x, y, width, height, borderWidth, stackMode, valueMask));
+    }
+
+    /** The root, or a window covering the whole screen at 0,0 (Wine's virtual desktop). */
+    private boolean isFullscreenSlot(Window parent) {
+        if (parent == rootWindow) return true;
+        return parent.getParent() == rootWindow && parent.getX() == 0 && parent.getY() == 0
+                && parent.getWidth() >= rootWindow.getWidth() && parent.getHeight() >= rootWindow.getHeight();
     }
 
     /** Raises {@code window} to the top of its parent's Z-order. */

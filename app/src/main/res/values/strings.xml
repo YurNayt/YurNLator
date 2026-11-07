@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE resources [
     <!ENTITY TERMUX_PACKAGE_NAME "com.winlator">
-    <!ENTITY TERMUX_X11_APP_NAME "Winlator:X11">
+    <!ENTITY TERMUX_X11_APP_NAME "YurNLator:X11">
     ]>
 <resources>
     <string name="run">Run</string>
@@ -425,7 +425,7 @@
     <string name="lc_all" translatable="false">LC_ALL</string>
     <string name="toggle_orientation">Toggle Orientation</string>
     <string name="help_file_provider"><![CDATA[
-        <i><b>File Provider</b></i> allows access to Winlator\'s internal data through android file manager.<br/><br/>
+        <i><b>File Provider</b></i> allows access to YurNLator\'s internal data through android file manager.<br/><br/>
     ]]></string>
     <string name="proton_options">Proton options</string>
     <string name="reconfigure">Reconfigure</string>

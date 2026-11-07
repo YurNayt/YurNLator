@@ -155,7 +155,7 @@ public final class FrameGenSession {
                     try { r = WaylandCompositor.nativeFrameGenCapsReason(); } catch (Throwable ignored) {}
                     why = "this GPU / driver lacks what it needs" + (r == null || r.isEmpty() ? "" : ": " + r);
                 } else if (p == 2) {
-                    why = "the engine failed to start (details in Download/Wayland-logs)";
+                    why = "the engine failed to start (details in Download/YurNLator/Wayland-logs)";
                 } else if (p == -1) {
                     why = "the compositor's GPU device didn't start";
                 }

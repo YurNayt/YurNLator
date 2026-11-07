@@ -88,8 +88,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String orientationMode = ORIENTATION_MODE_AUTO;
 
     private void createNotificationChannel() {
-        String name = "Winlator";
-        String description = "Winlator XServer Messages";
+        String name = "YurNLator";
+        String description = "YurNLator X server messages";
         int importance = NotificationManager.IMPORTANCE_LOW;
         NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance);
         channel.setDescription(description);
@@ -178,6 +178,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setNavigationViewItemTextColor(navigationView, Color.WHITE);
 
         File winlatorDir = new File(SettingsFragment.DEFAULT_WINLATOR_PATH);
+        // The storage folder is "YurNLator" now: move the old "Winlator" one (icons, covers,
+        // banners, logs, profiles, presets) over once, if there is no new one yet.
+        File legacyDir = new File(Environment.getExternalStorageDirectory(), "Winlator");
+        if (!winlatorDir.exists() && legacyDir.isDirectory() && !legacyDir.renameTo(winlatorDir))
+            Log.w("MainActivity", "couldn't move " + legacyDir + " to " + winlatorDir);
         if (!winlatorDir.exists())
             winlatorDir.mkdirs();
 

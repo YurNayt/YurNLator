@@ -45,13 +45,13 @@ internal fun ClassicWinlatorWelcome(
         ) {
             Spacer(Modifier.weight(.62f))
             Image(
-                painterResource(R.drawable.winlator_mark_exact),
-                "Winlator",
+                painterResource(R.drawable.yurn_launcher_art),
+                "YurNLator",
                 Modifier.size(146.dp)
             )
             Spacer(Modifier.height(22.dp))
             Text(
-                "Welcome to Winlator",
+                "Welcome to YurNLator",
                 style = MaterialTheme.typography.displaySmall.copy(fontSize = 28.sp),
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
@@ -74,7 +74,7 @@ internal fun ClassicWinlatorWelcome(
             ClassicWelcomeCard(
                 Icons.Outlined.SkipNext,
                 "Skip",
-                "Use the components bundled with Winlator and configure everything later.",
+                "Use the components bundled with YurNLator and configure everything later.",
                 skip
             )
             Spacer(Modifier.height(12.dp))

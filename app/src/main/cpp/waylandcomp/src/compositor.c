@@ -56,11 +56,11 @@
 #define WLOGE(...) __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", __VA_ARGS__)
 
 /* ------------------------------------------------------------------ session log
- * One readable, time-stamped file per Wayland session in Download/Wayland-logs, also
+ * One readable, time-stamped file per Wayland session in Download/YurNLator/Wayland-logs, also
  * mirrored to logcat: which programs connect, the desktop, windows opening and closing,
  * Vulkan frames arriving, a frame-rate summary every 10 seconds, and errors. */
 
-#define SESSION_LOG_DIR "/storage/emulated/0/Download/Wayland-logs"
+#define SESSION_LOG_DIR "/storage/emulated/0/Download/YurNLator/Wayland-logs"
 
 static FILE *g_log;
 
@@ -102,6 +102,7 @@ static void open_session_log(void) {
     localtime_r(&now, &tm);
     strftime(stamp, sizeof(stamp), "%Y-%m-%d_%H-%M-%S", &tm);
     mkdir("/storage/emulated/0/Download", 0775);
+    mkdir("/storage/emulated/0/Download/YurNLator", 0775);
     if (mkdir(SESSION_LOG_DIR, 0775) != 0 && errno != EEXIST)
         WLOGE("can't create %s: %s", SESSION_LOG_DIR, strerror(errno));
     snprintf(path, sizeof(path), "%s/wayland-%s.log", SESSION_LOG_DIR, stamp);

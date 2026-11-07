@@ -733,7 +733,7 @@ private fun ShortcutCategoryV2(
             }
             SettingsCard {
                 val hudEntries = listOf("Off", "Classic", "Modern")
-                SettingChoice("Winlator HUD", hudEntries.getOrElse(s.winlatorHudMode) { "Off" }, hudEntries) {
+                SettingChoice("YurNLator HUD", hudEntries.getOrElse(s.winlatorHudMode) { "Off" }, hudEntries) {
                     s.winlatorHudMode = hudEntries.indexOf(it).coerceAtLeast(0)
                     s.extra("hudMode", s.winlatorHudMode.toString())
                 }
