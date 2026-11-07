@@ -859,6 +859,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     void exit() {
+        com.winlator.cmod.core.RendererDriverGuard.disarm(this);
         NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID);
         boolean removeLoadingBar = PreferenceManager.getDefaultSharedPreferences(this)
                 .getBoolean("remove_loading_bar_when_booting_games", false);
@@ -909,6 +910,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        com.winlator.cmod.core.RendererDriverGuard.disarm(this);
         if (waylandSession != null) { waylandSession.stop(); waylandSession = null; }
         if (taskManagerSidebar != null) taskManagerSidebar.stop();
         super.onDestroy();
@@ -1230,7 +1232,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 Log.d("XServerDisplayActivity", "Renderer driver " + rendererDriverId + " ignored on non-Adreno GPU: system driver");
                 rendererDriverId = null;
             }
+            // A custom driver that crashed the app last time in our compositor (it runs in the app's
+            // process: SIGSEGV in adrenotools/<driver>/temp/*_patched.so) is skipped here from now on;
+            // the game itself keeps it.
+            if (rendererDriverId != null && !rendererDriverId.isEmpty() && !rendererDriverId.equalsIgnoreCase("system")
+                    && com.winlator.cmod.core.RendererDriverGuard.blocked(this, rendererDriverId)) {
+                Log.w("XServerDisplayActivity", "Renderer driver " + rendererDriverId + " crashed the app before: system driver");
+                android.widget.Toast.makeText(this, rendererDriverId + " crashed the screen renderer last time: it uses the system driver now (the game keeps " + rendererDriverId + ")", android.widget.Toast.LENGTH_LONG).show();
+                rendererDriverId = null;
+            }
             if (rendererDriverId != null && !rendererDriverId.isEmpty() && !rendererDriverId.equalsIgnoreCase("system")) {
+                com.winlator.cmod.core.RendererDriverGuard.arm(this, rendererDriverId);
                 try {
                     String driverPath = getFilesDir().getAbsolutePath() + "/contents/adrenotools/" + rendererDriverId + "/";
                     AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
