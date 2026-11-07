@@ -22,7 +22,7 @@ import java.io.FileWriter;
  */
 public final class Watchdog {
     private static final String TAG = "BundleFinder";
-    private static final long START_LIMIT = 120_000, HANG_LIMIT = 15_000, TOTAL_LIMIT = 240_000;
+    private static final long START_LIMIT = 120_000, HANG_LIMIT = 15_000, TOTAL_LIMIT = 330_000;
 
     private Watchdog() {}
 

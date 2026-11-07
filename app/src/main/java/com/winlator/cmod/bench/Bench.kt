@@ -38,22 +38,29 @@ data class Combo(
     /** "d3d11" (DXVK) or "d3d12" (VKD3D). */
     val api: String = API11,
     val vkd3d: String = "",
+    /** Vulkan wrapper id ("" = the container's) and its name for the label. */
+    val wrapper: String = "",
+    val wrapperLabel: String = "",
 ) {
     val dx12: Boolean get() = api == API12
     /** DXVK for DX11 runs, VKD3D for DX12 runs: the translation layer the run compares. */
     val layer: String get() = if (dx12) "VKD3D $vkd3d" else "DXVK $dxvk"
-    val label: String get() = "$driverLabel · $layer · ${if (emulator == "FEXCore") "FEX" else "Box64"} $emulatorVersion"
+    val label: String get() = "$driverLabel · " + (if (wrapperLabel.isNotEmpty()) "$wrapperLabel · " else "") +
+        "$layer · ${if (emulator == "FEXCore") "FEX" else "Box64"} $emulatorVersion"
     /** Same bundle (for averaging repeated runs). */
-    val key: String get() = listOf(api, driverId, if (dx12) vkd3d else dxvk, emulator, emulatorVersion).joinToString("|")
+    val key: String get() = listOf(api, driverId, if (dx12) vkd3d else dxvk, emulator, emulatorVersion).joinToString("|") +
+        (if (wrapper.isNotEmpty()) "|w=$wrapper" else "")
 
     fun toJson(): JSONObject = JSONObject().put("driver", driverId).put("driverLabel", driverLabel).put("dxvk", dxvk)
         .put("emulator", emulator).put("emulatorVersion", emulatorVersion).put("api", api).put("vkd3d", vkd3d)
+        .put("wrapper", wrapper).put("wrapperLabel", wrapperLabel)
 
     companion object {
         const val API11 = "d3d11"
         const val API12 = "d3d12"
         fun from(o: JSONObject) = Combo(o.optString("driver"), o.optString("driverLabel"), o.optString("dxvk"),
-            o.optString("emulator"), o.optString("emulatorVersion"), o.optString("api").ifEmpty { API11 }, o.optString("vkd3d"))
+            o.optString("emulator"), o.optString("emulatorVersion"), o.optString("api").ifEmpty { API11 }, o.optString("vkd3d"),
+            o.optString("wrapper"), o.optString("wrapperLabel"))
     }
 }
 
@@ -321,7 +328,7 @@ object Bench {
     }
 
     /** Copies YurnBench into the container and writes the run's shortcut. */
-    private fun prepare(context: Context, container: Container, combo: Combo, long: Boolean, wrapper: String = ""): File {
+    private fun prepare(context: Context, container: Container, combo: Combo, long: Boolean, wrapper: String = "", heat: Int = 0): File {
         val folder = benchFolder(container).apply { mkdirs() }
         listOf("status.json", "result.json", "status.tmp", "result.tmp").forEach { File(folder, it).delete() }
         val exe = File(folder, "yurnbench.exe")
@@ -337,7 +344,8 @@ object Bench {
             "dxwrapperConfig" to writeConfig(container.getDXWrapperConfig(), "version", combo.dxvk, ',').let {
                 if (combo.dx12) writeConfig(it, "vkd3dVersion", combo.vkd3d, ',') else it
             },
-            "execArgs" to listOfNotNull(if (combo.dx12) "--dx12" else null, if (long) "--long" else null).joinToString(" "),
+            "execArgs" to listOfNotNull(if (combo.dx12) "--dx12" else null, if (long) "--long" else null,
+                if (heat > 0) "--heat $heat" else null).joinToString(" "),
             "emulator" to combo.emulator,
             if (combo.emulator == "FEXCore") "fexcoreVersion" to combo.emulatorVersion else "box64Version" to combo.emulatorVersion,
         )
@@ -370,7 +378,9 @@ object Bench {
                 0.0, 0.0, Phase(0.0, 0.0, 0), Phase(0.0, 0.0, 0), 0.0, 0f, 0f)))
             return launchNext(activity)
         }
-        val shortcut = try { prepare(activity, container, combo, s.long, s.wrapper) } catch (e: Exception) {
+        val shortcut = try { prepare(activity, container, combo, s.long, combo.wrapper.ifEmpty { s.wrapper },
+            // Heat soak before measuring: long on the first run (the phone is cold), short on the rest.
+            if (s.results.isEmpty()) 45 else 15) } catch (e: Exception) {
             Log.e(TAG, "prepare", e)
             save(activity, s.copy(results = s.results + RunResult(combo, "failed", "couldn't prepare: ${e.message}", "", 0.0, 0.0,
                 Phase(0.0, 0.0, 0), Phase(0.0, 0.0, 0), 0.0, 0f, 0f), next = s.next + 1))
@@ -516,7 +526,9 @@ object Bench {
     /** Makes [combo] the container's own settings. */
     fun apply(context: Context, containerId: Int, combo: Combo): Boolean {
         val c = ContainerManager(context).getContainerById(containerId) ?: return false
-        c.setGraphicsDriverConfig(writeConfig(c.getGraphicsDriverConfig(), "version", combo.driverId, ';'))
+        c.setGraphicsDriverConfig(writeConfig(c.getGraphicsDriverConfig(), "version", combo.driverId, ';').let {
+            if (combo.wrapper.isNotEmpty()) writeConfig(it, "wrapper", combo.wrapper, ';') else it
+        })
         if (!c.getDXWrapper().contains("dxvk")) c.setDXWrapper("dxvk+vkd3d")
         c.setDXWrapperConfig(writeConfig(c.getDXWrapperConfig(), "version", combo.dxvk, ',').let {
             if (combo.dx12) writeConfig(it, "vkd3dVersion", combo.vkd3d, ',') else it

@@ -83,8 +83,10 @@ public class WinlatorHUD extends View {
     private static final float DRAG_THRESH = 10f;
 
     private static final String[] GPU_STATIC_PATHS = {
-            "/sys/class/kgsl/kgsl-3d0/gpubusy",
+            // The kernel's own percentage first: gpubusy's busy/total counters reset on every read,
+            // so another reader (a system overlay) leaves us a near-empty window and a few %.
             "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage",
+            "/sys/class/kgsl/kgsl-3d0/gpubusy",
             "/sys/class/kgsl/kgsl-3d0/devfreq/gpu_load",
             "/sys/class/misc/mali0/device/utilisation",
             "/sys/class/misc/mali0/device/utilization",

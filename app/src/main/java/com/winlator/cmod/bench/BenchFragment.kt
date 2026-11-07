@@ -166,7 +166,7 @@ private fun BenchScreen(
     val vkd3ds = remember { mutableStateListOf<String>() }
     var dx11 by remember { mutableStateOf(true) }
     var dx12 by remember { mutableStateOf(false) }
-    var wrapper by remember { mutableStateOf("") }
+    val wrappers = remember { mutableStateListOf<String>() }  // "" = the container's
     var conflicts by remember { mutableStateOf(Bench.conflicts(context)) }
     LaunchedEffect(state.value) { conflicts = Bench.conflicts(context) }
 
@@ -203,7 +203,7 @@ private fun BenchScreen(
     ) {
         item {
             Text("Bundle finder", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text("Runs YurnBench (CPU, GPU and CPU+GPU, about 40 s each) with every chosen GPU driver, DXVK and FEX / Box64. " +
+            Text("Runs YurnBench (CPU, GPU and CPU+GPU, about a minute each, after a warm-up load) with every chosen GPU driver, Vulkan wrapper, DXVK and FEX / Box64. " +
                 "Proton stays the container's. Keep the phone on the charger, screen on.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -212,8 +212,8 @@ private fun BenchScreen(
             item { Progress(s, cooling.value, stop, reset) }
             if (!s.running && !s.long && s.results.any { it.ok }) item {
                 Section("Confirm the best") {
-                    Text("Runs the 3 best bundles of each API 3 times each with phases 2.5× longer, cooling down in between, " +
-                        "and shows the average and the spread. Takes about ${Bench.confirmation(s).size * 2} min.",
+                    Text("Runs the 3 best bundles of each API 3 times each with phases 2.5× longer than usual, cooling down in between, " +
+                        "and shows the average and the spread. Takes about ${Bench.confirmation(s).size * 5 / 2} min.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Button(onClick = { start(s.containerId, Bench.confirmation(s), true, s.wrapper) }) { Text("Confirm best (long runs)") }
                 }
@@ -274,17 +274,17 @@ private fun BenchScreen(
             }
         }
         item {
-            // One Vulkan wrapper for the whole series, as Proton: the bundles are compared under it.
-            val wrappers = remember { com.winlator.cmod.contents.WrapperManager.installed(context) }
+            // Vulkan wrappers to compare; none chosen = the container's.
+            val installed = remember { com.winlator.cmod.contents.WrapperManager.installed(context) }
             val containerWrapper = container?.let {
                 Regex("(?:^|;)wrapper=([^;]*)").find(it.getGraphicsDriverConfig().orEmpty())?.groupValues?.get(1)
             }.orEmpty()
-            Section("Vulkan wrapper (stays for the whole series)") {
+            Section("Vulkan wrappers (${wrappers.size.coerceAtLeast(1)})") {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = wrapper.isEmpty(), onClick = { wrapper = "" },
-                        label = { Text("Container's" + (wrappers.firstOrNull { it.id == containerWrapper }?.let { " (${it.name})" } ?: "")) })
-                    wrappers.forEach { w ->
-                        FilterChip(selected = wrapper == w.id, onClick = { wrapper = w.id },
+                    FilterChip(selected = wrappers.isEmpty(), onClick = { wrappers.clear() },
+                        label = { Text("Container's" + (installed.firstOrNull { it.id == containerWrapper }?.let { " (${it.name})" } ?: "")) })
+                    installed.forEach { w ->
+                        FilterChip(selected = w.id in wrappers, onClick = { if (w.id in wrappers) wrappers.remove(w.id) else wrappers.add(w.id) },
                             label = { Text(w.name + (w.author?.let { " · $it" } ?: "")) })
                     }
                 }
@@ -342,20 +342,23 @@ private fun BenchScreen(
                 val c0 = container
                 val currentDxvk = c0?.let { Regex("(?:^|,)version=([^,]*)").find(it.getDXWrapperConfig())?.groupValues?.get(1) }.orEmpty()
                 fun label(d: String) = ch.drivers.firstOrNull { it.first == d }?.second ?: d
-                val combos = (if (dx11) drivers.flatMap { d ->
+                val wrapperNames = com.winlator.cmod.contents.WrapperManager.installed(context).associate { it.id to it.name }
+                val ws = if (wrappers.isEmpty()) listOf("") else wrappers.toList()
+                val base = (if (dx11) drivers.flatMap { d ->
                     dxvks.flatMap { x -> emus.map { e -> Combo(d, label(d), x, e.first, e.second) } }
                 } else emptyList()) + (if (dx12) drivers.flatMap { d ->
                     vkd3ds.flatMap { v -> emus.map { e -> Combo(d, label(d), currentDxvk.ifEmpty { dxvks.firstOrNull().orEmpty() }, e.first, e.second, Combo.API12, v) } }
                 } else emptyList())
+                val combos = ws.flatMap { w -> base.map { it.copy(wrapper = w, wrapperLabel = if (w.isEmpty()) "" else wrapperNames[w] ?: w) } }
                 val proton = container?.getWineVersion().orEmpty()
                 val known = combos.count { Bench.conflictFor(conflicts, proton, it) != null }
-                val minutes = ((combos.size - known) * 50 + 59) / 60
+                val minutes = ((combos.size - known) * 80 + 60 + 59) / 60
                 Text("${combos.size} bundles" + (if (known > 0) ", $known skipped as known conflicts" else "") +
                     ", about $minutes min." + if (combos.size - known > 24) " Large series: pick fewer for a first try." else "",
                     style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(8.dp))
                 Button(enabled = combos.isNotEmpty() && s?.running != true && container != null, onClick = {
-                    start(container!!.id, combos, false, wrapper)
+                    start(container!!.id, combos, false, "")
                 }) { Text("Start") }
             }
         }

@@ -314,7 +314,7 @@ static void drain12(void) {
 }
 
 static Stats run12(int mix, double warm, double len) {
-    phase = mix ? "mix" : "gpu";
+    phase = heating ? "heat" : mix ? "mix" : "gpu";
     phaseFrames = 0;
     gpuMsSum = 0; gpuMsCount = 0; gpuSceneN = 0;
     calibSum = 0; calibCount = 0; reps = 1;
