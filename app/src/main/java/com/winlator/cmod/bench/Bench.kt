@@ -192,10 +192,12 @@ data class BenchState(
     /** Temperatures when the series started: the cooling target. */
     val baseBattery: Float = 0f,
     val baseCpu: Int = -1,
+    /** Vulkan wrapper for the whole series (like Proton): "" = the container's. */
+    val wrapper: String = "",
 ) {
     fun toJson(): JSONObject = JSONObject().put("containerId", containerId).put("next", next).put("running", running)
         .put("awaiting", awaiting).put("tempBefore", tempBefore.toDouble()).put("long", long)
-        .put("baseBattery", baseBattery.toDouble()).put("baseCpu", baseCpu)
+        .put("baseBattery", baseBattery.toDouble()).put("baseCpu", baseCpu).put("wrapper", wrapper)
         .put("combos", JSONArray().apply { combos.forEach { put(it.toJson()) } })
         .put("results", JSONArray().apply { results.forEach { put(it.toJson()) } })
 
@@ -207,7 +209,7 @@ data class BenchState(
                 o.optInt("containerId"), (0 until c.length()).map { Combo.from(c.getJSONObject(it)) }, o.optInt("next"),
                 o.optBoolean("running"), o.optBoolean("awaiting"), (0 until r.length()).map { RunResult.from(r.getJSONObject(it)) },
                 o.optDouble("tempBefore", 0.0).toFloat(), o.optBoolean("long"),
-                o.optDouble("baseBattery", 0.0).toFloat(), o.optInt("baseCpu", -1),
+                o.optDouble("baseBattery", 0.0).toFloat(), o.optInt("baseCpu", -1), o.optString("wrapper"),
             )
         }
     }
@@ -319,7 +321,7 @@ object Bench {
     }
 
     /** Copies YurnBench into the container and writes the run's shortcut. */
-    private fun prepare(context: Context, container: Container, combo: Combo, long: Boolean): File {
+    private fun prepare(context: Context, container: Container, combo: Combo, long: Boolean, wrapper: String = ""): File {
         val folder = benchFolder(container).apply { mkdirs() }
         listOf("status.json", "result.json", "status.tmp", "result.tmp").forEach { File(folder, it).delete() }
         val exe = File(folder, "yurnbench.exe")
@@ -328,7 +330,9 @@ object Bench {
         val dxwrapper = container.getDXWrapper().takeIf { it.contains("dxvk") } ?: "dxvk+vkd3d"
         val shortcut = File(dir(context), "run.desktop")
         val extras = linkedMapOf(
-            "graphicsDriverConfig" to writeConfig(container.getGraphicsDriverConfig(), "version", combo.driverId, ';'),
+            "graphicsDriverConfig" to writeConfig(container.getGraphicsDriverConfig(), "version", combo.driverId, ';').let {
+                if (wrapper.isNotEmpty()) writeConfig(it, "wrapper", wrapper, ';') else it
+            },
             "dxwrapper" to dxwrapper,
             "dxwrapperConfig" to writeConfig(container.getDXWrapperConfig(), "version", combo.dxvk, ',').let {
                 if (combo.dx12) writeConfig(it, "vkd3dVersion", combo.vkd3d, ',') else it
@@ -366,7 +370,7 @@ object Bench {
                 0.0, 0.0, Phase(0.0, 0.0, 0), Phase(0.0, 0.0, 0), 0.0, 0f, 0f)))
             return launchNext(activity)
         }
-        val shortcut = try { prepare(activity, container, combo, s.long) } catch (e: Exception) {
+        val shortcut = try { prepare(activity, container, combo, s.long, s.wrapper) } catch (e: Exception) {
             Log.e(TAG, "prepare", e)
             save(activity, s.copy(results = s.results + RunResult(combo, "failed", "couldn't prepare: ${e.message}", "", 0.0, 0.0,
                 Phase(0.0, 0.0, 0), Phase(0.0, 0.0, 0), 0.0, 0f, 0f), next = s.next + 1))

@@ -320,23 +320,6 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             item("about") {
                 NavigationRow(Icons.Outlined.Info, "About", null) { activity?.showAboutDialog() }
             }
-            // Tapping the version five times unlocks the developer options (like Android's build number).
-            item("version") {
-                NavigationRow(Icons.Outlined.Info, "Version", appVersion.ifBlank { "—" }) {
-                    if (devOptions) {
-                        Toast.makeText(context, "Developer options are already on", Toast.LENGTH_SHORT).show()
-                    } else {
-                        versionTaps++
-                        val left = DeveloperOptions.TAPS - versionTaps
-                        if (left <= 0) {
-                            DeveloperOptions.setEnabled(context, true); devOptions = true
-                            Toast.makeText(context, "Developer options are on", Toast.LENGTH_SHORT).show()
-                        } else if (left <= 3) {
-                            Toast.makeText(context, "$left more to unlock developer options", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
             if (devOptions) {
                 item("dev-title") { SectionTitle("DEVELOPER") }
                 item("dev-drivers") {
@@ -357,6 +340,38 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
                         DeveloperOptions.setEnabled(context, false); devOptions = false; versionTaps = 0
                         activity?.updateBenchTab()
                     }
+                }
+            }
+            // Plain centered version text, no row or ripple: tapping it five times unlocks the developer
+            // options (like Android's build number) without looking like something to press.
+            item("version") {
+                androidx.compose.foundation.layout.Box(
+                    Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    Text(
+                        "YurNLator " + appVersion.ifBlank { "—" },
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            if (devOptions) {
+                                Toast.makeText(context, "Developer options are already on", Toast.LENGTH_SHORT).show()
+                            } else {
+                                versionTaps++
+                                val left = DeveloperOptions.TAPS - versionTaps
+                                if (left <= 0) {
+                                    DeveloperOptions.setEnabled(context, true); devOptions = true
+                                    Toast.makeText(context, "Developer options are on", Toast.LENGTH_SHORT).show()
+                                } else if (left <= 2) {
+                                    Toast.makeText(context, "$left more", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
                 }
             }
         }

@@ -120,6 +120,13 @@ public final class FrameGenSession {
                 });
                 return;
             }
+            if (WinFrameGen.ENGINE_WFG.equals(engine(activity))) {
+                // WFG runs in the compositor too (kind 2): flow resolution from the preset.
+                WaylandCompositor.nativeSetWinFgTuning(4, Math.max(0, Math.min(2, preset())));
+                WaylandCompositor.nativeSetFrameGenEngine(WaylandCompositor.FG_ENGINE_WFG);
+                WaylandCompositor.nativeSetFrameGenArmed(true, mult);
+                return;
+            }
             armWinFg(mult);
         } catch (Throwable t) {
             android.util.Log.w("FrameGen", "wayland: " + t);

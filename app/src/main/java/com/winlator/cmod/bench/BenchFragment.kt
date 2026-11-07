@@ -114,10 +114,10 @@ class BenchFragment : Fragment() {
         handler.postDelayed(r, delay)
     }
 
-    private fun start(containerId: Int, combos: List<Combo>, long: Boolean) {
+    private fun start(containerId: Int, combos: List<Combo>, long: Boolean, wrapper: String = "") {
         val ctx = context ?: return
         Bench.save(ctx, BenchState(containerId, combos, 0, running = true, awaiting = false, results = emptyList(),
-            long = long, baseBattery = Bench.temperature(ctx), baseCpu = Bench.cpuTemp()))
+            long = long, baseBattery = Bench.temperature(ctx), baseCpu = Bench.cpuTemp(), wrapper = wrapper))
         state.value = Bench.load(ctx)
         scheduleNext()
     }
@@ -152,7 +152,7 @@ private data class Choices(
 private fun BenchScreen(
     state: MutableState<BenchState?>,
     cooling: MutableState<String?>,
-    start: (Int, List<Combo>, Boolean) -> Unit,
+    start: (Int, List<Combo>, Boolean, String) -> Unit,
     stop: () -> Unit,
     reset: () -> Unit,
 ) {
@@ -166,6 +166,7 @@ private fun BenchScreen(
     val vkd3ds = remember { mutableStateListOf<String>() }
     var dx11 by remember { mutableStateOf(true) }
     var dx12 by remember { mutableStateOf(false) }
+    var wrapper by remember { mutableStateOf("") }
     var conflicts by remember { mutableStateOf(Bench.conflicts(context)) }
     LaunchedEffect(state.value) { conflicts = Bench.conflicts(context) }
 
@@ -214,7 +215,7 @@ private fun BenchScreen(
                     Text("Runs the 3 best bundles of each API 3 times each with phases 2.5× longer, cooling down in between, " +
                         "and shows the average and the spread. Takes about ${Bench.confirmation(s).size * 2} min.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = { start(s.containerId, Bench.confirmation(s), true) }) { Text("Confirm best (long runs)") }
+                    Button(onClick = { start(s.containerId, Bench.confirmation(s), true, s.wrapper) }) { Text("Confirm best (long runs)") }
                 }
             }
             listOf(Combo.API11 to "DX11 (DXVK)", Combo.API12 to "DX12 (VKD3D)").forEach { (api, title) ->
@@ -268,6 +269,23 @@ private fun BenchScreen(
                     containers.forEach { c ->
                         FilterChip(selected = container?.id == c.id, onClick = { container = c },
                             label = { Text(c.name + " · " + c.getWineVersion().orEmpty().substringBefore("-arm64ec").take(24)) })
+                    }
+                }
+            }
+        }
+        item {
+            // One Vulkan wrapper for the whole series, as Proton: the bundles are compared under it.
+            val wrappers = remember { com.winlator.cmod.contents.WrapperManager.installed(context) }
+            val containerWrapper = container?.let {
+                Regex("(?:^|;)wrapper=([^;]*)").find(it.getGraphicsDriverConfig().orEmpty())?.groupValues?.get(1)
+            }.orEmpty()
+            Section("Vulkan wrapper (stays for the whole series)") {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = wrapper.isEmpty(), onClick = { wrapper = "" },
+                        label = { Text("Container's" + (wrappers.firstOrNull { it.id == containerWrapper }?.let { " (${it.name})" } ?: "")) })
+                    wrappers.forEach { w ->
+                        FilterChip(selected = wrapper == w.id, onClick = { wrapper = w.id },
+                            label = { Text(w.name + (w.author?.let { " · $it" } ?: "")) })
                     }
                 }
             }
@@ -337,7 +355,7 @@ private fun BenchScreen(
                     style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(8.dp))
                 Button(enabled = combos.isNotEmpty() && s?.running != true && container != null, onClick = {
-                    start(container!!.id, combos, false)
+                    start(container!!.id, combos, false, wrapper)
                 }) { Text("Start") }
             }
         }

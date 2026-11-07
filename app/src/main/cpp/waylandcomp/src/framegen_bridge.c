@@ -90,7 +90,7 @@ static int64_t now_ns(void) {
 /* ====================================================================== app controls */
 
 void vkp_framegen_set_engine(int kind) {
-    if (kind != VKP_FG_ENGINE_LSFG && kind != VKP_FG_ENGINE_WINFG) kind = VKP_FG_ENGINE_LSFG;
+    if (kind != VKP_FG_ENGINE_LSFG && kind != VKP_FG_ENGINE_WINFG && kind != VKP_FG_ENGINE_WFG) kind = VKP_FG_ENGINE_LSFG;
     atomic_store(&g_kind, kind);
     atomic_store(&g_cfg_dirty, 1);
 }

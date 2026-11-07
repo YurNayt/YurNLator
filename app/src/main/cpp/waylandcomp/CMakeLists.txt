@@ -78,6 +78,8 @@ if (TARGET dxbc AND EXISTS ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_engine.cpp
             ${BANNER_FRAMEGEN_WINFG_DIR}/framegen.cpp
             ${BANNER_FRAMEGEN_WINFG_DIR}/winfg_vkd.cpp
             ${BANNER_FRAMEGEN_WINFG_DIR}/winfg_engine.cpp
+            # WFG (kind 2): the X11 renderer's bridge, with its own wfg_vkd dispatch.
+            ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/renderer/vulkan/VulkanRendererWfg.cpp
     )
     target_include_directories(bannerwayland PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/..            # <thirdparty/...> as the winlator target sees it
@@ -90,7 +92,7 @@ if (TARGET dxbc AND EXISTS ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_engine.cpp
             WINFG_UPSTREAM="${WINFG_UPSTREAM}"
             WINFG_CHAIN_HASH="${WINFG_CHAIN_HASH}"
     )
-    target_link_libraries(bannerwayland dxbc atomic)
+    target_link_libraries(bannerwayland dxbc wfg atomic)
 else()
     message(STATUS "bannerwayland: frame-generation engines NOT built in (standalone build): stub")
     target_sources(bannerwayland PRIVATE src/framegen_engine_stub.c)

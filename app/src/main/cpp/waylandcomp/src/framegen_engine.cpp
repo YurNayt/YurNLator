@@ -19,6 +19,7 @@
 #include "lsfg/lsfg_probe.h"
 #include "lsfg/lsfg_vkd.h"
 #include "winfg/winfg_engine.h"
+#include "wfg_bridge.h"         // WFG (WinNative, MIT): kind 2
 
 #define ELOG(...) __android_log_print(ANDROID_LOG_INFO, "BannerWayland", "framegen: " __VA_ARGS__)
 #define ELOGE(...) __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", "framegen: " __VA_ARGS__)
@@ -37,6 +38,8 @@ bool g_probed = false, g_ready = false;
 
 std::unique_ptr<lsfg::Engine> g_lsfg;
 std::unique_ptr<winfg::Engine> g_winfg;
+void *g_wfg = nullptr;           // WFG engine (wfgb), kind 2
+VkImage g_wfg_src = VK_NULL_HANDLE;
 int g_kind = -1;
 char g_build[96] = "";
 
@@ -138,7 +141,7 @@ void fge_device_ready(PFN_vkGetInstanceProcAddr gipa, VkInstance inst, VkPhysica
 
 int fge_caps_ok(int kind) {
     if (!g_ready) return 0;
-    if (kind == 1) return g_caps.storageOnSwapchainFormat ? 1 : 0;
+    if (kind == 1 || kind == 2) return g_caps.storageOnSwapchainFormat ? 1 : 0;
     return g_caps.supported() ? 1 : 0;
 }
 
@@ -152,6 +155,14 @@ int fge_format_ok(VkFormat fmt) {
 int fge_start(int kind, const char *cache_path) {
     fge_stop();
     if (!g_ready) return -1;
+    if (kind == 2) {
+        g_wfg = wfgb::create(g_table, g_dev, g_pd);
+        if (!g_wfg) { ELOGE("wfg: engine init failed"); return -1; }
+        g_kind = 2;
+        wfgb::configure(g_wfg, 216, 0, 60.f);   // defaults until the bridge's tuning arrives
+        std::snprintf(g_build, sizeof(g_build), "WFG dense inverse search");
+        return 0;
+    }
     if (kind == 1) {
         auto e = std::make_unique<winfg::Engine>();
         if (!e->init(g_table, g_pd, g_dev, g_qfam, g_queue)) {
@@ -186,13 +197,16 @@ int fge_start(int kind, const char *cache_path) {
 }
 
 void fge_stop(void) {
-    if ((g_lsfg || g_winfg) && g_table.DeviceWaitIdle && g_dev) g_table.DeviceWaitIdle(g_dev);
+    if ((g_lsfg || g_winfg || g_wfg) && g_table.DeviceWaitIdle && g_dev) g_table.DeviceWaitIdle(g_dev);
     g_lsfg.reset();
     g_winfg.reset();
+    if (g_wfg) { wfgb::destroy(g_wfg); g_wfg = nullptr; }
+    g_wfg_src = VK_NULL_HANDLE;
     g_kind = -1;
 }
 
 int fge_unavailable(void) {
+    if (g_kind == 2) return g_wfg ? 0 : 1;
     if (g_kind == 1) return g_winfg && g_winfg->unavailable() ? 1 : 0;
     return g_lsfg && g_lsfg->unavailable() ? 1 : 0;
 }
@@ -200,11 +214,19 @@ int fge_unavailable(void) {
 void fge_configure(uint32_t multiplier, float flow_scale, float refresh_hz, int model,
                    int perf_preset) {
     if (multiplier < 2) multiplier = 2;
+    if (g_kind == 2 && g_wfg) {
+        // Flow resolution on the shorter side, as the X11 renderer: Quality 252 .. Performance 180.
+        static const uint32_t kSide[3] = {252, 216, 180};
+        int p = perf_preset < 0 ? 0 : perf_preset > 2 ? 2 : perf_preset;
+        wfgb::configure(g_wfg, kSide[p], 0, refresh_hz > 1.f ? refresh_hz : 60.f);
+        return;
+    }
     if (g_kind == 1 && g_winfg) g_winfg->configure(multiplier, model, perf_preset, flow_scale);
     else if (g_lsfg) g_lsfg->configure(multiplier, 0, flow_scale, refresh_hz);
 }
 
 int fge_prepare(uint32_t w, uint32_t h, VkFormat fmt) {
+    if (g_kind == 2) return g_wfg && wfgb::prepare(g_wfg, w, h, fmt) ? 1 : 0;
     if (g_kind == 1) return g_winfg && g_winfg->prepare(w, h, fmt) ? 1 : 0;
     if (!g_lsfg) return 0;
     // The Wayland scene is the game's own size when it runs fullscreen, so the flow pyramid is
@@ -214,6 +236,7 @@ int fge_prepare(uint32_t w, uint32_t h, VkFormat fmt) {
 }
 
 uint32_t fge_plan(uint32_t capacity, uint64_t source_frames, float presented_rate) {
+    if (g_kind == 2) return g_wfg ? wfgb::plan(g_wfg, capacity, source_frames) : 0;
     if (g_kind == 1) return g_winfg ? g_winfg->plan(capacity) : 0;
     if (!g_lsfg) return 0;
     g_lsfg->setPresentedRate(presented_rate);
@@ -221,12 +244,14 @@ uint32_t fge_plan(uint32_t capacity, uint64_t source_frames, float presented_rat
 }
 
 void fge_process(VkCommandBuffer cmd, VkImage source, uint32_t w, uint32_t h, uint32_t gens) {
+    if (g_kind == 2) { g_wfg_src = source; if (g_wfg) wfgb::process(g_wfg, cmd, source, w, h, gens); return; }
     if (g_kind == 1) { if (g_winfg) g_winfg->process(cmd, source, w, h, gens); return; }
     if (g_lsfg) g_lsfg->process(cmd, source, w, h, gens);
 }
 
 void fge_generate(VkCommandBuffer cmd, uint32_t g, uint32_t count, VkImage img, VkImageView view,
                   uint32_t w, uint32_t h) {
+    if (g_kind == 2) { if (g_wfg) wfgb::generateInto(g_wfg, cmd, g, img, view, w, h, g_wfg_src); return; }
     if (g_kind == 1) { if (g_winfg) g_winfg->generateInto(cmd, g, count, img, view, w, h); return; }
     if (g_lsfg) g_lsfg->generateInto(cmd, g, g, img, view, w, h);
 }
@@ -244,7 +269,7 @@ void fge_telemetry(float *accepted, float *source_rate, float *thermal) {
     }
 }
 
-const char *fge_engine_name(int kind) { return kind == 1 ? "Win-FG Native" : "LSFG Native"; }
+const char *fge_engine_name(int kind) { return kind == 2 ? "WFG" : kind == 1 ? "Win-FG Native" : "LSFG Native"; }
 const char *fge_build_info(void) { return g_build; }
 
 } // extern "C"
