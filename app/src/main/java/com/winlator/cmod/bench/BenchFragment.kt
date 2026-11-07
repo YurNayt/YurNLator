@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -74,6 +76,8 @@ class BenchFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        // The toolbar is shared by all tabs; without this it keeps "Library".
+        (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.title = "Benchmark"
         val ctx = context ?: return
         val more = Bench.onReturn(ctx)
         state.value = Bench.load(ctx)
@@ -202,7 +206,7 @@ private fun BenchScreen(
         contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text("Bundle finder", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Benchmark", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text("Runs YurnBench (CPU, GPU and CPU+GPU, about a minute each, after a warm-up load) with every chosen GPU driver, Vulkan wrapper, DXVK and FEX / Box64. " +
                 "Proton stays the container's. Keep the phone on the charger, screen on.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -378,6 +382,7 @@ private fun BenchScreen(
                 TextButton(onClick = { Bench.forgetConflicts(context); conflicts = emptyList() }) { Text("Forget all conflicts") }
             }
         }
+        item { TestLogSection() }
         item { HistorySection() }
     }
 }
@@ -414,6 +419,7 @@ private fun ResultCard(r: RunResult, best: Boolean, agg: Bench.Aggregate?, tie: 
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(r.combo.label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.width(16.dp))
                 Text(if (agg != null && agg.ok.isNotEmpty()) "${agg.score}" else if (r.ok) "${r.score}" else r.status, fontWeight = FontWeight.Bold,
                     color = when { r.ok -> MaterialTheme.colorScheme.primary; r.status == "skipped" -> MaterialTheme.colorScheme.onSurfaceVariant
                         else -> MaterialTheme.colorScheme.error })
@@ -491,6 +497,7 @@ private fun HistorySection() {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text((if (h.api == Combo.API12) "DX12 · " else "DX11 · ") + h.label, Modifier.weight(1f),
                             style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.width(16.dp))
                         Text("${h.score}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                     Text(listOf(fmt.format(java.util.Date(h.date * 1000)),
@@ -500,6 +507,76 @@ private fun HistorySection() {
                 }
             }
             TextButton(onClick = { Bench.clearHistory(context); history = emptyList() }) { Text("Clear history") }
+        }
+    }
+}
+
+/** Every run of every series, filterable by its settings: pick drivers (or wrappers, DXVK, ...) and see their results. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TestLogSection() {
+    val context = LocalContext.current
+    var log by remember { mutableStateOf(Bench.runLog(context)) }
+    var open by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
+    if (log.isEmpty()) return
+    val filters = remember { mutableStateMapOf<String, Set<String>>() }
+    val dims: List<Pair<String, (Bench.LoggedRun) -> String>> = listOf(
+        "API" to { e -> if (e.run.combo.dx12) "DX12" else "DX11" },
+        "Driver" to { e -> e.run.combo.driverLabel },
+        "Wrapper" to { e -> e.run.combo.wrapperLabel.ifEmpty { "Container's" } },
+        "DXVK / VKD3D" to { e -> e.run.combo.layer },
+        "FEX / Box64" to { e -> (if (e.run.combo.emulator == "FEXCore") "FEX " else "Box64 ") + e.run.combo.emulatorVersion },
+        "Proton" to { e -> e.proton.ifEmpty { "?" } },
+        "Container" to { e -> e.container.ifEmpty { "?" } },
+    )
+    Section("Test history (${log.size} runs)") {
+        TextButton(onClick = { open = !open }) { Text(if (open) "Hide" else "Show") }
+        if (open) {
+            dims.forEach { (name, key) ->
+                val values = log.map(key).distinct().sorted()
+                if (values.size < 2) return@forEach
+                val sel = filters[name].orEmpty()
+                Text(name, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    values.forEach { v ->
+                        FilterChip(selected = v in sel, onClick = { filters[name] = if (v in sel) sel - v else sel + v },
+                            label = { Text(v, style = MaterialTheme.typography.bodySmall) })
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FilterChip(selected = failed, onClick = { failed = !failed }, label = { Text("Show failed") })
+                Spacer(Modifier.width(8.dp))
+                if (filters.values.any { it.isNotEmpty() }) TextButton(onClick = { filters.clear() }) { Text("Reset filters") }
+            }
+            val shown = log.filter { e ->
+                (failed || e.run.ok) && dims.all { (name, key) -> filters[name].orEmpty().let { it.isEmpty() || key(e) in it } }
+            }
+            // Bundles averaged over their runs, best first; each line shows how many runs and the spread.
+            val groups = shown.groupBy { it.run.combo.key + "|" + it.proton }.values.map { runs ->
+                val ok = runs.filter { it.run.ok }.map { it.run.score }
+                Triple(runs, if (ok.isEmpty()) -1 else ok.average().toInt(), ok)
+            }.sortedByDescending { it.second }
+            val fmt = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT)
+            Text("${groups.size} bundles, ${shown.size} runs", style = MaterialTheme.typography.bodySmall)
+            groups.take(100).forEach { (runs, avg, ok) ->
+                val last = runs.maxBy { it.date }
+                Column(Modifier.padding(vertical = 4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text((if (last.run.combo.dx12) "DX12 · " else "DX11 · ") + last.run.combo.label, Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.width(16.dp))
+                        Text(if (avg >= 0) "$avg" else last.run.status, fontWeight = FontWeight.Bold,
+                            color = if (avg >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                    }
+                    val spread = if (ok.size > 1) " (${ok.min()}–${ok.max()})" else ""
+                    Text(listOf("${runs.size} run" + (if (runs.size > 1) "s" else "") + spread,
+                        "last " + fmt.format(java.util.Date(last.date * 1000)), last.container + " · " + last.proton)
+                        .joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            TextButton(onClick = { Bench.clearRunLog(context); log = emptyList() }) { Text("Clear test history") }
         }
     }
 }

@@ -155,7 +155,7 @@ fun LandscapeMainNavigation(
             activity?.navigateToMainDestination(R.id.main_menu_settings)
         }
         if (activity != null && com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(activity)) {
-            Destination(Icons.Outlined.Speed, "Bundles", selected == R.id.main_menu_bench) {
+            Destination(Icons.Outlined.Speed, "Benchmark", selected == R.id.main_menu_bench) {
                 activity.navigateToMainDestination(R.id.main_menu_bench)
             }
         }

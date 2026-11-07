@@ -427,6 +427,7 @@ object Bench {
             }, outcome?.optString("phase").orEmpty(),
         )
         if (!run.ok && container != null) recordConflict(context, container.getWineVersion().orEmpty(), run)
+        logRun(context, run, container?.getWineVersion().orEmpty(), container?.getName().orEmpty(), s.long)
         val next = s.copy(results = s.results + run, next = s.next + 1, awaiting = false)
         save(context, next)
         return next.running && next.next < next.combos.size
@@ -489,6 +490,33 @@ object Bench {
                 o.optDouble("gpuFps"), o.optDouble("mixFps"), o.optInt("bundles"))
         }
     }
+
+    /** One run of any series, for the test history (files/bench/runs.jsonl, newest last). */
+    class LoggedRun(val date: Long, val proton: String, val container: String, val long: Boolean, val run: RunResult)
+
+    private fun runsFile(context: Context) = File(dir(context), "runs.jsonl")
+    private const val RUNS_MAX = 1500
+
+    private fun logRun(context: Context, run: RunResult, proton: String, container: String, long: Boolean) = runCatching {
+        val f = runsFile(context)
+        val line = JSONObject().put("date", System.currentTimeMillis() / 1000).put("proton", proton)
+            .put("container", container).put("long", long).put("run", run.toJson()).toString()
+        f.appendText(line + "\n")
+        val lines = f.readLines()
+        if (lines.size > RUNS_MAX) f.writeText(lines.takeLast(RUNS_MAX).joinToString("\n", postfix = "\n"))
+    }
+
+    fun runLog(context: Context): List<LoggedRun> = runCatching {
+        runsFile(context).readLines().mapNotNull { l ->
+            runCatching {
+                val o = JSONObject(l)
+                LoggedRun(o.optLong("date"), o.optString("proton"), o.optString("container"), o.optBoolean("long"),
+                    RunResult.from(o.getJSONObject("run")))
+            }.getOrNull()
+        }
+    }.getOrDefault(emptyList())
+
+    fun clearRunLog(context: Context) { runsFile(context).delete() }
 
     private fun historyFile(context: Context) = File(dir(context), "history.json")
 

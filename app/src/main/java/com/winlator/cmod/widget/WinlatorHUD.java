@@ -428,6 +428,11 @@ public class WinlatorHUD extends View {
 
     private boolean looksLikeGpuNode(String path) {
         String lower = path.toLowerCase(Locale.US);
+        // Bus / memory bandwidth governors next to the GPU (Qualcomm's gpubw, kgsl-busmon, llcc):
+        // their "load" is bandwidth, not how busy the GPU is (the HUD showed a few % at full load).
+        String name = lower.substring(lower.lastIndexOf('/') + 1);
+        if (name.contains("bw") || name.contains("busmon") || name.contains("bus") || name.contains("llcc")
+                || name.contains("ddr") || name.contains("mem")) return false;
         for (String token : GPU_NODE_TOKENS) {
             if (lower.contains(token)) return true;
         }
@@ -467,7 +472,42 @@ public class WinlatorHUD extends View {
         if ((mask & (SHOW_POWER | SHOW_BATTERY_TEMP | SHOW_CHARGE_STATE)) != 0) readBattery();
     }
 
+    // Root: the kernel's own GPU busy files (apps can't open them; what the benchmark's root mode reads).
+    private static final java.util.List<String> GPU_ROOT_PATHS = java.util.Arrays.asList(
+            "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage", "/sys/class/kgsl/kgsl-3d0/devfreq/gpu_load",
+            "/sys/kernel/gpu/gpu_busy", "/sys/class/misc/mali0/device/utilisation", "/sys/kernel/ged/hal/gpu_utilization");
+    private com.winlator.cmod.bench.RootShell gpuRootShell;
+    private boolean gpuRootTried;
+
+    private int readGpuRoot() {
+        if (!gpuRootTried) {
+            gpuRootTried = true;
+            try {
+                if (com.winlator.cmod.bench.RootMode.INSTANCE.enabled(getContext())
+                        && com.winlator.cmod.bench.RootMode.INSTANCE.available())
+                    gpuRootShell = com.winlator.cmod.bench.RootShell.Companion.open();
+            } catch (Throwable ignored) {}
+        }
+        if (gpuRootShell == null) return -1;
+        java.util.List<String> lines = gpuRootShell.read(GPU_ROOT_PATHS);
+        for (String line : lines) {
+            if (line == null) continue;
+            String digits = line.trim().split("\\s+")[0].replaceAll("[^0-9]", "");
+            if (!digits.isEmpty()) try { return clampPercent(Integer.parseInt(digits)); } catch (Exception ignored) {}
+        }
+        return -1;
+    }
+
     private void readGpu() {
+        int rootValue = readGpuRoot();
+        if (rootValue >= 0) {
+            if (rootValue != snapGpu) {
+                snapGpu = rootValue;
+                strGpu = rootValue + "%";
+                wDynGpu = pVal.measureText(strGpu);
+            }
+            return;
+        }
         if (gpuUnavailable) return;
 
         int value = -1;
@@ -1284,6 +1324,7 @@ public class WinlatorHUD extends View {
 
     private void stopStatsThread() {
         if (statsHandler != null) statsHandler.removeCallbacks(statsRunnable);
+        if (gpuRootShell != null) { final com.winlator.cmod.bench.RootShell sh = gpuRootShell; gpuRootShell = null; gpuRootTried = false; new Thread(sh::close).start(); }
         if (statsThread != null) {
             statsThread.quitSafely();
             statsThread = null;
