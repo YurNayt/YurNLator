@@ -72,6 +72,7 @@ object CrashReports {
             }.take(8)
             "\n\n--- ANR threads ---\n" + keep.joinToString("\n\n") { it.lines().take(45).joinToString("\n") }
         } else {
+            Tombstone.format(raw)?.let { return it }
             val strings = Regex("[\\x20-\\x7e]{6,}").findAll(String(raw, Charsets.ISO_8859_1)).map { it.value.trim() }
                 .filter { it.contains(".so") || it.contains("SIG") || it.contains("Abort") || it.contains("abort") ||
                           it.contains("Cause") || it.contains("/data/") || it.contains("fault") }
