@@ -281,6 +281,176 @@ public class WindowManager extends XResourceManager {
 
         Window parent = window.getParent();
         boolean overrideRedirect = window.attributes.isOverrideRedirect();
+        if (!parent.hasEventListenerFor(Event.SUBSTRUCTURE_REDIRECT) || window.attributes.isOverrideRedirect()) {
+                window.attributes.setMapped(true);
+                window.sendEvent(Event.STRUCTURE_NOTIFY, new MapNotify(window, window));
+                parent.sendEvent(Event.SUBSTRUCTURE_NOTIFY, new MapNotify(parent, window));
+                window.sendEvent(Event.EXPOSURE, new Expose(window));
+                triggerOnMapWindow(window);
+            }
+            else parent.sendEvent(Event.SUBSTRUCTURE_REDIRECT, new MapRequest(parent, window));
+        }
+    }
+
+    public void unmapWindow(Window window) {
+        if (rootWindow.id != window.id && window.attributes.isMapped()) {
+            window.attributes.setMapped(false);
+            Window parent = window.getParent();
+            window.sendEvent(Event.STRUCTURE_NOTIFY, new UnmapNotify(window, window));
+            parent.sendEvent(Event.SUBSTRUCTURE_NOTIFY, new UnmapNotify(parent, window));
+            if (window == focusedWindow) revertFocus();
+            triggerOnUnmapWindow(window);
+        }
+    }
+
+    public Window getFocusedWindow() {
+        return focusedWindow;
+    }
+
+    public void revertFocus() {
+        switch (focusRevertTo) {
+            case NONE:
+                focusedWindow = null;
+                break;
+            case POINTER_ROOT:
+                focusedWindow = rootWindow;
+                break;
+            case PARENT:
+                if (focusedWindow.getParent() != null) focusedWindow = focusedWindow.getParent();
+                break;
+        }
+    }
+
+    public void setFocus(Window focusedWindow, FocusRevertTo focusRevertTo) {
+        this.focusedWindow = focusedWindow;
+        this.focusRevertTo = focusRevertTo;
+    }
+
+    public FocusRevertTo getFocusRevertTo() {
+        return focusRevertTo;
+    }
+
+    public Window createWindow(int id, Window parent, short x, short y, short width, short height, WindowAttributes.WindowClass windowClass, Visual visual, byte depth, XClient client) throws XRequestError {
+        if (windows.indexOfKey(id) >= 0) throw new BadIdChoice(id);
+
+        boolean isInputOutput = false;
+        switch (windowClass) {
+            case COPY_FROM_PARENT:
+                depth = (depth != 0 || !parent.isInputOutput()) ? depth : parent.getContent().visual.depth;
+                isInputOutput = parent.isInputOutput();
+                break;
+            case INPUT_OUTPUT:
+                if (parent.isInputOutput()) {
+                    depth = depth == 0 ? parent.getContent().visual.depth : depth;
+                    isInputOutput = true;
+                } else throw new BadMatch();
+                break;
+            case INPUT_ONLY:
+                isInputOutput = false;
+                break;
+        }
+
+        if (isInputOutput) {
+            visual = visual == null ? parent.getContent().visual : visual;
+            if (depth != visual.depth) throw new BadMatch();
+        }
+
+        Drawable drawable = null;
+        if (isInputOutput) {
+            drawable = drawableManager.createDrawable(id, width, height, visual);
+            if (drawable == null) throw new BadIdChoice(id);
+        }
+
+        final Window window = new Window(id, drawable, x, y, width, height, client);
+        window.attributes.setWindowClass(windowClass);
+        if (drawable != null) drawable.setOnDrawListener(() -> triggerOnUpdateWindowContent(window));
+        windows.put(id, window);
+        parent.addChild(window);
+        triggerOnCreateResourceListener(window);
+        triggerOnCreateWindow(window, parent);
+        return window;
+    }
+
+    private void changeWindowGeometry(Window window, short x, short y, short width, short height) {
+        boolean resized = window.getWidth() != width || window.getHeight() != height;
+        if (resized && window.hasEventListenerFor(Event.RESIZE_REDIRECT)) {
+            window.sendEvent(Event.SUBSTRUCTURE_REDIRECT, new ResizeRequest(window, width, height));
+            width = window.getWidth();
+            height = window.getHeight();
+            resized = false;
+        }
+
+        if (resized && window.isInputOutput()) {
+            Drawable oldContent = window.getContent();
+            drawableManager.removeDrawable(oldContent.id);
+            Drawable newContent = drawableManager.createDrawable(oldContent.id, width, height, oldContent.visual);
+            newContent.setOnDrawListener(() -> triggerOnUpdateWindowContent(window));
+            window.setContent(newContent);
+        }
+
+        if (resized || window.getX() != x || window.getY() != y) {
+            window.setX(x);
+            window.setY(y);
+            window.setWidth(width);
+            window.setHeight(height);
+            triggerOnUpdateWindowGeometry(window, resized);
+        }
+
+        if (resized && window.isInputOutput() && window.attributes.isMapped()) {
+            window.sendEvent(new Expose(window));
+        }
+    }
+
+    private void changeWindowZOrder(Window.StackMode stackMode, Window window, Window sibling) {
+        Window parent = window.getParent();
+        switch (stackMode) {
+            case ABOVE:
+                parent.moveChildAbove(window, sibling);
+                break;
+            case BELOW:
+                parent.moveChildBelow(window, sibling);
+                break;
+        }
+        triggerOnChangeWindowZOrder(window);
+    }
+
+    public void configureWindow(Window window, Bitmask valueMask, XInputStream inputStream) {
+        short x = window.getX();
+        short y = window.getY();
+        short width = window.getWidth();
+        short height = window.getHeight();
+        short borderWidth = window.getBorderWidth();
+        Window sibling = null;
+        Window.StackMode stackMode = null;
+
+        for (int index : valueMask) {
+            switch (index) {
+                case Window.FLAG_X:
+                    x = (short)inputStream.readInt();
+                    break;
+                case Window.FLAG_Y:
+                    y = (short)inputStream.readInt();
+                    break;
+                case Window.FLAG_WIDTH:
+                    width = (short)inputStream.readInt();
+                    break;
+                case Window.FLAG_HEIGHT:
+                    height = (short)inputStream.readInt();
+                    break;
+                case Window.FLAG_BORDER_WIDTH:
+                    borderWidth = (short)inputStream.readInt();
+                    break;
+                case Window.FLAG_SIBLING:
+                    sibling = getWindow(inputStream.readInt());
+                    break;
+                case Window.FLAG_STACK_MODE:
+                    stackMode = Window.StackMode.values()[inputStream.readInt()];
+                    break;
+            }
+        }
+
+        Window parent = window.getParent();
+        boolean overrideRedirect = window.attributes.isOverrideRedirect();
         // A game window as big as the screen (fullscreen) belongs at 0,0: after switching the game
         // to windowed and back, Wine sometimes leaves it where the windowed frame was, and the
         // picture shows shifted with a black band (Hellblade, X11 + VKD3D).
@@ -299,13 +469,6 @@ public class WindowManager extends XResourceManager {
             parent.sendEvent(Event.SUBSTRUCTURE_NOTIFY, new ConfigureNotify(parent, window, previousSibling, x, y, width, height, borderWidth, overrideRedirect));
         }
         else parent.sendEvent(Event.SUBSTRUCTURE_REDIRECT, new ConfigureRequest(parent, window, window.previousSibling(), x, y, width, height, borderWidth, stackMode, valueMask));
-    }
-
-    /** The root, or a window covering the whole screen at 0,0 (Wine's virtual desktop). */
-    private boolean isFullscreenSlot(Window parent) {
-        if (parent == rootWindow) return true;
-        return parent.getParent() == rootWindow && parent.getX() == 0 && parent.getY() == 0
-                && parent.getWidth() >= rootWindow.getWidth() && parent.getHeight() >= rootWindow.getHeight();
     }
 
     /** Raises {@code window} to the top of its parent's Z-order. */

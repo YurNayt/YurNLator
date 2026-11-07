@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- YurNLator artwork. 88dp of the 108dp adaptive canvas: the rounded square fills the 72dp
-     area launchers show, and the title stays inside the 66dp safe zone. -->
+<!-- YurNLator artwork. 64dp of the 108dp adaptive canvas: the whole logo stays inside the 66dp
+     safe zone, so circle masks (Settings, round launchers) show all of it. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:width="88dp"
-        android:height="88dp"
+        android:width="64dp"
+        android:height="64dp"
         android:gravity="center"
         android:drawable="@drawable/yurn_launcher_art" />
 </layer-list>

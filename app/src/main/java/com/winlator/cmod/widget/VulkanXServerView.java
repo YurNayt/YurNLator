@@ -91,6 +91,11 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT));
         getHolder().addCallback(this);
+        // Coming back from picture-in-picture / Android's floating window the surface can end up
+        // full size while the last size we got was the small window's (surfaceChanged came while
+        // still flagged PiP, or the post-PiP refresh read the view before its relayout): the
+        // picture then shows shifted with a black band. Every relayout re-checks the real size.
+        addOnLayoutChangeListener((v, l, t, r, b2, ol, ot, or, ob) -> syncSurfaceSize());
 
         rootCursorDrawable = createRootCursorDrawable();
         xServer.setXServerView(this);
@@ -703,7 +708,23 @@ public class VulkanXServerView extends XServerRendererView implements SurfaceHol
     }
     public int getFpsLimit() { return fpsLimit; }
     public void setFpsLimit(int limit) { this.fpsLimit = limit; }
-    public void setPipMode(boolean pip) { inPipMode = pip; }
+    public void setPipMode(boolean pip) {
+        inPipMode = pip;
+        if (!pip) {
+            // Once more after the window settles (the resize can land after the PiP callback).
+            postDelayed(this::syncSurfaceSize, 300);
+            postDelayed(this::syncSurfaceSize, 1000);
+        }
+    }
+
+    /** Applies the surface's real size if it differs from the one the transform was made for. */
+    private void syncSurfaceSize() {
+        if (inPipMode) return;
+        android.graphics.Rect f = getHolder().getSurfaceFrame();
+        int w = f.width() > 0 ? f.width() : getWidth();
+        int h = f.height() > 0 ? f.height() : getHeight();
+        if (w > 0 && h > 0 && (w != surfaceWidth || h != surfaceHeight)) onSurfaceChanged(w, h);
+    }
     public int getSurfaceWidth() { return surfaceWidth; }
     public int getSurfaceHeight() { return surfaceHeight; }
     public void requestRender() {}
