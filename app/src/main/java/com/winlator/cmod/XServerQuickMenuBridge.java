@@ -590,6 +590,11 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
                     ? " · game " + a.xServer.displayMode.getWidth() + "x" + a.xServer.displayMode.getHeight() + " (scaled to fit)" : "")));
         String soc = Build.VERSION.SDK_INT >= 31 ? " · " + Build.SOC_MODEL : "";
         int vaBits = com.winlator.cmod.session.GameFixes.userAddressBits();
+        if (a.launchConfig != null) {
+            String cpus = a.launchConfig.getCpuList();
+            out.add(new QmInfo("CPU cores", cpus == null || cpus.isEmpty() ? "all" : cpus.replace(",", ", ")
+                    + (a.launchConfig.getCpuListFromShortcut() ? " (this game)" : " (container)")));
+        }
         if (vaBits > 0) out.add(new QmInfo("Address space", vaBits + "-bit" + (vaBits <= 39 ? " (512 GiB: some games need fixes)" : "")));
         out.add(new QmInfo("Device", Build.MANUFACTURER.toUpperCase(java.util.Locale.ENGLISH) + " " + Build.MODEL + soc
                 + " · " + Runtime.getRuntime().availableProcessors() + "c · Android " + Build.VERSION.RELEASE));
@@ -646,7 +651,7 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
             kotlin.jvm.functions.Function1<? super QmTasks, kotlin.Unit> l = tasksListener;
             if (l == null) return;
             ArrayList<QmProcess> rows = new ArrayList<>();
-            for (ProcessInfo p : processes) rows.add(new QmProcess(p.pid, p.name, p.getFormattedMemoryUsage(), p.wow64Process));
+            for (ProcessInfo p : processes) rows.add(new QmProcess(p.pid, p.name, p.getFormattedMemoryUsage(), p.wow64Process, coreList(p.affinityMask)));
             l.invoke(new QmTasks(cpuPercent, memoryText, rows));
         });
     }
@@ -735,4 +740,21 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
     }
 
     @Override public void close() { a.drawerLayout.closeDrawers(); }
+
+    /** "0-3, 6" from an affinity bit mask; "" when unknown or every core. */
+    static String coreList(int mask) {
+        int n = Runtime.getRuntime().availableProcessors();
+        int all = n >= 31 ? -1 : (1 << n) - 1;
+        if (mask == 0 || (mask & all) == all) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 32; i++) {
+            if ((mask & (1 << i)) == 0) continue;
+            int j = i;
+            while (j + 1 < 32 && (mask & (1 << (j + 1))) != 0) j++;
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(i == j ? String.valueOf(i) : i + "-" + j);
+            i = j;
+        }
+        return sb.toString();
+    }
 }

@@ -7,7 +7,7 @@ data class QmOption(val id: Int, val name: String)
 data class QmInfo(val label: String, val value: String)
 
 /** A running Windows process. */
-data class QmProcess(val pid: Int, val name: String, val memory: String, val wow64: Boolean)
+data class QmProcess(val pid: Int, val name: String, val memory: String, val wow64: Boolean, val cores: String = "")
 
 /**
  * Gyroscope aiming settings. target: 0 mouse, 1 right stick, 2 left stick;

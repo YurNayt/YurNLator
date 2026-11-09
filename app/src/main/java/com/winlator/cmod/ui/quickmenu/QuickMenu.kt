@@ -627,7 +627,7 @@ private fun ProcessRow(p: QmProcess, bridge: QuickMenuBridge, onEnd: () -> Unit)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(p.name + if (p.wow64) " *32" else "", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("PID ${p.pid} · ${p.memory}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("PID ${p.pid} · ${p.memory}" + (if (p.cores.isNotEmpty()) " · cores ${p.cores}" else ""), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "Actions") }
