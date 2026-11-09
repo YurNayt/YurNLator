@@ -245,10 +245,7 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
             // The renderer reports frames to one HUD: point it at the one now shown
             // (switching style used to leave FPS counting on the hidden one).
             if (a.xServerView != null) a.xServerView.setFrameRating(mode == 2 ? (Object) a.modernHud : (Object) a.classicHud);
-            if (a.activeRendererWindowId != -1 && a.xServerView != null) {
-                a.frameRatingWindowId = a.activeRendererWindowId;
-                a.xServerView.setFpsWindowId(a.activeRendererWindowId);
-            }
+            a.hudTracker.adoptRendererWindow();
         }
         a.saveHudModeToContainer(mode);
     }

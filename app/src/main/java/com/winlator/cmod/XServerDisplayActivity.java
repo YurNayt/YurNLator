@@ -211,10 +211,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private short taskAffinityMask = 0;
     private short taskAffinityMaskWoW64 = 0;
     private String wineCpuTopologyValue = "";
-    int frameRatingWindowId = -1;
-
-    int activeRendererWindowId = -1;
-    private String lastRendererName = null;
+    /** Which X window the HUD counts frames of (session/HudWindowTracker). */
+    final com.winlator.cmod.session.HudWindowTracker hudTracker =
+            new com.winlator.cmod.session.HudWindowTracker(new com.winlator.cmod.session.HudWindowTracker.Host() {
+                @Override public WinlatorHUD modernHud() { return modernHud; }
+                @Override public FrameRating classicHud() { return classicHud; }
+                @Override public XServerRendererView renderer() { return xServerView; }
+                @Override public void runOnUi(Runnable r) { runOnUiThread(r); }
+            });
     private boolean cursorLock;
     private final float[] xform = XForm.getInstance();
     private ContentsManager contentsManager;
@@ -605,21 +609,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     winStarted[0] = true;
                 }
 
-                trackHudWindow(window);
-                if (frameRatingWindowId == window.id) {
-                    if (classicHud != null) classicHud.update();
-                    if (modernHud != null) modernHud.onFrame();
-                } else if (frameRatingWindowId == -1 && lastRendererName != null
-                        && window.isApplicationWindow()
-                        && ((modernHud != null && modernHud.isUserEnabled())
-                         || (classicHud != null && classicHud.getVisibility() == View.VISIBLE))) {
-
-                    frameRatingWindowId = window.id;
-                    activeRendererWindowId = window.id;
-                    if (xServerView != null) xServerView.setFpsWindowId(window.id);
-                    if (classicHud != null) classicHud.update();
-                    if (modernHud != null) modernHud.onFrame();
-                }
+                hudTracker.onWindowContent(window);
             }
 
             @Override
@@ -629,12 +619,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             @Override
             public void onModifyWindowProperty(Window window, Property property) {
-                changeFrameRatingVisibility(window, property);
+                hudTracker.onWindowProperty(window, property);
             }
 
             @Override
             public void onDestroyWindow(Window window) {
-                changeFrameRatingVisibility(window, null);
+                hudTracker.onWindowProperty(window, null);
             }
         });
 
@@ -1387,7 +1377,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         quickMenuBridge.applySaved();
         applyFrameGen();
         // Every renderer: direct (DRI3) frames tell the HUD which window is the game's.
-        xServerView.setDirectFrameListener(this::trackHudDirectWindow);
+        xServerView.setDirectFrameListener(hudTracker::onDirectFrame);
         // "Swap red/blue channels" (container / game setting) was saved but never applied.
         // "Color order: BGRA" (surface format) or "Swap red/blue": both swap the channels on
         // Vulkan / Native; before, the surface format only changed anything with DisplayX.
@@ -1729,7 +1719,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (rootView == null || xServerView == null) return;
         final XServerRendererView renderer = xServerView;
 
-        boolean rendererAlreadyActive = (activeRendererWindowId != -1);
 
         if (style == 2) {
             if (modernHud == null) {
@@ -1740,14 +1729,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 modernHud.setVisibility(View.GONE);
                 rootView.addView(modernHud);
                 renderer.setFrameRating(modernHud);
-                if (rendererAlreadyActive) {
-
-                    frameRatingWindowId = activeRendererWindowId;
-                    renderer.setFpsWindowId(frameRatingWindowId);
-
-                    final String name = lastRendererName;
-                    modernHud.onRendererDetected(name);
-                }
+                if (hudTracker.adoptRendererWindow()) modernHud.onRendererDetected(hudTracker.rendererName());
             }
             modernHud.enableByUser();
         } else {
@@ -1757,11 +1739,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 classicHud.setVisibility(View.GONE);
                 rootView.addView(classicHud);
                 renderer.setFrameRating(classicHud);
-                if (rendererAlreadyActive) {
-                    frameRatingWindowId = activeRendererWindowId;
-                    renderer.setFpsWindowId(frameRatingWindowId);
-                    runOnUiThread(() -> classicHud.update());
-                }
+                if (hudTracker.adoptRendererWindow()) runOnUiThread(() -> classicHud.update());
             }
             classicHud.enableByUser();
         }
@@ -2265,68 +2243,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    private void changeFrameRatingVisibility(Window window, Property property) {
-
-        String propName = (property != null) ? property.nameAsString() : null;
-
-        if (property != null) {
-            if (activeRendererWindowId == -1 && propName.contains("_MESA_DRV")) {
-                activeRendererWindowId = window.id;
-            }
-
-            if (propName.contains("_MESA_DRV_ENGINE_NAME")
-                    && (activeRendererWindowId == -1 || window.id == activeRendererWindowId)) {
-                lastRendererName = property.toString();
-            }
-        } else if (activeRendererWindowId != -1 && window.id == activeRendererWindowId) {
-
-            activeRendererWindowId = -1;
-            lastRendererName = null;
-        }
-
-        if (classicHud == null && modernHud == null) return;
-
-        if (property != null) {
-            // The window the driver announced itself on renders the game: prefer it over a window
-            // picked earlier (a launcher / splash window when the HUD was on from the start).
-            if (propName.contains("_MESA_DRV") && window.id == activeRendererWindowId && frameRatingWindowId != window.id) {
-                frameRatingWindowId = -1;
-            }
-            if (frameRatingWindowId == -1 && propName.contains("_MESA_DRV")) {
-                frameRatingWindowId = window.id;
-                if (xServerView != null) xServerView.setFpsWindowId(window.id);
-                Log.d("XServerDisplayActivity", "Showing hud for Window " + window.getName());
-                if (classicHud != null) classicHud.update();
-
-                if (modernHud != null) {
-                    final String nameToPass = lastRendererName;
-                    runOnUiThread(() -> modernHud.onRendererDetected(nameToPass));
-                }
-            }
-
-            if (propName.contains("_MESA_DRV_ENGINE_NAME") && window.id == frameRatingWindowId) {
-                String rendererName = property.toString();
-                if (classicHud != null) runOnUiThread(() -> classicHud.setRenderer(rendererName));
-                if (modernHud != null) runOnUiThread(() -> modernHud.setRenderer(rendererName));
-            }
-            if (propName.contains("_MESA_DRV_GPU_NAME") && window.id == frameRatingWindowId) {
-                String gpuName = property.toString();
-                if (classicHud != null) runOnUiThread(() -> classicHud.setGpuName(gpuName));
-                if (modernHud != null) runOnUiThread(() -> modernHud.setGpuName(gpuName));
-            }
-        } else if (frameRatingWindowId != -1 && window.id == frameRatingWindowId) {
-
-            frameRatingWindowId = -1;
-            if (xServerView != null) xServerView.setFpsWindowId(-1);
-            Log.d("XServerDisplayActivity", "Hiding hud for Window " + window.getName());
-            if (classicHud != null) runOnUiThread(() -> {
-                classicHud.setVisibility(View.GONE);
-                classicHud.reset();
-            });
-            if (modernHud != null) runOnUiThread(() -> modernHud.onRendererGone());
-        }
-    }
-
     public String getScreenEffectProfile() {
         return screenEffectProfile;
     }
@@ -2367,53 +2283,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return frameGen().engine(this);
     }
 
-    // FPS follows the window that actually renders: games often draw into a new window after a
-    // launcher / splash one, and the HUD kept counting the old window (low or frozen FPS).
-    private final java.util.HashMap<Integer, Integer> hudWindowUpdates = new java.util.HashMap<>();
-    private long hudWindowCheckMs = 0;
-
-    /** Direct (DRI3) frames come from the game's own rendering window, which is often a child
-     *  window (Wine's Vulkan / GL client window), not a top-level "application" window. */
-    private void trackHudDirectWindow(Window window) {
-        trackHudWindow(window, true);
-    }
-
-    private void trackHudWindow(Window window) {
-        trackHudWindow(window, false);
-    }
-
-    private synchronized void trackHudWindow(Window window, boolean direct) {
-        if (!direct && !window.isApplicationWindow()) return;
-        boolean hudOn = (modernHud != null && modernHud.isUserEnabled())
-                || (classicHud != null && classicHud.getVisibility() == View.VISIBLE);
-        if (!hudOn) return;
-        Integer n = hudWindowUpdates.get(window.id);
-        hudWindowUpdates.put(window.id, n == null ? 1 : n + 1);
-        long now = android.os.SystemClock.uptimeMillis();
-        if (hudWindowCheckMs == 0) hudWindowCheckMs = now;
-        if (now - hudWindowCheckMs < 1000) return;
-        int busiest = -1, busiestCount = 0;
-        for (java.util.Map.Entry<Integer, Integer> e : hudWindowUpdates.entrySet()) {
-            if (e.getValue() > busiestCount) { busiest = e.getKey(); busiestCount = e.getValue(); }
-        }
-        Integer cur = hudWindowUpdates.get(frameRatingWindowId);
-        int current = cur == null ? 0 : cur;
-        if (busiest != -1 && busiest != frameRatingWindowId && busiestCount >= 10 && current * 2 < busiestCount) {
-            // Also the fallback when the driver never announced itself (_MESA_DRV properties are
-            // missing with some drivers / wrappers): the HUD used to stay hidden then.
-            boolean wasUnset = frameRatingWindowId == -1;
-            frameRatingWindowId = busiest;
-            if (activeRendererWindowId == -1 || !wasUnset) activeRendererWindowId = busiest;
-            if (xServerView != null) xServerView.setFpsWindowId(busiest);
-            if (wasUnset) {
-                final String name = lastRendererName;
-                if (modernHud != null) runOnUiThread(() -> modernHud.onRendererDetected(name));
-                if (classicHud != null) runOnUiThread(() -> classicHud.update());
-            }
-        }
-        hudWindowUpdates.clear();
-        hudWindowCheckMs = now;
-    }
     GyroInput gyroInput;
     final XServerQuickMenuBridge quickMenuBridge = new XServerQuickMenuBridge(this);
 
