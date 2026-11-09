@@ -1596,59 +1596,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     void hideInputControls() { touchControls.hide(); }
 
-    private void installBcnLayer(File rootDir, boolean legacy) {
-        com.winlator.cmod.session.GraphicsDriverFiles.installBcnLayer(this, rootDir, legacy);
-    }
-
+    /** Graphics settings, driver and runtime files of the launch: session/GraphicsSetup. */
     private void extractGraphicsDriverFiles() {
-        String adrenoToolsDriverId = graphicsDriverConfig.get("version");
-
-        Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
-
-        File rootDir = imageFs.getRootDir();
-
-        if (dxwrapper.contains("dxvk")) {
-            // The FPS limit is the host's (session/FpsLimit), changeable during play: DXVK's own
-            // limiter reads it once at start and would keep capping at the start value.
-            KeyValueSet dxvkConfig = new KeyValueSet(dxwrapperConfig.toString());
-            dxvkConfig.put("framerate", "0");
-            DXVKConfigDialog.setEnvVars(this, dxvkConfig, envVars);
-            String version = dxwrapperConfig.get("version");
-            if (version != null && version.contains("sarek")) {
-                Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
-                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
-            }
-        } else {
-            WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-        }
-
-        boolean useDRI3 = preferences.getBoolean("use_dri3", true);
-        if (!useDRI3) {
-            envVars.put("MESA_VK_WSI_DEBUG", "sw");
-        }
-
-        envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
-
-        // Graphics runtime, chosen wrapper and OpenGL driver: session/GraphicsDriverFiles (base, part 5).
-        com.winlator.cmod.session.GraphicsDriverFiles.installRuntime(this, rootDir, firstTimeBoot, graphicsDriverConfig.get("wrapper"));
-        com.winlator.cmod.session.GraphicsDriverFiles.installOpenGL(this, rootDir, container, graphicsDriver, firstTimeBoot);
-
-        if (!"System".equals(adrenoToolsDriverId)) {
-            AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
-            adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
-        }
-        if (waylandMode) Log.i("XServerDisplayActivity", "wayland: "
-                + com.winlator.cmod.session.WaylandSupport.applyGameDriver(this, envVars, adrenoToolsDriverId, wineInfo.path));
-
-        // Wrapper / BCn environment: session/WrapperEnv (YurNLator base, part 2).
-        com.winlator.cmod.session.WrapperEnv.Result wenv = com.winlator.cmod.session.WrapperEnv.apply(this, graphicsDriverConfig,
-                dxwrapperConfig, envVars, adrenoToolsDriverId, xServer.getSurfaceFormat() == Drawable.HAL_PIXEL_FORMAT_RGBA_8888);
-        if (wenv.bcnLayer) installBcnLayer(rootDir, wenv.bcnLegacy);
-
-        if (!vkbasaltConfig.isEmpty()) {
-            envVars.put("ENABLE_VKBASALT", "1");
-            envVars.put("VKBASALT_CONFIG", vkbasaltConfig);
-        }
+        com.winlator.cmod.session.GraphicsSetup.prepare(this, preferences, imageFs, envVars, container, graphicsDriver,
+                graphicsDriverConfig, dxwrapper, dxwrapperConfig, vkbasaltConfig, firstTimeBoot, waylandMode,
+                wineInfo.path, xServer.getSurfaceFormat() == Drawable.HAL_PIXEL_FORMAT_RGBA_8888);
     }
 
     @Override
