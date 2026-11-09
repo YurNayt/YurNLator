@@ -160,7 +160,6 @@ import cn.sherlock.com.sun.media.sound.SF2Soundbank;
 
 public class XServerDisplayActivity extends AppCompatActivity {
 
-    private static final HashMap<String, Boolean> WINE_XRANDR_SUPPORT_CACHE = new HashMap<>();
 
     public static String NOTIFICATION_CHANNEL_ID = "Winlator";
     public static int NOTIFICATION_ID = -1;
@@ -272,48 +271,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    private void advertisePanelRefreshRates() {
-        RandrExtension randr = xServer.getExtension(RandrExtension.MAJOR_OPCODE);
-        if (randr == null) return;
-
-        android.view.Display display = getWindowManager().getDefaultDisplay();
-        android.view.Display.Mode[] modes = display.getSupportedModes();
-        if (modes == null || modes.length == 0) return;
-
-        java.util.TreeSet<Short> distinct =
-                new java.util.TreeSet<>(java.util.Collections.reverseOrder());
-        for (android.view.Display.Mode mode : modes) {
-            short hz = (short)Math.round(mode.getRefreshRate());
-            if (hz > 0) distinct.add(hz);
-        }
-        if (distinct.isEmpty()) return;
-
-        short[] rates = new short[distinct.size()];
-        int index = 0;
-        for (short hz : distinct) rates[index++] = hz;
-
-        short activeRate = (short)Math.round(display.getRefreshRate());
-        randr.setRefreshRates(rates, activeRate);
-        Log.d("XServerDisplayActivity", "RandR advertising refresh rates "
-                + java.util.Arrays.toString(rates) + ", active=" + activeRate);
-    }
-
-    private float pickHighestRefreshRate() {
-        android.view.Display display = getWindowManager().getDefaultDisplay();
-        android.view.Display.Mode[] modes = display.getSupportedModes();
-
-        float maxRefresh = 0f;
-
-        for (android.view.Display.Mode mode : modes) {
-            if (mode.getRefreshRate() > maxRefresh)
-                maxRefresh = mode.getRefreshRate();
-        }
-
-        Log.d("XServerDisplayActivity", "Picking refresh rate " + maxRefresh);
-
-        return maxRefresh;
-    }
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -321,7 +278,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         AppUtils.keepScreenOn(this);
 
         android.view.WindowManager.LayoutParams params = getWindow().getAttributes();
-        params.preferredRefreshRate = pickHighestRefreshRate();
+        params.preferredRefreshRate = com.winlator.cmod.session.RefreshRate.highest(this);
         getWindow().setAttributes(params);
 
         setContentView(R.layout.xserver_display_activity);
@@ -592,7 +549,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServer = new XServer(new ScreenInfo(screenSize), surfaceFormat);
         xServer.setWinHandler(winHandler);
         xServer.setRelativeMouseMovement(isRelativeMouseMovement);
-        advertisePanelRefreshRates();
+        com.winlator.cmod.session.RefreshRate.advertise(this, xServer);
 
         boolean[] winStarted = { false };
 
@@ -695,7 +652,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 changeWineAudioDriver();
                 com.winlator.cmod.session.MediaDecoder.applyRegistry(
                         new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg"), container, shortcut);
-                applyGameRefreshRateUnlock();
+                com.winlator.cmod.session.RefreshRate.applyWineModeEmulation(imageFs, wineInfo);
                 try {
                     setupXEnvironment();
                 } catch (PackageManager.NameNotFoundException e) {
@@ -1735,89 +1692,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
 
-    private void applyGameRefreshRateUnlock() {
-        final String x11DriverKey = "Software\\Wine\\X11 Driver";
-        final boolean xrandrCapable = isSelectedWineXrandrCapable();
-        File userRegFile = new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg");
-
-        try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
-            if (xrandrCapable) {
-                registryEditor.setStringValue(x11DriverKey, "EmulateModelist", "Y");
-                registryEditor.setStringValue(x11DriverKey, "EmulateModeset", "Y");
-            } else {
-                registryEditor.removeValue(x11DriverKey, "EmulateModelist");
-                registryEditor.removeValue(x11DriverKey, "EmulateModeset");
-            }
-        }
-
-        Log.d("XServerDisplayActivity", "RandR Wine mode emulation: "
-                + (xrandrCapable ? "disabled" : "unchanged (layer has no XRandR)"));
-    }
-
-    private boolean isSelectedWineXrandrCapable() {
-        if (wineInfo == null || wineInfo.path == null || wineInfo.path.isEmpty()) return false;
-
-        String cacheKey = wineInfo.identifier() + "@" + wineInfo.path;
-        synchronized (WINE_XRANDR_SUPPORT_CACHE) {
-            Boolean cached = WINE_XRANDR_SUPPORT_CACHE.get(cacheKey);
-            if (cached != null) return cached;
-        }
-
-        File winex11 = new File(wineInfo.path, "lib/wine/aarch64-unix/winex11.so");
-        if (!winex11.isFile()) {
-            winex11 = new File(wineInfo.path, "lib/wine/x86_64-unix/winex11.so");
-        }
-
-        boolean capable = winex11.isFile()
-                && fileContainsAny(winex11, "libXrandr.so", "RRQueryVersion")
-                && !fileContainsAny(winex11, "XRandR support not compiled in.");
-
-        synchronized (WINE_XRANDR_SUPPORT_CACHE) {
-            WINE_XRANDR_SUPPORT_CACHE.put(cacheKey, capable);
-        }
-        return capable;
-    }
-
-    private static boolean fileContainsAny(File file, String... markers) {
-        byte[][] needles = new byte[markers.length][];
-        int maxNeedle = 0;
-        for (int i = 0; i < markers.length; i++) {
-            needles[i] = markers[i].getBytes(StandardCharsets.US_ASCII);
-            maxNeedle = Math.max(maxNeedle, needles[i].length);
-        }
-
-        final int chunkSize = 64 * 1024;
-        byte[] buffer = new byte[chunkSize + maxNeedle];
-        try (FileInputStream input = new FileInputStream(file)) {
-            int carry = 0;
-            int read;
-            while ((read = input.read(buffer, carry, chunkSize)) != -1) {
-                int length = carry + read;
-                for (byte[] needle : needles) {
-                    if (indexOfBytes(buffer, length, needle) >= 0) return true;
-                }
-
-                carry = Math.min(length, maxNeedle - 1);
-                System.arraycopy(buffer, length - carry, buffer, 0, carry);
-            }
-        } catch (IOException e) {
-            return false;
-        }
-        return false;
-    }
-
-    private static int indexOfBytes(byte[] haystack, int haystackLength, byte[] needle) {
-        if (needle.length == 0 || needle.length > haystackLength) return -1;
-
-        outer:
-        for (int i = 0; i <= haystackLength - needle.length; i++) {
-            for (int j = 0; j < needle.length; j++) {
-                if (haystack[i + j] != needle[j]) continue outer;
-            }
-            return i;
-        }
-        return -1;
-    }
 
 
     public String getScreenEffectProfile() {
