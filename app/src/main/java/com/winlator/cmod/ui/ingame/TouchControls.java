@@ -114,4 +114,20 @@ public final class TouchControls {
         WinHandler w = winHandler.get();
         if (w != null) w.sendGamepadState();
     }
+
+    /**
+     * At the session start: the controls as last confirmed (shown, timeout, profile index from
+     * the preferences), without the old in-game dialog that used to be confirmed for this.
+     */
+    public void restoreSaved(java.util.List<ControlsProfile> profiles) {
+        InputControlsView c = controls.get();
+        TouchpadView t = touchpad.get();
+        if (c == null || t == null) return;
+        c.setShowTouchscreenControls(prefs.getBoolean("show_touchscreen_controls_enabled", false));
+        int index = prefs.getInt("selected_profile_index", -1);
+        if (index >= 0 && index < profiles.size()) show(profiles.get(index));
+        else hide();
+        if (prefs.getBoolean("touchscreen_timeout_enabled", false) && c.getVisibility() == View.VISIBLE) startTimeout();
+        else t.setOnTouchListener(null);
+    }
 }
