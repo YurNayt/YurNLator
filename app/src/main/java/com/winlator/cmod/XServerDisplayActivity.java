@@ -1058,7 +1058,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Environment and command of the launch: session/LaunchEnv (YurNLator base, part 6).
         com.winlator.cmod.session.LaunchEnv.base(envVars, preferences, lc_all, imageFs.wineprefix);
 
-        String rootPath = imageFs.getRootDir().getPath();
         FileUtils.clear(imageFs.getTmpDir());
 
         guestProgramLauncherComponent = new GuestProgramLauncherComponent(
@@ -1067,9 +1066,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 shortcut);
 
         if (container != null) {
-            if (Byte.parseByte(startupSelection) == Container.STARTUP_SELECTION_AGGRESSIVE) {
-
-            }
             guestProgramLauncherComponent.setContainer(this.container);
             guestProgramLauncherComponent.setWineInfo(this.wineInfo);
 
@@ -1090,7 +1086,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.cmod.session.GameFixes.apply(this, container, shortcut, envVars,
                     line -> { if (debugDialog != null) debugDialog.call(line); });
             com.winlator.cmod.session.LaunchEnv.user(envVars, container, shortcut);
-            applyOpenGLDriverEnvVars();
+            com.winlator.cmod.session.OpenGLEnv.apply(envVars, graphicsDriver, container, shortcut);
             com.winlator.cmod.session.LaunchEnv.defaults(envVars, container, shortcut, cpuAffinity.wineCpuTopology());
 
             ArrayList<String> bindingPaths = new ArrayList<>();
@@ -1112,39 +1108,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             overrideEnvVars.clear();
         }
 
-        environment = new XEnvironment(this, imageFs);
-        environment.addComponent(
-                new SysVSharedMemoryComponent(
-                        xServer,
-                        UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.SYSVSHM_SERVER_PATH)));
-        environment.addComponent(
-                new XServerComponent(
-                        xServer,
-                        UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)));
-
-        if (audioDriver.equals("alsa")) {
-            envVars.put("ANDROID_ALSA_SERVER", rootPath + UnixSocketConfig.ALSA_SERVER_PATH);
-            envVars.put("ANDROID_ASERVER_USE_SHM", "true");
-            environment.addComponent(
-                    new ALSAServerComponent(
-                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.ALSA_SERVER_PATH)));
-        } else if (audioDriver.equals("pulseaudio") || audioDriver.equals("pulse-audio-gn")) {
-            envVars.put("PULSE_SERVER", rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
-            environment.addComponent(
-                    new PulseAudioComponent(
-                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH),
-                            audioDriver.equals("pulse-audio-gn")));
-        }
+        // SysV shm, X server and audio servers: session/XEnvironmentSetup.
+        environment = com.winlator.cmod.session.XEnvironmentSetup.create(this, imageFs, xServer, audioDriver, envVars);
 
         guestProgramLauncherComponent.setEnvVars(envVars);
         guestProgramLauncherComponent.setTerminationCallback((status) -> runOnUiThread(this::exit));
 
         environment.addComponent(guestProgramLauncherComponent);
 
-        File devInputDir = new File(imageFs.getRootDir(), "dev/input");
-        if (devInputDir.exists() || devInputDir.mkdirs()) {
-
-        }
+        new File(imageFs.getRootDir(), "dev/input").mkdirs();
 
         environment.startEnvironmentComponents();
 
@@ -1621,48 +1593,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
     void showInputControls(ControlsProfile profile) { touchControls.show(profile); }
 
     void hideInputControls() { touchControls.hide(); }
-
-    private String getSelectedOpenGLDriver() {
-        return com.winlator.cmod.session.GraphicsDriverFiles.openGLDriver(graphicsDriver);
-    }
-
-    private boolean isMesaGlVersionOverrideManual() {
-        if (shortcut != null) {
-            String shortcutEnvironment = shortcut.getExtra("envVars", "");
-            EnvVars shortcutEnvVars = new EnvVars(shortcutEnvironment);
-            if (shortcutEnvVars.has("MESA_GL_VERSION_OVERRIDE")) {
-                return !"1".equals(shortcut.getExtra("autoMesaGlVersionOverride", "0"));
-            }
-        }
-
-        if (container == null) return false;
-        EnvVars containerEnvVars = new EnvVars(container.getEnvVars());
-        return containerEnvVars.has("MESA_GL_VERSION_OVERRIDE")
-                && !"1".equals(container.getExtra("autoMesaGlVersionOverride", "0"));
-    }
-
-    private void applyOpenGLDriverEnvVars() {
-        boolean freedreno = "freedreno".equals(getSelectedOpenGLDriver());
-
-        envVars.put("GALLIUM_DRIVER", freedreno ? "freedreno" : "zink");
-        envVars.put("MESA_LOADER_DRIVER_OVERRIDE", freedreno ? "kgsl" : "zink");
-
-        if (freedreno) {
-            if (!envVars.has("MESA_GL_VERSION_OVERRIDE")) envVars.put("MESA_GL_VERSION_OVERRIDE", "3.3");
-            envVars.remove("ZINK_DESCRIPTORS");
-            envVars.remove("ZINK_DEBUG");
-            envVars.remove("ZINK_INLINE_UNIFORMS");
-            if (!envVars.has("FD_MESA_DEBUG")) envVars.put("FD_MESA_DEBUG", "hiprio");
-            if (!envVars.has("vblank_mode")) envVars.put("vblank_mode", "0");
-        } else {
-            if (!isMesaGlVersionOverrideManual()
-                    && "3.3".equals(envVars.get("MESA_GL_VERSION_OVERRIDE"))) {
-                envVars.remove("MESA_GL_VERSION_OVERRIDE");
-            }
-            if (!envVars.has("ZINK_DESCRIPTORS")) envVars.put("ZINK_DESCRIPTORS", "lazy");
-            if (!envVars.has("ZINK_DEBUG")) envVars.put("ZINK_DEBUG", "compact");
-        }
-    }
 
     private void installBcnLayer(File rootDir, boolean legacy) {
         com.winlator.cmod.session.GraphicsDriverFiles.installBcnLayer(this, rootDir, legacy);
