@@ -15,6 +15,9 @@ public final class CpuAffinity {
     private final short mask;
     private final short maskWoW64;
     private final String wineCpuTopology;
+    /** Cores the user set for a process in the task manager (Windows pid -> mask): kept when the
+     *  process maps another window, and shown instead of what Wine last reported. */
+    private final java.util.concurrent.ConcurrentHashMap<Integer, Integer> userMasks = new java.util.concurrent.ConcurrentHashMap<>();
 
     private CpuAffinity(short mask, short maskWoW64, String wineCpuTopology) {
         this.mask = mask;
@@ -33,11 +36,25 @@ public final class CpuAffinity {
 
     public String wineCpuTopology() { return wineCpuTopology; }
 
+    /** The task manager set [mask] for [pid]: applies it and remembers it. */
+    public void setUserMask(int pid, int mask, WinHandler winHandler) {
+        if (mask == 0) return;
+        userMasks.put(pid, mask);
+        if (winHandler != null) winHandler.setProcessAffinity(pid, mask);
+    }
+
+    /** What to show for a process: the user's choice for it, else what Wine reported. */
+    public int shownMask(int pid, int reported) {
+        Integer m = userMasks.get(pid);
+        return m != null ? m : reported;
+    }
+
     /** A window mapped: pins its process (by pid, else by window class) to the launch's cores. */
     public void apply(Window window, WinHandler winHandler) {
         if (mask == 0 || maskWoW64 == 0 || winHandler == null) return;
-        int affinity = window.isWoW64() ? maskWoW64 : mask;
         int pid = window.getProcessId();
+        if (pid > 0 && userMasks.containsKey(pid)) return;
+        int affinity = window.isWoW64() ? maskWoW64 : mask;
         String className = window.getClassName();
         if (pid > 0) winHandler.setProcessAffinity(pid, affinity);
         else if (!className.isEmpty()) winHandler.setProcessAffinity(className, affinity);

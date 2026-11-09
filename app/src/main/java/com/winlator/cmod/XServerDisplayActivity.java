@@ -202,14 +202,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
     SharedPreferences preferences;
     private OnExtractFileListener onExtractFileListener;
     WinHandler winHandler;
-    private TaskManagerSidebar taskManagerSidebar;
+    TaskManagerSidebar taskManagerSidebar;
     private WineRequestHandler wineRequestHandler;
     float globalCursorSpeed = 1.0f;
-    private MagnifierView magnifierView;
+    MagnifierView magnifierView;
     boolean softStretchEnabled = false;
     DebugDialog debugDialog;
     /** CPU cores of the game's processes (session/CpuAffinity). */
-    private com.winlator.cmod.session.CpuAffinity cpuAffinity = com.winlator.cmod.session.CpuAffinity.none();
+    com.winlator.cmod.session.CpuAffinity cpuAffinity = com.winlator.cmod.session.CpuAffinity.none();
     /** Which X window the HUD counts frames of (session/HudWindowTracker). */
     final com.winlator.cmod.session.HudWindowTracker hudTracker =
             new com.winlator.cmod.session.HudWindowTracker(new com.winlator.cmod.session.HudWindowTracker.Host() {
@@ -366,20 +366,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
             @Override
             public void onDrawerOpened(View drawerView) {
                 QuickMenuHost.onOpened();
-                openSidebarPanel(activeSidebarItemId, activeSidebarPanelId);
+                sidebar.reopen();
             }
 
             @Override
             public void onDrawerClosed(View drawerView) {
                 quickMenuBridge.stopTasks();
-                hideAllSidebarPanels();
+                sidebar.hideAllPanels();
             }
         });
 
         boolean enableLogs = preferences.getBoolean("enable_wine_debug", false)
                 || preferences.getBoolean("enable_box64_logs", false);
 
-        wireSidebarListeners(enableLogs);
+        sidebar.wire(enableLogs);
         quickMenuLogs = enableLogs;
         androidx.compose.ui.platform.ComposeView quickMenuView = findViewById(R.id.QuickMenuCompose);
         if (quickMenuView != null) QuickMenuHost.attach(quickMenuView, quickMenuBridge);
@@ -1381,253 +1381,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    private void wireSidebarListeners(boolean enableLogs) {
-
-        View btItemLogs = findViewById(R.id.BTItemLogs);
-        if (btItemLogs != null)
-            btItemLogs.setVisibility(enableLogs ? View.VISIBLE : View.GONE);
-
-        if (XrActivity.isEnabled(this)) {
-            View btItemMagnifier = findViewById(R.id.BTItemMagnifier);
-            if (btItemMagnifier != null)
-                btItemMagnifier.setVisibility(View.GONE);
-        }
-
-        toggleOnClick(R.id.BTItemInput, R.id.LLSubInput);
-        toggleOnClick(R.id.BTItemMouse, R.id.LLSubMouse);
-        toggleOnClick(R.id.BTItemFPS, R.id.LLSubFPS);
-        toggleOnClick(R.id.BTItemGraphics, R.id.LLSubGraphics);
-        toggleOnClick(R.id.BTItemScreen, R.id.LLSubScreen);
-        openSidebarPanel(R.id.BTItemFPS, R.id.LLSubFPS);
-
-        ViewGroup btItemPause = (ViewGroup) findViewById(R.id.BTItemPause);
-        if (btItemPause != null) {
-            ImageView pauseIcon = (ImageView) btItemPause.getChildAt(0);
-            btItemPause.setOnClickListener(v -> {
-                if (isPaused) {
-                    ProcessHelper.resumeAllWineProcesses();
-                    if (pauseIcon != null) pauseIcon.setImageResource(R.drawable.icon_pause);
-                } else {
-                    ProcessHelper.pauseAllWineProcesses();
-                    if (pauseIcon != null) pauseIcon.setImageResource(R.drawable.icon_play);
-                }
-                isPaused = !isPaused;
-                drawerLayout.closeDrawers();
-            });
-        }
-
-        View btSubKeyboard = findViewById(R.id.BTSubKeyboard);
-        if (btSubKeyboard != null) {
-            btSubKeyboard.setOnClickListener(v -> {
-                AppUtils.showKeyboard(this);
-                drawerLayout.closeDrawers();
-            });
-        }
-
-        setupSidebarInputControls();
-
-        View btSubVibration = findViewById(R.id.BTSubVibration);
-        if (btSubVibration != null) {
-            btSubVibration.setOnClickListener(v -> {
-                showVibrationDialog();
-                drawerLayout.closeDrawers();
-            });
-        }
-
-        Switch swRelativeMouse = findViewById(R.id.SWRelativeMouse);
-        if (swRelativeMouse != null) {
-            swRelativeMouse.setChecked(isRelativeMouseMovement);
-            swRelativeMouse.setOnCheckedChangeListener((btn, checked) -> {
-                isRelativeMouseMovement = checked;
-                if (xServer != null)
-                    xServer.setRelativeMouseMovement(isRelativeMouseMovement);
-            });
-        }
-
-        Switch swDisableMouse = findViewById(R.id.SWDisableMouse);
-        if (swDisableMouse != null) {
-            swDisableMouse.setChecked(isMouseDisabled);
-            swDisableMouse.setOnCheckedChangeListener((btn, checked) -> {
-                isMouseDisabled = checked;
-                if (touchpadView != null)
-                    touchpadView.setMouseEnabled(!isMouseDisabled);
-            });
-        }
-
-        View btItemPipMode = findViewById(R.id.BTItemPipMode);
-        if (btItemPipMode != null) {
-            btItemPipMode.setOnClickListener(v -> {
-                enterPipMode();
-                drawerLayout.closeDrawers();
-            });
-        }
-
-        View btItemToggleFullscreen = findViewById(R.id.BTItemToggleFullscreen);
-        if (btItemToggleFullscreen != null) {
-            btItemToggleFullscreen.setOnClickListener(v -> {
-                if (xServerView != null) {
-                    xServerView.toggleFullscreen();
-                    if (touchpadView != null)
-                        touchpadView.toggleFullscreen();
-                }
-                drawerLayout.closeDrawers();
-            });
-        }
-
-        View btItemMagnifier = findViewById(R.id.BTItemMagnifier);
-        if (btItemMagnifier != null) {
-            btItemMagnifier.setOnClickListener(v -> {
-                if (xServerView instanceof DisplayXServerView) {
-                    showToast(this, R.string.magnifier_not_available);
-                    drawerLayout.closeDrawers();
-                    return;
-                }
-                if (xServerView != null) {
-                    final XServerRendererView renderer = xServerView;
-                    if (magnifierView == null) {
-                        FrameLayout flContainer = findViewById(R.id.FLXServerDisplay);
-                        magnifierView = new MagnifierView(this);
-                        magnifierView.setZoomButtonCallback(value -> {
-                            renderer.setMagnifierZoom(Mathf.clamp(renderer.getMagnifierZoom() + value, 1.0f, 3.0f));
-                            magnifierView.setZoomValue(renderer.getMagnifierZoom());
-                        });
-                        magnifierView.setZoomValue(renderer.getMagnifierZoom());
-                        magnifierView.setHideButtonCallback(() -> {
-                            flContainer.removeView(magnifierView);
-                            magnifierView = null;
-                        });
-                        flContainer.addView(magnifierView);
-                    }
-                }
-                drawerLayout.closeDrawers();
-            });
-        }
-
-        View btItemSoftStretch = findViewById(R.id.BTItemSoftStretch);
-        if (btItemSoftStretch != null) {
-            btItemSoftStretch.setOnClickListener(v -> {
-                if (xServerView != null) {
-                    softStretchEnabled = !softStretchEnabled;
-                    XServerRendererView rendererRef = xServerView;
-
-                    if (softStretchEnabled && !rendererRef.isFullscreen()) {
-                        rendererRef.toggleFullscreen();
-                        if (touchpadView != null) touchpadView.toggleFullscreen();
-                    }
-                    if (rendererRef instanceof VulkanXServerView) {
-                        ((VulkanXServerView) rendererRef).setStretchMode(softStretchEnabled ? 1 : 0);
-                    }
-                    btItemSoftStretch.setSelected(softStretchEnabled);
-                }
-                drawerLayout.closeDrawers();
-            });
-        }
-
-        View btItemTaskManager = findViewById(R.id.BTItemTaskManager);
-        if (btItemTaskManager != null) {
-            btItemTaskManager.setOnClickListener(v -> {
-                openSidebarPanel(R.id.BTItemTaskManager, R.id.LLSubTaskManager);
-                View taskPanel = findViewById(R.id.LLSubTaskManager);
-                if (taskPanel != null) {
-                    if (taskManagerSidebar == null)
-                        taskManagerSidebar = new TaskManagerSidebar(this, taskPanel);
-                    taskManagerSidebar.start();
-                }
-            });
-        }
-
-        if (btItemLogs != null) {
-            btItemLogs.setOnClickListener(v -> {
-                if (debugDialog != null)
-                    debugDialog.show();
-                drawerLayout.closeDrawers();
-            });
-        }
-
-        View btItemExit = findViewById(R.id.BTItemExit);
-        if (btItemExit != null) {
-            btItemExit.setOnClickListener(v -> {
-                drawerLayout.closeDrawers();
-                exit();
-            });
-        }
-    }
-
-    private int activeSidebarItemId = R.id.BTItemFPS;
-    private int activeSidebarPanelId = R.id.LLSubFPS;
-
-    private final int[] sidebarPanelIds = {
-        R.id.LLSubInput,
-        R.id.LLSubMouse,
-        R.id.LLSubFPS,
-        R.id.LLSubGraphics,
-        R.id.LLSubScreen,
-        R.id.LLSubTaskManager
-    };
-
-    private final int[] sidebarItemIds = {
-        R.id.BTItemInput,
-        R.id.BTItemMouse,
-        R.id.BTItemFPS,
-        R.id.BTItemGraphics,
-        R.id.BTItemScreen,
-        R.id.BTItemTaskManager
-    };
-
-    private void hideAllSidebarPanels() {
-        if (taskManagerSidebar != null) taskManagerSidebar.stop();
-        for (int panelId : sidebarPanelIds) {
-            View panel = findViewById(panelId);
-            if (panel != null) panel.setVisibility(View.GONE);
-        }
-    }
-
-    private void setSidebarActiveItem(int activeId) {
-        float density = getResources().getDisplayMetrics().density;
-        for (int itemId : sidebarItemIds) {
-            View item = findViewById(itemId);
-            if (item == null) continue;
-            if (itemId == activeId) {
-                GradientDrawable background = new GradientDrawable();
-                background.setColor(Color.parseColor("#0F2D42"));
-                background.setStroke((int) (1.1f * density), Color.parseColor("#0288D1"));
-                background.setCornerRadius(density * 15);
-                item.setBackground(background);
-                item.animate().scaleX(1.025f).scaleY(1.025f).setDuration(105).start();
-            } else {
-                TypedValue outValue = new TypedValue();
-                getTheme().resolveAttribute(android.R.attr.selectableItemBackground, outValue, true);
-                item.setBackgroundResource(outValue.resourceId);
-                item.animate().scaleX(1.0f).scaleY(1.0f).setDuration(90).start();
-            }
-        }
-    }
-
-    private void openSidebarPanel(int parentId, int subId) {
-        hideAllSidebarPanels();
-        View sub = findViewById(subId);
-        if (sub != null) {
-            float density = getResources().getDisplayMetrics().density;
-            sub.setVisibility(View.VISIBLE);
-            sub.setAlpha(0.0f);
-            sub.setTranslationX(-8.0f * density);
-            sub.animate().alpha(1.0f).translationX(0.0f).setDuration(130).start();
-        }
-        setSidebarActiveItem(parentId);
-        if (parentId != R.id.BTItemMouse && parentId != R.id.BTItemPause) {
-            activeSidebarItemId = parentId;
-            activeSidebarPanelId = subId;
-        }
-    }
-
-    private void toggleOnClick(int parentId, int subId) {
-        View parent = findViewById(parentId);
-        View sub = findViewById(subId);
-        if (parent != null && sub != null) {
-            parent.setOnClickListener(v -> openSidebarPanel(parentId, subId));
-        }
-    }
-
     private ArrayAdapter<String> createSidebarSpinnerAdapter(String[] items) {
         return new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, items) {
             @NonNull
@@ -1717,7 +1470,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         });
     }
 
-    private void setupSidebarInputControls() {
+    void setupSidebarInputControls() {
         com.winlator.cmod.ui.ingame.SidebarInputPanel.setup(new com.winlator.cmod.ui.ingame.SidebarInputPanel.Host() {
             @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
             @Override public InputControlsView controls() { return inputControlsView; }
@@ -2225,6 +1978,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     GyroInput gyroInput;
     final XServerQuickMenuBridge quickMenuBridge = new XServerQuickMenuBridge(this);
+    final XServerSidebar sidebar = new XServerSidebar(this);
 
 
 }

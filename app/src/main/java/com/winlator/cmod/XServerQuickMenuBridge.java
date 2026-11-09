@@ -651,7 +651,7 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
             kotlin.jvm.functions.Function1<? super QmTasks, kotlin.Unit> l = tasksListener;
             if (l == null) return;
             ArrayList<QmProcess> rows = new ArrayList<>();
-            for (ProcessInfo p : processes) rows.add(new QmProcess(p.pid, p.name, p.getFormattedMemoryUsage(), p.wow64Process, coreList(p.affinityMask)));
+            for (ProcessInfo p : processes) rows.add(new QmProcess(p.pid, p.name, p.getFormattedMemoryUsage(), p.wow64Process, coreList(a.cpuAffinity.shownMask(p.pid, p.affinityMask))));
             l.invoke(new QmTasks(cpuPercent, memoryText, rows));
         });
     }
@@ -703,12 +703,14 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
         dialog.setTitle(processInfo.name);
         dialog.setIcon(R.drawable.icon_cpu);
         final CPUListView cpuListView = dialog.findViewById(R.id.CPUListView);
-        String cpuList = processInfo.getCPUList();
-        int linuxMask = ProcessHelper.getProcessAffinityMask(processInfo.pid);
-        if (linuxMask != 0) cpuList = new ProcessInfo(processInfo.pid, "", 0, linuxMask, false).getCPUList();
-        cpuListView.setCheckedCPUList(cpuList);
-        dialog.setOnConfirmCallback(() -> a.winHandler.setProcessAffinity(processInfo.pid,
-                ProcessHelper.getAffinityMask(cpuListView.getCheckedCPUList())));
+        // What the row shows (the user's last choice, else Wine's report), not /proc of an unrelated
+        // Linux pid: the dialog used to open with other cores than the row said.
+        int shown = a.cpuAffinity.shownMask(processInfo.pid, processInfo.affinityMask);
+        cpuListView.setCheckedCPUList(new ProcessInfo(processInfo.pid, "", 0, shown, false).getCPUList());
+        dialog.setOnConfirmCallback(() -> {
+            a.cpuAffinity.setUserMask(processInfo.pid, ProcessHelper.getAffinityMask(cpuListView.getCheckedCPUList()), a.winHandler);
+            publishTasks();
+        });
         dialog.show();
     }
 
