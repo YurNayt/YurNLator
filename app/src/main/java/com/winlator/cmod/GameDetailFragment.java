@@ -72,7 +72,7 @@ public class GameDetailFragment extends Fragment {
         View content = GameDetailComposeHost.create(
                 requireContext(),
                 shortcut.name,
-                buildEnvironmentSubtitle(),
+                withPlaytime(buildEnvironmentSubtitle()),
                 artworkPath,
                 fallback,
                 "1".equals(shortcut.getExtra("favorite", "0")),
@@ -193,5 +193,12 @@ public class GameDetailFragment extends Fragment {
             ((MainActivity) getActivity()).setDetailMode(false);
         }
         super.onPause();
+    }
+
+    /** The environment line, then how long and how often the game was played. */
+    private String withPlaytime(String subtitle) {
+        String played = com.winlator.cmod.session.Playtime.describe(requireContext(), shortcut.name);
+        if (played.isEmpty()) return subtitle;
+        return subtitle == null || subtitle.isEmpty() ? played : subtitle + "\n" + played;
     }
 }

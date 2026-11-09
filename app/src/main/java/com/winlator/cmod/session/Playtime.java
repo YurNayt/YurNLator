@@ -49,6 +49,17 @@ public final class Playtime {
         prefs.edit().putLong(key, prefs.getLong(key, 0) + played).apply();
     }
 
+    /** "Played 3 h 12 min · 14 launches" for the game's page; "" before its first launch. */
+    public static String describe(Context context, String name) {
+        SharedPreferences p = context.getSharedPreferences("playtime_stats", Context.MODE_PRIVATE);
+        long ms = p.getLong(name + "_playtime", 0);
+        int launches = p.getInt(name + "_play_count", 0);
+        if (ms <= 0 && launches <= 0) return "";
+        long min = ms / 60000;
+        String time = min >= 60 ? (min / 60) + " h " + (min % 60) + " min" : min > 0 ? min + " min" : "under a minute";
+        return "Played " + time + " · " + launches + (launches == 1 ? " launch" : " launches");
+    }
+
     public void countLaunch() {
         String key = name + "_play_count";
         prefs.edit().putInt(key, prefs.getInt(key, 0) + 1).apply();
