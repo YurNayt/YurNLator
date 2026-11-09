@@ -65,6 +65,9 @@ interface QuickMenuBridge {
     fun setFpsLimit(fps: Int)
 
     // Screen
+    /** Wayland zero-copy presentation: -1 = not a Wayland session, 0 off, 1 on. */
+    fun zeroCopy(): Int = -1
+    fun setZeroCopy(on: Boolean) {}
     fun isVulkanRenderer(): Boolean
     /** -1 off, 0 SGSR, 1 FSR. */
     fun upscaler(): Int

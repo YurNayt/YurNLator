@@ -275,6 +275,17 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
     @Override public boolean isVulkanRenderer() { return vk() != null; }
     @Override public int upscaler() { return upscalerMode; }
 
+    @Override public int zeroCopy() {
+        if (!a.waylandMode) return -1;
+        return com.winlator.cmod.session.WaylandZeroCopy.enabled(a.container, a.shortcut) ? 1 : 0;
+    }
+
+    @Override public void setZeroCopy(boolean on) {
+        if (!a.waylandMode) return;
+        com.winlator.cmod.session.WaylandZeroCopy.save(a.container, a.shortcut, on);
+        try { com.winlator.cmod.wayland.WaylandCompositor.nativeSetZeroCopy(on); } catch (Throwable ignored) {}
+    }
+
     @Override public void setUpscaler(int mode) {
         VulkanXServerView vk = vk();
         if (vk == null) return;

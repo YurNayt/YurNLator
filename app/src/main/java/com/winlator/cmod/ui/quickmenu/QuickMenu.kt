@@ -438,6 +438,14 @@ private fun ScreenSection(bridge: QuickMenuBridge, opened: Int) {
     var shaderMenu by remember { mutableStateOf(false) }
 
     SectionPage("Screen effects") {
+        val zc0 = remember(opened) { bridge.zeroCopy() }
+        if (zc0 >= 0) {
+            var zc by remember(opened) { mutableStateOf(zc0 == 1) }
+            Card {
+                SwitchRow("Direct presentation", "Wayland: the game's frames go to the screen without a copy (smoother on a busy GPU). Paused while an effect or upscaling is on.",
+                    checked = zc) { zc = it; bridge.setZeroCopy(it) }
+            }
+        }
         if (!vulkan) {
             Card { Text("Upscaling and shaders need the Vulkan renderer (container settings › Renderer).", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {

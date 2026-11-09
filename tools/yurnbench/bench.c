@@ -599,7 +599,12 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmd, int show) {
     wc.lpszClassName = "YurnBench";
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     RegisterClassA(&wc);
-    HWND hwnd = CreateWindowExA(0, "YurnBench", "YurnBench", WS_POPUP | WS_VISIBLE, 0, 0, W, H, NULL, NULL, inst, NULL);
+    /* The window covers the whole screen whatever its size; the swapchain keeps rendering W x H
+     * (comparable scores) and is scaled onto it. A fixed W x H window filled only part of a
+     * screen of another size (tablets). */
+    int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
+    if (sw <= 0 || sh <= 0) { sw = W; sh = H; }
+    HWND hwnd = CreateWindowExA(WS_EX_TOPMOST, "YurnBench", "YurnBench", WS_POPUP | WS_VISIBLE, 0, 0, sw, sh, NULL, NULL, inst, NULL);
     Stats none = {0};
     phase = "init";
     if (!hwnd) { strcpy(errorText, "CreateWindow"); writeResult(0, none, none); return 1; }

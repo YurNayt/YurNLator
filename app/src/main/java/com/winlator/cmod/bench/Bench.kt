@@ -346,6 +346,9 @@ object Bench {
             },
             "execArgs" to listOfNotNull(if (combo.dx12) "--dx12" else null, if (long) "--long" else null,
                 if (heat > 0) "--heat $heat" else null).joinToString(" "),
+            // The same 16:9 screen on every device (tablets, 20:9 phones, a container set to another
+            // size): the picture fills the display as a game would, and scores stay comparable.
+            "screenSize" to "1280x720",
             "emulator" to combo.emulator,
             if (combo.emulator == "FEXCore") "fexcoreVersion" to combo.emulatorVersion else "box64Version" to combo.emulatorVersion,
         )

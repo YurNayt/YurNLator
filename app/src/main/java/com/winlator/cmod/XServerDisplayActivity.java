@@ -208,9 +208,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private MagnifierView magnifierView;
     boolean softStretchEnabled = false;
     DebugDialog debugDialog;
-    private short taskAffinityMask = 0;
-    private short taskAffinityMaskWoW64 = 0;
-    private String wineCpuTopologyValue = "";
+    /** CPU cores of the game's processes (session/CpuAffinity). */
+    private com.winlator.cmod.session.CpuAffinity cpuAffinity = com.winlator.cmod.session.CpuAffinity.none();
     /** Which X window the HUD counts frames of (session/HudWindowTracker). */
     final com.winlator.cmod.session.HudWindowTracker hudTracker =
             new com.winlator.cmod.session.HudWindowTracker(new com.winlator.cmod.session.HudWindowTracker.Host() {
@@ -484,10 +483,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         launchConfig = com.winlator.cmod.session.LaunchConfig.resolve(container, shortcut);
         final com.winlator.cmod.session.LaunchConfig lc = launchConfig;
 
-        taskAffinityMask = (short) ProcessHelper.getAffinityMask(lc.getCpuList());
-        taskAffinityMaskWoW64 = lc.getCpuListFromShortcut() ? taskAffinityMask
-                : (short) ProcessHelper.getAffinityMask(container.getCPUListWoW64(true));
-        wineCpuTopologyValue = lc.getWineCpuTopology();
+        cpuAffinity = com.winlator.cmod.session.CpuAffinity.of(lc, container);
 
         String wmClass = lc.getWmClass();
         Log.d("XServerDisplayActivity", "Startup wmClass: " + wmClass);
@@ -614,7 +610,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             @Override
             public void onMapWindow(Window window) {
-                assignTaskAffinity(window);
+                cpuAffinity.apply(window, winHandler);
             }
 
             @Override
@@ -1040,9 +1036,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // BANNER_WAYLAND_ZERO_COPY=1: a fullscreen game's own buffers go straight to an Android
                 // layer, with no compositor blit queued behind the game's GPU work (that wait is the
                 // 15-50 ms "fence wait" that made busy-GPU games stutter).
-                String zc = user.get("BANNER_WAYLAND_ZERO_COPY").trim().toLowerCase(java.util.Locale.US);
-                if (zc.equals("1") || zc.equals("true") || zc.equals("on"))
-                    com.winlator.cmod.wayland.WaylandCompositor.nativeSetZeroCopy(true);
+                com.winlator.cmod.wayland.WaylandCompositor.nativeSetZeroCopy(
+                        com.winlator.cmod.session.WaylandZeroCopy.enabled(container, shortcut));
                 String zcf = user.get("BANNER_WAYLAND_ZC_CLIENT_FENCE").trim().toLowerCase(java.util.Locale.US);
                 if (zcf.equals("0") || zcf.equals("false") || zcf.equals("off"))
                     com.winlator.cmod.wayland.WaylandCompositor.nativeSetZeroCopyClientFence(false);
@@ -1128,7 +1123,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     line -> { if (debugDialog != null) debugDialog.call(line); });
             com.winlator.cmod.session.LaunchEnv.user(envVars, container, shortcut);
             applyOpenGLDriverEnvVars();
-            com.winlator.cmod.session.LaunchEnv.defaults(envVars, container, shortcut, wineCpuTopologyValue);
+            com.winlator.cmod.session.LaunchEnv.defaults(envVars, container, shortcut, cpuAffinity.wineCpuTopology());
 
             ArrayList<String> bindingPaths = new ArrayList<>();
             for (String[] drive : container.drivesIterator()) {
@@ -2249,20 +2244,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return -1;
     }
 
-
-    private void assignTaskAffinity(Window window) {
-        if (taskAffinityMask == 0 || taskAffinityMaskWoW64 == 0)
-            return;
-        int processId = window.getProcessId();
-        String className = window.getClassName();
-        int processAffinity = window.isWoW64() ? taskAffinityMaskWoW64 : taskAffinityMask;
-
-        if (processId > 0) {
-            winHandler.setProcessAffinity(processId, processAffinity);
-        } else if (!className.isEmpty()) {
-            winHandler.setProcessAffinity(window.getClassName(), processAffinity);
-        }
-    }
 
     public String getScreenEffectProfile() {
         return screenEffectProfile;

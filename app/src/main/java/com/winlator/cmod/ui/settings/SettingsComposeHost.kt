@@ -328,7 +328,7 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
                 }
                 item("dev-bundles") {
                     var on by remember { mutableStateOf(PreferenceManager.getDefaultSharedPreferences(context).getBoolean("yurn_bundle_finder", false)) }
-                    NavigationRow(Icons.Outlined.Speed, "Bundle finder: " + (if (on) "on" else "off"),
+                    NavigationRow(Icons.Outlined.Speed, "Benchmark: " + (if (on) "on" else "off"),
                         "Finds the best GPU driver, DXVK and FEX / Box64 for this phone; a tab at the right of the bottom bar") {
                         on = !on
                         DeveloperOptions.setBundleFinder(context, on)
