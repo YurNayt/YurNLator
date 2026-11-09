@@ -234,12 +234,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     private SensorManager sensorManager;
 
-    private long startTime;
-    private SharedPreferences playtimePrefs;
+    /** Play time and launch count of the game (session/Playtime). */
+    private com.winlator.cmod.session.Playtime playtime;
     private String shortcutName;
     private Handler handler;
-    private Runnable savePlaytimeRunnable;
-    private static final long SAVE_INTERVAL_MS = 1000;
 
     private Handler timeoutHandler = new Handler(Looper.getMainLooper());
     private Runnable hideControlsRunnable;
@@ -295,17 +293,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         boolean xinputDisabledFromShortcut = false;
 
-        startTime = System.currentTimeMillis();
-
         handler = new Handler(Looper.getMainLooper());
-        savePlaytimeRunnable = new Runnable() {
-            @Override
-            public void run() {
-                savePlaytimeData();
-                handler.postDelayed(this, SAVE_INTERVAL_MS);
-            }
-        };
-        handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
+        playtime = new com.winlator.cmod.session.Playtime(this);
+        playtime.resume();
 
         // On-screen controls: ui/ingame/TouchControls (YurNLator base, part 10).
         touchControls = new com.winlator.cmod.ui.ingame.TouchControls(preferences, timeoutHandler,
@@ -401,7 +391,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.d("XServerDisplayActivity", "Parsed Container ID from .desktop file: " + containerId);
         }
 
-        playtimePrefs = getSharedPreferences("playtime_stats", MODE_PRIVATE);
         shortcutName = getIntent().getStringExtra("shortcut_name");
 
         if (shortcutPath != null && !shortcutPath.isEmpty()) {
@@ -413,7 +402,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.d("XServerDisplayActivity", "No shortcut path provided, skipping shortcut parsing.");
         }
 
-        incrementPlayCount();
+        playtime.setName(shortcutName);
+        playtime.countLaunch();
 
         Log.d("XServerDisplayActivity", "Final Container ID: " + containerId);
 
@@ -701,8 +691,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             xServerView.onResume();
             environment.onResume();
         }
-        startTime = System.currentTimeMillis();
-        handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
+        if (playtime != null) playtime.resume();
         if (gyroInput != null) gyroInput.apply();
         if (!isInPictureInPictureMode())
             ProcessHelper.resumeAllWineProcesses();
@@ -724,8 +713,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             ProcessHelper.pauseAllWineProcesses();
         }
 
-        savePlaytimeData();
-        handler.removeCallbacks(savePlaytimeRunnable);
+        if (playtime != null) playtime.pause();
     }
 
     void enterPipMode() {
@@ -773,31 +761,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    private void savePlaytimeData() {
-        long endTime = System.currentTimeMillis();
-        long playtime = endTime - startTime;
 
-        if (playtime < 0) {
-            playtime = 0;
-        }
-
-        SharedPreferences.Editor editor = playtimePrefs.edit();
-        String playtimeKey = shortcutName + "_playtime";
-
-        long totalPlaytime = playtimePrefs.getLong(playtimeKey, 0) + playtime;
-        editor.putLong(playtimeKey, totalPlaytime);
-        editor.apply();
-
-        startTime = System.currentTimeMillis();
-    }
-
-    private void incrementPlayCount() {
-        SharedPreferences.Editor editor = playtimePrefs.edit();
-        String playCountKey = shortcutName + "_play_count";
-        int playCount = playtimePrefs.getInt(playCountKey, 0) + 1;
-        editor.putInt(playCountKey, playCount);
-        editor.apply();
-    }
 
     void exit() {
         com.winlator.cmod.core.RendererDriverGuard.disarm(this);
@@ -811,8 +775,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             xServerView.setVisibility(View.GONE);
         }
 
-        savePlaytimeData();
-        handler.removeCallbacks(savePlaytimeRunnable);
+        if (playtime != null) playtime.pause();
 
         if (midiHandler != null)
             midiHandler.stop();
@@ -824,26 +787,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (wineRequestHandler != null)
             wineRequestHandler.stop();
 
-        Executors.newSingleThreadExecutor().execute(() -> {
-
-            ProcessHelper.terminateAllWineProcesses();
-
-            long start = System.currentTimeMillis();
-            while (!ProcessHelper.listRunningWineProcesses().isEmpty()) {
-                long elapsed = System.currentTimeMillis() - start;
-                if (elapsed >= 1500) {
-
-                    for (String pid : ProcessHelper.listRunningWineProcesses()) {
-                        ProcessHelper.killProcess(Integer.parseInt(pid));
-                    }
-                    break;
-                }
-                try {
-                    Thread.sleep(50);
-                } catch (InterruptedException ignored) {
-                    break;
-                }
-            }
+        com.winlator.cmod.session.WineShutdown.terminateAll(() -> {
             preloaderDialog.closeOnUiThread();
             runOnUiThread(this::finish);
         });
@@ -860,8 +804,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        savePlaytimeData();
-        handler.removeCallbacks(savePlaytimeRunnable);
+        if (playtime != null) playtime.pause();
     }
 
     @Override
