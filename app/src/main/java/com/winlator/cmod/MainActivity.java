@@ -178,11 +178,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setNavigationViewItemTextColor(navigationView, Color.WHITE);
 
         File winlatorDir = new File(SettingsFragment.DEFAULT_WINLATOR_PATH);
-        // The storage folder is "YurNLator" now: move the old "Winlator" one (icons, covers,
-        // banners, logs, profiles, presets) over once, if there is no new one yet.
-        File legacyDir = new File(Environment.getExternalStorageDirectory(), "Winlator");
-        if (!winlatorDir.exists() && legacyDir.isDirectory() && !legacyDir.renameTo(winlatorDir))
-            Log.w("MainActivity", "couldn't move " + legacyDir + " to " + winlatorDir);
+        // The storage folder is "YurNLator". An existing "Winlator" folder is left alone: it may
+        // belong to another Winlator installed next to this one (moving it lost that app's files).
         if (!winlatorDir.exists())
             winlatorDir.mkdirs();
 
