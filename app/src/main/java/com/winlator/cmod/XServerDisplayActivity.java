@@ -1037,6 +1037,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             try {
                 com.winlator.cmod.wayland.WaylandCompositor.nativeSetAsyncCopy(!(async.equals("0") || async.equals("false") || async.equals("off")));
                 com.winlator.cmod.wayland.WaylandCompositor.nativeSetUbwc(!(ubwc.equals("0") || ubwc.equals("false") || ubwc.equals("off")));
+                // BANNER_WAYLAND_ZERO_COPY=1: a fullscreen game's own buffers go straight to an Android
+                // layer, with no compositor blit queued behind the game's GPU work (that wait is the
+                // 15-50 ms "fence wait" that made busy-GPU games stutter).
+                String zc = user.get("BANNER_WAYLAND_ZERO_COPY").trim().toLowerCase(java.util.Locale.US);
+                if (zc.equals("1") || zc.equals("true") || zc.equals("on"))
+                    com.winlator.cmod.wayland.WaylandCompositor.nativeSetZeroCopy(true);
+                String zcf = user.get("BANNER_WAYLAND_ZC_CLIENT_FENCE").trim().toLowerCase(java.util.Locale.US);
+                if (zcf.equals("0") || zcf.equals("false") || zcf.equals("off"))
+                    com.winlator.cmod.wayland.WaylandCompositor.nativeSetZeroCopyClientFence(false);
             } catch (Throwable t) { Log.w("XServerDisplayActivity", "wayland switches", t); }
         }
         waylandSession = new com.winlator.cmod.session.WaylandSession(this, xServer);
