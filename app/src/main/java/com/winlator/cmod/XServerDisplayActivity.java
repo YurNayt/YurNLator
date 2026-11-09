@@ -1014,37 +1014,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void startWaylandSession(FrameLayout rootView) {
-        String driverId = graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null;
-        String driverPath = null, libraryName = null;
-        if (com.winlator.cmod.session.WaylandSupport.adapterUnusableReason(this, driverId) == null) {
-            AdrenotoolsManager atm = new AdrenotoolsManager(this);
-            driverPath = atm.getDriverPath(driverId);
-            libraryName = atm.getLibraryName(driverId);
-        } else if (GPUInformation.isAdrenoGPU(this)) {
-            Toast.makeText(this, "Wayland on Adreno needs a Turnip driver in Driver Version (System can't share frames).", Toast.LENGTH_LONG).show();
-        }
-        // A/B switches the compositor reads before it starts (they were documented but never passed on):
-        // BANNER_WAYLAND_ASYNC_COPY=0 (wait for every screen blit), BANNER_WAYLAND_UBWC=0.
-        {
-            EnvVars user = new EnvVars(container != null ? container.getEnvVars() : "");
-            if (shortcut != null) user.putAll(new EnvVars(shortcut.getExtra("envVars", "")));
-            String async = user.get("BANNER_WAYLAND_ASYNC_COPY").trim().toLowerCase(java.util.Locale.US);
-            String ubwc = user.get("BANNER_WAYLAND_UBWC").trim().toLowerCase(java.util.Locale.US);
-            try {
-                com.winlator.cmod.wayland.WaylandCompositor.nativeSetAsyncCopy(!(async.equals("0") || async.equals("false") || async.equals("off")));
-                com.winlator.cmod.wayland.WaylandCompositor.nativeSetUbwc(!(ubwc.equals("0") || ubwc.equals("false") || ubwc.equals("off")));
-                // BANNER_WAYLAND_ZERO_COPY=1: a fullscreen game's own buffers go straight to an Android
-                // layer, with no compositor blit queued behind the game's GPU work (that wait is the
-                // 15-50 ms "fence wait" that made busy-GPU games stutter).
-                com.winlator.cmod.wayland.WaylandCompositor.nativeSetZeroCopy(
-                        com.winlator.cmod.session.WaylandZeroCopy.enabled(container, shortcut));
-                String zcf = user.get("BANNER_WAYLAND_ZC_CLIENT_FENCE").trim().toLowerCase(java.util.Locale.US);
-                if (zcf.equals("0") || zcf.equals("false") || zcf.equals("off"))
-                    com.winlator.cmod.wayland.WaylandCompositor.nativeSetZeroCopyClientFence(false);
-            } catch (Throwable t) { Log.w("XServerDisplayActivity", "wayland switches", t); }
-        }
+        // The compositor's driver and switches: session/WaylandLaunch.
+        com.winlator.cmod.session.WaylandLaunch.Driver driver = com.winlator.cmod.session.WaylandLaunch.driver(
+                this, graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null);
+        com.winlator.cmod.session.WaylandLaunch.applySwitches(container, shortcut);
         waylandSession = new com.winlator.cmod.session.WaylandSession(this, xServer);
-        waylandSession.start(rootView, rootView.indexOfChild(xServerView) + 1, driverPath, libraryName,
+        waylandSession.start(rootView, rootView.indexOfChild(xServerView) + 1, driver.path, driver.library,
                 launchConfig != null && launchConfig.getFullscreenStretched(),
                 shortcut != null,
                 new com.winlator.cmod.session.WaylandSession.Listener() {
@@ -1068,13 +1043,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
         });
     }
-
-    /**
-     * Wine's graphics driver for this prefix: "wayland" (winewayland.drv) on the Wayland backend, else
-     * back to x11 if a Wayland launch had set it. Winlator's winex11.drv starts even without an X
-     * server and would win Wine's driver choice, so it is hidden (renamed) on Wayland and restored on
-     * the next X11 launch (Bannerlator's approach).
-     */
 
     /** Gets the prefix ready for this launch: session/PrefixSetup (YurNLator base, part 5). */
     private void setupWineSystemFiles() {
@@ -1239,39 +1207,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (renderer instanceof VulkanXServerView) {
             VulkanXServerView vkRenderer = (VulkanXServerView) renderer;
 
-            String rendererDriverId = shortcut != null ? shortcut.getRendererDriverId()
-                    : (container != null ? container.getRendererDriverId() : "");
-            if (rendererDriverId == null || rendererDriverId.isEmpty()) {
-                rendererDriverId = graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null;
-            }
-            // Our compositor runs inside the app: on non-Adreno GPUs a custom driver (PanVK) here
-            // takes the whole app down ("the container doesn't even start"). The game keeps its
-            // chosen driver; the compositor uses the system one.
-            if (rendererDriverId != null && !rendererDriverId.equalsIgnoreCase("system") && !GPUInformation.isAdrenoGPU(this)) {
-                Log.d("XServerDisplayActivity", "Renderer driver " + rendererDriverId + " ignored on non-Adreno GPU: system driver");
-                rendererDriverId = null;
-            }
-            // A custom driver that crashed the app last time in our compositor (it runs in the app's
-            // process: SIGSEGV in adrenotools/<driver>/temp/*_patched.so) is skipped here from now on;
-            // the game itself keeps it.
-            if (rendererDriverId != null && !rendererDriverId.isEmpty() && !rendererDriverId.equalsIgnoreCase("system")
-                    && com.winlator.cmod.core.RendererDriverGuard.blocked(this, rendererDriverId)) {
-                Log.w("XServerDisplayActivity", "Renderer driver " + rendererDriverId + " crashed the app before: system driver");
-                android.widget.Toast.makeText(this, rendererDriverId + " crashed the screen renderer last time: it uses the system driver now (the game keeps " + rendererDriverId + ")", android.widget.Toast.LENGTH_LONG).show();
-                rendererDriverId = null;
-            }
-            if (rendererDriverId != null && !rendererDriverId.isEmpty() && !rendererDriverId.equalsIgnoreCase("system")) {
-                com.winlator.cmod.core.RendererDriverGuard.arm(this, rendererDriverId);
-                try {
-                    String driverPath = getFilesDir().getAbsolutePath() + "/contents/adrenotools/" + rendererDriverId + "/";
-                    AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
-                    String libraryName = adrenotoolsManager.getLibraryName(rendererDriverId);
-                    String nativeLibDir = AppUtils.getNativeLibDir(this);
-                    if (!libraryName.isEmpty())
-                        vkRenderer.setDriverInfo(driverPath, libraryName, nativeLibDir);
-                } catch (Exception ignored) {
-                }
-            }
+            // The driver the renderer loads into the app: session/RendererDriver.
+            com.winlator.cmod.session.RendererDriver.apply(this, vkRenderer, container, shortcut,
+                    graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null);
 
             String presentMode = shortcut != null ? shortcut.getRendererPresentMode()
                     : (container != null ? container.getRendererPresentMode() : "fifo");
