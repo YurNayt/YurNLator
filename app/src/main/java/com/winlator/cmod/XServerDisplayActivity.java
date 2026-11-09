@@ -397,7 +397,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         if (containerId == 0 && shortcutPath != null && !shortcutPath.isEmpty()) {
             File shortcutFile = new File(shortcutPath);
-            containerId = parseContainerIdFromDesktopFile(shortcutFile);
+            containerId = com.winlator.cmod.session.DesktopFile.containerId(shortcutFile);
             Log.d("XServerDisplayActivity", "Parsed Container ID from .desktop file: " + containerId);
         }
 
@@ -406,7 +406,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         if (shortcutPath != null && !shortcutPath.isEmpty()) {
             if (shortcutName == null || shortcutName.isEmpty()) {
-                shortcutName = parseShortcutNameFromDesktopFile(new File(shortcutPath));
+                shortcutName = com.winlator.cmod.session.DesktopFile.name(new File(shortcutPath));
                 Log.d("XServerDisplayActivity", "Parsed Shortcut Name from .desktop file: " + shortcutName);
             }
         } else {
@@ -668,23 +668,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             runnable.run();
     }
 
-    private int parseContainerIdFromDesktopFile(File desktopFile) {
-        int containerId = 0;
-        if (desktopFile.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(desktopFile))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.startsWith("container_id:")) {
-                        containerId = Integer.parseInt(line.split(":")[1].trim());
-                        break;
-                    }
-                }
-            } catch (IOException | NumberFormatException e) {
-                Log.e("XServerDisplayActivity", "Error parsing container_id from .desktop file", e);
-            }
-        }
-        return containerId;
-    }
 
     private boolean parseBoolean(String value) {
 
@@ -942,35 +925,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         catch (Throwable t) { return null; }
     }
 
-    private void closeLoadingWhenGameRuns() {
-        if (shortcut == null || shortcut.path == null) return;
-        String p = shortcut.path.replace('\\', '/');
-        final String exe = p.substring(p.lastIndexOf('/') + 1).toLowerCase(java.util.Locale.ROOT);
-        if (!exe.endsWith(".exe")) return;
-        final int uid = android.os.Process.myUid();
-        Thread t = new Thread(() -> {
-            long until = android.os.SystemClock.uptimeMillis() + 180_000;
-            while (android.os.SystemClock.uptimeMillis() < until && !isFinishing()) {
-                if (preloaderDialog == null || !preloaderDialog.isShowing()) return;
-                String[] pids = new File("/proc").list();
-                if (pids != null) for (String pid : pids) {
-                    if (pid.isEmpty() || !Character.isDigit(pid.charAt(0))) continue;
-                    try {
-                        if (android.system.Os.stat("/proc/" + pid).st_uid != uid) continue;
-                        byte[] raw = java.nio.file.Files.readAllBytes(new File("/proc/" + pid + "/cmdline").toPath());
-                        String cmd = new String(raw, java.nio.charset.StandardCharsets.UTF_8).toLowerCase(java.util.Locale.ROOT);
-                        if (cmd.contains(exe) && !cmd.contains("winhandler")) {
-                            preloaderDialog.closeOnUiThread();
-                            return;
-                        }
-                    } catch (Throwable ignored) {}
-                }
-                try { Thread.sleep(500); } catch (InterruptedException e) { return; }
-            }
-        }, "WaylandLoading");
-        t.setDaemon(true);
-        t.start();
-    }
 
     private void startWaylandSession(FrameLayout rootView) {
         // The compositor's driver and switches: session/WaylandLaunch.
@@ -1160,7 +1114,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         rootView.addView(xServerView);
         if (waylandMode) {
             startWaylandSession(rootView);
-            closeLoadingWhenGameRuns();
+            com.winlator.cmod.session.LoadingScreen.closeWhenGameRuns(this, shortcut, preloaderDialog);
         }
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
@@ -1281,23 +1235,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 }
             });
 
-    private String parseShortcutNameFromDesktopFile(File desktopFile) {
-        String shortcutName = "";
-        if (desktopFile.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(desktopFile))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.startsWith("Name=")) {
-                        shortcutName = line.split("=")[1].trim();
-                        break;
-                    }
-                }
-            } catch (IOException e) {
-                Log.e("XServerDisplayActivity", "Error reading shortcut name from .desktop file", e);
-            }
-        }
-        return shortcutName;
-    }
 
     private void setTextColorForDialog(ViewGroup viewGroup, int color) {
         for (int i = 0; i < viewGroup.getChildCount(); i++) {
