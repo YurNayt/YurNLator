@@ -91,7 +91,7 @@ public final class RefreshRate {
                 + (xrandrCapable ? "disabled" : "unchanged (layer has no XRandR)"));
     }
 
-    private boolean xrandrCapable(wineInfo) {
+    private static boolean xrandrCapable(WineInfo wineInfo) {
         if (wineInfo == null || wineInfo.path == null || wineInfo.path.isEmpty()) return false;
 
         String cacheKey = wineInfo.identifier() + "@" + wineInfo.path;
