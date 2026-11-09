@@ -98,6 +98,9 @@ public final class TouchControls {
         c.invalidate();
         WinHandler w = winHandler.get();
         if (w != null) w.sendGamepadState();
+        // Auto-hide on: start it with the profile (a game's own profile is shown after the saved
+        // state is restored, and auto-hide only began after toggling it in the menu).
+        if (prefs.getBoolean("touchscreen_timeout_enabled", false)) startTimeout();
     }
 
     public void hide() {

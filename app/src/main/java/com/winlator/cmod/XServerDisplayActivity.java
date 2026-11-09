@@ -817,28 +817,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    void showVibrationDialog() {
-        if (winHandler == null)
-            return;
-
-        Context context = this;
-        int maxControllers = winHandler.getMaxControllers();
-        boolean[] checkedItems = new boolean[maxControllers];
-        String[] items = new String[maxControllers];
-
-        for (int i = 0; i < maxControllers; i++) {
-            items[i] = getString(R.string.vibration_slot, i + 1);
-            checkedItems[i] = winHandler.isVibrationEnabledForSlot(i);
-        }
-
-        new androidx.appcompat.app.AlertDialog.Builder(context)
-                .setTitle(R.string.vibration)
-                .setMultiChoiceItems(items, checkedItems, (dialog, which, isChecked) -> {
-                    winHandler.setVibrationEnabledForSlot(which, isChecked);
-                })
-                .setPositiveButton(R.string.ok, null)
-                .show();
-    }
+    void showVibrationDialog() { com.winlator.cmod.ui.ingame.InputDispatch.showVibrationDialog(this, winHandler); }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
@@ -1305,58 +1284,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
-        boolean handledByWinHandler = false;
-        boolean handledByTouchpadView = false;
-
-        if (winHandler != null) {
-            handledByWinHandler = winHandler.onGenericMotionEvent(event);
-            if (handledByWinHandler) {
-
-            }
-        }
-
-        if (touchpadView != null) {
-            handledByTouchpadView = touchpadView.onExternalMouseEvent(event);
-            if (handledByTouchpadView) {
-
-            }
-        }
-
-        boolean handledBySuper = super.dispatchGenericMotionEvent(event);
-        if (!handledBySuper) {
-
-        }
-
-        return handledByWinHandler || handledByTouchpadView || handledBySuper;
+        // Gamepads and mice: ui/ingame/InputDispatch.
+        boolean ours = com.winlator.cmod.ui.ingame.InputDispatch.motion(event, winHandler, touchpadView);
+        return super.dispatchGenericMotionEvent(event) || ours;
     }
 
     private static final int RECAPTURE_DELAY_MS = 10000;
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        // Quick menu / sidebar open: its text fields (custom FPS…) get the keys first. The game's
-        // keyboard took them before, and nothing could be typed there.
-        if (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START)
-                && event.getKeyCode() != KeyEvent.KEYCODE_BACK
-                && event.getKeyCode() != KeyEvent.KEYCODE_BUTTON_MODE
-                && event.getKeyCode() != KeyEvent.KEYCODE_BUTTON_SELECT
-                && !ExternalController.isGameController(event.getDevice())) {
-            return super.dispatchKeyEvent(event);
-        }
-
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE || event.getKeyCode() == KeyEvent.KEYCODE_HOME
-                    || event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_SELECT) {
-                boolean handled = inputControlsView.onKeyEvent(event)
-                        || (winHandler != null && winHandler.onKeyEvent(event))
-                                && (xServer != null && xServer.keyboard.onKeyEvent(event));
-                return true;
-            }
-        }
-
-        return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event)
-                && xServer.keyboard.onKeyEvent(event)) ||
-                (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+        // Keys: ui/ingame/InputDispatch (null = this activity's own dispatch).
+        Boolean r = com.winlator.cmod.ui.ingame.InputDispatch.key(event, drawerLayout, inputControlsView, winHandler, xServer);
+        return r != null ? r : super.dispatchKeyEvent(event);
     }
 
     /** The host FPS limit: X11 paces the game's Present idles, Wayland its buffer releases. */
