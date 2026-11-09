@@ -25,6 +25,13 @@ public final class WaylandEffects {
      * @param gamma 0.5..2.5
      */
     public static void apply(int upscaler, int sharp, int shader, int brightness, int contrast, float gamma) {
+        // A slider left a step or two off zero (a container saved brightness/contrast +1) changes
+        // nothing visible but turned the colour pass on, and every pass frame is waited for on the
+        // compositor thread: 15-25 ms per frame on a busy GPU, the picture stuttered at 20-40 fps
+        // with every effect "off" (NFS Payback, 2026-11-09). Near-neutral values count as neutral.
+        brightness = snap(brightness);
+        contrast = snap(contrast);
+        if (Math.abs(gamma - 1f) < 0.03f) gamma = 1f;
         int scaler = upscaler == 0 ? 3 : upscaler == 1 ? 4 : 0;
         boolean cas = false, hdr = false, fxaa = false, toon = false, crt = false, ntsc = false, deband = false;
         int db = 0, dc = 0, saturation = 100;
@@ -59,6 +66,8 @@ public final class WaylandEffects {
             Log.w(TAG, "compositor effects: " + t);
         }
     }
+
+    private static int snap(int v) { return Math.abs(v) <= 2 ? 0 : v; }
 
     private static int clamp(int v, int lo, int hi) { return Math.max(lo, Math.min(hi, v)); }
 }
