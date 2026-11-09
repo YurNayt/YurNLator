@@ -1820,6 +1820,20 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
      * blit filter follows the scaling mode. */
     const int fx = !g_plain_frame && vkp_effects_active();
     const int fg = !g_plain_frame && vkp_framegen_active();
+    /* The pass's intermediate images (scene, effect targets) are single-buffered and its descriptor
+     * sets are rewritten per frame, so a pass frame must not be recorded while the previous one is
+     * still on the GPU. That wait used to sit right after each present (15-25 ms on a busy GPU, the
+     * Wayland dispatch loop parked: buffer releases, frame callbacks and input waited, and games
+     * stuttered with any screen effect on). It is taken here instead, a whole game frame later, when
+     * the previous frame is normally long done; frames without frame generation then stay in flight
+     * like the plain copy path. Before ensure_scene_image: a resize must not free an image in use. */
+    if (g_async_mode && (fx || fg || (hf && n > 0))) {
+        const int64_t t0 = perf_now();
+        if (vkp_retire_frames(1) > 0) {
+            const int64_t waited = perf_now() - t0;
+            if (waited > 100000) perf_add(&g_perf.slot_wait_ns, &g_perf.slot_wait_max_ns, &g_perf.slot_waits, waited);
+        }
+    }
     /* HDR frames with frame generation through an HDR10 swapchain: the scene, the effects and the
      * engine's frames in FP16 (FG_HDR_FMT) where the engine can take that format - more than 8 bits of
      * PQ through interpolation - else the 8-bit scene, as before. */
@@ -2056,7 +2070,7 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
     /* The frame is in flight from here. The direct copy path leaves it to vkp_retire_frames (the
      * fence as a sync_file, else bounded polls) and returns at once; the compositor pass and the
      * synchronous mode wait for it here, as every frame once did (the perf line's "fence wait"). */
-    const int async = g_async_mode && !pass;
+    const int async = g_async_mode && (!pass || (!fg && !deep));
     VkResult fr = VK_SUCCESS;
     if (!async) {
         fr = timed_wait(fs->fence, UINT64_MAX);
