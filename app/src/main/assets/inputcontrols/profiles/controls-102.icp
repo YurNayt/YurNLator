@@ -13,15 +13,15 @@
     "GAMEPAD_LEFT_THUMB_LEFT"
    ],
    "scale": 1.1,
-   "x": 0.16,
-   "y": 0.72,
+   "x": 0.15970727801322937,
+   "y": 0.7192816734313965,
    "toggleSwitch": false,
    "text": "",
    "iconId": 0
   },
   {
    "type": "BUTTON",
-   "shape": "RECT",
+   "shape": "PEDAL",
    "bindings": [
     "GAMEPAD_BUTTON_R2",
     "NONE",
@@ -29,24 +29,24 @@
     "NONE"
    ],
    "scale": 1.6,
-   "x": 0.89,
-   "y": 0.72,
+   "x": 0.9108911156654358,
+   "y": 0.804347813129425,
    "toggleSwitch": false,
    "text": "Gas",
    "iconId": 0
   },
   {
    "type": "BUTTON",
-   "shape": "RECT",
+   "shape": "PEDAL",
    "bindings": [
     "GAMEPAD_BUTTON_L2",
     "NONE",
     "NONE",
     "NONE"
    ],
-   "scale": 1.3,
-   "x": 0.74,
-   "y": 0.76,
+   "scale": 1.55,
+   "x": 0.7920792102813721,
+   "y": 0.8260869383811951,
    "toggleSwitch": false,
    "text": "Brake",
    "iconId": 0
@@ -61,8 +61,8 @@
     "NONE"
    ],
    "scale": 0.85,
-   "x": 0.8,
-   "y": 0.47,
+   "x": 0.7998278141021729,
+   "y": 0.46975424885749817,
    "toggleSwitch": false,
    "text": "A",
    "iconId": 0
@@ -77,8 +77,8 @@
     "NONE"
    ],
    "scale": 0.85,
-   "x": 0.86,
-   "y": 0.37,
+   "x": 0.8596642017364502,
+   "y": 0.3695652186870575,
    "toggleSwitch": false,
    "text": "B",
    "iconId": 0
@@ -93,8 +93,8 @@
     "NONE"
    ],
    "scale": 0.85,
-   "x": 0.74,
-   "y": 0.37,
+   "x": 0.7399913668632507,
+   "y": 0.3695652186870575,
    "toggleSwitch": false,
    "text": "X",
    "iconId": 0
@@ -109,8 +109,8 @@
     "NONE"
    ],
    "scale": 0.85,
-   "x": 0.8,
-   "y": 0.27,
+   "x": 0.7998278141021729,
+   "y": 0.2693761885166168,
    "toggleSwitch": false,
    "text": "Y",
    "iconId": 0
@@ -125,8 +125,8 @@
     "NONE"
    ],
    "scale": 1.1,
-   "x": 0.18,
-   "y": 0.175,
+   "x": 0.11881188303232193,
+   "y": 0.10869564861059189,
    "toggleSwitch": false,
    "text": "LB",
    "iconId": 0
@@ -141,8 +141,8 @@
     "NONE"
    ],
    "scale": 1.1,
-   "x": 0.62,
-   "y": 0.175,
+   "x": 0.8613861203193665,
+   "y": 0.10869564861059189,
    "toggleSwitch": false,
    "text": "RB",
    "iconId": 0
@@ -157,8 +157,8 @@
     "GAMEPAD_RIGHT_THUMB_LEFT"
    ],
    "scale": 0.75,
-   "x": 0.4,
-   "y": 0.78,
+   "x": 0.6930692791938782,
+   "y": 0.5869565010070801,
    "toggleSwitch": false,
    "text": "",
    "iconId": 0
@@ -173,8 +173,8 @@
     "GAMEPAD_DPAD_LEFT"
    ],
    "scale": 0.65,
-   "x": 0.15,
-   "y": 0.4,
+   "x": 0.14980629086494446,
+   "y": 0.3998109698295593,
    "toggleSwitch": false,
    "text": "",
    "iconId": 0
@@ -189,8 +189,8 @@
     "NONE"
    ],
    "scale": 0.7,
-   "x": 0.468,
-   "y": 0.91,
+   "x": 0.4679293930530548,
+   "y": 0.9092627763748169,
    "toggleSwitch": false,
    "text": "Back",
    "iconId": 0
@@ -205,8 +205,8 @@
     "NONE"
    ],
    "scale": 0.7,
-   "x": 0.536,
-   "y": 0.91,
+   "x": 0.5359448790550232,
+   "y": 0.9092627763748169,
    "toggleSwitch": false,
    "text": "Start",
    "iconId": 0
