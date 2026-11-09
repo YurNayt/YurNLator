@@ -78,7 +78,19 @@ public abstract class DrawRequests {
         Drawable drawable =  client.xServer.drawableManager.getDrawable(drawableId);
         if (drawable == null) throw new BadDrawable(drawableId);
         int visualId = client.xServer.pixmapManager.getPixmap(drawableId) == null ? drawable.visual.id : 0;
-        ByteBuffer data = drawable.getImage(x, y, width, height);
+        // Wine's offscreen Vulkan path reads the frame back with GetImage (StretchBlt into the
+        // window's GDI surface) as often as it copies it with CopyArea: the window's own pixels are
+        // stale there - the frame went to it as a direct buffer (PresentExtension) - and the game
+        // showed one frame, then black (Counter-Strike: Source on Proton 9).
+        Drawable direct = drawable.directSource;
+        ByteBuffer data;
+        if (direct != null && direct.backingAHB != 0) {
+            synchronized (direct.renderLock) {
+                data = direct.getImage((short)(x - drawable.directXOff), (short)(y - drawable.directYOff), width, height);
+            }
+        } else {
+            data = drawable.getImage(x, y, width, height);
+        }
         int length = data.limit();
 
         try (XStreamLock lock = outputStream.lock()) {

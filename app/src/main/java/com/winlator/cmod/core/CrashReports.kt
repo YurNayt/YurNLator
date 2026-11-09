@@ -67,7 +67,9 @@ object CrashReports {
             // Thread blocks are separated by blank lines; keep main + the interesting ones.
             val blocks = text.split(Regex("\\n\\s*\\n"))
             val keep = blocks.filter { b ->
-                val head = b.trimStart().lineSequence().firstOrNull().orEmpty()
+                // The thread's own header line: the main thread's block also starts with the dump's
+                // "----- pid ... -----" / "Cmd line:" lines, and was dropped (no main thread in ANRs).
+                val head = b.lineSequence().map { it.trimStart() }.firstOrNull { it.startsWith("\"") }.orEmpty()
                 head.startsWith("\"main\"") || Regex("(?i)render|xserver|vulkan|wayland|winhandler|gyro|surface|GLThread").containsMatchIn(head)
             }.take(8)
             "\n\n--- ANR threads ---\n" + keep.joinToString("\n\n") { it.lines().take(45).joinToString("\n") }
