@@ -1027,6 +1027,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } else if (GPUInformation.isAdrenoGPU(this)) {
             Toast.makeText(this, "Wayland on Adreno needs a Turnip driver in Driver Version (System can't share frames).", Toast.LENGTH_LONG).show();
         }
+        // A/B switches the compositor reads before it starts (they were documented but never passed on):
+        // BANNER_WAYLAND_ASYNC_COPY=0 (wait for every screen blit), BANNER_WAYLAND_UBWC=0.
+        {
+            EnvVars user = new EnvVars(container != null ? container.getEnvVars() : "");
+            if (shortcut != null) user.putAll(new EnvVars(shortcut.getExtra("envVars", "")));
+            String async = user.get("BANNER_WAYLAND_ASYNC_COPY").trim().toLowerCase(java.util.Locale.US);
+            String ubwc = user.get("BANNER_WAYLAND_UBWC").trim().toLowerCase(java.util.Locale.US);
+            try {
+                com.winlator.cmod.wayland.WaylandCompositor.nativeSetAsyncCopy(!(async.equals("0") || async.equals("false") || async.equals("off")));
+                com.winlator.cmod.wayland.WaylandCompositor.nativeSetUbwc(!(ubwc.equals("0") || ubwc.equals("false") || ubwc.equals("off")));
+            } catch (Throwable t) { Log.w("XServerDisplayActivity", "wayland switches", t); }
+        }
         waylandSession = new com.winlator.cmod.session.WaylandSession(this, xServer);
         waylandSession.start(rootView, rootView.indexOfChild(xServerView) + 1, driverPath, libraryName,
                 launchConfig != null && launchConfig.getFullscreenStretched(),
