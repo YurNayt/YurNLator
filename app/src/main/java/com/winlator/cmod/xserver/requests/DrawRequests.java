@@ -36,6 +36,8 @@ public abstract class DrawRequests {
 
         Drawable drawable =  client.xServer.drawableManager.getDrawable(drawableId);
         if (drawable == null) throw new BadDrawable(drawableId);
+        if (width >= 320 && client.xServer.windowManager.getWindow(drawableId) != null)
+            com.winlator.cmod.xserver.OffscreenStats.putImageWindow.incrementAndGet();
 
         GraphicsContext graphicsContext = client.xServer.graphicsContextManager.getGraphicsContext(gcId);
         if (graphicsContext == null) throw new BadGraphicsContext(gcId);
@@ -85,10 +87,13 @@ public abstract class DrawRequests {
         Drawable direct = drawable.directSource;
         ByteBuffer data;
         if (direct != null && direct.backingAHB != 0) {
+            com.winlator.cmod.xserver.OffscreenStats.getImageDirect.incrementAndGet();
             synchronized (direct.renderLock) {
                 data = direct.getImage((short)(x - drawable.directXOff), (short)(y - drawable.directYOff), width, height);
             }
         } else {
+            if (client.xServer.windowManager.getWindow(drawableId) != null)
+                com.winlator.cmod.xserver.OffscreenStats.getImagePlain.incrementAndGet();
             data = drawable.getImage(x, y, width, height);
         }
         int length = data.limit();
@@ -142,9 +147,11 @@ public abstract class DrawRequests {
             com.winlator.cmod.widget.XServerRendererView renderer = client.xServer.getXServerView();
             short ox = (short)(dstX - srcX + srcDrawable.directXOff), oy = (short)(dstY - srcY + srcDrawable.directYOff);
             if (dstWindow != null && renderer != null && dstWindow.getMapState() == com.winlator.cmod.xserver.Window.MapState.VIEWABLE) {
+                com.winlator.cmod.xserver.OffscreenStats.copyAreaDirect.incrementAndGet();
                 renderer.onUpdateWindowContentDirect(dstWindow, direct, ox, oy);
                 return;
             }
+            com.winlator.cmod.xserver.OffscreenStats.copyAreaDirectHidden.incrementAndGet();
             synchronized (direct.renderLock) {
                 dstDrawable.copyArea((short)(srcX - srcDrawable.directXOff), (short)(srcY - srcDrawable.directYOff),
                         dstX, dstY, width, height, direct, GraphicsContext.Function.COPY);

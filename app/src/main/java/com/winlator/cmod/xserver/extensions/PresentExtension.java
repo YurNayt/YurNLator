@@ -315,6 +315,7 @@ public class PresentExtension implements Extension,
             } else if (supportsDirectScanout && pixmap.drawable.isDirectScanout()) {
                 // Offscreen: no CPU copy. Wine copies this window onto the visible one next
                 // (CopyArea), which then shows the frame directly (DrawRequests.copyArea).
+                com.winlator.cmod.xserver.OffscreenStats.presentsOffscreen.incrementAndGet();
                 content.directXOff = xOff;
                 content.directYOff = yOff;
                 content.directSource = pixmap.drawable;
@@ -322,6 +323,7 @@ public class PresentExtension implements Extension,
                 flushClientOutput(client);
                 scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, renderer);
             } else {
+                if (!onScreen) com.winlator.cmod.xserver.OffscreenStats.presentsCpuCopy.incrementAndGet();
                 content.directSource = null;
                 content.copyArea((short)0, (short)0, xOff, yOff,
                     pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);

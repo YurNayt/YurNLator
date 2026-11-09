@@ -515,6 +515,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (now - lastMark[0] < 5000) return;
                 lastMark[0] = now;
                 log.call("[YurNLator +" + ((now - logStart) / 1000) + "s]");
+                String xo = com.winlator.cmod.xserver.OffscreenStats.drain();
+                if (xo != null) log.call(xo);
             });
         }
         // Which API and layer the game uses (VKD3D · DX12, DXVK · DX11…): the HUD's first item.
