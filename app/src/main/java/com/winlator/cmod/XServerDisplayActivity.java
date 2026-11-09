@@ -829,6 +829,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 int h = xServerView.getHeight();
                 if (w > 0 && h > 0) xServerView.onSurfaceChanged(w, h);
             });
+            // With the touch controls on, the SurfaceView's surface sometimes stays where the PiP
+            // window animation left it: the picture shows shifted right and cut, the HUD and the
+            // controls (normal views) are fine. Hiding and showing the view makes Android place
+            // the surface again (the renderer re-attaches it as after a pause).
+            xServerView.postDelayed(() -> {
+                if (xServerView == null || isInPictureInPictureMode()) return;
+                xServerView.setVisibility(View.INVISIBLE);
+                xServerView.post(() -> {
+                    if (xServerView == null) return;
+                    xServerView.setVisibility(View.VISIBLE);
+                    xServerView.requestLayout();
+                });
+            }, 400);
         }
     }
 
