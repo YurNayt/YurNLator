@@ -878,6 +878,7 @@ public class WinlatorHUD extends View {
         }
         lastFpsNs = now;
         if (banner != null) {
+            banner.feedRate(snapFps, dt / 1_000_000f);
             banner.setPresentedFps(presentedFps);
             banner.setEngine(strRend);
             banner.setGpuModel(gpuNameLabel);
@@ -1351,7 +1352,7 @@ public class WinlatorHUD extends View {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        if (banner != null && getParent() instanceof android.view.ViewGroup) banner.attach((android.view.ViewGroup) getParent());
+        if (banner != null && getParent() instanceof android.view.ViewGroup) banner.onHostAttached((android.view.ViewGroup) getParent());
         prefs.registerOnSharedPreferenceChangeListener(prefListener);
         if (userEnabled) {
             uiHandler.removeCallbacks(redrawRunnable);
@@ -1364,7 +1365,7 @@ public class WinlatorHUD extends View {
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        if (banner != null) banner.detach();
+        if (banner != null) banner.onHostDetached();
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
         uiHandler.removeCallbacks(redrawRunnable);
         stopStatsThread();

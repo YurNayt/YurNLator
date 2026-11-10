@@ -30,7 +30,24 @@ class BannerHud(private val context: Context) {
     private var gpuModel = ""
     private var presented = 0f
 
-    fun tick() = fps.tick()
+    @Volatile private var ticks = 0
+    private var carry = 0f
+
+    fun tick() { ticks++; fps.tick() }
+
+    /**
+     * Our HUD's game FPS over the last [windowMs]: when no frame was reported one by one in that
+     * window (DRI3 / VKD3D presents only show up in the present counters), it feeds the counter.
+     */
+    fun feedRate(gameFps: Float, windowMs: Float) {
+        val counted = ticks
+        ticks = 0
+        if (counted > 0 || gameFps <= 0f || windowMs <= 0f) { carry = 0f; return }
+        val exact = gameFps * windowMs / 1000f + carry
+        val n = exact.toInt()
+        carry = exact - n
+        if (n > 0) fps.addFrames(n, windowMs)
+    }
 
     fun attach(parent: ViewGroup) {
         if (this.parent === parent && view != null) return
@@ -44,6 +61,21 @@ class BannerHud(private val context: Context) {
         view?.let { v -> (v.parent as? ViewGroup)?.removeView(v) }
         view = null
         parent = null
+    }
+
+    /**
+     * The game screen is going away: nothing is removed here (Android is walking the views to detach
+     * them, and removing one from that walk crashed in dispatchDetachedFromWindow); just stop.
+     */
+    fun onHostDetached() {
+        stopTicker()
+    }
+
+    /** The host came back (same parent): GameHub's refresh runs again. */
+    fun onHostAttached(parent: ViewGroup) {
+        val v = view
+        if (v != null && v.parent === parent) { if (v is PerfHudView) startTicker(v); return }
+        attach(parent)
     }
 
     fun setVisible(on: Boolean) {

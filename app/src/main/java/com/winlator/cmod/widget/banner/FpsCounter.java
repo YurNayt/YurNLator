@@ -92,6 +92,37 @@ public class FpsCounter {
         frameCount++;
     }
 
+    /**
+     * YurNLator: [n] frames counted elsewhere over the last [windowMs] (paths that don't report each
+     * frame here, e.g. a game presenting through DRI3 / VKD3D): spread evenly, so FPS and averages
+     * are right; the lows can't see the unevenness inside the window.
+     */
+    public synchronized void addFrames(int n, float windowMs) {
+        if (n <= 0 || windowMs <= 0f) return;
+        long now = SystemClock.elapsedRealtime();
+        if (sessionStartTime == 0) sessionStartTime = now;
+        float interval = windowMs / n;
+        if (interval < FRAMETIME_MAX_SANE_MS) {
+            for (int i = 0; i < n; i++) {
+                frametimeRing[frametimeHead] = interval;
+                frametimeHead = (frametimeHead + 1) % FRAMETIME_RING_CAP;
+                if (frametimeSize < FRAMETIME_RING_CAP) frametimeSize++;
+            }
+        }
+        lastFrameTime = now;
+        lastFPS = n * 1000f / windowMs;
+        if (lastReadingTime == 0 || now >= lastReadingTime + READING_INTERVAL_MS) {
+            int currentFPS = Math.round(lastFPS);
+            readingCount++;
+            fpsSum += currentFPS;
+            if (currentFPS > maxFPS) maxFPS = currentFPS;
+            if (currentFPS > 1 && currentFPS < minFPS) minFPS = currentFPS;
+            lastReadingTime = now;
+        }
+        lastTime = now;
+        frameCount = 0;
+    }
+
     /** Most recent measured FPS, or 0 when no frame has been presented within {@link #STALE_FPS_MS} —
      *  the bound window stopped rendering, so the last value is stale and must not sit frozen on the
      *  HUD (idle menu, paused game, or a present path not ticking this window). Lock-free. */
