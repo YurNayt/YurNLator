@@ -1193,16 +1193,34 @@ public class XServerDisplayActivity extends AppCompatActivity {
             @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
             @Override public WinlatorHUD modernHud() { return modernHud; }
             @Override public FrameRating classicHud() { return classicHud; }
-            @Override public int savedMode() {
-                if (container == null) return 0;
-                String extra = container.getExtra("hudMode");
-                if (!extra.isEmpty()) try { return Integer.parseInt(extra.trim()); } catch (NumberFormatException ignored) {}
-                return container.isShowFPS() ? 1 : 0;
-            }
-            @Override public void enable(int style) { enableHudLazily(style); }
-            @Override public void saveMode(int mode) { saveHudModeToContainer(mode); }
+            @Override public int savedMode() { return savedHudMode(); }
+            @Override public void apply(int mode) { applyHudMode(mode); }
             @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return createSidebarSpinnerAdapter(items); }
         });
+    }
+
+    /**
+     * The one HUD switch (quick menu and sidebar): 0 off, 2 YurNLator, 3 MangoHud (drawn in the
+     * game; shown / hidden through its config when the session started with it).
+     */
+    void applyHudMode(int mode) {
+        if (mode == 1) mode = 2; // the classic HUD is gone: old saves open ours
+        // MangoHud (3) draws inside the game: hide ours; any other choice hides MangoHud.
+        if (mangoHudLaunched) com.winlator.cmod.session.MangoHud.setVisible(imageFs.getRootDir(), mode == 3,
+                preferences.getBoolean("mangohud_log", false));
+        if (mode == 0 || mode == 3) {
+            if (classicHud != null) classicHud.disableByUser();
+            if (modernHud != null) modernHud.disableByUser();
+        } else {
+            if (classicHud != null) classicHud.disableByUser(false);
+            if (modernHud != null) modernHud.disableByUser(false);
+            enableHudLazily(mode);
+            // The renderer reports frames to one HUD: point it at the one now shown
+            // (switching style used to leave FPS counting on the hidden one).
+            if (xServerView != null) xServerView.setFrameRating(mode == 2 ? (Object) modernHud : (Object) classicHud);
+            hudTracker.adoptRendererWindow();
+        }
+        saveHudModeToContainer(mode);
     }
 
     void enableHudLazily(int style) {
@@ -1223,16 +1241,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (hudTracker.adoptRendererWindow()) modernHud.onRendererDetected(hudTracker.rendererName());
             }
             modernHud.enableByUser();
-        } else {
-            if (classicHud == null) {
-                classicHud = new FrameRating(this, graphicsDriverConfig);
-                if (xServerView instanceof VulkanXServerView && !waylandMode) classicHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
-                classicHud.setVisibility(View.GONE);
-                rootView.addView(classicHud);
-                renderer.setFrameRating(classicHud);
-                if (hudTracker.adoptRendererWindow()) runOnUiThread(() -> classicHud.update());
-            }
-            classicHud.enableByUser();
         }
     }
 

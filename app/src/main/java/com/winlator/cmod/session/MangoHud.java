@@ -31,10 +31,8 @@ public final class MangoHud {
     public static void prepareLaunch(EnvVars envVars, File imageFsRoot, boolean log) {
         write(imageFsRoot, true, log);
         envVars.put("YURN_MANGOHUD_CONFIGFILE", configFile(imageFsRoot).getPath());
-        // Diagnostics while MangoHud is new here: the Vulkan loader says whether it found and
-        // enabled the layer, MangoHud logs what it reads (both to the session log).
-        if (!envVars.has("VK_LOADER_DEBUG")) envVars.put("VK_LOADER_DEBUG", "error,warn,layer");
-        if (!envVars.has("MANGOHUD_LOG_LEVEL")) envVars.put("MANGOHUD_LOG_LEVEL", "debug");
+        // MangoHud's own messages (errors, what it cannot read here) go to the session log.
+        if (!envVars.has("MANGOHUD_LOG_LEVEL")) envVars.put("MANGOHUD_LOG_LEVEL", "info");
     }
 
     /** During the session: show or hide (MangoHud reloads its config file when it changes). */
@@ -55,9 +53,10 @@ public final class MangoHud {
              .append("frametime\n")
              .append("frame_timing=1\n")
              .append("gpu_stats\ngpu_temp\ngpu_core_clock\n")
-             .append("cpu_stats\ncpu_temp\ncpu_mhz\n")
              .append("ram\nvram\n")
-             .append("battery\nbattery_watt\n")
+             // Not here: battery (MangoHud lists /sys/class/power_supply, which Android denies,
+             // and the uncaught error kills the game) and CPU stats (/proc/stat and the CPU
+             // sensors are closed to apps, MangoHud only prints that it cannot read them).
              .append("position=top-left\n")
              .append("background_alpha=0.35\n")
              .append("font_size=18\n")

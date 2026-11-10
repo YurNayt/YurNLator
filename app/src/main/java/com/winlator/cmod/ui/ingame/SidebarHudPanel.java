@@ -15,19 +15,18 @@ import com.winlator.cmod.widget.SeekBar;
 import com.winlator.cmod.widget.WinlatorHUD;
 
 /**
- * YurNLator base, part 12: the sidebar's HUD panel: on / off, style (classic / modern), the
- * modern HUD's items, scale, opacity and reset.
+ * YurNLator base, part 12: the sidebar's HUD panel: on / off, style (YurNLator / MangoHud, the
+ * same switch as the quick menu's), our HUD's items, scale, opacity and reset.
  */
 public final class SidebarHudPanel {
     public interface Host {
         Activity activity();
         WinlatorHUD modernHud();
         FrameRating classicHud();
-        /** Saved mode: 0 off, 1 classic, 2 modern. */
+        /** Saved mode: 0 off, 2 YurNLator, 3 MangoHud. */
         int savedMode();
-        /** Creates (once) and shows the HUD of [style]. */
-        void enable(int style);
-        void saveMode(int mode);
+        /** Switches the HUD (shows / hides, saves): the quick menu's switch. */
+        void apply(int mode);
         ArrayAdapter<String> spinnerAdapter(String[] items);
     }
 
@@ -55,17 +54,18 @@ public final class SidebarHudPanel {
         SeekBar sbAlpha = a.findViewById(R.id.SBHudAlpha);
         View btReset = a.findViewById(R.id.BTResetHud);
 
-        int mode = host.modernHud() != null ? 2 : host.classicHud() != null ? 1 : host.savedMode();
-        boolean on = mode != 0, modern = mode == 2;
+        int saved = host.savedMode();
+        final int[] current = {saved == 3 ? 3 : saved != 0 ? 2 : 0};
+        boolean on = current[0] != 0;
 
         if (spStyle != null) {
-            ArrayAdapter<String> adapter = host.spinnerAdapter(new String[]{"Classic", "Modern"});
+            ArrayAdapter<String> adapter = host.spinnerAdapter(new String[]{"YurNLator", "MangoHud"});
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spStyle.setAdapter(adapter);
-            spStyle.setSelection(modern ? 1 : 0, false);
+            spStyle.setSelection(current[0] == 3 ? 1 : 0, false);
         }
         visible(styleRow, on);
-        visible(modernOptions, modern);
+        visible(modernOptions, current[0] == 2);
         if (host.modernHud() != null) syncItems(host, it);
 
         if (sbScale != null) sbScale.setOnValueChangeListener((sb, v) -> {
@@ -81,35 +81,27 @@ public final class SidebarHudPanel {
         if (swMaster != null) {
             swMaster.setChecked(on);
             swMaster.setOnCheckedChangeListener((btn, checked) -> {
-                int style = selectedStyle(spStyle);
-                if (checked) {
-                    host.enable(style);
-                    visible(styleRow, true);
-                    visible(modernOptions, style == 2);
-                    if (style == 2 && host.modernHud() != null) syncItems(host, it);
-                    host.saveMode(style);
-                } else {
-                    if (host.classicHud() != null) host.classicHud().disableByUser();
-                    if (host.modernHud() != null) host.modernHud().disableByUser();
-                    visible(styleRow, false);
-                    visible(modernOptions, false);
-                    host.saveMode(0);
-                }
+                int style = checked ? selectedStyle(spStyle) : 0;
+                current[0] = style;
+                host.apply(style);
+                visible(styleRow, checked);
+                visible(modernOptions, style == 2);
+                if (style == 2 && host.modernHud() != null) syncItems(host, it);
             });
         }
 
         if (spStyle != null) {
-            // Posted: the spinner's own first callback (its initial selection) isn't a choice.
+            // The spinner reports its initial selection too (sometimes after this post): only a
+            // real change of style counts, or reopening the sidebar would switch the HUD itself.
             spStyle.post(() -> spStyle.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
                     if (swMaster == null || !swMaster.isChecked()) return;
-                    int style = pos == 1 ? 2 : 1;
-                    if (host.classicHud() != null) host.classicHud().disableByUser(false);
-                    if (host.modernHud() != null) host.modernHud().disableByUser(false);
-                    host.enable(style);
+                    int style = pos == 1 ? 3 : 2;
+                    if (style == current[0]) return;
+                    current[0] = style;
+                    host.apply(style);
                     visible(modernOptions, style == 2);
                     if (style == 2 && host.modernHud() != null) syncItems(host, it);
-                    host.saveMode(style);
                 }
                 @Override public void onNothingSelected(AdapterView<?> p) {}
             }));
@@ -117,7 +109,7 @@ public final class SidebarHudPanel {
     }
 
     private static int selectedStyle(Spinner spStyle) {
-        return spStyle != null && spStyle.getSelectedItemPosition() == 1 ? 2 : 1;
+        return spStyle != null && spStyle.getSelectedItemPosition() == 1 ? 3 : 2;
     }
 
     private static void visible(View v, boolean on) {

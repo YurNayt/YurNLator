@@ -236,24 +236,7 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
         if (a.mangoHudLaunched) com.winlator.cmod.session.MangoHud.setVisible(a.imageFs.getRootDir(), a.savedHudMode() == 3, on);
     }
 
-    @Override public void setHudMode(int mode) {
-        // MangoHud (3) draws inside the game: hide ours; any other choice hides MangoHud.
-        if (a.mangoHudLaunched) com.winlator.cmod.session.MangoHud.setVisible(a.imageFs.getRootDir(), mode == 3,
-                a.preferences.getBoolean("mangohud_log", false));
-        if (mode == 0 || mode == 3) {
-            if (a.classicHud != null) a.classicHud.disableByUser();
-            if (a.modernHud != null) a.modernHud.disableByUser();
-        } else {
-            if (a.classicHud != null) a.classicHud.disableByUser(false);
-            if (a.modernHud != null) a.modernHud.disableByUser(false);
-            a.enableHudLazily(mode);
-            // The renderer reports frames to one HUD: point it at the one now shown
-            // (switching style used to leave FPS counting on the hidden one).
-            if (a.xServerView != null) a.xServerView.setFrameRating(mode == 2 ? (Object) a.modernHud : (Object) a.classicHud);
-            a.hudTracker.adoptRendererWindow();
-        }
-        a.saveHudModeToContainer(mode);
-    }
+    @Override public void setHudMode(int mode) { a.applyHudMode(mode); }
 
     @Override public boolean hudElement(int index) { return a.modernHud == null || a.modernHud.isElementOn(index); }
     @Override public void setHudElement(int index, boolean on) { if (a.modernHud != null) a.modernHud.toggleElement(index, on); }
