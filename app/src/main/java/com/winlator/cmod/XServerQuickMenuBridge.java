@@ -384,28 +384,11 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
         a.applyFrameGen();
     }
 
-    @Override public int scaling() {
-        if (a.softStretchEnabled) return 2;
-        return a.xServerView != null && a.xServerView.isFullscreen() ? 1 : 0;
-    }
+    @Override public int scaling() { return a.scaling.mode(); }
 
-    @Override public void setScaling(int mode) {
-        if (a.xServerView == null) return;
-        boolean full = mode >= 1;
-        if (a.xServerView.isFullscreen() != full) {
-            a.xServerView.toggleFullscreen();
-            if (a.touchpadView != null) a.touchpadView.toggleFullscreen();
-        }
-        a.softStretchEnabled = mode == 2;
-        if (a.waylandSession != null) a.waylandSession.setStretch(mode >= 1);
-        VulkanXServerView vk = vk();
-        if (vk != null) vk.setStretchMode(a.softStretchEnabled ? 1 : 0);
-    }
+    @Override public void setScaling(int mode) { a.scaling.setMode(mode); }
 
-    @Override public void openMagnifier() {
-        View v = a.findViewById(R.id.BTItemMagnifier);
-        if (v != null) v.performClick();
-    }
+    @Override public void openMagnifier() { a.magnifier.open(a, a.xServerView); }
 
     @Override public void enterPip() { a.enterPipMode(); }
 

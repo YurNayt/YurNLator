@@ -204,8 +204,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     TaskManagerSidebar taskManagerSidebar;
     private WineRequestHandler wineRequestHandler;
     float globalCursorSpeed = 1.0f;
-    MagnifierView magnifierView;
-    boolean softStretchEnabled = false;
+    final com.winlator.cmod.ui.ingame.Magnifier magnifier = new com.winlator.cmod.ui.ingame.Magnifier();
+    /** Fit / fullscreen / soft stretch (session/ScreenScaling). */
+    final com.winlator.cmod.session.ScreenScaling scaling = new com.winlator.cmod.session.ScreenScaling(
+            () -> xServerView, () -> touchpadView, () -> waylandSession);
     DebugDialog debugDialog;
     /** CPU cores of the game's processes (session/CpuAffinity). */
     com.winlator.cmod.session.CpuAffinity cpuAffinity = com.winlator.cmod.session.CpuAffinity.none();
@@ -1112,8 +1114,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         if (shouldStretch) {
 
-            renderer.toggleFullscreen();
-            touchpadView.toggleFullscreen();
+            scaling.toggleFullscreen();
         }
 
         if (shortcut != null) {

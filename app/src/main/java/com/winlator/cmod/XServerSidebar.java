@@ -116,11 +116,7 @@ final class XServerSidebar {
         View btItemToggleFullscreen = a.findViewById(R.id.BTItemToggleFullscreen);
         if (btItemToggleFullscreen != null) {
             btItemToggleFullscreen.setOnClickListener(v -> {
-                if (a.xServerView != null) {
-                    a.xServerView.toggleFullscreen();
-                    if (a.touchpadView != null)
-                        a.touchpadView.toggleFullscreen();
-                }
+                a.scaling.toggleFullscreen();
                 a.drawerLayout.closeDrawers();
             });
         }
@@ -128,28 +124,7 @@ final class XServerSidebar {
         View btItemMagnifier = a.findViewById(R.id.BTItemMagnifier);
         if (btItemMagnifier != null) {
             btItemMagnifier.setOnClickListener(v -> {
-                if (a.xServerView instanceof DisplayXServerView) {
-                    AppUtils.showToast(a, R.string.magnifier_not_available);
-                    a.drawerLayout.closeDrawers();
-                    return;
-                }
-                if (a.xServerView != null) {
-                    final XServerRendererView renderer = a.xServerView;
-                    if (a.magnifierView == null) {
-                        FrameLayout flContainer = a.findViewById(R.id.FLXServerDisplay);
-                        a.magnifierView = new MagnifierView(a);
-                        a.magnifierView.setZoomButtonCallback(value -> {
-                            renderer.setMagnifierZoom(Mathf.clamp(renderer.getMagnifierZoom() + value, 1.0f, 3.0f));
-                            a.magnifierView.setZoomValue(renderer.getMagnifierZoom());
-                        });
-                        a.magnifierView.setZoomValue(renderer.getMagnifierZoom());
-                        a.magnifierView.setHideButtonCallback(() -> {
-                            flContainer.removeView(a.magnifierView);
-                            a.magnifierView = null;
-                        });
-                        flContainer.addView(a.magnifierView);
-                    }
-                }
+                a.magnifier.open(a, a.xServerView);
                 a.drawerLayout.closeDrawers();
             });
         }
@@ -157,19 +132,7 @@ final class XServerSidebar {
         View btItemSoftStretch = a.findViewById(R.id.BTItemSoftStretch);
         if (btItemSoftStretch != null) {
             btItemSoftStretch.setOnClickListener(v -> {
-                if (a.xServerView != null) {
-                    a.softStretchEnabled = !a.softStretchEnabled;
-                    XServerRendererView rendererRef = a.xServerView;
-
-                    if (a.softStretchEnabled && !rendererRef.isFullscreen()) {
-                        rendererRef.toggleFullscreen();
-                        if (a.touchpadView != null) a.touchpadView.toggleFullscreen();
-                    }
-                    if (rendererRef instanceof VulkanXServerView) {
-                        ((VulkanXServerView) rendererRef).setStretchMode(a.softStretchEnabled ? 1 : 0);
-                    }
-                    btItemSoftStretch.setSelected(a.softStretchEnabled);
-                }
+                btItemSoftStretch.setSelected(a.scaling.toggleSoftStretch());
                 a.drawerLayout.closeDrawers();
             });
         }
