@@ -57,13 +57,15 @@ object Tombstone {
         val causes = ArrayList<String>(); val threads = ArrayList<Thread>()
         Reader(raw).fields { n, v, s ->
             when (n) {
+                // system/core/debuggerd/proto/tombstone.proto: tid 6, signal_info 10, abort_message 14,
+                // causes 15, threads 16 (a map: entry key 1, Thread 2).
                 6 -> tid = v.toInt()
-                11 -> { var name = ""; var code = ""; var has = false; var addr = 0L
+                10 -> { var name = ""; var code = ""; var has = false; var addr = 0L
                     s!!.fields { k, x, ss -> when (k) { 2 -> name = ss!!.str(); 4 -> code = ss!!.str(); 8 -> has = x != 0L; 9 -> addr = x } }
                     signal = "$name ($code)"; if (has) fault = "0x" + java.lang.Long.toHexString(addr) }
-                12 -> abort = s!!.str()
-                13 -> s!!.fields { k, _, ss -> if (k == 1) causes += ss!!.str() }
-                14 -> { var t: Thread? = null; s!!.fields { k, _, ss -> if (k == 2) t = thread(ss!!) }; t?.let { threads += it } }
+                14 -> abort = s!!.str()
+                15 -> s!!.fields { k, _, ss -> if (k == 1) causes += ss!!.str() }
+                16 -> { var t: Thread? = null; s!!.fields { k, _, ss -> if (k == 2) t = thread(ss!!) }; t?.let { threads += it } }
             }
         }
         if (threads.isEmpty() && signal.isEmpty()) return null

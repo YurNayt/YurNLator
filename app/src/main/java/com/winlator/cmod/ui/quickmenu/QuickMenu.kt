@@ -429,6 +429,10 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
                 TextButton(onClick = { bridge.resetHud(); rev++ }) { Text("Reset HUD position") }
             }
         } else if (mode == 4) {
+            StepSlider("HUD size", (scale - 0.5f) / 1.5f, "${(scale * 100).roundToInt()}%", onChange = { f ->
+                scale = 0.5f + f * 1.5f
+                bridge.setHudScale(scale)
+            })
             Card {
                 Text("Bannerlator's HUD styles: tap the HUD for the next one (Fusion Full, Tiles, Pill, Minimal, Mega, GameHub, GameNative). " +
                      "Drag to move it, long-press to lock it in place. Clocks and temperatures are exact with precise sensors (Settings › Performance HUD).",

@@ -85,10 +85,27 @@ class BannerHud(private val context: Context) {
 
     private fun locked() = prefs.getBoolean("locked", false)
 
+    /** The quick menu's HUD size (1 = Bannerlator's sizes at [SCALE] %). */
+    private var size: Float = prefs.getFloat("size", 1f)
+
+    fun getSize(): Float = size
+
+    fun setSize(value: Float) {
+        val v = value.coerceIn(0.5f, 2f)
+        if (kotlin.math.abs(v - size) < 0.01f) return
+        size = v
+        prefs.edit().putFloat("size", v).apply()
+        val root = parent ?: return
+        view?.let { root.removeView(it) }
+        view = null
+        stopTicker()
+        build()
+    }
+
     private fun config(extra: String): String =
         "showFPS=1,showFPSGraph=1,showCPUUsage=1,showCPULoad=1,showGPULoad=1,showRAM=1,showVram=1," +
             "showPower=1,showTemp=1,showGpuTemp=1,showBattery=1,showEngine=1,showGpuModel=1,showLow001=1," +
-            "hudScale=$SCALE,hudLocked=" + (if (locked()) "1" else "0") + "," + extra
+            "hudScale=" + kotlin.math.round(SCALE * size).toInt() + ",hudLocked=" + (if (locked()) "1" else "0") + "," + extra
 
     private fun build() {
         val root = parent ?: return

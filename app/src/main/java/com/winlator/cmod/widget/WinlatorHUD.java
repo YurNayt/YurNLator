@@ -1722,7 +1722,8 @@ public class WinlatorHUD extends View {
     }
 
     public float getHudScale() {
-        return getScaleX();
+        com.winlator.cmod.widget.banner.BannerHud b = banner;
+        return b != null ? b.getSize() : getScaleX();
     }
 
     public float getHudAlpha() {
@@ -1730,6 +1731,8 @@ public class WinlatorHUD extends View {
     }
 
     public void setHudScale(float scale) {
+        com.winlator.cmod.widget.banner.BannerHud b = banner;
+        if (b != null) { b.setSize(scale); return; }
         setScaleX(scale);
         setScaleY(scale);
         prefs.edit().putFloat(KEY_SCALE, scale).apply();
