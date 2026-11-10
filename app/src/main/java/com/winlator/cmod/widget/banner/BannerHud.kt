@@ -40,6 +40,7 @@ class BannerHud(private val context: Context) {
     }
 
     fun detach() {
+        stopTicker()
         view?.let { v -> (v.parent as? ViewGroup)?.removeView(v) }
         view = null
         parent = null
@@ -62,7 +63,7 @@ class BannerHud(private val context: Context) {
     }
 
     fun setGpuModel(name: String?) {
-        val s = name ?: ""
+        val s = shortGpu(name)
         if (s == gpuModel) return
         gpuModel = s
         when (val v = view) {
@@ -87,7 +88,7 @@ class BannerHud(private val context: Context) {
     private fun config(extra: String): String =
         "showFPS=1,showFPSGraph=1,showCPUUsage=1,showCPULoad=1,showGPULoad=1,showRAM=1,showVram=1," +
             "showPower=1,showTemp=1,showGpuTemp=1,showBattery=1,showEngine=1,showGpuModel=1,showLow001=1," +
-            "hudLocked=" + (if (locked()) "1" else "0") + "," + extra
+            "hudScale=$SCALE,hudLocked=" + (if (locked()) "1" else "0") + "," + extra
 
     private fun build() {
         val root = parent ?: return
@@ -141,6 +142,26 @@ class BannerHud(private val context: Context) {
         v.visibility = if (visible) View.VISIBLE else View.GONE
         root.addView(v)
         view = v
+        if (v is PerfHudView) startTicker(v) else stopTicker()
+    }
+
+    // GameHub's view only refreshes when told to (Bannerlator called it on every present): a small
+    // thread does it twice a second, off the UI thread (it reads sysfs), so a paused game reads 0.
+    @Volatile private var ticker: Thread? = null
+
+    private fun startTicker(v: PerfHudView) {
+        stopTicker()
+        ticker = Thread({
+            while (ticker === Thread.currentThread()) {
+                try { v.update(); Thread.sleep(500) } catch (_: InterruptedException) { break } catch (_: Throwable) {}
+            }
+        }, "BannerHudTick").apply { isDaemon = true; start() }
+    }
+
+    private fun stopTicker() {
+        val t = ticker
+        ticker = null
+        t?.interrupt()
     }
 
     /** Next look; rebuilt when it is another view, re-laid when only its arrangement changes. */
@@ -159,6 +180,7 @@ class BannerHud(private val context: Context) {
         val root = parent ?: return
         v?.let { root.removeView(it) }
         view = null
+        stopTicker()
         build()
     }
 
@@ -185,6 +207,21 @@ class BannerHud(private val context: Context) {
     }
 
     companion object {
+        /** Bannerlator's sizes at 82 %: they took a lot of a phone screen. */
+        private const val SCALE = 82
+
+        /** "Wrapper(Turnip Adreno (TM) 750)" -> "Adreno 750": the row is narrow. */
+        fun shortGpu(name: String?): String {
+            if (name.isNullOrBlank()) return ""
+            var s = name.replace(Regex("(?i)\\((tm|r)\\)"), " ")
+                .replace(Regex("(?i)\\b(wrapper|turnip|freedreno|mesa|qualcomm|arm|panvk|panfrost|vulkan|driver)\\b"), " ")
+                .replace(Regex("(?i)\\bv?\\d+\\.\\d+[\\w.\\-]*"), " ")
+                .replace(Regex("[()\\[\\]·|]"), " ")
+                .replace(Regex("\\s+"), " ").trim()
+            if (s.isEmpty()) s = name.trim()
+            return if (s.length > 22) s.substring(0, 21).trim() + "…" else s
+        }
+
         private val FUSION_COUNT = FusionSize.values().size
         /** Fusion's sizes, GameHub vertical / horizontal, GameNative list / compact. */
         val VARIANTS = FUSION_COUNT + 4
