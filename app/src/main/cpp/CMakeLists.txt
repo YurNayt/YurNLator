@@ -17,6 +17,13 @@ add_subdirectory(thirdparty/dxbc)
 # Wayland display backend: Bannerlator's embedded compositor (libbannerwayland.so).
 add_subdirectory(waylandcomp)
 
+# Force SSBS (from Bannerlator): keeps PSTATE.SSBS set across Wine's signal returns on arm64ec layers
+# (LD_PRELOAD when the container / game switch is on). sigaction / signal must stay visible.
+add_library(ssbs SHARED
+        winlator/ssbs_adapter.c
+)
+target_link_libraries(ssbs dl)
+
 # HUD (Bannerlator's styles): Adreno GPU load and clock through kgsl when its sysfs is closed to apps.
 add_library(gpuclock SHARED
         gpuclock/kgsl_clock.c

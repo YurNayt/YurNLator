@@ -233,6 +233,8 @@ private class ContainerEditorStateV2(
     var xinput by mutableStateOf(editing?.let { (it.inputType and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0 } ?: true)
     var dinput by mutableStateOf(editing?.let { (it.inputType and WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()) != 0 } ?: false)
     var syncCpu by mutableStateOf(editing?.isSyncCpuTopology ?: false)
+    /** Force SSBS (arm64ec Proton): on unless turned off. */
+    var forceSsbs by mutableStateOf(editing?.getExtra("forceSsbs", "1") != "0")
 
     private val cpuCount = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
     val cpu64 = mutableStateListOf<Boolean>().apply {
@@ -322,7 +324,7 @@ private class ContainerEditorStateV2(
         renderer, rendererPresentMode, rendererDriver, filterMode, surfaceFormat, trueDisplayX, displayBackend,
         displayXPerformanceMode, displayXPresentAtRefreshRate, graphicsDriver, graphicsConfig,
         wrapper, wrapperConfig, emulator, fexVersion, boxVersion, fexPreset, boxPreset, exclusive, xinput, dinput,
-        syncCpu, startup, openGlDefaultInitialized, autoMesaGlVersionOverride, envVars,
+        syncCpu, forceSsbs, startup, openGlDefaultInitialized, autoMesaGlVersionOverride, envVars,
         cpu64.joinToString(), cpu32.joinToString(), components.entries.sortedBy { it.key }.joinToString()
     ).joinToString("|")
 }
@@ -460,6 +462,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         container.setCPUList(state.cpu64.indices.filter { state.cpu64[it] }.joinToString(","))
         container.setCPUListWoW64(state.cpu32.indices.filter { state.cpu32[it] }.joinToString(","))
         container.setSyncCpuTopology(state.syncCpu)
+        container.putExtra("forceSsbs", if (state.forceSsbs) "1" else "0")
         container.setGraphicsDriver(state.graphicsDriver)
         container.setGraphicsDriverConfig(state.graphicsConfig)
         container.setRendererNative(state.renderer == "EGL")
@@ -557,6 +560,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                 put("lc_all", state.locale)
                 put("extraData", JSONObject()
                     .put("hudMode", state.hudMode.toString())
+                    .put("forceSsbs", if (state.forceSsbs) "1" else "0")
                     .put("mouseWarpOverride", state.mouseWarp)
                     .put("useDisplayX", "0")
                     .put("surfaceFormat", state.surfaceFormat)
@@ -1134,6 +1138,8 @@ private fun ContainerCategoryV2(
             }
             SettingsCard {
                 SettingToggle("Sync CPU Topology", s.syncCpu) { s.syncCpu = it }
+                SettingsDivider()
+                SettingToggle("Force SSBS (CPU speed fix, arm64ec)", s.forceSsbs) { s.forceSsbs = it }
                 SettingsDivider()
                 CpuSelectorRow("Processor Affinity", s.cpu64) { index, checked -> s.cpu64[index] = checked }
                 SettingsDivider()

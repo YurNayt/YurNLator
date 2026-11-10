@@ -515,6 +515,35 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         execEnvVars.put("FAKE_EVDEV_DIR", devInputDir.getAbsolutePath());
         execEnvVars.put("FAKE_EVDEV_VIBRATION", "1");
 
+        // Force SSBS (arm64ec only, from Bannerlator): Wine's arm64 signal return rebuilds PSTATE from a
+        // Windows CONTEXT and clears SSBS, so game threads ran with speculative store bypass disabled
+        // (slow memory ordering; the big loss is on Oryon, Snapdragon 8 Elite). Layers with Wine's fix
+        // (MR 12262) honour WINE_FORCE_SSBS; libssbs.so sets the bit back for the others.
+        // The game's "1" / "0" overrides the container's; default on.
+        if (wineInfo != null && wineInfo.isArm64EC()) {
+            boolean forceSsbs = !"0".equals(container.getExtra("forceSsbs", "1"));
+            if (shortcut != null) {
+                String own = shortcut.getExtra("forceSsbs");
+                if ("1".equals(own) || "0".equals(own)) forceSsbs = "1".equals(own);
+            }
+            if (forceSsbs) {
+                File ssbsSrc = new File(nativeLibDir, "libssbs.so");
+                File ssbsDest = new File(imageFs.getLibDir(), "libssbs.so");
+                try {
+                    if (ssbsSrc.exists() && (!ssbsDest.exists() || ssbsDest.length() != ssbsSrc.length()))
+                        FileUtils.copy(ssbsSrc, ssbsDest);
+                } catch (Exception e) {
+                    Log.e("GuestLauncher", "libssbs.so copy failed: " + e.getMessage());
+                }
+                if (ssbsDest.exists()) {
+                    if (!ld_preload.isEmpty()) ld_preload += ":";
+                    ld_preload += ssbsDest.getAbsolutePath();
+                }
+            }
+            execEnvVars.put("WINE_FORCE_SSBS", forceSsbs ? "1" : "0");
+            Log.d("GuestLauncher", "Force SSBS: " + (forceSsbs ? "on" : "off"));
+        }
+
         Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         execEnvVars.put("LD_PRELOAD", ld_preload);
 

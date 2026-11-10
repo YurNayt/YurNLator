@@ -240,6 +240,8 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     var disableMouse by mutableStateOf(shortcut.getExtra("disableMouse", "0") == "1")
     var simulatedTouch by mutableStateOf(shortcut.getExtra("simTouchScreen", "0") == "1")
     var syncCpu by mutableStateOf(shortcut.getExtra("syncCpuTopology", if (container.isSyncCpuTopology()) "1" else "0") == "1")
+    /** Force SSBS: the game's own "1" / "0", else the container's (on by default). */
+    var forceSsbs by mutableStateOf(shortcut.getExtra("forceSsbs", container.getExtra("forceSsbs", "1")) != "0")
     val cpu = mutableStateListOf<Boolean>().apply {
         val count = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
         val selected = shortcut.getExtra("cpuList", container.getCPUList(true)).split(',').map(String::trim).toSet()
@@ -1017,6 +1019,8 @@ private fun ShortcutCategoryV2(
             }
             SettingsCard {
                 SettingToggle("Sync CPU Topology", s.syncCpu) { s.syncCpu = it; s.saveCpu() }
+                SettingsDivider()
+                SettingToggle("Force SSBS (CPU speed fix, arm64ec)", s.forceSsbs) { s.forceSsbs = it; s.extra("forceSsbs", if (it) "1" else "0") }
                 SettingsDivider()
                 CpuSelectorRow("Processor Affinity", s.cpu) { index, checked -> s.cpu[index] = checked; s.saveCpu() }
             }
