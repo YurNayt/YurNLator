@@ -763,17 +763,26 @@ private fun CoresDialog(p: QmProcess, bridge: QuickMenuBridge, onDone: () -> Uni
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Cores this process may run on", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (i in 0 until n) {
-                        val on = mask and (1 shl i) != 0
-                        FilterChip(selected = on, shape = RoundedCornerShape(12.dp), onClick = {
-                            val m = mask xor (1 shl i)
-                            if (m != 0) mask = m
-                        }, label = { Text("CPU $i") })
+                // 4 per row (2 rows on an 8-core phone); a selected core is filled with the accent.
+                for (row in 0 until (n + 3) / 4) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (col in 0 until 4) {
+                            val i = row * 4 + col
+                            if (i >= n) { Spacer(Modifier.weight(1f)); continue }
+                            val on = mask and (1 shl i) != 0
+                            Surface(
+                                onClick = { val m = mask xor (1 shl i); if (m != 0) mask = m },
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                modifier = Modifier.weight(1f).height(48.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("CPU $i", fontWeight = FontWeight.SemiBold,
+                                        color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
                     }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { mask = all }) { Text("All") }
                 }
             }
         },
