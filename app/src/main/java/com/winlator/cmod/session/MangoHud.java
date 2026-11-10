@@ -31,6 +31,10 @@ public final class MangoHud {
     public static void prepareLaunch(EnvVars envVars, File imageFsRoot, boolean log) {
         write(imageFsRoot, true, log);
         envVars.put("YURN_MANGOHUD_CONFIGFILE", configFile(imageFsRoot).getPath());
+        // Diagnostics while MangoHud is new here: the Vulkan loader says whether it found and
+        // enabled the layer, MangoHud logs what it reads (both to the session log).
+        if (!envVars.has("VK_LOADER_DEBUG")) envVars.put("VK_LOADER_DEBUG", "error,warn,layer");
+        if (!envVars.has("MANGOHUD_LOG_LEVEL")) envVars.put("MANGOHUD_LOG_LEVEL", "debug");
     }
 
     /** During the session: show or hide (MangoHud reloads its config file when it changes). */

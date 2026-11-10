@@ -929,6 +929,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             mangoHudLaunched = savedHudMode() == com.winlator.cmod.session.MangoHud.HUD_MODE;
             if (mangoHudLaunched) com.winlator.cmod.session.MangoHud.prepareLaunch(envVars, imageFs.getRootDir(),
                     preferences.getBoolean("mangohud_log", false));
+            if (debugDialog != null) debugDialog.call("[YurNLator] HUD style " + savedHudMode()
+                    + (mangoHudLaunched ? ": MangoHud on, config " + com.winlator.cmod.session.MangoHud.configFile(imageFs.getRootDir())
+                       + (preferences.getBoolean("mangohud_log", false) ? ", log to " + com.winlator.cmod.session.MangoHud.logFolder() : "") : ""));
 
             ArrayList<String> bindingPaths = new ArrayList<>();
             for (String[] drive : container.drivesIterator()) {
