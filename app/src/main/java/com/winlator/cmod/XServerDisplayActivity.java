@@ -452,51 +452,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Stage 5: the container and the game's shortcut from the intent (false: no container, closing). */
     private boolean resolveContainerAndShortcut() {
         containerManager = new ContainerManager(this);
-        String shortcutPath = getIntent().getStringExtra("shortcut_path");
-        Log.d("XServerDisplayActivity", "Shortcut Path: " + shortcutPath);
-
-        int containerId = getIntent().getIntExtra("container_id", 0);
-        Log.d("XServerDisplayActivity", "Container ID from Intent: " + containerId);
-        if (containerId == 0) {
-            Log.d("XServerDisplayActivity", "Container ID is 0, attempting to parse from .desktop file");
-
-        }
-
-        if (containerId == 0 && shortcutPath != null && !shortcutPath.isEmpty()) {
-            File shortcutFile = new File(shortcutPath);
-            containerId = com.winlator.cmod.session.DesktopFile.containerId(shortcutFile);
-            Log.d("XServerDisplayActivity", "Parsed Container ID from .desktop file: " + containerId);
-        }
-
-        shortcutName = getIntent().getStringExtra("shortcut_name");
-
-        if (shortcutPath != null && !shortcutPath.isEmpty()) {
-            if (shortcutName == null || shortcutName.isEmpty()) {
-                shortcutName = com.winlator.cmod.session.DesktopFile.name(new File(shortcutPath));
-                Log.d("XServerDisplayActivity", "Parsed Shortcut Name from .desktop file: " + shortcutName);
-            }
-        } else {
-            Log.d("XServerDisplayActivity", "No shortcut path provided, skipping shortcut parsing.");
-        }
-
-        playtime.setName(shortcutName);
-        playtime.countLaunch();
-
-        Log.d("XServerDisplayActivity", "Final Container ID: " + containerId);
-
-        container = containerManager.getContainerById(containerId);
-
-        if (container == null) {
-            Log.e("XServerDisplayActivity", "Failed to retrieve container with ID: " + containerId);
+        com.winlator.cmod.session.LaunchTarget target =
+                com.winlator.cmod.session.LaunchTarget.resolve(getIntent(), containerManager);
+        if (target == null) {
             finish();
             return false;
         }
+        container = target.container;
+        shortcut = target.shortcut;
+        shortcutName = target.shortcutName;
 
+        playtime.setName(shortcutName);
+        playtime.countLaunch();
         containerManager.activateContainer(container);
-
-        if (shortcutPath != null && !shortcutPath.isEmpty()) {
-            shortcut = new Shortcut(container, new File(shortcutPath));
-        }
 
         // Bundle finder run: end the session by itself when YurnBench is done, crashed or hung.
         if (getIntent().getBooleanExtra(com.winlator.cmod.bench.Bench.EXTRA_BENCH, false)) {

@@ -114,7 +114,10 @@ class PerfSession(
     fun start() {
         if (started) return
         started = true
-        runCatching { activity.window.setSustainedPerformanceMode(value(SUSTAINED)) }
+        // The environment starts on a worker thread: window changes made from there broke the
+        // views later shown or hidden (the HUD and the on-screen controls stayed invisible).
+        val sustained = value(SUSTAINED)
+        ui.post { runCatching { activity.window.setSustainedPerformanceMode(sustained) } }
         val effective = PerfRootApplier.ROOT_KEYS.associateWith { value(it) }
         io.execute {
             // A remembered root grant comes back without a prompt (the root manager answers it).
