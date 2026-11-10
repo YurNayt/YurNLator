@@ -276,6 +276,81 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // YurNLator base, part 9: the start of the game screen in named stages.
+        setupWindow();
+        setupScreenHelpers();
+        setupDrawer();
+        boolean enableLogs = preferences.getBoolean("enable_wine_debug", false)
+                || preferences.getBoolean("enable_box64_logs", false);
+        sidebar.wire(enableLogs);
+        quickMenuLogs = enableLogs;
+        androidx.compose.ui.platform.ComposeView quickMenuView = findViewById(R.id.QuickMenuCompose);
+        if (quickMenuView != null) QuickMenuHost.attach(quickMenuView, quickMenuBridge);
+
+        imageFs = ImageFs.find(this);
+        File devInputDir = resetInputDevices();
+        setupInput(devInputDir);
+
+        if (!resolveContainerAndShortcut()) return;
+
+        // Settings of this launch: the game's own where set, else the container's (session/LaunchConfig).
+        launchConfig = com.winlator.cmod.session.LaunchConfig.resolve(container, shortcut);
+        final com.winlator.cmod.session.LaunchConfig lc = launchConfig;
+
+        cpuAffinity = com.winlator.cmod.session.CpuAffinity.of(lc, container);
+        // Performance controls (quick menu › Performance): big cores go into the affinity now,
+        // the rest applies once the game starts; all of it is put back at exit.
+        perf = new com.winlator.cmod.session.PerfSession(this, container, shortcut, () -> cpuAffinity, () -> winHandler);
+        perf.prepareLaunch();
+
+        resolveWine(lc);
+        setupLogCallbacks(enableLogs, lc);
+        applyLaunchConfig(lc);
+        boolean removeLoadingBarWhenBootingGames = PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean("remove_loading_bar_when_booting_games", false);
+        if (!removeLoadingBarWhenBootingGames) preloaderDialog.show(R.string.starting_up);
+
+
+        inputControlsManager = new InputControlsManager(this);
+        createXServer(lc.getScreenSize());
+        loadMidiSoundFont();
+        postRunningNotification();
+
+        String controlsProfile = shortcut != null ? shortcut.getExtra("controlsProfile", "") : "";
+
+        Runnable runnable = () -> {
+            setupUI();
+            setupSidebarInputControls();
+            if (controlsProfile.isEmpty()) {
+
+                touchControls.restoreSaved(inputControlsManager.getProfiles());
+            }
+            Executors.newSingleThreadExecutor().execute(() -> {
+                setupWineSystemFiles();
+                extractGraphicsDriverFiles();
+                changeWineAudioDriver();
+                com.winlator.cmod.session.MediaDecoder.applyRegistry(
+                        new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg"), container, shortcut);
+                com.winlator.cmod.session.RefreshRate.applyWineModeEmulation(imageFs, wineInfo);
+                try {
+                    setupXEnvironment();
+                } catch (PackageManager.NameNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        };
+
+        if (xServer.screenInfo.height > xServer.screenInfo.width) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            configChangedCallback = runnable;
+        } else
+            runnable.run();
+    }
+
+
+
+    /** Stage 1: full screen, screen kept on, the display's highest refresh rate, the layout. */
+    private void setupWindow() {
         AppUtils.hideSystemUI(this);
         AppUtils.keepScreenOn(this);
 
@@ -284,18 +359,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
         getWindow().setAttributes(params);
 
         setContentView(R.layout.xserver_display_activity);
+    }
 
+    /** Stage 2: loading screen, preferences, playtime, on-screen controls, installed contents. */
+    private void setupScreenHelpers() {
         preloaderDialog = new PreloaderDialog(this);
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
 
         cursorLock = preferences.getBoolean("cursor_lock", true);
 
         isDarkMode = preferences.getBoolean("dark_mode", false);
-
-        boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
-        boolean isShareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
-
-        boolean xinputDisabledFromShortcut = false;
 
         handler = new Handler(Looper.getMainLooper());
         playtime = new com.winlator.cmod.session.Playtime(this);
@@ -308,7 +381,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         contentsManager = new ContentsManager(this);
         contentsManager.syncContents();
+    }
 
+    /** Stage 3: the side drawer (quick menu), locked closed until opened by gesture / menu button. */
+    private void setupDrawer() {
         drawerLayout = findViewById(R.id.DrawerLayout);
         drawerLayout.setOnApplyWindowInsetsListener(
                 (view, windowInsets) -> windowInsets.replaceSystemWindowInsets(0, 0, 0, 0));
@@ -326,17 +402,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 sidebar.hideAllPanels();
             }
         });
+    }
 
-        boolean enableLogs = preferences.getBoolean("enable_wine_debug", false)
-                || preferences.getBoolean("enable_box64_logs", false);
-
-        sidebar.wire(enableLogs);
-        quickMenuLogs = enableLogs;
-        androidx.compose.ui.platform.ComposeView quickMenuView = findViewById(R.id.QuickMenuCompose);
-        if (quickMenuView != null) QuickMenuHost.attach(quickMenuView, quickMenuBridge);
-
-        imageFs = ImageFs.find(this);
-
+    /** Controller discovery nodes start empty: a pad's event file exists only while it holds a slot. */
+    private File resetInputDevices() {
         File devInputDir = new File(imageFs.getRootDir(), "dev/input");
         if (devInputDir.exists() || devInputDir.mkdirs()) {
             for (int i = 0; i < 4; i++) {
@@ -345,7 +414,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     eventFile.delete();
             }
         }
+        return devInputDir;
+    }
 
+    /** Stage 4: Windows-side input (WinHandler) and the gyroscope. */
+    private void setupInput(File devInputDir) {
         winHandler = new WinHandler(this);
         gyroInput = new GyroInput(this, new GyroInput.Output() {
             @Override public void moveMouse(int dx, int dy) {
@@ -374,11 +447,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         });
         winHandler.setGyro(gyroInput);
         winHandler.setFakeInputPath(devInputDir.getAbsolutePath());
+    }
 
-        String screenSize = Container.DEFAULT_SCREEN_SIZE;
+    /** Stage 5: the container and the game's shortcut from the intent (false: no container, closing). */
+    private boolean resolveContainerAndShortcut() {
         containerManager = new ContainerManager(this);
-        container = containerManager.getContainerById(getIntent().getIntExtra("container_id", 0));
-
         String shortcutPath = getIntent().getStringExtra("shortcut_path");
         Log.d("XServerDisplayActivity", "Shortcut Path: " + shortcutPath);
 
@@ -416,7 +489,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (container == null) {
             Log.e("XServerDisplayActivity", "Failed to retrieve container with ID: " + containerId);
             finish();
-            return;
+            return false;
         }
 
         containerManager.activateContainer(container);
@@ -429,17 +502,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (getIntent().getBooleanExtra(com.winlator.cmod.bench.Bench.EXTRA_BENCH, false)) {
             com.winlator.cmod.bench.Watchdog.start(this, container, () -> runOnUiThread(this::exit));
         }
+        return true;
+    }
 
-        // Settings of this launch: the game's own where set, else the container's (session/LaunchConfig).
-        launchConfig = com.winlator.cmod.session.LaunchConfig.resolve(container, shortcut);
-        final com.winlator.cmod.session.LaunchConfig lc = launchConfig;
-
-        cpuAffinity = com.winlator.cmod.session.CpuAffinity.of(lc, container);
-        // Performance controls (quick menu › Performance): big cores go into the affinity now,
-        // the rest applies once the game starts; all of it is put back at exit.
-        perf = new com.winlator.cmod.session.PerfSession(this, container, shortcut, () -> cpuAffinity, () -> winHandler);
-        perf.prepareLaunch();
-
+    /** Stage 6: the Wine / Proton build and whether this launch runs on Wayland. */
+    private void resolveWine(com.winlator.cmod.session.LaunchConfig lc) {
         String wmClass = lc.getWmClass();
         Log.d("XServerDisplayActivity", "Startup wmClass: " + wmClass);
 
@@ -456,7 +523,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.w("XServerDisplayActivity", "wayland: layer " + wineInfo.path + " has no winewayland.so, launching on X11");
             runOnUiThread(() -> Toast.makeText(this, "This Proton has no Wayland driver: use a Bannerlator layer, e.g. Proton-11.0-2-arm64ec (v16) or GE-Proton-11.0-9 (v16). Starting on X11.", Toast.LENGTH_LONG).show());
         }
+    }
 
+    /** Stage 7: what the session log and the HUD learn from Wine's output (API, driver, DXVK build). */
+    private void setupLogCallbacks(boolean enableLogs, com.winlator.cmod.session.LaunchConfig lc) {
         ProcessHelper.removeAllDebugCallbacks();
         if (enableLogs) {
             LogView.setFilename(getExecutable());
@@ -498,7 +568,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (modernHud != null) modernHud.setDriverLabel(label);
             return kotlin.Unit.INSTANCE;
         }));
+    }
 
+    /** Stage 8: the launch's drivers, emulator, wrapper and input options into the screen's fields. */
+    private void applyLaunchConfig(com.winlator.cmod.session.LaunchConfig lc) {
         graphicsDriver = lc.getGraphicsDriver();
         String graphicsDriverConfig = lc.getGraphicsDriverConfig();
         audioDriver = lc.getAudioDriver();
@@ -506,7 +579,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         midiSoundFont = container.getMIDISoundFont();
         dxwrapper = lc.getDxwrapper();
         String dxwrapperConfig = lc.getDxwrapperConfig();
-        screenSize = lc.getScreenSize();
         winHandler.setInputType((byte) lc.getInputType());
         lc_all = lc.getLcAll();
 
@@ -514,7 +586,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         Log.d("XServerDisplayActivity", "Intent Extras: " + intent.getExtras());
 
         if (shortcut != null) {
-            xinputDisabledFromShortcut = lc.getXinputDisabled();
+            boolean xinputDisabledFromShortcut = lc.getXinputDisabled();
             winHandler.setXInputDisabled(xinputDisabledFromShortcut);
             if (!lc.getVkbasaltConfig().isEmpty()) vkbasaltConfig = lc.getVkbasaltConfig();
             Log.d("XServerDisplayActivity", "XInput Disabled from Shortcut: " + xinputDisabledFromShortcut);
@@ -534,17 +606,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 return new File(path.replace("syswow64/", "system32/"));
             };
         }
+    }
 
-        boolean removeLoadingBarWhenBootingGames = PreferenceManager.getDefaultSharedPreferences(this)
-                .getBoolean("remove_loading_bar_when_booting_games", false);
-        if (!removeLoadingBarWhenBootingGames) preloaderDialog.show(R.string.starting_up);
-
-        inputControlsManager = new InputControlsManager(this);
-        boolean useDisplayX = isDisplayXEnabled();
-        int surfaceFormat = useDisplayX && "rgba8".equals(getSelectedSurfaceFormat())
-                ? Drawable.HAL_PIXEL_FORMAT_RGBA_8888
-                : Drawable.HAL_PIXEL_FORMAT_BGRA_8888;
-        xServer = new XServer(new ScreenInfo(screenSize), surfaceFormat);
+    /** Stage 9: the X server and what its windows tell the screen (first picture, HUD, cores). */
+    private void createXServer(String screenSize) {
+        xServer = new XServer(new ScreenInfo(screenSize), com.winlator.cmod.session.RendererSetup.xServerFormat(container, shortcut));
         xServer.setWinHandler(winHandler);
         xServer.setRelativeMouseMovement(isRelativeMouseMovement);
         com.winlator.cmod.session.RefreshRate.advertise(this, xServer);
@@ -580,7 +646,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 hudTracker.onWindowProperty(window, null);
             }
         });
+    }
 
+    /** MIDI: the container's sound font, loaded in the background. */
+    private void loadMidiSoundFont() {
         if (!midiSoundFont.equals("")) {
             try {
                 final InputStream in;
@@ -615,9 +684,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             } catch (Exception e) {
             }
         }
+    }
 
-        String controlsProfile = shortcut != null ? shortcut.getExtra("controlsProfile", "") : "";
-
+    /** The "running" notification (only when the app's keep-alive service doesn't show one). */
+    private void postRunningNotification() {
         createNotifcationChannel();
 
         Intent notificationIntent = new Intent(this, XServerDisplayActivity.class);
@@ -636,36 +706,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, builder.build());
         }
-
-        Runnable runnable = () -> {
-            setupUI();
-            setupSidebarInputControls();
-            if (controlsProfile.isEmpty()) {
-
-                touchControls.restoreSaved(inputControlsManager.getProfiles());
-            }
-            Executors.newSingleThreadExecutor().execute(() -> {
-                setupWineSystemFiles();
-                extractGraphicsDriverFiles();
-                changeWineAudioDriver();
-                com.winlator.cmod.session.MediaDecoder.applyRegistry(
-                        new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg"), container, shortcut);
-                com.winlator.cmod.session.RefreshRate.applyWineModeEmulation(imageFs, wineInfo);
-                try {
-                    setupXEnvironment();
-                } catch (PackageManager.NameNotFoundException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        };
-
-        if (xServer.screenInfo.height > xServer.screenInfo.width) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-            configChangedCallback = runnable;
-        } else
-            runnable.run();
     }
-
 
     private boolean parseBoolean(String value) {
 
@@ -990,68 +1031,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
         scriptFile.setExecutable(true);
     }
 
-    private boolean isDisplayXEnabled() {
-        if (shortcut != null) return shortcut.getUseDisplayX();
-        return container != null && container.getUseDisplayX();
-    }
-
-    private String getSelectedSurfaceFormat() {
-        if (shortcut != null) return shortcut.getSurfaceFormat();
-        return container != null ? container.getSurfaceFormat() : "rgba8";
-    }
-
     private void setupUI() {
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
 
-        boolean useDisplayX = isDisplayXEnabled();
-
-        boolean useEGL = !useDisplayX && (shortcut != null ? shortcut.getRendererNative()
-                : (container != null && container.getRendererNative()));
-
-        if (useDisplayX) {
-            DisplayXServerView.loadNativeLibrary();
-            boolean performanceMode = shortcut != null
-                    ? shortcut.getDisplayXPerformanceMode()
-                    : container == null || container.getDisplayXPerformanceMode();
-            boolean presentAtRefreshRate = shortcut != null
-                    ? shortcut.getDisplayXPresentAtRefreshRate()
-                    : container == null || container.getDisplayXPresentAtRefreshRate();
-            xServerView = new DisplayXServerView(
-                    this,
-                    xServer,
-                    performanceMode,
-                    presentAtRefreshRate);
-        } else if (useEGL) {
-            EGLXServerView.loadNativeLibrary();
-            xServerView = new EGLXServerView(this, xServer);
-        } else {
-            VulkanXServerView.loadNativeLibrary();
-            xServerView = new VulkanXServerView(this, xServer);
-        }
+        // The view that shows the X server's picture (session/RendererSetup).
+        xServerView = com.winlator.cmod.session.RendererSetup.create(this, xServer, container, shortcut,
+                graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null);
         final XServerRendererView renderer = xServerView;
-        renderer.setCursorVisible(false);
-
-        if (renderer instanceof VulkanXServerView) {
-            VulkanXServerView vkRenderer = (VulkanXServerView) renderer;
-
-            // The driver the renderer loads into the app: session/RendererDriver.
-            com.winlator.cmod.session.RendererDriver.apply(this, vkRenderer, container, shortcut,
-                    graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null);
-
-            String presentMode = shortcut != null ? shortcut.getRendererPresentMode()
-                    : (container != null ? container.getRendererPresentMode() : "fifo");
-            vkRenderer.setVkPresentMode(com.winlator.cmod.contentdialog.RendererOptionsDialog.toVkPresentMode(presentMode));
-            vkRenderer.setFilterMode(shortcut != null ? shortcut.getRendererFilterMode()
-                    : (container != null ? container.getRendererFilterMode() : 0));
-        } else if (renderer instanceof EGLXServerView) {
-            EGLXServerView eglRenderer = (EGLXServerView) renderer;
-            eglRenderer.setFilterMode(shortcut != null ? shortcut.getRendererFilterMode()
-                    : (container != null ? container.getRendererFilterMode() : 0));
-        }
-
-        if (shortcut != null) {
-            renderer.setUnviewableWMClasses("explorer.exe");
-        }
 
         rootView.addView(xServerView);
         if (waylandMode) {
@@ -1092,61 +1078,26 @@ public class XServerDisplayActivity extends AppCompatActivity {
             startTouchscreenTimeout();
         }
 
+        // The HUD the game (else the container) saved: ours, Bannerlator's styles next to it, or
+        // MangoHud (in the game itself: nothing here).
         if (container != null) {
-            // Saved style (the game's, else the container's); the classic HUD (1) opens ours.
             int hudMode = savedHudMode();
-
-            if (hudMode == 1) {
-
-                classicHud = new FrameRating(this, graphicsDriverConfig);
-                if (xServerView instanceof VulkanXServerView && !waylandMode) classicHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
-                classicHud.setVisibility(View.GONE);
-                rootView.addView(classicHud);
-                renderer.setFrameRating(classicHud);
-            } else if (hudMode == 2 || hudMode == 4) {
-
-                modernHud = new WinlatorHUD(this);
-                if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
-
-                if (waylandMode) modernHud.setCompositorFrameGen(this::waylandFrameGenStats);
-                modernHud.setVisibility(View.GONE);
-                rootView.addView(modernHud);
-                modernHud.setBannerStyle(hudMode == 4); // Bannerlator's styles, drawn next to it
+            if (hudMode == 2 || hudMode == 4) {
+                createModernHud(rootView);
+                modernHud.setBannerStyle(hudMode == 4);
                 modernHud.enableByUser();
-                renderer.setFrameRating(modernHud);
             }
         }
 
-        String shortcutFullscreenStretched = shortcut != null ? shortcut.getExtra("fullscreenStretched") : null;
+        if (launchConfig != null && launchConfig.getFullscreenStretched()) scaling.toggleFullscreen();
 
-        boolean shouldStretch = false;
-
-        if (shortcut != null && shortcutFullscreenStretched != null) {
-
-            shouldStretch = shortcutFullscreenStretched.equals("1");
-        } else if (container != null && container.isFullscreenStretched()) {
-
-            shouldStretch = true;
-        }
-
-        if (shouldStretch) {
-
-            scaling.toggleFullscreen();
-        }
-
-        if (shortcut != null) {
-            String controlsProfile = shortcut.getExtra("controlsProfile");
-            if (!controlsProfile.isEmpty()) {
-                ControlsProfile profile = inputControlsManager.getProfile(Integer.parseInt(controlsProfile));
-                if (profile != null)
-                    showInputControls(profile);
+        if (shortcut != null && launchConfig != null) {
+            int profileId = launchConfig.getControlsProfileId();
+            if (profileId > 0) {
+                ControlsProfile profile = inputControlsManager.getProfile(profileId);
+                if (profile != null) showInputControls(profile);
             }
-
-            String simTouchScreen = shortcut.getExtra("simTouchScreen");
-            touchpadView.setSimTouchScreen(simTouchScreen.equals("1"));
-            if (simulateTouchScreen) {
-                renderer.setCursorVisible(false);
-            }
+            touchpadView.setSimTouchScreen(launchConfig.getSimulateTouchScreen());
         }
 
         AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
@@ -1157,13 +1108,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
         applyFrameGen();
         // Every renderer: direct (DRI3) frames tell the HUD which window is the game's.
         xServerView.setDirectFrameListener(hudTracker::onDirectFrame);
-        // "Swap red/blue channels" (container / game setting) was saved but never applied.
-        // "Color order: BGRA" (surface format) or "Swap red/blue": both swap the channels on
-        // Vulkan / Native; before, the surface format only changed anything with DisplayX.
-        boolean swapRB = container != null && ((shortcut != null ? shortcut.getRendererSwapRB() : container.getRendererSwapRB())
-                || (!isDisplayXEnabled() && "bgra8".equals(getSelectedSurfaceFormat())));
-        if (xServerView instanceof VulkanXServerView) ((VulkanXServerView) xServerView).setSwapRB(swapRB);
-        else if (xServerView instanceof EGLXServerView) ((EGLXServerView) xServerView).setSwapRB(swapRB);
+    }
+
+    /** Our HUD, added hidden (it shows itself when the game renders); the renderer counts frames for it. */
+    private void createModernHud(FrameLayout rootView) {
+        modernHud = new WinlatorHUD(this);
+        if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
+        if (waylandMode) modernHud.setCompositorFrameGen(this::waylandFrameGenStats);
+        modernHud.setVisibility(View.GONE);
+        rootView.addView(modernHud);
+        xServerView.setFrameRating(modernHud);
     }
 
     ActivityResultLauncher<Intent> controlsEditorActivityResultLauncher = registerForActivityResult(
@@ -1243,13 +1197,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         if (style == 2 || style == 4) {
             if (modernHud == null) {
-                modernHud = new WinlatorHUD(this);
-                if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
-
-                if (waylandMode) modernHud.setCompositorFrameGen(this::waylandFrameGenStats);
-                modernHud.setVisibility(View.GONE);
-                rootView.addView(modernHud);
-                renderer.setFrameRating(modernHud);
+                createModernHud(rootView);
                 if (hudTracker.adoptRendererWindow()) modernHud.onRendererDetected(hudTracker.rendererName());
             }
             modernHud.setBannerStyle(style == 4);
