@@ -449,7 +449,7 @@ public class PerfHudView extends View {
         if (lockController != null) lockController.setLocked(cfg.get("hudLocked", "0").equals("1"));
         try {
             int sc = Integer.parseInt(cfg.get("hudScale", String.valueOf(HudAccent.DEFAULT_SCALE)));
-            scale = Math.max(60, Math.min(140, sc)) / 100f;
+            scale = Math.max(30, Math.min(200, sc)) / 100f; // YurNLator: the quick menu goes below 60 %
         } catch (Exception e) { scale = HudAccent.DEFAULT_SCALE / 100f; }
         try {
             int op = Integer.parseInt(cfg.get("hudOpacity", "80"));

@@ -161,7 +161,7 @@ class BannerHud(private val context: Context) {
             }
             else -> PerformanceHudView(context).apply {
                 val list = variant == FUSION_COUNT + 2
-                applyConfig(config("hudMode=" + if (list) "vertical" else "horizontal"))
+                applyConfig(config("hudMode=" + if (list) "vertical" else "horizontal").replace(Regex("hudScale=\\d+"), "hudScale=$SCALE"))
                 setVertical(list)
                 setOnTapListener { select(variant + 1) }
                 setOnMovedListener { x, y -> savePos("gamenative", x, y) }
@@ -187,6 +187,12 @@ class BannerHud(private val context: Context) {
             val y = view.y.coerceIn(0f, maxOf(0f, (p.height - view.height).toFloat()))
             if (x != view.x) view.x = x
             if (y != view.y) view.y = y
+        }
+        if (v is PerformanceHudView) {
+            // GameNative only has three fixed sizes (it is already at its smallest here): the quick
+            // menu's size scales the drawn view instead, from its top-left corner.
+            v.pivotX = 0f; v.pivotY = 0f
+            v.scaleX = size.coerceIn(0.5f, 2f); v.scaleY = v.scaleX
         }
         v.visibility = if (visible) View.VISIBLE else View.GONE
         root.addView(v)
