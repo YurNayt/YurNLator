@@ -32,6 +32,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.Keyboard
@@ -175,6 +177,7 @@ private fun QuickMenu(bridge: QuickMenuBridge, opened: Int) {
             }
         }
         if (confirmExit) AlertDialog(
+            shape = RoundedCornerShape(28.dp), containerColor = QM_DIALOG_BG, tonalElevation = 0.dp,
             onDismissRequest = { confirmExit = false },
             title = { Text("Exit the game?") },
             text = { Text("Unsaved progress in the game will be lost.") },
@@ -610,6 +613,7 @@ private fun TasksSection(bridge: QuickMenuBridge, opened: Int) {
     if (newTask) NewTaskDialog(bridge) { newTask = false }
     ending?.let { p ->
         AlertDialog(
+            shape = RoundedCornerShape(28.dp), containerColor = QM_DIALOG_BG, tonalElevation = 0.dp,
             onDismissRequest = { ending = null },
             title = { Text("End ${p.name}?") },
             text = { Text("The process is closed without saving.") },
@@ -637,10 +641,15 @@ private fun ProcessRow(p: QmProcess, bridge: QuickMenuBridge, onCores: () -> Uni
         }
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "Actions") }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(text = { Text("Bring to front") }, onClick = { menu = false; bridge.bringToFront(p.name); bridge.close() })
-                DropdownMenuItem(text = { Text("Processor affinity") }, onClick = { menu = false; onCores() })
-                DropdownMenuItem(text = { Text("End process") }, onClick = { menu = false; onEnd() })
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(18.dp),
+                containerColor = QM_DIALOG_BG, tonalElevation = 0.dp, shadowElevation = 12.dp) {
+                DropdownMenuItem(text = { Text("Bring to front") }, leadingIcon = { Icon(Icons.Outlined.OpenInNew, null) },
+                    onClick = { menu = false; bridge.bringToFront(p.name); bridge.close() })
+                DropdownMenuItem(text = { Text("Processor affinity") }, leadingIcon = { Icon(Icons.Outlined.Memory, null) },
+                    onClick = { menu = false; onCores() })
+                DropdownMenuItem(text = { Text("End process", color = MaterialTheme.colorScheme.error) },
+                    leadingIcon = { Icon(Icons.Outlined.Close, null, tint = MaterialTheme.colorScheme.error) },
+                    onClick = { menu = false; onEnd() })
             }
         }
     }
@@ -748,6 +757,7 @@ private fun CoresDialog(p: QmProcess, bridge: QuickMenuBridge, onDone: () -> Uni
     val all = (1 shl n) - 1
     var mask by remember { mutableIntStateOf(bridge.processCores(p.pid).let { if (it == 0) all else it and all }) }
     AlertDialog(
+        shape = RoundedCornerShape(28.dp), containerColor = QM_DIALOG_BG, tonalElevation = 0.dp,
         onDismissRequest = onDone,
         title = { Text(p.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
@@ -756,7 +766,7 @@ private fun CoresDialog(p: QmProcess, bridge: QuickMenuBridge, onDone: () -> Uni
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (i in 0 until n) {
                         val on = mask and (1 shl i) != 0
-                        FilterChip(selected = on, onClick = {
+                        FilterChip(selected = on, shape = RoundedCornerShape(12.dp), onClick = {
                             val m = mask xor (1 shl i)
                             if (m != 0) mask = m
                         }, label = { Text("CPU $i") })
@@ -773,20 +783,21 @@ private fun CoresDialog(p: QmProcess, bridge: QuickMenuBridge, onDone: () -> Uni
 }
 
 /** Runs a program in the session (taskmgr.exe, cmd.exe, regedit.exe, a game's other .exe). */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun NewTaskDialog(bridge: QuickMenuBridge, onDone: () -> Unit) {
     var command by remember { mutableStateOf("taskmgr.exe") }
     AlertDialog(
+        shape = RoundedCornerShape(28.dp), containerColor = QM_DIALOG_BG, tonalElevation = 0.dp,
         onDismissRequest = onDone,
         title = { Text("New task") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = command, onValueChange = { command = it }, singleLine = true,
-                    label = { Text("Program") }, modifier = Modifier.fillMaxWidth())
-                androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    label = { Text("Program") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("taskmgr.exe", "cmd.exe", "regedit.exe", "winecfg.exe").forEach { c ->
-                        SuggestionChip(onClick = { command = c }, label = { Text(c.removeSuffix(".exe")) })
+                        FilterChip(selected = command == c, onClick = { command = c }, label = { Text(c.removeSuffix(".exe")) }, shape = RoundedCornerShape(12.dp))
                     }
                 }
             }
@@ -795,3 +806,6 @@ private fun NewTaskDialog(bridge: QuickMenuBridge, onDone: () -> Unit) {
         dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } }
     )
 }
+
+/** Dialogs and menus of the quick menu: its near-black panel colour, not Material's grey-blue. */
+private val QM_DIALOG_BG = Color(0xFF16181C)
