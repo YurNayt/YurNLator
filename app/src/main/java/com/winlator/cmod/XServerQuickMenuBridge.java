@@ -700,6 +700,8 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
         publishTasks();
     }
 
+    @Override public int cpuCount() { return Runtime.getRuntime().availableProcessors(); }
+
     @Override public void runTask(String command) { if (a.winHandler != null) a.winHandler.exec(command); }
 
     @Override public void newTask() {
