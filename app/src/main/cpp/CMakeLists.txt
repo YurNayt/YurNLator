@@ -17,6 +17,12 @@ add_subdirectory(thirdparty/dxbc)
 # Wayland display backend: Bannerlator's embedded compositor (libbannerwayland.so).
 add_subdirectory(waylandcomp)
 
+# HUD (Bannerlator's styles): Adreno GPU load and clock through kgsl when its sysfs is closed to apps.
+add_library(gpuclock SHARED
+        gpuclock/kgsl_clock.c
+        gpuclock/kgsl_busy.c
+)
+
 add_library(winlator SHARED
         xr/engine.c
         xr/framebuffer.c

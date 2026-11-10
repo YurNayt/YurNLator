@@ -442,6 +442,37 @@ public class WinlatorHUD extends View {
     public void onFrame() {
         if (!rendererActive && !userEnabled) return;
         frameAccum.incrementAndGet();
+        com.winlator.cmod.widget.banner.BannerHud b = banner;
+        if (b != null) b.tick();
+    }
+
+    // ---- Bannerlator styles (HUD style 4): this view keeps counting and deciding when the HUD is
+    // shown, and draws nothing itself; the chosen Bannerlator view next to it does. ----
+    private volatile com.winlator.cmod.widget.banner.BannerHud banner;
+    private float presentedFps = 0f;
+
+    public boolean isBannerStyle() { return banner != null; }
+
+    public void setBannerStyle(boolean on) {
+        if (on == (banner != null)) return;
+        if (on) {
+            banner = new com.winlator.cmod.widget.banner.BannerHud(getContext());
+            if (getParent() instanceof android.view.ViewGroup) banner.attach((android.view.ViewGroup) getParent());
+            banner.setVisible(getVisibility() == VISIBLE);
+        } else {
+            com.winlator.cmod.widget.banner.BannerHud b = banner;
+            banner = null;
+            b.detach();
+        }
+        requestLayout();
+        invalidate();
+    }
+
+    @Override
+    public void setVisibility(int visibility) {
+        super.setVisibility(visibility);
+        com.winlator.cmod.widget.banner.BannerHud b = banner;
+        if (b != null) b.setVisible(visibility == VISIBLE);
     }
 
     public void update() {
@@ -502,10 +533,16 @@ public class WinlatorHUD extends View {
         com.winlator.cmod.core.HudSensorSample precise = com.winlator.cmod.core.HudSensorFeed.INSTANCE.getLatest();
         int rootValue = precise != null && precise.getGpuLoad() >= 0 ? precise.getGpuLoad() : readGpuRoot();
         if (rootValue >= 0) {
-            if (rootValue != snapGpu) {
-                snapGpu = rootValue;
-                strGpu = rootValue + "%";
+            // Precise sensors also give the GPU clock and temperature: "62% 680MHz 48°C".
+            String label = rootValue + "%";
+            if (precise != null && precise.getGpuMhz() > 0) label += " " + precise.getGpuMhz() + "MHz";
+            if (precise != null && precise.getGpuTemp() > 0) label += " " + precise.getGpuTemp() + "°C";
+            snapGpu = rootValue;
+            if (!label.equals(strGpu)) {
+                float before = wDynGpu;
+                strGpu = label;
                 wDynGpu = pVal.measureText(strGpu);
+                if (wDynGpu > before + 1f) uiHandler.post(this::requestRelayout);
             }
             return;
         }
@@ -624,13 +661,18 @@ public class WinlatorHUD extends View {
         com.winlator.cmod.core.HudSensorSample precise = com.winlator.cmod.core.HudSensorFeed.INSTANCE.getLatest();
         int usage = precise != null && precise.getCpuLoad() >= 0 ? precise.getCpuLoad() : CPUStatus.getCpuUsagePercent();
         int temp = precise != null && precise.getCpuTemp() > 0 ? precise.getCpuTemp() : CPUStatus.getCpuTempC();
-        if (usage == snapCpu && temp == snapCpuTemp) return;
+        String usageLabel = usage >= 0 ? usage + "%" : "N/A";
+        if (usage >= 0 && precise != null && precise.getCpuMhz() > 0)
+            usageLabel += precise.getCpuMhz() >= 1000 ? String.format(Locale.US, " %.1fGHz", precise.getCpuMhz() / 1000f) : " " + precise.getCpuMhz() + "MHz";
+        if (usage == snapCpu && temp == snapCpuTemp && usageLabel.equals(strCpuUsage)) return;
 
         snapCpu = usage;
         snapCpuTemp = temp;
-        strCpuUsage = usage >= 0 ? usage + "%" : "N/A";
+        float cpuBefore = wDynCpuUsage;
+        strCpuUsage = usageLabel;
         strCpuTemp = temp > 0 ? temp + "°C" : "N/A";
         wDynCpuUsage = pVal.measureText(strCpuUsage);
+        if (wDynCpuUsage > cpuBefore + 1f) uiHandler.post(this::requestRelayout);
         wDynCpuTemp = pVal.measureText(strCpuTemp);
     }
 
@@ -814,6 +856,7 @@ public class WinlatorHUD extends View {
                 snapFps = game;
                 value = gen >= 1f ? String.format(Locale.US, "%.0f (%.0f)", real + gen, game)
                                   : String.format(Locale.US, "%.0f", game);
+                presentedFps = gen >= 1f ? real + gen : 0f;
             }
             lastReal = stats[0];
             lastGen = stats[1];
@@ -827,10 +870,18 @@ public class WinlatorHUD extends View {
             if (fg != null) try { st = fg.get(); } catch (Throwable ignored) {}
             // Not by st[0] (generations planned for the LAST frame: 0 every other frame at times,
             // so the pair blinked): by the measured rates, presented above what the game makes.
-            if (st != null && st.length >= 4 && st[2] > 0.5f && st[3] > st[2] * 1.15f)
+            presentedFps = 0f;
+            if (st != null && st.length >= 4 && st[2] > 0.5f && st[3] > st[2] * 1.15f) {
                 value = String.format(Locale.US, "%.0f (%.0f)", st[3], st[2]);
+                presentedFps = st[3];
+            }
         }
         lastFpsNs = now;
+        if (banner != null) {
+            banner.setPresentedFps(presentedFps);
+            banner.setEngine(strRend);
+            banner.setGpuModel(gpuNameLabel);
+        }
 
         if (value == null) value = String.format(Locale.US, "%.0f", snapFps);
         if (!value.equals(strFps)) {
@@ -842,7 +893,7 @@ public class WinlatorHUD extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (getVisibility() != VISIBLE) return;
+        if (getVisibility() != VISIBLE || banner != null) return;
 
         try {
             int targetAlpha = (int) (180 * hudAlpha);
@@ -1223,6 +1274,7 @@ public class WinlatorHUD extends View {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (banner != null) { setMeasuredDimension(0, 0); return; }
         float lineH = TS + PAD * 2;
         float width = vertical ? measureVerticalReserved() : measureHorizontalReserved();
         float height = vertical ? (countVerticalRows() * lineH + PAD) : lineH;
@@ -1245,6 +1297,7 @@ public class WinlatorHUD extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (banner != null) return false;
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 if (event.getPointerCount() > 1) return true;
@@ -1298,6 +1351,7 @@ public class WinlatorHUD extends View {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
+        if (banner != null && getParent() instanceof android.view.ViewGroup) banner.attach((android.view.ViewGroup) getParent());
         prefs.registerOnSharedPreferenceChangeListener(prefListener);
         if (userEnabled) {
             uiHandler.removeCallbacks(redrawRunnable);
@@ -1310,6 +1364,7 @@ public class WinlatorHUD extends View {
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        if (banner != null) banner.detach();
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
         uiHandler.removeCallbacks(redrawRunnable);
         stopStatsThread();

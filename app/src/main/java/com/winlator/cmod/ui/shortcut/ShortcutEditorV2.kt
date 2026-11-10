@@ -732,11 +732,11 @@ private fun ShortcutCategoryV2(
                 }
             }
             SettingsCard {
-                // 0 off, 2 YurNLator HUD, 3 MangoHud (the classic HUD, 1, opens the YurNLator one).
-                val hudEntries = listOf("Off", "YurNLator", "MangoHud")
-                val hudLabel = when (s.winlatorHudMode) { 0 -> "Off"; 3 -> "MangoHud"; else -> "YurNLator" }
+                // 0 off, 2 YurNLator HUD, 3 MangoHud, 4 Bannerlator styles (the classic HUD, 1, opens the YurNLator one).
+                val hudEntries = listOf("Off", "YurNLator", "Bannerlator", "MangoHud")
+                val hudLabel = when (s.winlatorHudMode) { 0 -> "Off"; 3 -> "MangoHud"; 4 -> "Bannerlator"; else -> "YurNLator" }
                 SettingChoice("Performance HUD", hudLabel, hudEntries) {
-                    s.winlatorHudMode = when (it) { "MangoHud" -> 3; "YurNLator" -> 2; else -> 0 }
+                    s.winlatorHudMode = when (it) { "MangoHud" -> 3; "Bannerlator" -> 4; "YurNLator" -> 2; else -> 0 }
                     s.extra("hudMode", s.winlatorHudMode.toString())
                 }
                 SettingsDivider()

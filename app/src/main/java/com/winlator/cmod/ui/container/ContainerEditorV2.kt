@@ -829,11 +829,11 @@ private fun ContainerCategoryV2(
                     }
                 }
                 SettingsDivider()
-                // 0 off, 2 YurNLator HUD, 3 MangoHud (the classic HUD, 1, opens the YurNLator one).
-                val hudEntries = listOf("Off", "YurNLator", "MangoHud")
-                val hudLabel = when (s.hudMode) { 0 -> "Off"; 3 -> "MangoHud"; else -> "YurNLator" }
+                // 0 off, 2 YurNLator HUD, 3 MangoHud, 4 Bannerlator styles (the classic HUD, 1, opens the YurNLator one).
+                val hudEntries = listOf("Off", "YurNLator", "Bannerlator", "MangoHud")
+                val hudLabel = when (s.hudMode) { 0 -> "Off"; 3 -> "MangoHud"; 4 -> "Bannerlator"; else -> "YurNLator" }
                 SettingChoice("Performance HUD", hudLabel, hudEntries) {
-                    s.hudMode = when (it) { "MangoHud" -> 3; "YurNLator" -> 2; else -> 0 }
+                    s.hudMode = when (it) { "MangoHud" -> 3; "Bannerlator" -> 4; "YurNLator" -> 2; else -> 0 }
                 }
             }
             SettingsCard {

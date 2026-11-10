@@ -23,7 +23,7 @@ public final class SidebarHudPanel {
         Activity activity();
         WinlatorHUD modernHud();
         FrameRating classicHud();
-        /** Saved mode: 0 off, 2 YurNLator, 3 MangoHud. */
+        /** Saved mode: 0 off, 2 YurNLator, 3 MangoHud, 4 Bannerlator. */
         int savedMode();
         /** Switches the HUD (shows / hides, saves): the quick menu's switch. */
         void apply(int mode);
@@ -55,14 +55,14 @@ public final class SidebarHudPanel {
         View btReset = a.findViewById(R.id.BTResetHud);
 
         int saved = host.savedMode();
-        final int[] current = {saved == 3 ? 3 : saved != 0 ? 2 : 0};
+        final int[] current = {saved == 3 || saved == 4 ? saved : saved != 0 ? 2 : 0};
         boolean on = current[0] != 0;
 
         if (spStyle != null) {
-            ArrayAdapter<String> adapter = host.spinnerAdapter(new String[]{"YurNLator", "MangoHud"});
+            ArrayAdapter<String> adapter = host.spinnerAdapter(new String[]{"YurNLator", "Bannerlator", "MangoHud"});
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spStyle.setAdapter(adapter);
-            spStyle.setSelection(current[0] == 3 ? 1 : 0, false);
+            spStyle.setSelection(posOf(current[0]), false);
         }
         visible(styleRow, on);
         visible(modernOptions, current[0] == 2);
@@ -96,7 +96,7 @@ public final class SidebarHudPanel {
             spStyle.post(() -> spStyle.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
                     if (swMaster == null || !swMaster.isChecked()) return;
-                    int style = pos == 1 ? 3 : 2;
+                    int style = styleAt(pos);
                     if (style == current[0]) return;
                     current[0] = style;
                     host.apply(style);
@@ -109,8 +109,12 @@ public final class SidebarHudPanel {
     }
 
     private static int selectedStyle(Spinner spStyle) {
-        return spStyle != null && spStyle.getSelectedItemPosition() == 1 ? 3 : 2;
+        return spStyle != null ? styleAt(spStyle.getSelectedItemPosition()) : 2;
     }
+
+    private static int styleAt(int pos) { return pos == 1 ? 4 : pos == 2 ? 3 : 2; }
+
+    private static int posOf(int style) { return style == 4 ? 1 : style == 3 ? 2 : 0; }
 
     private static void visible(View v, boolean on) {
         if (v != null) v.setVisibility(on ? View.VISIBLE : View.GONE);

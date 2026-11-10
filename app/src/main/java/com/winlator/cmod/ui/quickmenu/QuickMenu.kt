@@ -368,7 +368,7 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
             }
             if (mode != 0) {
                 Label("Style")
-                Chips(listOf(2 to "YurNLator", 3 to "MangoHud"), mode) { mode = it; bridge.setHudMode(it) }
+                Chips(listOf(2 to "YurNLator", 4 to "Bannerlator", 3 to "MangoHud"), mode) { mode = it; bridge.setHudMode(it) }
             }
         }
         if (mode == 3) {
@@ -428,8 +428,12 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
                 }
                 TextButton(onClick = { bridge.resetHud(); rev++ }) { Text("Reset HUD position") }
             }
-        } else if (mode == 1) {
-            Card { Text("The classic HUD shows FPS and GPU info. Switch to Modern for size, opacity and metrics.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else if (mode == 4) {
+            Card {
+                Text("Bannerlator's HUD styles: tap the HUD for the next one (Fusion Full, Tiles, Pill, Minimal, Mega, GameHub, GameNative). " +
+                     "Drag to move it, long-press to lock it in place. Clocks and temperatures are exact with precise sensors (Settings › Performance HUD).",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

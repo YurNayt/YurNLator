@@ -1095,7 +1095,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 classicHud.setVisibility(View.GONE);
                 rootView.addView(classicHud);
                 renderer.setFrameRating(classicHud);
-            } else if (hudMode == 2) {
+            } else if (hudMode == 2 || hudMode == 4) {
 
                 modernHud = new WinlatorHUD(this);
                 if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
@@ -1103,6 +1103,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (waylandMode) modernHud.setCompositorFrameGen(this::waylandFrameGenStats);
                 modernHud.setVisibility(View.GONE);
                 rootView.addView(modernHud);
+                modernHud.setBannerStyle(hudMode == 4); // Bannerlator's styles, drawn next to it
                 modernHud.enableByUser();
                 renderer.setFrameRating(modernHud);
             }
@@ -1203,7 +1204,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     /**
-     * The one HUD switch (quick menu and sidebar): 0 off, 2 YurNLator, 3 MangoHud (drawn in the
+     * The one HUD switch (quick menu and sidebar): 0 off, 2 YurNLator, 4 Bannerlator styles, 3 MangoHud (drawn in the
      * game; shown / hidden through its config when the session started with it).
      */
     void applyHudMode(int mode) {
@@ -1220,7 +1221,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             enableHudLazily(mode);
             // The renderer reports frames to one HUD: point it at the one now shown
             // (switching style used to leave FPS counting on the hidden one).
-            if (xServerView != null) xServerView.setFrameRating(mode == 2 ? (Object) modernHud : (Object) classicHud);
+            if (xServerView != null) xServerView.setFrameRating(mode == 2 || mode == 4 ? (Object) modernHud : (Object) classicHud);
             hudTracker.adoptRendererWindow();
         }
         saveHudModeToContainer(mode);
@@ -1232,7 +1233,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         final XServerRendererView renderer = xServerView;
 
 
-        if (style == 2) {
+        if (style == 2 || style == 4) {
             if (modernHud == null) {
                 modernHud = new WinlatorHUD(this);
                 if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
@@ -1243,6 +1244,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 renderer.setFrameRating(modernHud);
                 if (hudTracker.adoptRendererWindow()) modernHud.onRendererDetected(hudTracker.rendererName());
             }
+            modernHud.setBannerStyle(style == 4);
             modernHud.enableByUser();
         }
     }
