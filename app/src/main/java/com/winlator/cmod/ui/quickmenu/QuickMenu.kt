@@ -375,7 +375,7 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
             val running = remember(opened) { bridge.mangoHudRunning() }
             var log by remember(opened) { mutableStateOf(bridge.mangoHudLog()) }
             Card {
-                Text(if (running) "MangoHud is drawn inside the game: FPS, frame time graph, 1% / 0.1% lows, CPU, GPU, RAM, VRAM, battery."
+                Text(if (running) "MangoHud is drawn inside the game: FPS, 1% / 0.1% lows, frame time graph and RAM (Android keeps CPU, GPU and battery sensors from it). It costs the game some frames."
                      else "MangoHud loads with the game: restart the game to see it.",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SwitchRow("Write a log", "MangoHud CSV in Download/YurNLator/MangoHud, from the next start", checked = log) {

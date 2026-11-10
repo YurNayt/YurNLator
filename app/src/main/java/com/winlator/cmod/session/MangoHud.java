@@ -45,26 +45,33 @@ public final class MangoHud {
             if (log) logFolder().mkdirs();
             StringBuilder c = new StringBuilder();
             if (!visible) c.append("no_display\n");
+            // Only what MangoHud can measure here (GPU, VRAM, CPU and battery read as 0 or are
+            // closed to apps on Android): FPS, the 1% / 0.1% lows, frame time graph and RAM, in a
+            // small box instead of a strip across the screen. Battery must stay out: listing
+            // /sys/class/power_supply is denied and MangoHud's uncaught error kills the game.
             c.append("legacy_layout=0\n")
-             .append("horizontal\n")
              .append("hud_compact\n")
+             .append("table_columns=3\n")
              .append("fps\n")
-             .append("fps_metrics=avg,0.01,0.001\n")
+             .append("fps_metrics=0.01,0.001\n")
              .append("frametime\n")
              .append("frame_timing=1\n")
-             .append("gpu_stats\ngpu_temp\ngpu_core_clock\n")
-             .append("ram\nvram\n")
-             // Not here: battery (MangoHud lists /sys/class/power_supply, which Android denies,
-             // and the uncaught error kills the game) and CPU stats (/proc/stat and the CPU
-             // sensors are closed to apps, MangoHud only prints that it cannot read them).
+             .append("ram\n")
+             .append("fps_sampling_period=1000\n")
              .append("position=top-left\n")
-             .append("background_alpha=0.35\n")
-             .append("font_size=18\n")
-             .append("round_corners=8\n");
+             .append("offset_x=16\noffset_y=16\n")
+             .append("width=240\n")
+             .append("background_alpha=0.45\n")
+             .append("round_corners=10\n")
+             .append("font_size=20\n")
+             .append("text_outline=0\n")
+             .append("fps_color_change\n")
+             .append("fps_value=30,55\n")
+             .append("fps_color=E04B4B,F2C14E,5BD08A\n");
             if (log) {
                 c.append("output_folder=").append(logFolder().getPath()).append('\n')
                  .append("autostart_log=1\n")
-                 .append("log_interval=100\n");
+                 .append("log_interval=250\n");
             }
             try (FileWriter w = new FileWriter(f, false)) { w.write(c.toString()); }
         } catch (Exception e) {
