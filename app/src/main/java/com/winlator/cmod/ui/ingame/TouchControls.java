@@ -19,8 +19,6 @@ import java.util.function.Supplier;
  * (Settings › touchscreen timeout; off in this build, the controls stay visible).
  */
 public final class TouchControls {
-    /** The timeout is off: the controls stay visible (they used to vanish mid-game). */
-    public static final boolean DISABLE_AUTO_HIDE = true;
     private static final String TAG = "TouchControls";
 
     private final SharedPreferences prefs;
@@ -39,12 +37,15 @@ public final class TouchControls {
         this.touchpad = touchpad;
         this.winHandler = winHandler;
         this.cursorSpeed = cursorSpeed;
+        // "Hide when not touched": the controls fade out but keep working (a touch on a faded
+        // button still presses it and brings them back). They used to be removed (GONE), so the
+        // touch that should press a button only revealed them, and they vanished mid-game.
         this.hideRunnable = () -> {
-            if (DISABLE_AUTO_HIDE) return;
             InputControlsView c = controls.get();
-            if (prefs.getBoolean("touchscreen_timeout_enabled", false) && c != null && c.getProfile() != null) {
-                c.setVisibility(View.GONE);
-                Log.d(TAG, "Touchscreen controls hidden after timeout.");
+            if (prefs.getBoolean("touchscreen_timeout_enabled", false) && c != null && c.getProfile() != null
+                    && c.getVisibility() == View.VISIBLE) {
+                c.animate().alpha(0f).setDuration(400).start();
+                Log.d(TAG, "Touchscreen controls faded after timeout.");
             }
         };
     }
@@ -53,7 +54,10 @@ public final class TouchControls {
     public Runnable hideRunnable() { return hideRunnable; }
 
     private void showIfProfile(InputControlsView c) {
-        if (c != null && c.getProfile() != null) c.setVisibility(View.VISIBLE);
+        if (c == null || c.getProfile() == null || !c.isShowTouchscreenControls()) return;
+        c.setVisibility(View.VISIBLE);
+        c.animate().cancel();
+        c.setAlpha(1f);
     }
 
     /** Starts (or stops) hiding the controls after 5 s without a touch, from the setting. */
@@ -61,12 +65,6 @@ public final class TouchControls {
         handler.removeCallbacks(hideRunnable);
         InputControlsView c = controls.get();
         TouchpadView t = touchpad.get();
-
-        if (DISABLE_AUTO_HIDE) {
-            if (t != null) t.setOnTouchListener(null);
-            showIfProfile(c);
-            return;
-        }
 
         showIfProfile(c);
         if (t == null) return;
@@ -91,7 +89,9 @@ public final class TouchControls {
         InputControlsView c = controls.get();
         TouchpadView t = touchpad.get();
         c.setProfile(profile);
-        c.setVisibility(View.VISIBLE);
+        c.animate().cancel();
+        c.setAlpha(1f);
+        c.setVisibility(c.isShowTouchscreenControls() ? View.VISIBLE : View.GONE);
         c.requestFocus();
         t.setSensitivity(profile.getCursorSpeed() * cursorSpeed.get());
         t.setPointerButtonRightEnabled(false);
@@ -108,6 +108,8 @@ public final class TouchControls {
         InputControlsView c = controls.get();
         TouchpadView t = touchpad.get();
         c.setShowTouchscreenControls(true);
+        c.animate().cancel();
+        c.setAlpha(1f);
         c.setVisibility(View.GONE);
         c.setProfile(null);
         t.setSensitivity(cursorSpeed.get());
@@ -126,11 +128,23 @@ public final class TouchControls {
         InputControlsView c = controls.get();
         TouchpadView t = touchpad.get();
         if (c == null || t == null) return;
-        c.setShowTouchscreenControls(prefs.getBoolean("show_touchscreen_controls_enabled", false));
+        c.setShowTouchscreenControls(prefs.getBoolean("show_touchscreen_controls_enabled", true));
         int index = prefs.getInt("selected_profile_index", -1);
         if (index >= 0 && index < profiles.size()) show(profiles.get(index));
         else hide();
         if (prefs.getBoolean("touchscreen_timeout_enabled", false) && c.getVisibility() == View.VISIBLE) startTimeout();
         else t.setOnTouchListener(null);
+    }
+
+    /** "Show touch controls": off hides the profile's buttons and they stop taking touches
+     *  (they used to stay active while invisible: taps still pressed them and vibrated). */
+    public void setShown(boolean on) {
+        InputControlsView c = controls.get();
+        if (c == null) return;
+        c.setShowTouchscreenControls(on);
+        prefs.edit().putBoolean("show_touchscreen_controls_enabled", on).apply();
+        if (on) showIfProfile(c);
+        else { handler.removeCallbacks(hideRunnable); c.setVisibility(View.GONE); }
+        c.invalidate();
     }
 }

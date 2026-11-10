@@ -436,11 +436,8 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
 
     private void applyTouchTimeout() {
         if (a.inputControlsView == null) return;
-        if (a.preferences.getBoolean("touchscreen_timeout_enabled", false) && a.inputControlsView.getVisibility() == View.VISIBLE) {
-            a.startTouchscreenTimeout();
-        } else if (a.touchpadView != null) {
-            a.touchpadView.setOnTouchListener(null);
-        }
+        // On: fade after 5 s without a touch; off: back to full and no timer (startTimeout does both).
+        a.startTouchscreenTimeout();
     }
 
     @Override public void editControls() {
@@ -460,11 +457,7 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
 
     @Override public boolean touchControls() { return a.inputControlsView != null && a.inputControlsView.isShowTouchscreenControls(); }
 
-    @Override public void setTouchControls(boolean on) {
-        if (a.inputControlsView == null) return;
-        a.inputControlsView.setShowTouchscreenControls(on);
-        a.preferences.edit().putBoolean("show_touchscreen_controls_enabled", on).apply();
-    }
+    @Override public void setTouchControls(boolean on) { a.touchControls.setShown(on); }
 
     @Override public boolean touchTimeout() { return a.preferences.getBoolean("touchscreen_timeout_enabled", false); }
 

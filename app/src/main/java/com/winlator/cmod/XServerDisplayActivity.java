@@ -241,7 +241,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     private Handler timeoutHandler = new Handler(Looper.getMainLooper());
     private Runnable hideControlsRunnable;
-    private com.winlator.cmod.ui.ingame.TouchControls touchControls;
+    com.winlator.cmod.ui.ingame.TouchControls touchControls;
 
     private boolean isDarkMode;
 

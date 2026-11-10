@@ -50,7 +50,7 @@ import java.util.TimerTask;
 public class InputControlsView extends View {
     public static final float DEFAULT_OVERLAY_OPACITY = 0.85f;
     private static final byte MOUSE_WHEEL_DELTA = 120;
-    private static final boolean AUTO_HIDE_CONTROLS = false;
+    private static final boolean AUTO_HIDE_CONTROLS = true;
     private boolean editMode = false;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Path path = new Path();
@@ -705,6 +705,8 @@ public class InputControlsView extends View {
             case MotionEvent.ACTION_DOWN:
                 activeTouchPointerCount = 1;
                 timeoutHandler.removeCallbacks(hideControlsRunnable);
+                // Faded by "Hide when not touched": back to full while in use.
+                if (getAlpha() < 1f) { animate().cancel(); setAlpha(1f); }
                 break;
             case MotionEvent.ACTION_POINTER_DOWN:
                 activeTouchPointerCount = event.getPointerCount();

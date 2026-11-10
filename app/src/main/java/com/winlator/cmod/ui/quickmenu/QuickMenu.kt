@@ -545,8 +545,8 @@ private fun ControlsSection(bridge: QuickMenuBridge, opened: Int) {
             ActionRow(Icons.Outlined.Edit, "Edit controls", "Open the editor for this profile") { bridge.editControls() }
         }
         Card {
-            SwitchRow("Show touch controls", checked = touch) { touch = it; bridge.setTouchControls(it) }
-            SwitchRow("Hide when not touched", "Controls fade out after a few seconds", checked = timeout) { timeout = it; bridge.setTouchTimeout(it) }
+            SwitchRow("Show touch controls", "Off: the on-screen buttons are hidden and don't react (a gamepad still works)", checked = touch) { touch = it; bridge.setTouchControls(it) }
+            SwitchRow("Hide when not touched", "Buttons fade out after 5 s without a touch and keep working; any touch brings them back", checked = timeout) { timeout = it; bridge.setTouchTimeout(it) }
             SwitchRow("Vibrate on touch", checked = haptics) { haptics = it; bridge.setTouchHaptics(it) }
         }
         StepSlider("Controls opacity", opacity, "${(opacity * 100).roundToInt()}%", onChange = { f -> opacity = f; bridge.setControlsOpacity(f) })
