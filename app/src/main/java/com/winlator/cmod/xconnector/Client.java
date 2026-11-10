@@ -23,6 +23,7 @@ public class Client {
         if (inputStream != null || outputStream != null) return;
         inputStream = new XInputStream(clientSocket, connector.getInitialInputBufferCapacity());
         outputStream = new XOutputStream(clientSocket, connector.getInitialOutputBufferCapacity());
+        outputStream.setOwnerThread(Thread.currentThread()); // created on the client's poll thread
         inputStream.setByteOrder(ByteOrder.LITTLE_ENDIAN);
         outputStream.setByteOrder(ByteOrder.LITTLE_ENDIAN);
     }

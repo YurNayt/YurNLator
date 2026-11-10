@@ -93,15 +93,123 @@ public class XOutputStream {
     }
 
     private void flush() throws IOException {
-        if (buffer.position() != 0) {
-            buffer.flip();
+        if (buffer.position() == 0) return;
+        buffer.flip();
+        try {
+            if (closed || clientSocket == null) return;
             if (ancillaryFd != -1) {
+                // fds must travel with their own bytes, so earlier data has to be out first (client thread only)
+                while (pendingBytes() > 0 && !closed) {
+                    if (sendPending() < 0) break;
+                    if (pendingBytes() > 0 && clientSocket.waitWritable(1000) < 0) { discardPending(); break; }
+                }
                 clientSocket.sendAncillaryMsg(buffer, ancillaryFd);
                 ancillaryFd = -1;
-            } else {
-                clientSocket.write(buffer);
+                return;
             }
+            if (pendingBytes() > 0) sendPending();
+            if (pendingBytes() == 0) {
+                if (clientSocket.sendNonBlocking(buffer) < 0 || !buffer.hasRemaining()) return;
+            }
+            // the client is not reading right now: keep the rest in order and never block the caller
+            appendPending(buffer);
+            if (Thread.currentThread() != ownerThread) PendingFlusher.add(this);
+        } finally {
             buffer.clear();
+        }
+    }
+
+    /*
+     * A client that stops reading (a Wine thread stuck on a slow drive, say) must not freeze whoever
+     * sends it events: injected touch input runs on the UI thread, and a blocking write there is an
+     * ANR. Bytes the socket cannot take go to {@code pending}; the client's own thread waits for room
+     * after releasing the lock (back-pressure for big replies), everyone else leaves it to the flusher.
+     */
+    private static final int PENDING_LIMIT = 64 << 20;
+    private ByteBuffer pending;
+    private volatile boolean closed;
+    private volatile Thread ownerThread;
+
+    void setOwnerThread(Thread thread) {
+        ownerThread = thread;
+    }
+
+    /** Called before the fd is closed, so no queued byte can reach a reused descriptor. */
+    void markClosed() {
+        lock.lock();
+        try {
+            closed = true;
+            discardPending();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private int pendingBytes() {
+        return pending != null ? pending.position() : 0;
+    }
+
+    private void discardPending() {
+        if (pending != null) pending.clear();
+    }
+
+    private int sendPending() {
+        pending.flip();
+        int n = clientSocket.sendNonBlocking(pending);
+        pending.compact();
+        if (n < 0) discardPending();
+        return n;
+    }
+
+    private void appendPending(ByteBuffer data) {
+        int length = data.remaining();
+        if (pendingBytes() + length > PENDING_LIMIT) {
+            android.util.Log.w("XOutputStream", "client fd " + clientSocket.fd + " stopped reading, dropping its queue");
+            discardPending();
+            closed = true;
+            return;
+        }
+        if (pending == null || pending.capacity() - pending.position() < length) {
+            int capacity = Math.max(64 * 1024, Integer.highestOneBit(pendingBytes() + length) << 1);
+            ByteBuffer grown = ByteBuffer.allocateDirect(capacity);
+            if (pending != null) {
+                pending.flip();
+                grown.put(pending);
+            }
+            pending = grown;
+        }
+        pending.put(data);
+    }
+
+    /** Flusher thread: true once nothing is left for this stream. Never waits for the lock. */
+    boolean drainFromFlusher() {
+        if (!lock.tryLock()) return false;
+        try {
+            if (closed || pendingBytes() == 0) return true;
+            return sendPending() < 0 || pendingBytes() == 0;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    void waitForRoom(int timeoutMs) throws InterruptedException {
+        if (closed || clientSocket.waitWritable(timeoutMs) == 0) return;
+        Thread.sleep(1);
+    }
+
+    private void drainAsOwner() {
+        for (;;) {
+            lock.lock();
+            try {
+                if (closed || pendingBytes() == 0) return;
+                if (sendPending() < 0 || pendingBytes() == 0) return;
+            } finally {
+                lock.unlock();
+            }
+            if (clientSocket.waitWritable(1000) < 0) {
+                markClosed();
+                return;
+            }
         }
     }
 
@@ -125,11 +233,14 @@ public class XOutputStream {
 
         @Override
         public void close() throws IOException {
+            boolean waitForRoom;
             try {
                 flush();
+                waitForRoom = pendingBytes() > 0 && Thread.currentThread() == ownerThread;
             } finally {
                 lock.unlock();
             }
+            if (waitForRoom) drainAsOwner();
         }
     }
 

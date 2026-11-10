@@ -77,7 +77,24 @@ public class ClientSocket {
 
     private native int read(int fd, ByteBuffer data, int offset, int length);
 
+    /** Sends from data's position to its limit without blocking; advances position. -1 = socket gone. */
+    public int sendNonBlocking(ByteBuffer data) {
+        int position = data.position();
+        int n = sendNonBlocking(fd, data, position, data.remaining());
+        if (n > 0) data.position(position + n);
+        return n;
+    }
+
+    /** 1 = writable, 0 = timeout, -1 = gone. */
+    public int waitWritable(int timeoutMs) {
+        return waitWritable(fd, timeoutMs);
+    }
+
     private native int write(int fd, ByteBuffer data, int length);
+
+    private native int sendNonBlocking(int fd, ByteBuffer data, int offset, int length);
+
+    private native int waitWritable(int fd, int timeoutMs);
 
     private native int recvAncillaryMsg(int clientFd, ByteBuffer data, int offset, int length);
 

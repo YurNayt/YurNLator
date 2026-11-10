@@ -7,6 +7,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 #include <malloc.h>
 #include <jni.h>
 #include <android/log.h>
@@ -116,6 +117,31 @@ Java_com_winlator_cmod_xconnector_ClientSocket_write(JNIEnv *env, jobject obj, j
                                                 jint length) {
     char *dataAddr = (*env)->GetDirectBufferAddress(env, data);
     return write(fd, dataAddr, length);
+}
+
+/* Never blocks: returns bytes sent, 0 when the client's socket buffer is full, -1 on error. */
+JNIEXPORT jint JNICALL
+Java_com_winlator_cmod_xconnector_ClientSocket_sendNonBlocking(JNIEnv *env, jobject obj, jint fd, jobject data,
+                                                             jint offset, jint length) {
+    char *dataAddr = (*env)->GetDirectBufferAddress(env, data);
+    for (;;) {
+        ssize_t n = send(fd, dataAddr + offset, length, MSG_DONTWAIT | MSG_NOSIGNAL);
+        if (n >= 0) return (jint)n;
+        if (errno == EINTR) continue;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
+        return -1;
+    }
+}
+
+/* 1 when the socket can take more data, 0 on timeout, -1 when it is gone. */
+JNIEXPORT jint JNICALL
+Java_com_winlator_cmod_xconnector_ClientSocket_waitWritable(JNIEnv *env, jobject obj, jint fd, jint timeoutMs) {
+    struct pollfd pfd = {.fd = fd, .events = POLLOUT};
+    int r = poll(&pfd, 1, timeoutMs);
+    if (r < 0) return errno == EINTR ? 0 : -1;
+    if (r == 0) return 0;
+    if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) return -1;
+    return 1;
 }
 
 JNIEXPORT jint JNICALL

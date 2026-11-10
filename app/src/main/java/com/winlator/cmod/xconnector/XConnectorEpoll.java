@@ -144,6 +144,8 @@ public class XConnectorEpoll implements Runnable {
             closeFd(client.shutdownFd);
         }
         else removeFdFromEpoll(epollFd, client.clientSocket.fd);
+        XOutputStream out = client.getOutputStream();
+        if (out != null) out.markClosed();
         closeFd(client.clientSocket.fd);
         connectedClients.remove(client.clientSocket.fd);
     }
