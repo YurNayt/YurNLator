@@ -47,6 +47,9 @@ import java.util.ArrayList;
 public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private String guestExecutable;
     private static int pid = -1;
+
+    /** The guest launcher process (performance controls raise its subtree's priority); -1 when none. */
+    public static int getPid() { return pid; }
     private String[] bindingPaths;
     private EnvVars envVars;
     private WineInfo wineInfo;

@@ -36,6 +36,25 @@ public final class CpuAffinity {
 
     public String wineCpuTopology() { return wineCpuTopology; }
 
+    /** Performance › big cores: every process goes there instead of the launch's cores (0 = off). */
+    private volatile int preferredMask = 0;
+
+    public void setPreferredMask(int mask) { preferredMask = mask; }
+
+    /** Cores for a process now (big cores, else the launch's list for its kind). */
+    private int maskFor(boolean wow64) {
+        int p = preferredMask;
+        if (p != 0) return p;
+        return wow64 ? maskWoW64 : mask;
+    }
+
+    /** Pins a running process again (big cores switched); the task manager's choice for it stays. */
+    public void repin(int pid, boolean wow64, WinHandler winHandler) {
+        if (pid <= 0 || winHandler == null || userMasks.containsKey(pid)) return;
+        int m = maskFor(wow64);
+        if (m != 0) winHandler.setProcessAffinity(pid, m);
+    }
+
     /** The task manager set [mask] for [pid]: applies it and remembers it. */
     public void setUserMask(int pid, int mask, WinHandler winHandler) {
         if (mask == 0) return;
@@ -51,10 +70,10 @@ public final class CpuAffinity {
 
     /** A window mapped: pins its process (by pid, else by window class) to the launch's cores. */
     public void apply(Window window, WinHandler winHandler) {
-        if (mask == 0 || maskWoW64 == 0 || winHandler == null) return;
+        if (winHandler == null || (preferredMask == 0 && (mask == 0 || maskWoW64 == 0))) return;
         int pid = window.getProcessId();
         if (pid > 0 && userMasks.containsKey(pid)) return;
-        int affinity = window.isWoW64() ? maskWoW64 : mask;
+        int affinity = maskFor(window.isWoW64());
         String className = window.getClassName();
         if (pid > 0) winHandler.setProcessAffinity(pid, affinity);
         else if (!className.isEmpty()) winHandler.setProcessAffinity(className, affinity);

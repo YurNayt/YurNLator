@@ -232,6 +232,8 @@ dependencies {
     // Precise HUD sensors with ADB rights (Shizuku runs our shell as the shell user)
     implementation 'dev.rikka.shizuku:api:13.1.5'
     implementation 'dev.rikka.shizuku:provider:13.1.5'
+    // Root shell for the performance controls (CPU governor / clocks, GPU pin; reverted on exit)
+    implementation 'com.github.topjohnwu.libsu:core:6.0.0'
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'com.github.luben:zstd-jni:1.5.2-3@aar'
     implementation 'org.tukaani:xz:1.7'

@@ -49,6 +49,8 @@ interface QuickMenuBridge {
     /** 0 off, 1 classic, 2 modern. */
     /** 0 off, 2 YurNLator HUD, 3 MangoHud (the classic HUD, 1, is gone). */
     fun hudMode(): Int
+    /** The game's performance controls (null before the session is set up). */
+    fun performance(): com.winlator.cmod.session.PerfSession?
     fun setHudMode(mode: Int)
     /** This session started with MangoHud's layer (switching to it otherwise takes a restart). */
     fun mangoHudRunning(): Boolean

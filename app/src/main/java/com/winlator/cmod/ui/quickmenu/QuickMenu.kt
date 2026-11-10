@@ -44,6 +44,7 @@ import androidx.compose.material.icons.outlined.PictureInPicture
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material3.AlertDialog
@@ -61,6 +62,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -117,6 +120,7 @@ object QuickMenuHost {
 
 private enum class Section(val title: String, val icon: ImageVector) {
     HUD("Performance HUD", Icons.Outlined.QueryStats),
+    PERF("Performance", Icons.Outlined.Speed),
     SCREEN("Screen effects", Icons.Outlined.AutoFixHigh),
     CONTROLS("Controls", Icons.Outlined.SportsEsports),
     TASKS("Task manager", Icons.Outlined.ListAlt),
@@ -168,6 +172,7 @@ private fun QuickMenu(bridge: QuickMenuBridge, opened: Int) {
                     Box(Modifier.fillMaxSize().padding(end = 14.dp)) {
                         when (section) {
                             Section.HUD -> HudSection(bridge, opened)
+                            Section.PERF -> PerformanceSection(bridge, opened)
                             Section.SCREEN -> ScreenSection(bridge, opened)
                             Section.CONTROLS -> ControlsSection(bridge, opened)
                             Section.TASKS -> TasksSection(bridge, opened)
@@ -439,6 +444,138 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    }
+}
+
+// ---------- Performance (from Bannerlator's panel) ----------
+
+@Composable
+private fun PerformanceSection(bridge: QuickMenuBridge, opened: Int) {
+    val perf = bridge.performance()
+    SectionPage("Performance") {
+        if (perf == null) {
+            Card { Text("Available once the game has started.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            return@SectionPage
+        }
+        val context = LocalContext.current
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        var rev by remember { mutableIntStateOf(0) }
+        val root by com.winlator.cmod.perf.RootManager.state.collectAsState()
+        val granted = root == com.winlator.cmod.perf.RootManager.RootState.GRANTED
+
+        // Live readings: GPU clock, hottest CPU / GPU sensor, CPU governor.
+        var gpuMhz by remember { mutableStateOf<Int?>(null) }
+        var tempC by remember { mutableStateOf<Int?>(null) }
+        var governor by remember { mutableStateOf("") }
+        androidx.compose.runtime.LaunchedEffect(opened) {
+            val metrics = com.winlator.cmod.widget.banner.HudMetrics(context.applicationContext)
+            while (true) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    gpuMhz = runCatching { metrics.gpuClockMhz }.getOrNull()
+                    tempC = runCatching { maxOf(metrics.cpuTempC ?: 0, metrics.gpuTempC ?: 0).takeIf { it > 0 } }.getOrNull()
+                    governor = runCatching { java.io.File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor").readText().trim() }.getOrDefault("")
+                }
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+        Card {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                PerfStat("GPU clock", gpuMhz?.let { "$it MHz" } ?: "—")
+                PerfStat("Hottest sensor", tempC?.let { "$it °C" } ?: "—")
+                PerfStat("CPU governor", governor.ifEmpty { "—" })
+            }
+        }
+
+        val profile = remember(rev, opened, granted) { perf.currentProfile() }
+        Card {
+            Label("Power profile")
+            Chips(listOf(
+                com.winlator.cmod.session.PerfSession.PROFILE_STOCK to "Stock",
+                com.winlator.cmod.session.PerfSession.PROFILE_BALANCED to "Balanced",
+                com.winlator.cmod.session.PerfSession.PROFILE_PERFORMANCE to "Performance",
+            ), profile) { perf.applyProfile(it); rev++ }
+            Text(when (profile) {
+                com.winlator.cmod.session.PerfSession.PROFILE_STOCK -> "Android decides everything, as without YurNLator."
+                com.winlator.cmod.session.PerfSession.PROFILE_BALANCED -> "Sustained performance mode only: steadier clocks, less throttling."
+                com.winlator.cmod.session.PerfSession.PROFILE_PERFORMANCE -> "Everything below on (root items too when root is granted)."
+                else -> "Custom: your own mix of the switches below."
+            }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        @Composable
+        fun PerfSwitch(key: String, title: String, subtitle: String, enabled: Boolean = true) {
+            val on = remember(rev, opened, key) { perf.value(key) }
+            val own = remember(rev, opened, key) { perf.isOwn(key) }
+            SwitchRow(title, subtitle + if (own) " · this game" else "", checked = on && enabled) {
+                if (enabled) { perf.set(key, it); rev++ }
+            }
+        }
+
+        Card {
+            Label("Without root")
+            PerfSwitch(com.winlator.cmod.session.PerfSession.SUSTAINED, "Sustained performance mode",
+                "Android's mode for long sessions: steadier clocks that throttle less (some phones ignore it).")
+            PerfSwitch(com.winlator.cmod.session.PerfSession.PRIORITY, "Thread priority boost",
+                "The emulator's and the game's threads get a higher priority, so the scheduler favours them.")
+            PerfSwitch(com.winlator.cmod.session.PerfSession.BIG_CORES, "Prefer big cores",
+                "The game's processes run on the fast cores only (a core set in the task manager stays).")
+            val gpuPin = granted || com.winlator.cmod.perf.PerfGpuTurbo.isSupported
+            PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_GPU_CLOCK_LOCK, "GPU at max clock",
+                if (granted) "Pins the GPU's lowest clock to its highest (root)."
+                else if (gpuPin) "Adreno turbo: the GPU stays at its top clock (the kernel's thermal limits still apply)."
+                else "Needs an Adreno GPU or root.", enabled = gpuPin)
+        }
+
+        Card {
+            Label("Root")
+            if (!granted) {
+                Text(when (root) {
+                    com.winlator.cmod.perf.RootManager.RootState.UNAVAILABLE -> "No root on this device."
+                    com.winlator.cmod.perf.RootManager.RootState.DENIED -> "Root was refused."
+                    else -> "Clocks, governor and cores need root."
+                }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (root != com.winlator.cmod.perf.RootManager.RootState.UNAVAILABLE)
+                    TextButton(onClick = { scope.launch { com.winlator.cmod.perf.RootManager.requestGrant(); rev++ } }) { Text("Grant root") }
+            } else {
+                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_CPU_GOVERNOR, "CPU governor: performance",
+                    "Every core's governor set to performance.")
+                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_CPU_FREQ_LOCK, "CPU at max clock",
+                    "Each core's lowest clock pinned to its highest.")
+                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_CORES_ONLINE, "All cores online",
+                    "Keeps the system from parking cores.")
+                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_FAN_MAX, "Fan at full speed",
+                    "Phones and handhelds with a built-in fan.")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.winlator.cmod.perf.PerfRootApplier.freeMemoryNow() } }) { Text("Drop caches") }
+                    TextButton(onClick = { scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.winlator.cmod.perf.PerfRootApplier.deepCleanMemory() } }) { Text("Close background apps") }
+                }
+            }
+            Text("Everything changed here is put back when the game closes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        Card {
+            val wdOn by com.winlator.cmod.perf.TempWatchdog.enabled.collectAsState()
+            val mode by com.winlator.cmod.perf.TempWatchdog.mode.collectAsState()
+            val ceiling by com.winlator.cmod.perf.TempWatchdog.ceilingC.collectAsState()
+            SwitchRow("Temperature guard", "Above $ceiling °C the clock, governor and GPU changes are put back.", checked = wdOn) {
+                com.winlator.cmod.perf.TempWatchdog.setWatchdogEnabled(it)
+            }
+            if (wdOn) Chips(listOf(
+                com.winlator.cmod.perf.TempWatchdog.ThresholdMode.CONSERVATIVE to "Cautious",
+                com.winlator.cmod.perf.TempWatchdog.ThresholdMode.BALANCED to "Balanced",
+                com.winlator.cmod.perf.TempWatchdog.ThresholdMode.AGGRESSIVE to "Late",
+            ), mode) { com.winlator.cmod.perf.TempWatchdog.setMode(it) }
+        }
+
+        TextButton(onClick = { perf.resetToDefaults(); rev++ }) { Text("Use the default settings for this game") }
+    }
+}
+
+@Composable
+private fun PerfStat(label: String, value: String) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 

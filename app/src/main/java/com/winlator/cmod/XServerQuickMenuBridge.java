@@ -237,6 +237,7 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
     }
 
     @Override public void setHudMode(int mode) { a.applyHudMode(mode); }
+    @Override public com.winlator.cmod.session.PerfSession performance() { return a.perf; }
 
     @Override public boolean hudElement(int index) { return a.modernHud == null || a.modernHud.isElementOn(index); }
     @Override public void setHudElement(int index, boolean on) { if (a.modernHud != null) a.modernHud.toggleElement(index, on); }

@@ -201,6 +201,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     SharedPreferences preferences;
     private OnExtractFileListener onExtractFileListener;
     WinHandler winHandler;
+    /** Performance controls of this game (session/PerfSession). */
+    com.winlator.cmod.session.PerfSession perf;
     TaskManagerSidebar taskManagerSidebar;
     private WineRequestHandler wineRequestHandler;
     float globalCursorSpeed = 1.0f;
@@ -433,6 +435,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         final com.winlator.cmod.session.LaunchConfig lc = launchConfig;
 
         cpuAffinity = com.winlator.cmod.session.CpuAffinity.of(lc, container);
+        // Performance controls (quick menu › Performance): big cores go into the affinity now,
+        // the rest applies once the game starts; all of it is put back at exit.
+        perf = new com.winlator.cmod.session.PerfSession(this, container, shortcut, () -> cpuAffinity, () -> winHandler);
+        perf.prepareLaunch();
 
         String wmClass = lc.getWmClass();
         Log.d("XServerDisplayActivity", "Startup wmClass: " + wmClass);
@@ -799,6 +805,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     protected void onDestroy() {
         com.winlator.cmod.core.RendererDriverGuard.disarm(this);
         com.winlator.cmod.core.HudSensorFeed.INSTANCE.stop();
+        if (perf != null) perf.stop();
         if (waylandSession != null) { waylandSession.stop(); waylandSession = null; }
         if (taskManagerSidebar != null) taskManagerSidebar.stop();
         super.onDestroy();
@@ -966,6 +973,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         new File(imageFs.getRootDir(), "dev/input").mkdirs();
 
         environment.startEnvironmentComponents();
+        if (perf != null) perf.start();
 
         winHandler.start();
 

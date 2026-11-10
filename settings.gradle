@@ -16,6 +16,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // topjohnwu libsu (root shell of the performance controls, ported from Bannerlator) is jitpack-only.
+        maven { url 'https://jitpack.io' }
     }
 }
 

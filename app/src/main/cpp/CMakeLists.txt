@@ -44,6 +44,7 @@ add_library(winlator SHARED
         winlator/xconnector_epoll.c
         winlator/alsa_client.c
         winlator/vulkan.c
+        winlator/perf_turbo.c
 
         winlator/renderer/EGL/egl.cpp
         winlator/renderer/EGL/renderer_jni.cpp
