@@ -29,6 +29,7 @@ public final class MangoHud {
 
     /** At launch: the variables that load the layer with our config (read by the guest launcher). */
     public static void prepareLaunch(EnvVars envVars, File imageFsRoot, boolean log) {
+        sensorRows = com.winlator.cmod.core.HudSensorFeed.INSTANCE.getRunning();
         write(imageFsRoot, true, log);
         envVars.put("YURN_MANGOHUD_CONFIGFILE", configFile(imageFsRoot).getPath());
         // MangoHud's own messages (errors, what it cannot read here) go to the session log.
@@ -37,6 +38,9 @@ public final class MangoHud {
 
     /** During the session: show or hide (MangoHud reloads its config file when it changes). */
     public static void setVisible(File imageFsRoot, boolean visible, boolean log) { write(imageFsRoot, visible, log); }
+
+    /** Precise sensors on (root / ADB): CPU and GPU rows read from the feed's files. */
+    private static volatile boolean sensorRows;
 
     private static void write(File root, boolean visible, boolean log) {
         File f = configFile(root);
@@ -56,8 +60,15 @@ public final class MangoHud {
              .append("fps_metrics=0.01,0.001\n")
              .append("frametime\n")
              .append("frame_timing=1\n")
-             .append("ram\n")
-             .append("fps_sampling_period=1000\n")
+             .append("ram\n");
+            if (sensorRows) {
+                // MangoHud can't open these files here: our privileged reader writes them once a
+                // second and MangoHud prints them (exec runs in its one long-lived sh).
+                File dir = com.winlator.cmod.core.HudSensorFeed.INSTANCE.mirrorDir(root);
+                c.append("custom_text=CPU\nexec=cat ").append(new File(dir, "cpu").getPath()).append('\n')
+                 .append("custom_text=GPU\nexec=cat ").append(new File(dir, "gpu").getPath()).append('\n');
+            }
+            c.append("fps_sampling_period=1000\n")
              .append("position=top-left\n")
              .append("offset_x=16\noffset_y=16\n")
              .append("width=240\n")

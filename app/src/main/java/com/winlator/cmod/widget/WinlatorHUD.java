@@ -499,7 +499,8 @@ public class WinlatorHUD extends View {
     }
 
     private void readGpu() {
-        int rootValue = readGpuRoot();
+        com.winlator.cmod.core.HudSensorSample precise = com.winlator.cmod.core.HudSensorFeed.INSTANCE.getLatest();
+        int rootValue = precise != null && precise.getGpuLoad() >= 0 ? precise.getGpuLoad() : readGpuRoot();
         if (rootValue >= 0) {
             if (rootValue != snapGpu) {
                 snapGpu = rootValue;
@@ -618,8 +619,11 @@ public class WinlatorHUD extends View {
     }
 
     private void readCpu() {
-        int usage = CPUStatus.getCpuUsagePercent();
-        int temp = CPUStatus.getCpuTempC();
+        // Precise sensors (root / ADB) read the real /proc/stat and thermal zones; without them
+        // load is estimated from clocks.
+        com.winlator.cmod.core.HudSensorSample precise = com.winlator.cmod.core.HudSensorFeed.INSTANCE.getLatest();
+        int usage = precise != null && precise.getCpuLoad() >= 0 ? precise.getCpuLoad() : CPUStatus.getCpuUsagePercent();
+        int temp = precise != null && precise.getCpuTemp() > 0 ? precise.getCpuTemp() : CPUStatus.getCpuTempC();
         if (usage == snapCpu && temp == snapCpuTemp) return;
 
         snapCpu = usage;

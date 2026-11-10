@@ -798,6 +798,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         com.winlator.cmod.core.RendererDriverGuard.disarm(this);
+        com.winlator.cmod.core.HudSensorFeed.INSTANCE.stop();
         if (waylandSession != null) { waylandSession.stop(); waylandSession = null; }
         if (taskManagerSidebar != null) taskManagerSidebar.stop();
         super.onDestroy();
@@ -926,6 +927,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.cmod.session.OpenGLEnv.apply(envVars, graphicsDriver, container, shortcut);
             com.winlator.cmod.session.LaunchEnv.defaults(envVars, container, shortcut, cpuAffinity.wineCpuTopology());
             // MangoHud as the HUD: loaded with the game (it can't be added to a running one).
+            // Precise sensors (root / ADB, Settings): CPU / GPU load, clocks and temperatures for both HUDs.
+            com.winlator.cmod.core.HudSensorFeed.INSTANCE.start(this, imageFs.getRootDir());
             mangoHudLaunched = savedHudMode() == com.winlator.cmod.session.MangoHud.HUD_MODE;
             if (mangoHudLaunched) com.winlator.cmod.session.MangoHud.prepareLaunch(envVars, imageFs.getRootDir(),
                     preferences.getBoolean("mangohud_log", false));

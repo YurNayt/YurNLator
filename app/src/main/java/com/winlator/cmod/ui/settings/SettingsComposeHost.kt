@@ -237,6 +237,9 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
                 }
             }
 
+            item("hud-title") { SectionTitle("PERFORMANCE HUD") }
+            item("hud-sensors") { HudSensorsCard() }
+
             item("framegen-title") { SectionTitle("FRAME GENERATION") }
             item("framegen") { FrameGenPreferenceCard() }
 
