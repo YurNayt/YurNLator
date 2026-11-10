@@ -127,7 +127,12 @@ interface QuickMenuBridge {
     fun bringToFront(name: String)
     fun endProcess(name: String)
     fun processAffinity(pid: Int)
+    /** Cores of a process as a bit mask (what the row shows); 0 = unknown. */
+    fun processCores(pid: Int): Int = 0
+    fun setProcessCores(pid: Int, mask: Int) {}
+    fun cpuCount(): Int = Runtime.getRuntime().availableProcessors()
     fun newTask()
+    fun runTask(command: String) {}
     fun logsAvailable(): Boolean
     fun showLogs()
 

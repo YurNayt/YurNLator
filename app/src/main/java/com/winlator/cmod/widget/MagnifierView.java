@@ -26,7 +26,7 @@ public class MagnifierView extends FrameLayout {
     private short lastY = 0;
     private Callback<Float> zoomButtonCallback;
     private Runnable hideButtonCallback;
-    private TextView textView;
+    private androidx.compose.runtime.MutableFloatState zoom;
 
     public MagnifierView(Context context) {
         this(context, null);
@@ -45,54 +45,25 @@ public class MagnifierView extends FrameLayout {
 
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
         setLayoutParams(new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        View contentView = LayoutInflater.from(context).inflate(R.layout.magnifier_view, this, false);
-
-        final PointF startPoint = new PointF();
-        final boolean[] isActionDown = {false};
-        contentView.findViewById(R.id.BTMove).setOnTouchListener((v, event) -> {
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    startPoint.x = event.getX();
-                    startPoint.y = event.getY();
-                    isActionDown[0] = true;
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    if (isActionDown[0]) {
-                        float newX = getX() + (event.getX() - startPoint.x);
-                        float newY = getY() + (event.getY() - startPoint.y);
-                        movePanel(newX, newY);
-                    }
-                    break;
-                case MotionEvent.ACTION_UP:
-                    if (isActionDown[0] && lastX > 0 && lastY > 0) {
-                        preferences.edit().putString("magnifier_view", lastX+"|"+lastY).apply();
-                    }
-                    lastX = 0;
-                    lastY = 0;
-                    isActionDown[0] = false;
-                    break;
+        // The bar in the quick menu's style (ui/ingame/MagnifierPanel); it used to be the old
+        // vertical dialog-style panel.
+        zoom = com.winlator.cmod.ui.ingame.MagnifierPanel.zoomState(1f);
+        View contentView = com.winlator.cmod.ui.ingame.MagnifierPanel.create(context, zoom,
+                new com.winlator.cmod.ui.ingame.MagnifierPanel.Actions() {
+            @Override public void zoom(float step) { if (zoomButtonCallback != null) zoomButtonCallback.call(step); }
+            @Override public void close() { if (hideButtonCallback != null) hideButtonCallback.run(); }
+            @Override public void drag(float dx, float dy) { movePanel(getX() + dx, getY() + dy); }
+            @Override public void dragEnd() {
+                if (lastX > 0 && lastY > 0) preferences.edit().putString("magnifier_view", lastX + "|" + lastY).apply();
+                lastX = 0;
+                lastY = 0;
             }
-            return true;
         });
-
-        contentView.findViewById(R.id.BTZoomPlus).setOnClickListener((v) -> {
-            if (zoomButtonCallback != null) zoomButtonCallback.call(0.25f);
-        });
-
-        contentView.findViewById(R.id.BTZoomMinus).setOnClickListener((v) -> {
-            if (zoomButtonCallback != null) zoomButtonCallback.call(-0.25f);
-        });
-
-        contentView.findViewById(R.id.BTHide).setOnClickListener((v) -> {
-            if (hideButtonCallback != null) hideButtonCallback.run();
-        });
-
-        textView = contentView.findViewById(R.id.TextView);
         addView(contentView);
     }
 
     public void setZoomValue(float value) {
-        textView.setText((int)(value * 100)+"%");
+        zoom.setFloatValue(value);
     }
 
     @Override

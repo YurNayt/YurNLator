@@ -45,6 +45,8 @@ import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -574,6 +576,8 @@ private fun TasksSection(bridge: QuickMenuBridge, opened: Int) {
     val info = remember(opened) { bridge.sessionInfo() }
     var tasks by remember { mutableStateOf(QmTasks(0, "…", emptyList())) }
     var ending by remember { mutableStateOf<QmProcess?>(null) }
+    var cores by remember { mutableStateOf<QmProcess?>(null) }
+    var newTask by remember { mutableStateOf(false) }
     DisposableEffect(opened) {
         bridge.startTasks { tasks = it }
         onDispose { bridge.stopTasks() }
@@ -595,13 +599,15 @@ private fun TasksSection(bridge: QuickMenuBridge, opened: Int) {
         Card {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Processes: ${tasks.processes.size}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                TextButton(onClick = { bridge.newTask() }) { Text("+ New task") }
+                TextButton(onClick = { newTask = true }) { Text("+ New task") }
             }
             if (tasks.processes.isEmpty()) Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            tasks.processes.forEach { p -> ProcessRow(p, bridge) { ending = p } }
+            tasks.processes.forEach { p -> ProcessRow(p, bridge, onCores = { cores = p }) { ending = p } }
         }
         if (bridge.logsAvailable()) Card { TextButton(onClick = { bridge.showLogs(); bridge.close() }) { Text("Show logs") } }
     }
+    cores?.let { p -> CoresDialog(p, bridge) { cores = null } }
+    if (newTask) NewTaskDialog(bridge) { newTask = false }
     ending?.let { p ->
         AlertDialog(
             onDismissRequest = { ending = null },
@@ -622,7 +628,7 @@ private fun Metric(label: String, value: String) {
 }
 
 @Composable
-private fun ProcessRow(p: QmProcess, bridge: QuickMenuBridge, onEnd: () -> Unit) {
+private fun ProcessRow(p: QmProcess, bridge: QuickMenuBridge, onCores: () -> Unit, onEnd: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
@@ -633,7 +639,7 @@ private fun ProcessRow(p: QmProcess, bridge: QuickMenuBridge, onEnd: () -> Unit)
             IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "Actions") }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Bring to front") }, onClick = { menu = false; bridge.bringToFront(p.name); bridge.close() })
-                DropdownMenuItem(text = { Text("Processor affinity") }, onClick = { menu = false; bridge.processAffinity(p.pid) })
+                DropdownMenuItem(text = { Text("Processor affinity") }, onClick = { menu = false; onCores() })
                 DropdownMenuItem(text = { Text("End process") }, onClick = { menu = false; onEnd() })
             }
         }
@@ -731,4 +737,61 @@ private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
             onChange = { f -> fg = fg.copy(flowScale = 0.2f + f * 0.8f) },
             onCommit = { bridge.setFrameGen(fg) })
     }
+}
+
+
+/** The cores a process may run on, as toggles (the old dialog-style picker, restyled). */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun CoresDialog(p: QmProcess, bridge: QuickMenuBridge, onDone: () -> Unit) {
+    val n = remember { bridge.cpuCount().coerceIn(1, 31) }
+    val all = (1 shl n) - 1
+    var mask by remember { mutableIntStateOf(bridge.processCores(p.pid).let { if (it == 0) all else it and all }) }
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text(p.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Cores this process may run on", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (i in 0 until n) {
+                        val on = mask and (1 shl i) != 0
+                        FilterChip(selected = on, onClick = {
+                            val m = mask xor (1 shl i)
+                            if (m != 0) mask = m
+                        }, label = { Text("CPU $i") })
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { mask = all }) { Text("All") }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { bridge.setProcessCores(p.pid, mask); onDone() }) { Text("Apply") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } }
+    )
+}
+
+/** Runs a program in the session (taskmgr.exe, cmd.exe, regedit.exe, a game's other .exe). */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun NewTaskDialog(bridge: QuickMenuBridge, onDone: () -> Unit) {
+    var command by remember { mutableStateOf("taskmgr.exe") }
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text("New task") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(value = command, onValueChange = { command = it }, singleLine = true,
+                    label = { Text("Program") }, modifier = Modifier.fillMaxWidth())
+                androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("taskmgr.exe", "cmd.exe", "regedit.exe", "winecfg.exe").forEach { c ->
+                        SuggestionChip(onClick = { command = c }, label = { Text(c.removeSuffix(".exe")) })
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(enabled = command.isNotBlank(), onClick = { bridge.runTask(command.trim()); onDone() }) { Text("Run") } },
+        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } }
+    )
 }

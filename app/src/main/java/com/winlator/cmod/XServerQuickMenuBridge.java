@@ -690,6 +690,18 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
         dialog.show();
     }
 
+    @Override public int processCores(int pid) {
+        for (ProcessInfo p : processes) if (p.pid == pid) return a.cpuAffinity.shownMask(pid, p.affinityMask);
+        return 0;
+    }
+
+    @Override public void setProcessCores(int pid, int mask) {
+        a.cpuAffinity.setUserMask(pid, mask, a.winHandler);
+        publishTasks();
+    }
+
+    @Override public void runTask(String command) { if (a.winHandler != null) a.winHandler.exec(command); }
+
     @Override public void newTask() {
         if (a.winHandler == null) return;
         ContentDialog.prompt(a, R.string.new_task, "taskmgr.exe", (command) -> a.winHandler.exec(command));
