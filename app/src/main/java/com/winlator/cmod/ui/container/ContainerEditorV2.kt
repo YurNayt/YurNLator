@@ -829,9 +829,11 @@ private fun ContainerCategoryV2(
                     }
                 }
                 SettingsDivider()
-                val hudEntries = listOf("Off", "Classic", "Modern")
-                SettingChoice("YurNLator HUD", hudEntries.getOrElse(s.hudMode) { "Off" }, hudEntries) {
-                    s.hudMode = hudEntries.indexOf(it).coerceAtLeast(0)
+                // 0 off, 2 YurNLator HUD, 3 MangoHud (the classic HUD, 1, opens the YurNLator one).
+                val hudEntries = listOf("Off", "YurNLator", "MangoHud")
+                val hudLabel = when (s.hudMode) { 0 -> "Off"; 3 -> "MangoHud"; else -> "YurNLator" }
+                SettingChoice("Performance HUD", hudLabel, hudEntries) {
+                    s.hudMode = when (it) { "MangoHud" -> 3; "YurNLator" -> 2; else -> 0 }
                 }
             }
             SettingsCard {

@@ -227,15 +227,20 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
     }
 
     // ---- HUD ----
-    @Override public int hudMode() {
-        if (a.container == null) return 0;
-        String extra = a.container.getExtra("hudMode");
-        if (!extra.isEmpty()) return parseInt(extra, 0);
-        return a.container.isShowFPS() ? 1 : 0;
+    @Override public int hudMode() { return a.savedHudMode(); }
+
+    @Override public boolean mangoHudRunning() { return a.mangoHudLaunched; }
+    @Override public boolean mangoHudLog() { return a.preferences.getBoolean("mangohud_log", false); }
+    @Override public void setMangoHudLog(boolean on) {
+        a.preferences.edit().putBoolean("mangohud_log", on).apply();
+        if (a.mangoHudLaunched) com.winlator.cmod.session.MangoHud.setVisible(a.imageFs.getRootDir(), a.savedHudMode() == 3, on);
     }
 
     @Override public void setHudMode(int mode) {
-        if (mode == 0) {
+        // MangoHud (3) draws inside the game: hide ours; any other choice hides MangoHud.
+        if (a.mangoHudLaunched) com.winlator.cmod.session.MangoHud.setVisible(a.imageFs.getRootDir(), mode == 3,
+                a.preferences.getBoolean("mangohud_log", false));
+        if (mode == 0 || mode == 3) {
             if (a.classicHud != null) a.classicHud.disableByUser();
             if (a.modernHud != null) a.modernHud.disableByUser();
         } else {

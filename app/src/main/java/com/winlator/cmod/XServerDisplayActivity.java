@@ -172,7 +172,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     protected Container container;
     XServer xServer;
     InputControlsManager inputControlsManager;
-    private ImageFs imageFs;
+    ImageFs imageFs;
     FrameRating classicHud = null;
     WinlatorHUD modernHud = null;
     Runnable editInputControlsCallback;
@@ -925,6 +925,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.cmod.session.LaunchEnv.user(envVars, container, shortcut);
             com.winlator.cmod.session.OpenGLEnv.apply(envVars, graphicsDriver, container, shortcut);
             com.winlator.cmod.session.LaunchEnv.defaults(envVars, container, shortcut, cpuAffinity.wineCpuTopology());
+            // MangoHud as the HUD: loaded with the game (it can't be added to a running one).
+            mangoHudLaunched = savedHudMode() == com.winlator.cmod.session.MangoHud.HUD_MODE;
+            if (mangoHudLaunched) com.winlator.cmod.session.MangoHud.prepareLaunch(envVars, imageFs.getRootDir(),
+                    preferences.getBoolean("mangohud_log", false));
 
             ArrayList<String> bindingPaths = new ArrayList<>();
             for (String[] drive : container.drivesIterator()) {
@@ -1075,10 +1079,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         if (container != null) {
-            String hudModeExtra = container.getExtra("hudMode");
-            int hudMode = !hudModeExtra.isEmpty()
-                    ? Integer.parseInt(hudModeExtra)
-                    : (container.isShowFPS() ? 1 : 0);
+            // Saved style (the game's, else the container's); the classic HUD (1) opens ours.
+            int hudMode = savedHudMode();
 
             if (hudMode == 1) {
 
@@ -1231,8 +1233,27 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
+    /** Started with MangoHud's layer (session/MangoHud). */
+    boolean mangoHudLaunched = false;
+
+    int savedHudMode() {
+        if (container == null) return 0;
+        String extra = shortcut != null ? shortcut.getExtra("hudMode", "") : "";
+        if (extra.isEmpty()) extra = container.getExtra("hudMode");
+        int m = extra.isEmpty() ? (container.isShowFPS() ? 2 : 0) : parseIntSafe(extra);
+        return m == 1 ? 2 : m;
+    }
+
+    private static int parseIntSafe(String s) { try { return Integer.parseInt(s.trim()); } catch (Exception e) { return 0; } }
+
     void saveHudModeToContainer(int mode) {
         if (container == null) return;
+        // The game's own HUD setting wins at launch: change it there when it has one.
+        if (shortcut != null && !shortcut.getExtra("hudMode", "").isEmpty()) {
+            shortcut.putExtra("hudMode", String.valueOf(mode));
+            shortcut.saveData();
+            return;
+        }
         container.putExtra("hudMode", String.valueOf(mode));
         container.setShowFPS(mode != 0);
         container.saveData();

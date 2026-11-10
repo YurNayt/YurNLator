@@ -529,6 +529,13 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if (this.envVars != null) {
             execEnvVars.putAll(this.envVars);
         }
+        // MangoHud chosen as the HUD (session/MangoHud): its Vulkan layer with our config file.
+        String mango = execEnvVars.get("YURN_MANGOHUD_CONFIGFILE");
+        if (mango != null && !mango.isEmpty()) {
+            execEnvVars.put("MANGOHUD", "1");
+            execEnvVars.put("MANGOHUD_CONFIGFILE", mango);
+            execEnvVars.remove("YURN_MANGOHUD_CONFIGFILE");
+        }
 
         boolean useDisplayX = shortcut != null
                 ? shortcut.getUseDisplayX()

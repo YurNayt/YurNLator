@@ -47,8 +47,13 @@ data class QmTasks(val cpuPercent: Int, val memory: String, val processes: List<
 interface QuickMenuBridge {
     // HUD
     /** 0 off, 1 classic, 2 modern. */
+    /** 0 off, 2 YurNLator HUD, 3 MangoHud (the classic HUD, 1, is gone). */
     fun hudMode(): Int
     fun setHudMode(mode: Int)
+    /** This session started with MangoHud's layer (switching to it otherwise takes a restart). */
+    fun mangoHudRunning(): Boolean
+    fun mangoHudLog(): Boolean
+    fun setMangoHudLog(on: Boolean)
     /** Modern HUD element: 0 FPS, 2 GPU, 3 CPU, 7 RAM, 4 battery / temperature, 6 renderer. */
     fun hudElement(index: Int): Boolean
     fun setHudElement(index: Int, on: Boolean)

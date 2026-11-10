@@ -368,7 +368,19 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
             }
             if (mode != 0) {
                 Label("Style")
-                Chips(listOf(2 to "Modern", 1 to "Classic"), mode) { mode = it; bridge.setHudMode(it) }
+                Chips(listOf(2 to "YurNLator", 3 to "MangoHud"), mode) { mode = it; bridge.setHudMode(it) }
+            }
+        }
+        if (mode == 3) {
+            val running = remember(opened) { bridge.mangoHudRunning() }
+            var log by remember(opened) { mutableStateOf(bridge.mangoHudLog()) }
+            Card {
+                Text(if (running) "MangoHud is drawn inside the game: FPS, frame time graph, 1% / 0.1% lows, CPU, GPU, RAM, VRAM, battery."
+                     else "MangoHud loads with the game: restart the game to see it.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SwitchRow("Write a log", "MangoHud CSV in Download/YurNLator/MangoHud, from the next start", checked = log) {
+                    log = it; bridge.setMangoHudLog(it)
+                }
             }
         }
         Card {
