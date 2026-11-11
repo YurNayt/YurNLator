@@ -78,6 +78,20 @@ object PerfRevertRegistry {
     }
 
     /**
+     * Write [value] to a node whose read-back isn't a value it accepts (MediaTek's /proc/gpufreq
+     * nodes print a status text): [restoreValue] is what puts it back. Recorded and persisted like
+     * any captured original, so exit / crash recovery restores it too.
+     */
+    @Synchronized
+    fun applyWriteRestoring(path: String, value: String, restoreValue: String): Boolean {
+        if (!originals.containsKey(path)) {
+            originals[path] = restoreValue
+            persist()
+        }
+        return RootManager.writeNode(path, value)
+    }
+
+    /**
      * Lazily record [path]'s current value if we haven't already this session. Reads through the root
      * shell; a node we can't read is simply not captured (and therefore never written on revert).
      * Persisting + marking dirty happens here — i.e. "the moment the first write happens", since this

@@ -135,17 +135,48 @@ object PerfRootApplier {
         try {
             val g = PerfNodeResolver.gpu()
             val touched = listOfNotNull(g.minClock, g.forceClkOn)
+            val mtk = mediatekGpuFreqNodes()
             if (on) {
                 g.maxClock?.let { maxNode ->
                     val maxVal = RootManager.readNode(maxNode)
                     if (maxVal != null && g.minClock != null) PerfRevertRegistry.applyWrite(g.minClock, maxVal)
                 }
                 g.forceClkOn?.let { PerfRevertRegistry.applyWrite(it, "1") }
+                applyMediatekGpuMax(mtk)
             } else {
-                PerfRevertRegistry.revertNodes(touched)
+                PerfRevertRegistry.revertNodes(touched + mtk)
             }
         } catch (t: Throwable) {
             Log.w(TAG, "apply $KEY_GPU_CLOCK_LOCK failed", t)
+        }
+    }
+
+    // ── MediaTek (Mali): the GPU frequency driver's own fixed-frequency knobs ────────────────────────
+    // On MediaTek the Mali clock is run by gpufreq / GED, and its devfreq node (when there is one)
+    // often doesn't hold the clock. gpufreq v2 (Dimensity 9000 and newer): fix_target_opp_index,
+    // OPP 0 = the top frequency, -1 = back to DVFS. v1 (older Dimensity / Helio): gpufreq_opp_freq
+    // takes a frequency (kHz) from the OPP table, 0 = back to DVFS. Root only, reverted at exit.
+    private const val MTK_FIX_OPP_V2 = "/proc/gpufreqv2/fix_target_opp_index"
+    private const val MTK_OPP_FREQ_V1 = "/proc/gpufreq/gpufreq_opp_freq"
+    private const val MTK_OPP_DUMP_V1 = "/proc/gpufreq/gpufreq_opp_dump"
+
+    private fun mediatekGpuFreqNodes(): List<String> =
+        listOf(MTK_FIX_OPP_V2, MTK_OPP_FREQ_V1).filter { RootManager.readNode(it) != null }
+
+    private fun applyMediatekGpuMax(nodes: List<String>) {
+        if (MTK_FIX_OPP_V2 in nodes) {
+            val ok = PerfRevertRegistry.applyWriteRestoring(MTK_FIX_OPP_V2, "0", "-1")
+            Log.i(TAG, "MediaTek gpufreq v2: top OPP fixed ($ok)")
+            return
+        }
+        if (MTK_OPP_FREQ_V1 in nodes) {
+            // "[00] freq = 886000, volt = …": the first OPP is the highest.
+            val top = RootManager.readNode(MTK_OPP_DUMP_V1)
+                ?.let { Regex("freq\\s*=\\s*(\\d+)").find(it)?.groupValues?.get(1) }
+            if (top != null) {
+                val ok = PerfRevertRegistry.applyWriteRestoring(MTK_OPP_FREQ_V1, top, "0")
+                Log.i(TAG, "MediaTek gpufreq v1: fixed at $top kHz ($ok)")
+            }
         }
     }
 
