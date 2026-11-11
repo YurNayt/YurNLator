@@ -2,6 +2,8 @@
 
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.components.GlossaryButton
 import com.winlator.cmod.session.MediaDecoder
 import com.winlator.cmod.ui.settings.CodecsCard
@@ -410,7 +412,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         scope.launch {
             val installed = installRuntimeComponent(context, type, version)
             installing = installing - key
-            if (installed == null) Toast.makeText(context, "Unable to install $version", Toast.LENGTH_SHORT).show()
+            if (installed == null) Toast.makeText(context, uiStr(R.string.l_ed_unable_to_install_1_s, version), Toast.LENGTH_SHORT).show()
             else {
                 done(installed)
                 revision++
@@ -425,7 +427,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         scope.launch {
             val installedId = installWineRuntimeComponent(context, option)
             installing = installing - key
-            if (installedId == null) Toast.makeText(context, "Unable to install ${option.label}", Toast.LENGTH_LONG).show()
+            if (installedId == null) Toast.makeText(context, uiStr(R.string.l_ed_unable_to_install_1_s, option.label), Toast.LENGTH_LONG).show()
             else {
                 state.runtime = installedId
                 contents.syncContents()
@@ -441,7 +443,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         scope.launch {
             val installed = installAdrenoDriver(context, option)
             installing = installing - key
-            if (installed == null) Toast.makeText(context, "Unable to install ${option.label}", Toast.LENGTH_SHORT).show()
+            if (installed == null) Toast.makeText(context, uiStr(R.string.l_ed_unable_to_install_1_s, option.label), Toast.LENGTH_SHORT).show()
             else {
                 state.driverVersion = installed
                 state.graphics("version", installed)
@@ -522,7 +524,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         if (creating || state.runtime.isBlank()) return
         val wineInfo = WineInfo.fromIdentifier(context, contents, state.runtime)
         if (wineInfo.path.isNullOrBlank()) {
-            Toast.makeText(context, "Selected Wine/Proton is not installed.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, uiStr(R.string.l_ed_selected_wine_proton_is_not_installed), Toast.LENGTH_LONG).show()
             return
         }
         creating = true
@@ -582,7 +584,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
             }
             manager.createContainerAsync(data, contents) { created ->
                 creating = false
-                if (created == null) Toast.makeText(context, "Unable to create container.", Toast.LENGTH_LONG).show()
+                if (created == null) Toast.makeText(context, uiStr(R.string.l_ed_unable_to_create_container), Toast.LENGTH_LONG).show()
                 else {
                     applyMouseWarp(created)
                     onCreated()
@@ -590,7 +592,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
             }
         } catch (_: Exception) {
             creating = false
-            Toast.makeText(context, "Unable to create container.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, uiStr(R.string.l_ed_unable_to_create_container), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -612,14 +614,10 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         }.getOrDefault(false)
         AlertDialog(
             onDismissRequest = { },
-            title = { Text("Switch to ${labelOf(target)}?") },
+            title = { Text(uiStr(R.string.l_ed_switch_to_1_s, labelOf(target))) },
             text = {
                 Text(
-                    "Games, saves, settings and the registry stay. Wine's own system files in this container are " +
-                        "replaced with ${labelOf(target)}'s (the registry is backed up first). The first start afterwards " +
-                        "takes longer: Wine updates the container to the new version." +
-                        if (familyChange) "\n\nThis also changes ARM64EC ↔ x86-64: the emulator is switched to match, " +
-                            "and some installed programs may need reinstalling." else ""
+                    uiStr(R.string.l_ed_games_saves_settings_and_the_registry, labelOf(target)) + if (familyChange) uiStr(R.string.l_ed_switch_family_change) else ""
                 )
             },
             confirmButton = {
@@ -634,18 +632,18 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                                 state.emulator = if (toArm) "FEXCore" else "Box64"
                                 state.boxVersion = if (toArm) DefaultVersion.WOWBOX64 else DefaultVersion.BOX64
                             }
-                            Toast.makeText(context, "Now using ${labelOf(target)}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, uiStr(R.string.l_ed_now_using_1_s, labelOf(target)), Toast.LENGTH_SHORT).show()
                         } else {
                             state.runtime = from
-                            Toast.makeText(context, "Couldn't switch: ${labelOf(target)} isn't installed correctly", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, uiStr(R.string.l_ed_couldn_t_switch_1_s_isn, labelOf(target)), Toast.LENGTH_LONG).show()
                         }
                         switchingRuntime = false
                         pendingRuntime = null
                     }
-                }) { Text(if (switchingRuntime) "Switching…" else "Switch") }
+                }) { Text(if (switchingRuntime) uiStr(R.string.l_ed_switching) else uiStr(R.string.l_ed_switch)) }
             },
             dismissButton = {
-                TextButton(enabled = !switchingRuntime, onClick = { state.runtime = from; pendingRuntime = null }) { Text("Cancel") }
+                TextButton(enabled = !switchingRuntime, onClick = { state.runtime = from; pendingRuntime = null }) { Text(uiStr(R.string.l_qm_cancel)) }
             }
         )
     }
@@ -654,7 +652,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(if (editing == null) "New container" else state.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(if (editing == null) uiStr(R.string.l_ed_new_container) else state.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null) } },
                 actions = { GlossaryButton() }
             )
@@ -668,7 +666,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp).height(50.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(if (creating) "Creating…" else "Create container", fontWeight = FontWeight.SemiBold)
+                        Text(if (creating) uiStr(R.string.l_ed_creating) else uiStr(R.string.l_ed_create_container), fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -692,7 +690,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                     ) {
                         item {
                             Text(
-                                "Container settings",
+                                uiStr(R.string.l_ed_container_settings),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(8.dp)
@@ -751,7 +749,7 @@ private fun ContainerNavItemV2(label: String, selected: Boolean, onClick: () -> 
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
     ) {
         Text(
-            label,
+            L10nDict.t(label),
             Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
         )
@@ -792,7 +790,7 @@ private fun ContainerCategoryV2(
                 s.desktopBackground = "Image"
                 s.wallpaperStamp = stamp
             }.onFailure {
-                Toast.makeText(context, "Unable to set wallpaper image.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, uiStr(R.string.l_ed_unable_to_set_wallpaper_image), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -872,18 +870,18 @@ private fun ContainerCategoryV2(
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(
-                                "Wallpaper image",
+                                uiStr(R.string.l_ed_wallpaper_image),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                if (s.wallpaperStamp > 0L) "Custom image" else "Default wallpaper",
+                                if (s.wallpaperStamp > 0L) uiStr(R.string.l_ed_custom_image) else uiStr(R.string.l_ed_default_wallpaper),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Medium
                             )
                         }
                         TextButton(onClick = { wallpaperPicker.launch("image/*") }) {
-                            Text(if (s.wallpaperStamp > 0L) "Change" else "Choose")
+                            Text(if (s.wallpaperStamp > 0L) uiStr(R.string.l_qm_change) else uiStr(R.string.l_ed_choose))
                         }
                     }
                 }
@@ -917,7 +915,7 @@ private fun ContainerCategoryV2(
                 SettingMappedChoice("Display backend", s.displayBackend,
                     linkedMapOf("x11" to "X11", "wayland" to "Wayland (experimental)")) { s.displayBackend = it }
                 if (s.displayBackend == "wayland") Text(
-                    "Needs a Bannerlator Proton layer with the Wayland driver (Proton-11.0-2-arm64ec (v16), GE-Proton-11 (v16), DroidDeck-Proton-11 (v16)…) and a Mesa driver in Driver Version: Turnip on Adreno, PanVK on Mali (System on Mali is experimental). Otherwise the game starts on X11.",
+                    uiStr(R.string.l_ed_needs_a_bannerlator_proton_layer_with),
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
                 SettingsDivider()
@@ -1026,7 +1024,7 @@ private fun ContainerCategoryV2(
                     SettingsDivider()
                     val forcedLegacy = com.winlator.cmod.core.MaliCompat.forcesLegacyBcn(context, readConfig(s.graphicsConfig, "wrapper", ';'))
                     SettingChoice("BCn layer (Winlator Mali)", if (forcedLegacy) "legacy" else s.bcnVersion, listOf("current", "legacy")) { s.bcnVersion = it; s.graphics("bcnVersion", it) }
-                    if (forcedLegacy) Text("Legacy is used with this wrapper in the benchmark-named build (current fails to start there)",
+                    if (forcedLegacy) Text(uiStr(R.string.l_ed_legacy_is_used_with_this_wrapper),
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
                     if (forcedLegacy || s.bcnVersion == "legacy") {
@@ -1074,7 +1072,7 @@ private fun ContainerCategoryV2(
                         s.vkd3dLevel = it; s.wrapperValue("vkd3dLevel", it)
                     }
                     if (s.vkd3dLevel == "12_2") androidx.compose.material3.Text(
-                        "12_2 needs GPU features Turnip and PanVK lack (mesh shaders, newer shader models): DX12 games then crash at start. Use 12_1 or 12_0.",
+                        uiStr(R.string.l_ed_12_2_needs_gpu_features_turnip),
                         modifier = androidx.compose.ui.Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         color = androidx.compose.material3.MaterialTheme.colorScheme.error)
@@ -1191,7 +1189,7 @@ private fun ContainerCategoryV2(
                     androidx.compose.material3.TextButton(
                         onClick = { com.winlator.cmod.ui.components.WindowsComponentsDialog.show(ctx, editing) },
                         modifier = Modifier.fillMaxWidth().padding(4.dp)
-                    ) { Text("Download Windows components (Visual C++, .NET, DirectX, PhysX…)") }
+                    ) { Text(uiStr(R.string.l_ed_download_windows_components_visual_c_net)) }
                 }
             }
         }
@@ -1217,8 +1215,8 @@ private fun ContainerVulkanExtensionsV2(
     var open by remember { mutableStateOf(false) }
     Surface(onClick = { open = true }, color = Color.Transparent, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp)) {
-            Text("Vulkan Extensions", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("$enabledCount of ${extensions.size} enabled", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+            Text(uiStr(R.string.l_ed_vulkan_extensions), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(uiStr(R.string.l_ed_1_d_of_2_d_enabled, enabledCount, extensions.size), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
         }
     }
     if (open) {
@@ -1230,10 +1228,10 @@ private fun ContainerVulkanExtensionsV2(
             confirmButton = {
                 TextButton(onClick = {
                     onChanged(extensions.filterNot { it in selected }.joinToString(",")); open = false
-                }) { Text("Done") }
+                }) { Text(uiStr(R.string.l_ed_done)) }
             },
-            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
-            title = { Text("Vulkan Extensions") },
+            dismissButton = { TextButton(onClick = { open = false }) { Text(uiStr(R.string.l_qm_cancel)) } },
+            title = { Text(uiStr(R.string.l_ed_vulkan_extensions)) },
             text = {
                 LazyColumn(Modifier.heightIn(max = 460.dp)) {
                     items(extensions) { extension ->

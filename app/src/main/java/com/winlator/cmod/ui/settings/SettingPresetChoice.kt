@@ -1,5 +1,8 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.components.GlossaryHelpIcon
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
@@ -63,7 +66,7 @@ import java.util.Locale
 /** Name prefix of the per-container / per-game Custom presets. */
 private const val CUSTOM_PREFIX = "Custom · "
 
-private fun displayName(p: PresetInfo, slotName: String) = if (p.name == slotName) "Custom" else p.name
+private fun displayName(p: PresetInfo, slotName: String) = if (p.name == slotName) uiStr(R.string.l_qm_custom) else p.name
 
 /** Which emulator's presets: FEXCore, or Box64 (also used for WOWBox64). */
 enum class PresetKind(val prefix: String, val defaultId: String) {
@@ -163,7 +166,7 @@ fun SettingPresetChoice(
         Surface(onClick = { open = true }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(L10nDict.t(label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         current?.let { displayName(it, slotName) } ?: selectedId,
                         style = MaterialTheme.typography.titleMedium,
@@ -172,7 +175,7 @@ fun SettingPresetChoice(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        if (current?.custom == true) "Your preset · tap to edit" else "Tap to see and change its settings",
+                        if (current?.custom == true) uiStr(R.string.l_pre_your_preset_tap_to_edit) else uiStr(R.string.l_pre_tap_to_see_and_change_its),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -250,7 +253,7 @@ private fun PresetSheet(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             item(key = "title") {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
+                Text(L10nDict.t(title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
             }
             // Presets in a row: built-in first, then yours, then "+ New".
@@ -289,7 +292,7 @@ private fun PresetSheet(
                             Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Outlined.Add, null, Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("New", style = MaterialTheme.typography.labelLarge)
+                                Text(uiStr(R.string.l_pre_new), style = MaterialTheme.typography.labelLarge)
                             }
                         }
                     }
@@ -298,9 +301,9 @@ private fun PresetSheet(
             item(key = "hint") {
                 Text(
                     when {
-                        preset?.name == slotName -> "Custom for this ${if (slotName.contains("game-")) "game" else "container"}: changes are saved right away."
-                        preset?.custom == true -> "Your preset: changes are saved right away."
-                        else -> "Built-in preset. Change any setting and you switch to Custom with this preset's values plus your change."
+                        preset?.name == slotName -> uiStr(if (slotName.contains("game-")) R.string.l_pre_custom_for_this_game_changes_are else R.string.l_pre_custom_container)
+                        preset?.custom == true -> uiStr(R.string.l_pre_your_preset_changes_are_saved_right)
+                        else -> uiStr(R.string.l_pre_built_in_preset_change_any_setting)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
@@ -320,7 +323,7 @@ private fun PresetSheet(
                             singleLine = true,
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Outlined.DeleteOutline, "Delete preset") }
+                        IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Outlined.DeleteOutline, uiStr(R.string.l_pre_delete_preset)) }
                     }
                 }
             }
@@ -336,17 +339,17 @@ private fun PresetSheet(
     if (confirmDelete && preset != null) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete ${displayName(preset, slotName)}?") },
-            text = { Text("Containers and games using it switch to the default preset.") },
+            title = { Text(uiStr(R.string.l_pre_delete_1_s, displayName(preset, slotName))) },
+            text = { Text(uiStr(R.string.l_pre_containers_and_games_using_it_switch)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
                     store.remove(preset.id)
                     onSelected(store.kind.defaultId)
                     onChanged()
-                }) { Text("Delete") }
+                }) { Text(uiStr(R.string.l_set_delete)) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(uiStr(R.string.l_qm_cancel)) } }
         )
     }
 }
@@ -373,7 +376,7 @@ private fun VariableCard(v: PresetVar, value: String, onHelp: () -> Unit, onChan
                 )
                 if (!v.help.isNullOrBlank()) {
                     IconButton(onClick = onHelp, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Outlined.HelpOutline, "Help", Modifier.size(18.dp), tint = scheme.onSurfaceVariant)
+                        Icon(Icons.Outlined.HelpOutline, uiStr(R.string.l_pre_help), Modifier.size(18.dp), tint = scheme.onSurfaceVariant)
                     }
                 }
                 if (v.toggle) Switch(checked = value == "1", onCheckedChange = { onChange(if (it) "1" else "0") })

@@ -1,5 +1,8 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.components.GlossaryHelpIcon
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -67,10 +70,10 @@ internal fun SettingSyncChoice(env: String, note: String? = null, onChanged: (St
     Surface(onClick = { open = true }, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Sync", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(L10nDict.t("Sync"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(current, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 val hint = when {
-                    current == SyncMode.NTSYNC && !SyncMode.ntsyncSupported -> "This phone's kernel has no ntsync: Wine uses esync"
+                    current == SyncMode.NTSYNC && !SyncMode.ntsyncSupported -> uiStr(R.string.l_sync_this_phone_s_kernel_has_no)
                     else -> note
                 }
                 if (hint != null) Text(hint, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -81,16 +84,16 @@ internal fun SettingSyncChoice(env: String, note: String? = null, onChanged: (St
     }
     if (open) {
         val options = buildList {
-            add(ChoiceOption(SyncMode.ESYNC, "esync", "Fast, works on every phone (default)"))
+            add(ChoiceOption(SyncMode.ESYNC, "esync", uiStr(R.string.l_sync_fast_works_on_every_phone_default)))
             if (SyncMode.ntsyncSupported || current == SyncMode.NTSYNC) {
                 add(ChoiceOption(SyncMode.NTSYNC, "ntsync",
-                    if (SyncMode.ntsyncSupported) "Fastest, uses the kernel driver (Wine / Proton 10+)"
-                    else "Not supported by this phone's kernel"))
+                    if (SyncMode.ntsyncSupported) uiStr(R.string.l_sync_fastest_uses_the_kernel_driver_wine)
+                    else uiStr(R.string.l_sync_not_supported_by_this_phone_s)))
             }
-            add(ChoiceOption(SyncMode.WINESERVER, "wineserver", "Slowest, most compatible: try it if a game hangs"))
+            add(ChoiceOption(SyncMode.WINESERVER, "wineserver", uiStr(R.string.l_sync_slowest_most_compatible_try_it_if)))
         }
         ChoiceSheet(
-            title = "Sync",
+            title = L10nDict.t("Sync"),
             options = options,
             selected = current,
             onPick = { onChanged(SyncMode.apply(env, it.value)) },

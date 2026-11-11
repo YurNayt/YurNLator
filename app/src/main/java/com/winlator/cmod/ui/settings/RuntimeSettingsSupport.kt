@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.components.Glossary
 import com.winlator.cmod.ui.components.GlossaryHelpIcon
 import com.winlator.cmod.core.ProtonVersions
@@ -98,13 +100,13 @@ import com.winlator.cmod.core.DownloadTracker
 /** Mali profile: hide versions that only work on Adreno (see [MaliCompat]). */
 internal class MaliFilter(val active: Boolean, val showAll: Boolean) {
     val on get() = active && !showAll
-    /** "Show N Adreno-only versions" / "Hide Adreno-only versions"; null when nothing to toggle. */
+    /** "Show N Adreno-only versions" / uiStr(R.string.l_rt_hide_adreno_only_versions); null when nothing to toggle. */
     fun action(context: Context, hidden: Int): PickerAction? = when {
         !active -> null
         on && hidden > 0 -> PickerAction(Icons.Outlined.Visibility, MaliCompat.hiddenLabel(hidden),
-            "Hidden for your Mali GPU: they need Turnip / Adreno or newer Vulkan") { MaliCompat.setShowAll(context, true) }
-        showAll -> PickerAction(Icons.Outlined.VisibilityOff, "Hide Adreno-only versions",
-            "Show only versions that work on Mali") { MaliCompat.setShowAll(context, false) }
+            uiStr(R.string.l_rt_hidden_for_your_mali_gpu_they)) { MaliCompat.setShowAll(context, true) }
+        showAll -> PickerAction(Icons.Outlined.VisibilityOff, uiStr(R.string.l_rt_hide_adreno_only_versions),
+            uiStr(R.string.l_rt_show_only_versions_that_work_on)) { MaliCompat.setShowAll(context, false) }
         else -> null
     }
 }
@@ -468,13 +470,13 @@ internal fun normalizeResolution(value: String): String =
     value.replace(Regex("\\s*\\(.*\\)$"), "").trim()
 
 private fun settingDisplayLabel(value: String): String =
-    if (value == "Lanczos 2 (16-tap)") "Lanczos 2" else value
+    L10nDict.t(if (value == "Lanczos 2 (16-tap)") "Lanczos 2" else value)
 
-internal fun settingFieldLabel(label: String): String = when (label) {
+internal fun settingFieldLabel(label: String): String = L10nDict.t(when (label) {
     "Graphics Driver" -> "OpenGL Driver"
     "Driver Version" -> "Vulkan Driver"
     else -> label
-}
+})
 
 private fun settingChoiceEntries(label: String, entries: List<String>): List<String> =
     if (label == "Graphics Driver") listOf("Zink", "Freedreno") else entries
@@ -622,9 +624,9 @@ internal fun SettingWineRuntimeChoice(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(L10nDict.t(label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        selectedOption?.label ?: selectedId.ifBlank { "Choose a version" },
+                        selectedOption?.label ?: selectedId.ifBlank { uiStr(R.string.l_rt_choose_a_version) },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -632,7 +634,7 @@ internal fun SettingWineRuntimeChoice(
                     )
                     if (update != null) {
                         Text(
-                            "Update available: ${update.label}",
+                            uiStr(R.string.l_rt_update_available_1_s, update.label),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary
@@ -649,13 +651,13 @@ internal fun SettingWineRuntimeChoice(
         val mali = maliFilter()
         val fitting = options.filter { !mali.on || it.id == selectedId || MaliCompat.fits(context, it.type, it.label) }
         ChoiceSheet(
-            title = label,
+            title = L10nDict.t(label),
             // One row per Proton / Wine family (newest build), older builds behind the arrow.
             options = VersionGroups.arrange(fitting, { it.type }, { it.label }, { it.installed }).flatMap { (family, members) ->
                 members.map { o ->
                     ChoiceOption(
                         o.id, o.label,
-                        if (o.id == update?.id) "${o.type} · Newer build of your current one" else o.type,
+                        if (o.id == update?.id) uiStr(R.string.l_rt_1_s_newer_build_of_your, o.type) else o.type,
                         installed = o.installed, busy = "wine:${o.id}" in installing,
                         group = family, downloadKey = "wine:${o.id}"
                     )
@@ -715,8 +717,8 @@ internal fun SettingInstallChoice(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(if (selected.isBlank()) "Choose a version" else VersionGroups.title(selected, prefix), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                    Text(L10nDict.t(label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(if (selected.isBlank()) uiStr(R.string.l_rt_choose_a_version) else VersionGroups.title(selected, prefix), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 }
                 GlossaryHelpIcon(label)
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
@@ -727,7 +729,7 @@ internal fun SettingInstallChoice(
         val mali = maliFilter()
         val fitting = catalog.all.filter { !mali.on || it == selected || MaliCompat.fits(context, prefix, it) }
         ChoiceSheet(
-            title = label,
+            title = L10nDict.t(label),
             // One row per family (e.g. "DXVK gplasync arm64ec", "FEXCore nightly"), other versions behind the arrow.
             options = VersionGroups.arrange(fitting, { prefix }, { it }, { v ->
                 catalog.installed.any { it.equals(v, ignoreCase = true) } || v == selected
@@ -745,7 +747,7 @@ internal fun SettingInstallChoice(
             onPick = { if (it.installed) onSelected(it.value) else onInstall(it.value) },
             onDismiss = { expanded = false },
             actions = listOfNotNull(
-                PickerAction(Icons.Outlined.FileOpen, "Install from file", "$prefix package (.wcp) from your phone, works offline", busy = importing) {
+                PickerAction(Icons.Outlined.FileOpen, uiStr(R.string.l_wrp_install_from_file), uiStr(R.string.l_rt_1_s_package_wcp_from_your, prefix), busy = importing) {
                     importLauncher.launch(arrayOf("*/*"))
                 },
                 mali.action(context, catalog.all.size - fitting.size)
@@ -781,10 +783,10 @@ internal fun SettingDriverChoice(
             }
             importing = false
             if (id.isBlank()) {
-                Toast.makeText(context, "Not a driver archive (.zip with meta.json)", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, uiStr(R.string.l_rt_not_a_driver_archive_zip_with), Toast.LENGTH_LONG).show()
             } else {
                 LocalInstalls.mark(context, "AdrenoTools", id)
-                Toast.makeText(context, "Installed: $id", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, uiStr(R.string.l_rt_installed_1_s, id), Toast.LENGTH_SHORT).show()
                 // Installed option: the caller selects it and reloads the list, no network involved.
                 onInstall(DriverOption(id, id, true))
             }
@@ -815,15 +817,15 @@ internal fun SettingDriverChoice(
         val mali = maliFilter()
         val maliAuthors = remember { com.winlator.cmod.contents.DriverSources.all(context).filter { it.gpu == "mali" }.map { it.name }.toSet() }
         PickerSheet(
-            title = "GPU driver",
-            subtitle = "Installed drivers, or get a new one",
+            title = uiStr(R.string.l_rt_gpu_driver),
+            subtitle = uiStr(R.string.l_rt_installed_drivers_or_get_a_new),
             icon = Icons.Outlined.DeveloperBoard,
             actions = listOf(
-                PickerAction(Icons.Outlined.FileOpen, "Install from file", "Driver .zip from your storage, works offline", busy = importing) {
+                PickerAction(Icons.Outlined.FileOpen, uiStr(R.string.l_wrp_install_from_file), uiStr(R.string.l_rt_driver_zip_from_your_storage_works), busy = importing) {
                     expanded = false
                     importLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
                 },
-                PickerAction(Icons.Outlined.CloudDownload, "Download drivers", "Pick an author, then a driver") {
+                PickerAction(Icons.Outlined.CloudDownload, uiStr(R.string.l_rt_download_drivers), uiStr(R.string.l_rt_pick_an_author_then_a_driver)) {
                     expanded = false
                     showDownloads = true
                 }
@@ -855,7 +857,7 @@ internal fun SettingToggle(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Text(L10nDict.t(label), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         GlossaryHelpIcon(label)
         Switch(checked = checked, onCheckedChange = onChanged, enabled = enabled)
     }
@@ -871,7 +873,7 @@ internal fun SettingText(
     OutlinedTextField(
         value = value,
         onValueChange = onChanged,
-        label = { Text(label) },
+        label = { Text(L10nDict.t(label)) },
         trailingIcon = if (Glossary.forLabel(label) != null) ({ GlossaryHelpIcon(label) }) else null,
         modifier = Modifier.fillMaxWidth().padding(12.dp),
         minLines = minLines,
@@ -888,7 +890,7 @@ internal fun CpuSelectorRow(
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(L10nDict.t(title), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             GlossaryHelpIcon(title)
         }
         LazyRow(

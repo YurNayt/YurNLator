@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import com.winlator.cmod.ui.components.GlossaryHelpIcon
 import com.winlator.cmod.ui.components.KeepDialogFullscreen
 import androidx.compose.foundation.layout.Box
@@ -66,7 +68,7 @@ internal fun SettingWrapperChoice(selected: String, onSelected: (String) -> Unit
                 Column(Modifier.weight(1f)) {
                     Text(settingFieldLabel("Vulkan Wrapper"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        currentItem?.name ?: "Built-in wrapper (selected one is missing)",
+                        currentItem?.name ?: uiStr(R.string.l_wrp_built_in_wrapper_selected_one_is),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -85,15 +87,15 @@ internal fun SettingWrapperChoice(selected: String, onSelected: (String) -> Unit
 
     if (expanded) {
         PickerSheet(
-            title = "Vulkan wrapper",
-            subtitle = "Installed wrappers, or get a new one",
+            title = uiStr(R.string.l_wrp_vulkan_wrapper),
+            subtitle = uiStr(R.string.l_wrp_installed_wrappers_or_get_a_new),
             icon = Icons.Outlined.Hub,
             actions = listOf(
-                PickerAction(Icons.Outlined.FileOpen, "Install from file", "Wrapper .tzst from your storage, works offline") {
+                PickerAction(Icons.Outlined.FileOpen, uiStr(R.string.l_wrp_install_from_file), uiStr(R.string.l_wrp_wrapper_tzst_from_your_storage_works)) {
                     expanded = false
                     wrappers.importFile()
                 },
-                PickerAction(Icons.Outlined.CloudDownload, "Download wrappers", "Pick an author, then a wrapper") {
+                PickerAction(Icons.Outlined.CloudDownload, uiStr(R.string.l_wrp_download_wrappers), uiStr(R.string.l_wrp_pick_an_author_then_a_wrapper)) {
                     expanded = false
                     downloads = true
                 }

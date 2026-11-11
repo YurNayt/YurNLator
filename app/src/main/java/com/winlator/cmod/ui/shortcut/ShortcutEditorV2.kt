@@ -2,6 +2,8 @@
 
 package com.winlator.cmod.ui.shortcut
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.components.GlossaryButton
 import com.winlator.cmod.session.MediaDecoder
 import com.winlator.cmod.ui.settings.CodecsRows
@@ -475,7 +477,7 @@ internal fun ShortcutEditorV2(fragment: Fragment, shortcut: Shortcut, close: () 
         scope.launch {
             val installed = installRuntimeComponent(context, type, version)
             state.installing = state.installing - key
-            if (installed == null) Toast.makeText(context, "Unable to install $version", Toast.LENGTH_SHORT).show()
+            if (installed == null) Toast.makeText(context, uiStr(R.string.l_ed_unable_to_install_1_s, version), Toast.LENGTH_SHORT).show()
             else {
                 done(installed)
                 state.revision++
@@ -490,7 +492,7 @@ internal fun ShortcutEditorV2(fragment: Fragment, shortcut: Shortcut, close: () 
         scope.launch {
             val installed = installAdrenoDriver(context, option)
             state.installing = state.installing - key
-            if (installed == null) Toast.makeText(context, "Unable to install ${option.label}", Toast.LENGTH_SHORT).show()
+            if (installed == null) Toast.makeText(context, uiStr(R.string.l_ed_unable_to_install_1_s, option.label), Toast.LENGTH_SHORT).show()
             else {
                 state.driverVersion = installed
                 state.graphics("version", installed)
@@ -522,7 +524,7 @@ internal fun ShortcutEditorV2(fragment: Fragment, shortcut: Shortcut, close: () 
         val target = containers.firstOrNull { it.id == targetId } ?: return
         if (target.id == state.container.id) return
         if (shortcut.cloneToContainer(target)) {
-            Toast.makeText(context, "Shortcut copied to ${target.name}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, uiStr(R.string.l_ed_shortcut_copied_to_1_s, target.name), Toast.LENGTH_SHORT).show()
             if (fragment is ShortcutsFragment) fragment.loadShortcutsList()
             close()
         }
@@ -566,7 +568,7 @@ internal fun ShortcutEditorV2(fragment: Fragment, shortcut: Shortcut, close: () 
                     ) {
                         item {
                             Text(
-                                "Shortcut settings",
+                                uiStr(R.string.l_ed_shortcut_settings),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(8.dp)
@@ -638,7 +640,7 @@ private fun ShortcutNavItemV2(label: String, icon: ImageVector, selected: Boolea
         ) {
             Icon(icon, null, modifier = Modifier.size(16.dp))
             Text(
-                label,
+                L10nDict.t(label),
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
             )
         }
@@ -686,17 +688,17 @@ private fun ShortcutCategoryV2(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text("Environment", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(uiStr(R.string.l_lbl_environment), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(currentLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                         }
-                        IconButton(onClick = createContainer) { Icon(Icons.Outlined.Add, "Create container") }
+                        IconButton(onClick = createContainer) { Icon(Icons.Outlined.Add, uiStr(R.string.l_ed_create_container)) }
                     }
                 }
                 SettingsDivider()
                 Button(onClick = enterContainer, modifier = Modifier.fillMaxWidth().padding(12.dp)) {
                     Icon(Icons.Outlined.PlayArrow, null)
                     Spacer(Modifier.size(7.dp))
-                    Text("Enter container")
+                    Text(uiStr(R.string.l_lib_enter_container))
                 }
             }
             SettingsCard {
@@ -896,7 +898,7 @@ private fun ShortcutCategoryV2(
                     SettingsDivider()
                     val forcedLegacy = com.winlator.cmod.core.MaliCompat.forcesLegacyBcn(context, readConfig(s.graphicsConfig, "wrapper", ';'))
                     SettingChoice("BCn layer (Winlator Mali)", if (forcedLegacy) "legacy" else s.bcnVersion, listOf("current", "legacy")) { s.bcnVersion = it; s.graphics("bcnVersion", it) }
-                    if (forcedLegacy) Text("Legacy is used with this wrapper in the benchmark-named build (current fails to start there)",
+                    if (forcedLegacy) Text(uiStr(R.string.l_ed_legacy_is_used_with_this_wrapper),
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
                     if (forcedLegacy || s.bcnVersion == "legacy") {
@@ -940,7 +942,7 @@ private fun ShortcutCategoryV2(
                     SettingsDivider()
                     SettingChoice("VKD3D Feature Level", s.vkd3dLevel, listOf("12_0", "12_1", "12_2", "11_1", "11_0", "10_1", "10_0", "9_3", "9_2", "9_1")) { s.vkd3dLevel = it; s.wrapperValue("vkd3dLevel", it) }
                     if (s.vkd3dLevel == "12_2") androidx.compose.material3.Text(
-                        "12_2 needs GPU features Turnip and PanVK lack (mesh shaders, newer shader models): DX12 games then crash at start. Use 12_1 or 12_0.",
+                        uiStr(R.string.l_ed_12_2_needs_gpu_features_turnip),
                         modifier = androidx.compose.ui.Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         color = androidx.compose.material3.MaterialTheme.colorScheme.error)
@@ -1049,7 +1051,7 @@ private fun ShortcutCategoryV2(
                     s.startup = startupEntries.indexOf(it).coerceAtLeast(0); s.extra("startupSelection", s.startup.toString())
                 }
                 SettingsDivider()
-                SettingSyncChoice(s.envVars, note = "For this game only") { s.setEnvironment(it) }
+                SettingSyncChoice(s.envVars, note = uiStr(R.string.l_ed_for_this_game_only)) { s.setEnvironment(it) }
             }
             SettingsCard {
                 SettingChoice("Sharpness Effect", s.sharpnessEffect, listOf("None", "CAS", "DLS")) {
@@ -1117,7 +1119,7 @@ private fun ExecArgumentsEditorV2(value: String, onChanged: (String) -> Unit) {
             OutlinedTextField(
                 value = value,
                 onValueChange = onChanged,
-                label = { Text("Exec Arguments") },
+                label = { Text(uiStr(R.string.l_lbl_exec_arguments)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 shape = RoundedCornerShape(10.dp)
@@ -1152,8 +1154,8 @@ private fun ShortcutVulkanExtensionsV2(context: Context, driver: String, blackli
     var open by remember { mutableStateOf(false) }
     Surface(onClick = { open = true }, color = Color.Transparent, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp)) {
-            Text("Vulkan Extensions", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("$enabledCount of ${extensions.size} enabled", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+            Text(uiStr(R.string.l_ed_vulkan_extensions), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(uiStr(R.string.l_ed_1_d_of_2_d_enabled, enabledCount, extensions.size), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
         }
     }
     if (open) {
@@ -1161,10 +1163,10 @@ private fun ShortcutVulkanExtensionsV2(context: Context, driver: String, blackli
         AlertDialog(
             onDismissRequest = { open = false },
             confirmButton = {
-                TextButton(onClick = { onChanged(extensions.filterNot { it in selected }.joinToString(",")); open = false }) { Text("Done") }
+                TextButton(onClick = { onChanged(extensions.filterNot { it in selected }.joinToString(",")); open = false }) { Text(uiStr(R.string.l_ed_done)) }
             },
-            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
-            title = { Text("Vulkan Extensions") },
+            dismissButton = { TextButton(onClick = { open = false }) { Text(uiStr(R.string.l_qm_cancel)) } },
+            title = { Text(uiStr(R.string.l_ed_vulkan_extensions)) },
             text = {
                 LazyColumn(Modifier.heightIn(max = 460.dp)) {
                     items(extensions) { extension ->
