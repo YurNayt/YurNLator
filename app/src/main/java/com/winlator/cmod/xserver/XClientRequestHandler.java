@@ -308,7 +308,9 @@ public class XClientRequestHandler implements RequestHandler {
                         outputStream.writeByte((byte) 0);
                         outputStream.writeShort(client.getSequenceNumber());
                         outputStream.writeInt(2);
-                        outputStream.writePad(32);
+                        // Keycode 0's bit: MangoHud's "toggle HUD" (MangoHudKeys); no real key is reported.
+                        outputStream.writeByte(MangoHudKeys.firstByte());
+                        outputStream.writePad(31);
                     }
                     break;
                 case ClientOpcodes.OPEN_FONT:

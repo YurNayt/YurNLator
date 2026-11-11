@@ -41,8 +41,26 @@ public final class MangoHud {
         if (!envVars.has("MANGOHUD_LOG_LEVEL")) envVars.put("MANGOHUD_LOG_LEVEL", "info");
     }
 
-    /** During the session: show or hide (MangoHud reloads its config file when it changes). */
-    public static void setVisible(File imageFsRoot, boolean visible, boolean log) { write(imageFsRoot, visible, log); }
+    /** What MangoHud shows now (as last set). */
+    private static volatile boolean shown;
+
+    /**
+     * During the session: show or hide. By MangoHud's own toggle key when it reads keys here
+     * (xserver/MangoHudKeys: no reload, so no doubled rows); otherwise the config file is
+     * rewritten and MangoHud reloads it.
+     */
+    /** Logging on / off during the session: the config is rewritten (MangoHud reloads it). */
+    public static void setLogging(File imageFsRoot, boolean log) { write(imageFsRoot, shown, log); }
+
+    public static void setVisible(File imageFsRoot, boolean visible, boolean log) {
+        if (visible == shown) return;
+        if (com.winlator.cmod.xserver.MangoHudKeys.alive()) {
+            com.winlator.cmod.xserver.MangoHudKeys.pressToggle();
+            shown = visible;
+            return;
+        }
+        write(imageFsRoot, visible, log);
+    }
 
     /** Precise sensors on (root / ADB): CPU and GPU rows read from the feed's files. */
     private static volatile boolean sensorRows;
@@ -54,6 +72,12 @@ public final class MangoHud {
             if (log) logFolder().mkdirs();
             StringBuilder c = new StringBuilder();
             if (!visible) c.append("no_display\n");
+            // Show / hide is our key (F24 -> keycode 0, xserver/MangoHudKeys). The other bindings go
+            // to Escape, which our keymap never reports held: they can't fire by accident.
+            c.append("toggle_hud=F24\n")
+             .append("toggle_logging=Escape\ntoggle_fps_limit=Escape\nreload_cfg=Escape\n")
+             .append("toggle_preset=Escape\ntoggle_hud_position=Escape\nreset_fps_metrics=Escape\n")
+             .append("upload_log=Escape\nupload_logs=Escape\n");
             // Only what MangoHud can measure here (GPU, VRAM, CPU and battery read as 0 or are
             // closed to apps on Android): FPS, the 1% / 0.1% lows, frame time graph and RAM, in a
             // small box instead of a strip across the screen. Battery must stay out: listing
@@ -90,6 +114,7 @@ public final class MangoHud {
                  .append("log_interval=250\n");
             }
             try (FileWriter w = new FileWriter(f, false)) { w.write(c.toString()); }
+            shown = visible;
         } catch (Exception e) {
             Log.w(TAG, "config " + f, e);
         }

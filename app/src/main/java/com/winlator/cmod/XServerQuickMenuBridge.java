@@ -233,7 +233,7 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
     @Override public boolean mangoHudLog() { return a.preferences.getBoolean("mangohud_log", false); }
     @Override public void setMangoHudLog(boolean on) {
         a.preferences.edit().putBoolean("mangohud_log", on).apply();
-        if (a.hud.mangoHudLaunched()) com.winlator.cmod.session.MangoHud.setVisible(a.imageFs.getRootDir(), a.hud.savedMode() == 3, on);
+        if (a.hud.mangoHudLaunched()) com.winlator.cmod.session.MangoHud.setLogging(a.imageFs.getRootDir(), on);
     }
 
     @Override public void setHudMode(int mode) { a.hud.apply(mode); }
