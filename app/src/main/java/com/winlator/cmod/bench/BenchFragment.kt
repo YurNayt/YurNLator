@@ -178,6 +178,9 @@ private fun BenchScreen(
     var gameArgs by remember { mutableStateOf("") }
     var gameWarmup by remember { mutableStateOf("15") }
     var gameMeasure by remember { mutableStateOf("45") }
+    var gameUntilEnd by remember { mutableStateOf(false) }
+    var gamePreset by remember { mutableStateOf<BenchPreset?>(null) }
+    var showPresets by remember { mutableStateOf(false) }
     LaunchedEffect(container?.id) { gamePath = ""; gameName = "" }
     LaunchedEffect(state.value) { conflicts = Bench.conflicts(context) }
 
@@ -229,8 +232,9 @@ private fun BenchScreen(
             item { Progress(s, cooling.value, stop, reset) }
             if (!s.running && !s.long && s.results.any { it.ok }) item {
                 Section("Confirm the best") {
-                    Text("Runs the 3 best bundles of each API 3 times each with phases 2.5× longer than usual, cooling down in between, " +
-                        "and shows the average and the spread. Takes about ${Bench.confirmation(s).size * 5 / 2} min.",
+                    Text((if (s.game != null) "Runs every working bundle 3 times more, measured the same way, cooling down in between, "
+                        else "Runs the 3 best bundles of each API 3 times each with phases 2.5× longer than usual, cooling down in between, ") +
+                        "and shows the average and the spread. Takes about ${Bench.confirmation(s).size * (if (s.game != null) 4 else 5) / 2} min.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Button(onClick = { start(s.containerId, Bench.confirmation(s), true, s.wrapper, s.game) }) { Text("Confirm best (long runs)") }
                 }
@@ -308,25 +312,50 @@ private fun BenchScreen(
                         games.forEach { g ->
                             FilterChip(selected = gamePath == g.file.path, onClick = {
                                 gamePath = g.file.path; gameName = g.name
-                                gameArgs = BenchGame.presetArgs(g.path.orEmpty().replace('/', '\\').substringAfterLast('\\'))
+                                // The game's own benchmark, found by its .exe (or its name).
+                                val p = BenchGame.presetFor(g.path.orEmpty().replace('/', '\\').substringAfterLast('\\').trim('"'), g.name)
+                                gamePreset = p
+                                gameArgs = p?.args.orEmpty()
+                                gameUntilEnd = p?.untilEnd ?: false
                             }, label = { Text(g.name) })
                         }
                     }
                     if (gamePath.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(gamePreset?.let { "Built-in benchmark: ${it.title}" } ?: "No known benchmark: your arguments, or a scene",
+                                Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                            TextButton(onClick = { showPresets = !showPresets }) { Text(if (showPresets) "Hide" else "Presets") }
+                        }
+                        if (showPresets) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            BenchPreset.ALL.forEach { p ->
+                                FilterChip(selected = gamePreset == p, onClick = {
+                                    gamePreset = p; gameArgs = p.args; gameUntilEnd = p.untilEnd; showPresets = false
+                                }, label = { Text(p.title) })
+                            }
+                            FilterChip(selected = gamePreset == null, onClick = { gamePreset = null; gameArgs = ""; showPresets = false },
+                                label = { Text("Custom") })
+                        }
+                        gamePreset?.note?.takeIf { it.isNotEmpty() }?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = Color(0xFFE3B341))
+                        }
                         androidx.compose.material3.OutlinedTextField(value = gameArgs, onValueChange = { gameArgs = it },
                             label = { Text("Benchmark arguments (after the game's own)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Measure until the game ends (its benchmark quits by itself)", Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall)
+                            Switch(checked = gameUntilEnd, onCheckedChange = { gameUntilEnd = it })
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             androidx.compose.material3.OutlinedTextField(value = gameWarmup, onValueChange = { gameWarmup = it.filter(Char::isDigit).take(3) },
                                 label = { Text("Warm-up, s") }, singleLine = true, modifier = Modifier.weight(1f))
-                            androidx.compose.material3.OutlinedTextField(value = gameMeasure, onValueChange = { gameMeasure = it.filter(Char::isDigit).take(3) },
+                            if (!gameUntilEnd) androidx.compose.material3.OutlinedTextField(value = gameMeasure, onValueChange = { gameMeasure = it.filter(Char::isDigit).take(3) },
                                 label = { Text("Measure, s") }, singleLine = true, modifier = Modifier.weight(1f))
                         }
                     }
                     Text("The FPS and 1% / 0.1% lows are measured by our HUD from when the game renders, after the warm-up. " +
-                        "Unattended runs need a benchmark that starts by itself: Tomb Raider (2013) \"-benchmark\"; " +
-                        "Counter-Strike: Source \"+timedemoquit bench\" after recording a demo once (\"record bench\" … \"stop\" in its console). " +
-                        "Other games: whatever is on screen is measured (a menu scene, a loaded save), so keep it the same between runs. " +
-                        "A benchmark that ends by itself counts when 10 s or more were measured.",
+                        "A game's own benchmark is found by its .exe (Presets for the list, or type your own arguments). " +
+                        "A benchmark that quits by itself is measured to its end, so every run covers the same scenes. " +
+                        "Other games: whatever is on screen is measured (a menu scene, a loaded save), so keep it the same between runs.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -411,9 +440,10 @@ private fun BenchScreen(
                 val proton = container?.getWineVersion().orEmpty()
                 val known = combos.count { Bench.conflictFor(conflicts, proton, it) != null }
                 val game = if (gameMode && gamePath.isNotEmpty()) BenchGame(gamePath, gameName, gameArgs.trim(),
-                    gameWarmup.toIntOrNull()?.coerceIn(0, 600) ?: 15, gameMeasure.toIntOrNull()?.coerceIn(10, 600) ?: 45) else null
-                // A game: loading (~1.5 min) + warm-up + measuring per run; known conflicts are YurnBench's only.
-                val perRun = if (game != null) 90 + game.warmup + game.measure else 80
+                    gameWarmup.toIntOrNull()?.coerceIn(0, 600) ?: 15,
+                    if (gameUntilEnd) BenchGame.UNTIL_END else gameMeasure.toIntOrNull()?.coerceIn(10, 600) ?: 45) else null
+                // A game: loading (~1.5 min) + warm-up + measuring (a built-in benchmark ~2 min) per run.
+                val perRun = if (game != null) 90 + game.warmup + (if (game.measure == BenchGame.UNTIL_END) 120 else game.measure) else 80
                 val minutes = ((combos.size - known) * perRun + 60 + 59) / 60
                 Text("${combos.size} bundles" + (if (known > 0) ", $known skipped as known conflicts" else "") +
                     ", about $minutes min." + if (combos.size - known > 24) " Large series: pick fewer for a first try." else "",

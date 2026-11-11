@@ -371,7 +371,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (getIntent().getBooleanExtra(com.winlator.cmod.bench.Bench.EXTRA_BENCH, false)) {
             int measure = getIntent().getIntExtra(com.winlator.cmod.bench.Bench.EXTRA_GAME_MEASURE, 0);
             // A game: its frames measured by our HUD (session/HudController shows it: hudMode in the run's shortcut).
-            if (measure > 0) com.winlator.cmod.bench.GameWatchdog.start(this, hud::modern,
+            // -1: until the game ends.
+            if (measure != 0) com.winlator.cmod.bench.GameWatchdog.start(this, hud::modern,
                     getIntent().getIntExtra(com.winlator.cmod.bench.Bench.EXTRA_GAME_WARMUP, 15), measure,
                     () -> runOnUiThread(this::exit));
             else com.winlator.cmod.bench.Watchdog.start(this, container, () -> runOnUiThread(this::exit));

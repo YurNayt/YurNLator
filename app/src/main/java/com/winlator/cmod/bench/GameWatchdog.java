@@ -65,12 +65,14 @@ public final class GameWatchdog {
                         h.benchStart();
                         measureFrom = now;
                         phase[0] = "mix";
-                        Log.i(TAG, "measuring " + measureSec + " s");
+                        Log.i(TAG, measureSec > 0 ? "measuring " + measureSec + " s" : "measuring until the game ends");
                     }
                     continue;
                 }
                 if (h == null) continue;
-                if (now - measureFrom >= measureSec * 1000L) {
+                // measureSec <= 0: until the game ends (its benchmark quits), at most 10 min.
+                long window = measureSec > 0 ? measureSec * 1000L : 600_000L;
+                if (now - measureFrom >= window) {
                     result = h.benchResult(true);
                     state = "done";
                     break;

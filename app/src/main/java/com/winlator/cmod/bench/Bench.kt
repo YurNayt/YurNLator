@@ -199,16 +199,46 @@ data class BenchGame(val shortcutPath: String, val name: String, val args: Strin
             BenchGame(it, o.optString("name"), o.optString("args"), o.optInt("warmup", 15), o.optInt("measure", 45))
         }
 
-        /**
-         * Arguments that start a game's own benchmark by itself (no taps in its menu), by the .exe:
-         * Tomb Raider (2013) "-benchmark" (as its Feral port runs it; it quits when done),
-         * Counter-Strike: Source a timedemo of a demo you recorded ("record bench" in its console).
-         */
-        fun presetArgs(exe: String): String = when (exe.lowercase()) {
-            "tombraider.exe" -> "-benchmark"
-            "hl2.exe" -> "+timedemoquit bench"
-            else -> ""
+        /** Measuring until the game quits (a benchmark that ends by itself). */
+        const val UNTIL_END = 0
+
+        /** The preset for a game's .exe (or its name), null when none is known. */
+        fun presetFor(exe: String, name: String): BenchPreset? {
+            val e = exe.lowercase()
+            return BenchPreset.ALL.firstOrNull { it.exe.matches(e) }
+                ?: BenchPreset.ALL.firstOrNull { p -> p.title.lowercase().let { t -> name.lowercase().let { n -> n.isNotBlank() && (t.contains(n) || n.contains(t)) } } }
         }
+    }
+}
+
+/**
+ * A game's own benchmark started from the command line (no taps in its menu). Arguments as the
+ * Phoronix Test Suite runs them (Tomb Raider's checked in YurNLator). [untilEnd]: the benchmark
+ * quits by itself, so the whole run is measured (a fixed window cut it at different points).
+ */
+data class BenchPreset(val title: String, val exe: Regex, val args: String, val untilEnd: Boolean, val note: String = "") {
+    companion object {
+        private const val HITMAN = "-SKIP_LAUNCHER -ao START_BENCHMARK true -ao BENCHMARK_SCENE_INDEX 1 -ao AUTO_QUIT_ENGINE 120 " +
+            "ConsoleCmd EnableFPSLimiter 0 -ao FullScreen 1 ConsoleCmd settings_vsync 0"
+        val ALL = listOf(
+            BenchPreset("Tomb Raider (2013)", Regex("tombraider\\.exe"), "-benchmark", true),
+            BenchPreset("Grand Theft Auto V", Regex("(gta5|playgtav)\\.exe"), "-benchmark -frameLimit 0", true),
+            BenchPreset("Cyberpunk 2077", Regex("cyberpunk2077\\.exe"), "--launcher-skip -benchmark -skipStartScreen", true),
+            BenchPreset("Hitman 3", Regex("hitman3\\.exe"), HITMAN, true),
+            BenchPreset("Hitman 2", Regex("hitman2\\.exe"), HITMAN, true),
+            BenchPreset("Batman: Arkham Knight", Regex("batmanak\\.exe"),
+                "batentry?Area=UnderAce_A4,CityZ_08,CityZ_07,BatEntry__Benchmark_ChJ7_Bm?Chapters=0,A0,B0,C0,D0,E0,F0,G0,H0,I0,J7,K0,L0,M0,N0,O0,P0,Q0,R0,S0,T0,U0,V0,W0,X0,Y0,Z0,_F0,_G0,_K0,_M0?NoLevelOffsets?NoFadeIn?Start=BMAK_Benchmark_Start", true),
+            BenchPreset("Batman: Arkham Origins", Regex("batmanorigins\\.exe"), "Benchmark", true),
+            BenchPreset("DiRT Rally 2.0", Regex("dirtrally2\\.exe"), "-benchmark", true),
+            BenchPreset("F1 2021", Regex("f1_2021(_dx12)?\\.exe"), "-benchmark example_benchmark.xml", true),
+            BenchPreset("F1 22", Regex("f1_22(_dx12)?\\.exe"), "-benchmark example_benchmark.xml", true),
+            BenchPreset("Strange Brigade", Regex("strangebrigade(_dx12)?\\.exe"), "-benchmark", true),
+            BenchPreset("Ashes of the Singularity: Escalation", Regex("ashes.*\\.exe"), "-nolauncher -benchmark benchfinal", true),
+            BenchPreset("Source games (CS:S, HL2…)", Regex("hl2\\.exe"), "+timedemoquit bench", true,
+                "Record a demo once: \"record bench\", play 1–2 min, \"stop\" in the console."),
+            BenchPreset("Counter-Strike: GO / 2", Regex("(csgo|cs2)\\.exe"), "+timedemoquit bench +fps_max 0", true,
+                "Record a demo once: \"record bench\", play 1–2 min, \"stop\" in the console."),
+        )
     }
 }
 
@@ -504,9 +534,10 @@ object Bench {
             .putExtra("shortcut_name", if (s.game != null) "Benchmark · ${s.game.name}" else "YurnBench")
             .putExtra(EXTRA_BENCH, true).apply {
                 if (s.game != null) {
-                    // A confirmation series measures twice as long, like YurnBench's long phases.
+                    // The same measuring in a confirmation series: a longer window caught other parts of
+                    // a built-in benchmark and the scores didn't match the first series.
                     putExtra(EXTRA_GAME_WARMUP, s.game.warmup)
-                    putExtra(EXTRA_GAME_MEASURE, if (s.long) s.game.measure * 2 else s.game.measure)
+                    putExtra(EXTRA_GAME_MEASURE, if (s.game.measure == BenchGame.UNTIL_END) -1 else s.game.measure)
                 }
             })
         return true
@@ -572,7 +603,7 @@ object Bench {
             else -> "crash"
         }
         val detail = when {
-            st == "partial" && measured >= 10 -> "the game ended after ${measured.toInt()} s of measuring"
+            st == "partial" && measured >= 10 -> "measured ${measured.toInt()} s, until the game ended"
             st == "partial" -> "the game ended after ${measured.toInt()} s of measuring (under 10 s)"
             outcome != null -> outcome.optString("detail")
             else -> "the session ended without a result"
@@ -699,8 +730,9 @@ object Bench {
 
     /** Top [n] working bundles per API of [s], as a confirmation series: each [repeats] times, long phases. */
     fun confirmation(s: BenchState, n: Int = 3, repeats: Int = 3): List<Combo> {
+        // A game: every working bundle of the series again (runs are as long as before).
         val top = aggregate(s.results).filter { it.ok.isNotEmpty() }.groupBy { it.combo.api }.values
-            .flatMap { it.take(n) }.map { it.combo }
+            .flatMap { if (s.game != null) it else it.take(n) }.map { it.combo }
         // Rounds, not one bundle three times in a row: warming up over the series favours no one.
         return (0 until repeats).flatMap { top }
     }
