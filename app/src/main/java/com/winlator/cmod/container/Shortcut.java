@@ -190,6 +190,35 @@ public class Shortcut {
         FileUtils.writeString(file, content);
     }
 
+    /**
+     * Removes the shortcut for good: its .desktop and the Windows .lnk / .bat next to it (any
+     * letter case). A .lnk left behind made the library create the .desktop again on the next
+     * load, so the game came back after "Remove". True when nothing of it is left.
+     */
+    public boolean remove() {
+        String name = file.getName();
+        int dot = name.lastIndexOf('.');
+        String base = dot > 0 ? name.substring(0, dot) : name;
+        File dir = file.getParentFile();
+        File[] siblings = dir != null ? dir.listFiles() : null;
+        if (siblings != null) for (File f : siblings) {
+            String n = f.getName();
+            int d = n.lastIndexOf('.');
+            if (d <= 0 || !n.substring(0, d).equalsIgnoreCase(base)) continue;
+            String ext = n.substring(d + 1).toLowerCase(java.util.Locale.ROOT);
+            if (ext.equals("lnk") || ext.equals("bat") || ext.equals("desktop")) f.delete();
+        }
+        file.delete();
+        if (siblings == null) return !file.exists();
+        for (File f : siblings) if (f.exists()) {
+            String n = f.getName();
+            int d = n.lastIndexOf('.');
+            if (d > 0 && n.substring(0, d).equalsIgnoreCase(base)
+                    && (n.toLowerCase(java.util.Locale.ROOT).endsWith(".lnk") || n.toLowerCase(java.util.Locale.ROOT).endsWith(".desktop"))) return false;
+        }
+        return !file.exists();
+    }
+
     public void genUUID() {
         if (getExtra("uuid").equals("")) {
             putExtra("uuid", UUID.randomUUID().toString());

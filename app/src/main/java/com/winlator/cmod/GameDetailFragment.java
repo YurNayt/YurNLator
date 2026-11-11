@@ -118,7 +118,12 @@ public class GameDetailFragment extends Fragment {
                     @Override
                     public void onRemove() {
                         ContentDialog.confirm(requireContext(), R.string.do_you_want_to_remove_this_shortcut, () -> {
-                            if (shortcut.file.delete()) getParentFragmentManager().popBackStack();
+                            if (shortcut.remove()) {
+                                ShortcutsFragment.disableShortcutOnScreen(requireContext(), shortcut);
+                                getParentFragmentManager().popBackStack();
+                            } else {
+                                android.widget.Toast.makeText(requireContext(), "Couldn't remove the shortcut's files", android.widget.Toast.LENGTH_LONG).show();
+                            }
                         });
                     }
                 }

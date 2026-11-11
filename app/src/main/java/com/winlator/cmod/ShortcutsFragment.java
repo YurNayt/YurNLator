@@ -666,14 +666,11 @@ public class ShortcutsFragment extends Fragment {
         }
         else if (LibraryComposeHost.ACTION_REMOVE.equals(action)) {
             ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_shortcut, () -> {
-                boolean fileDeleted = shortcut.file.delete();
-                try {
-                    String basePath = shortcut.file.getPath().substring(0, shortcut.file.getPath().lastIndexOf("."));
-                    new File(basePath + ".lnk").delete();
-                    new File(basePath + ".bat").delete();
-                } catch (Exception ignored) {}
+                boolean fileDeleted = shortcut.remove();
 
-                if (fileDeleted) {
+                if (!fileDeleted) {
+                    Toast.makeText(context, "Couldn't remove the shortcut's files", Toast.LENGTH_LONG).show();
+                } else {
                     disableShortcutOnScreen(requireContext(), shortcut);
                     loadShortcutsList();
                     Toast.makeText(context, "Shortcut removed.", Toast.LENGTH_SHORT).show();
