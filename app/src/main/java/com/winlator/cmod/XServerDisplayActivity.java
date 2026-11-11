@@ -186,6 +186,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 @Override public com.winlator.cmod.session.HudWindowTracker tracker() { return hudTracker; }
                 @Override public File imageFsRoot() { return imageFs.getRootDir(); }
                 @Override public boolean mangoHudLog() { return preferences.getBoolean("mangohud_log", false); }
+                @Override public boolean mangoHudPreload() { return preferences.getBoolean("mangohud_preload", false); }
             });
     Runnable editInputControlsCallback;
     Shortcut shortcut;
@@ -760,16 +761,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         lifecycle.focusChanged(hasFocus);
     }
 
-    /**
-     * Wayland: the compositor goes right above the X server's view. It imports the game's frames with
-     * the container's Mesa driver (Turnip / PanVK); System works on Mali only (experimental).
-     */
-    /**
-     * Wayland: a window shows on the compositor only once it presents its first frame, so the
-     * loading screen stayed up through the game's own loading (34.8 s vs 5 s on X11 for NFS
-     * Payback). X11 closes it when the game's window first gets content, which is right after the
-     * game starts: here it closes when the game's process is running.
-     */
     /** The compositor's frame-generation rates for the HUD, only while frame generation is on
      *  (its presented rate counts every screen update, so with it off the HUD showed a pair). */
     private float[] waylandFrameGenStats() {
@@ -778,38 +769,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         catch (Throwable t) { return null; }
     }
 
-
-    private void startWaylandSession(FrameLayout rootView) {
-        // The compositor's driver and switches: session/WaylandLaunch.
-        com.winlator.cmod.session.WaylandLaunch.Driver driver = com.winlator.cmod.session.WaylandLaunch.driver(
-                this, graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null);
-        com.winlator.cmod.session.WaylandLaunch.applySwitches(container, shortcut);
-        waylandSession = new com.winlator.cmod.session.WaylandSession(this, xServer);
-        waylandSession.start(rootView, rootView.indexOfChild(xServerView) + 1, driver.path, driver.library,
-                launchConfig != null && launchConfig.getFullscreenStretched(),
-                shortcut != null,
-                new com.winlator.cmod.session.WaylandSession.Listener() {
-            @Override public void onFirstFrame() { preloaderDialog.closeOnUiThread(); }
-            private boolean shown = false;
-            @Override public void onGameFrame() {
-                // Also a game frame closes the loading screen (in case the compositor's first-frame signal is missed).
-                if (!shown) { shown = true; preloaderDialog.closeOnUiThread(); }
-                WinlatorHUD m = hud.modern();
-                if (m != null) m.onFrame();
-            }
-            @Override public void onGameSurface(String window, String gpuName) {
-                // The game's window is up: close the loading screen as X11 does (at the window's first
-                // content), not only at its first rendered frame, which kept it up through the
-                // game's own loading.
-                if (window != null) preloaderDialog.closeOnUiThread();
-                WinlatorHUD m = hud.modern();
-                if (window != null && gpuName != null && m != null) {
-                    m.setGpuName(gpuName);
-                    runOnUiThread(() -> m.onRendererDetected("Wayland"));
-                }
-            }
-        });
-    }
 
     /** Gets the prefix ready for this launch: session/PrefixSetup (YurNLator base, part 5). */
     private void setupWineSystemFiles() {
@@ -876,7 +835,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         rootView.addView(xServerView);
         if (waylandMode) {
-            startWaylandSession(rootView);
+            // The embedded Wayland compositor: session/WaylandLaunch.
+            waylandSession = com.winlator.cmod.session.WaylandLaunch.start(this, xServer, rootView, xServerView,
+                    graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null, container, shortcut,
+                    launchConfig != null && launchConfig.getFullscreenStretched(), preloaderDialog, hud);
             com.winlator.cmod.session.LoadingScreen.closeWhenGameRuns(this, shortcut, preloaderDialog);
         }
 

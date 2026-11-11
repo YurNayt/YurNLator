@@ -36,6 +36,8 @@ public final class HudController {
         HudWindowTracker tracker();
         File imageFsRoot();
         boolean mangoHudLog();
+        /** "Keep MangoHud ready": loaded hidden with every game, so it can be switched on any time. */
+        boolean mangoHudPreload();
     }
 
     private final Host host;
@@ -83,10 +85,10 @@ public final class HudController {
         int mode = savedMode();
         File root = host.imageFsRoot();
         boolean writeLog = host.mangoHudLog();
-        mangoHudLaunched = mode == MANGOHUD;
-        if (mangoHudLaunched) MangoHud.prepareLaunch(envVars, root, writeLog);
+        mangoHudLaunched = mode == MANGOHUD || host.mangoHudPreload();
+        if (mangoHudLaunched) MangoHud.prepareLaunch(envVars, root, writeLog && mode == MANGOHUD, mode == MANGOHUD);
         if (log != null) log.accept("[YurNLator] HUD style " + mode
-                + (mangoHudLaunched ? ": MangoHud on, config " + MangoHud.configFile(root)
+                + (mangoHudLaunched ? ": MangoHud " + (mode == MANGOHUD ? "on" : "loaded hidden") + ", config " + MangoHud.configFile(root)
                    + (writeLog ? ", log to " + MangoHud.logFolder() : "") : ""));
     }
 

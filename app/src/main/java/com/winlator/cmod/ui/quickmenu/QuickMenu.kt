@@ -388,6 +388,15 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
                 }
             }
         }
+        if (mode != 0) {
+            var preload by remember(opened) { mutableStateOf(bridge.mangoHudPreload()) }
+            Card {
+                SwitchRow("Keep MangoHud ready",
+                    "Loaded hidden with every game (from the next start), so MangoHud can be switched on and off any time. " +
+                        "Off: nothing of MangoHud runs unless it is the style at the start. Hidden it still hooks every frame: a small cost.",
+                    checked = preload) { preload = it; bridge.setMangoHudPreload(it) }
+            }
+        }
         Card {
             SwitchRow("FPS limit", if (fps == 0) "Off: the game runs as fast as it can" else "Capped at $fps FPS", checked = fps != 0) { on ->
                 fps = if (on) 60 else 0

@@ -51,6 +51,9 @@ interface QuickMenuBridge {
     fun hudMode(): Int
     /** The game's performance controls (null before the session is set up). */
     fun performance(): com.winlator.cmod.session.PerfSession?
+    /** "Keep MangoHud ready": loaded hidden with every game (from the next start). */
+    fun mangoHudPreload(): Boolean
+    fun setMangoHudPreload(on: Boolean)
     fun setHudMode(mode: Int)
     /** This session started with MangoHud's layer (switching to it otherwise takes a restart). */
     fun mangoHudRunning(): Boolean

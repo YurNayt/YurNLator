@@ -29,8 +29,13 @@ public final class MangoHud {
 
     /** At launch: the variables that load the layer with our config (read by the guest launcher). */
     public static void prepareLaunch(EnvVars envVars, File imageFsRoot, boolean log) {
+        prepareLaunch(envVars, imageFsRoot, log, true);
+    }
+
+    /** [visible] false: loaded hidden ("keep MangoHud ready"), shown later from the quick menu. */
+    public static void prepareLaunch(EnvVars envVars, File imageFsRoot, boolean log, boolean visible) {
         sensorRows = com.winlator.cmod.core.HudSensorFeed.INSTANCE.getRunning();
-        write(imageFsRoot, true, log);
+        write(imageFsRoot, visible, log);
         envVars.put("YURN_MANGOHUD_CONFIGFILE", configFile(imageFsRoot).getPath());
         // MangoHud's own messages (errors, what it cannot read here) go to the session log.
         if (!envVars.has("MANGOHUD_LOG_LEVEL")) envVars.put("MANGOHUD_LOG_LEVEL", "info");

@@ -62,4 +62,39 @@ public final class WaylandLaunch {
         String v = env.get(name).trim().toLowerCase(Locale.US);
         return v.equals("0") || v.equals("false") || v.equals("off");
     }
+
+    /**
+     * YurNLator base, part 16: starts the compositor right above the X server's view, with this
+     * launch's driver and switches. Its frames feed our HUD and close the loading screen (at the
+     * game's window as on X11, not only at its first rendered frame).
+     */
+    public static WaylandSession start(Activity activity, com.winlator.cmod.xserver.XServer xServer,
+                                       android.widget.FrameLayout root, android.view.View xServerView,
+                                       String driverVersion, Container container, Shortcut shortcut,
+                                       boolean stretched, com.winlator.cmod.core.PreloaderDialog loading,
+                                       HudController hud) {
+        Driver driver = driver(activity, driverVersion);
+        applySwitches(container, shortcut);
+        WaylandSession session = new WaylandSession(activity, xServer);
+        session.start(root, root.indexOfChild(xServerView) + 1, driver.path, driver.library, stretched,
+                shortcut != null, new WaylandSession.Listener() {
+            private boolean shown = false;
+            @Override public void onFirstFrame() { loading.closeOnUiThread(); }
+            @Override public void onGameFrame() {
+                // Also a game frame closes the loading screen (in case the first-frame signal is missed).
+                if (!shown) { shown = true; loading.closeOnUiThread(); }
+                com.winlator.cmod.widget.WinlatorHUD m = hud.modern();
+                if (m != null) m.onFrame();
+            }
+            @Override public void onGameSurface(String window, String gpuName) {
+                if (window != null) loading.closeOnUiThread();
+                com.winlator.cmod.widget.WinlatorHUD m = hud.modern();
+                if (window != null && gpuName != null && m != null) {
+                    m.setGpuName(gpuName);
+                    activity.runOnUiThread(() -> m.onRendererDetected("Wayland"));
+                }
+            }
+        });
+        return session;
+    }
 }

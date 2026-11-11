@@ -238,6 +238,8 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
 
     @Override public void setHudMode(int mode) { a.hud.apply(mode); }
     @Override public com.winlator.cmod.session.PerfSession performance() { return a.perf; }
+    @Override public boolean mangoHudPreload() { return a.preferences.getBoolean("mangohud_preload", false); }
+    @Override public void setMangoHudPreload(boolean on) { a.preferences.edit().putBoolean("mangohud_preload", on).apply(); }
 
     @Override public boolean hudElement(int index) { return a.hud.modern() == null || a.hud.modern().isElementOn(index); }
     @Override public void setHudElement(int index, boolean on) { { WinlatorHUD m = a.hud.modern(); if (m != null) m.toggleElement(index, on); } }
