@@ -928,52 +928,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         FileUtils.clear(imageFs.getTmpDir());
 
-        guestProgramLauncherComponent = new GuestProgramLauncherComponent(
-                contentsManager,
-                contentsManager.getProfileByEntryName(container.getWineVersion()),
-                shortcut);
-
-        if (container != null) {
-            guestProgramLauncherComponent.setContainer(this.container);
-            guestProgramLauncherComponent.setWineInfo(this.wineInfo);
-
-            String guestExecutable = com.winlator.cmod.session.LaunchEnv.guestExecutable(xServer.screenInfo,
-                    com.winlator.cmod.session.LaunchEnv.startCommand(shortcut, getOverrideEnvVars()));
-
-            guestProgramLauncherComponent.setGuestExecutable(guestExecutable);
-            // First line of the log: what was launched (and the shortcut's path), so a game
-            // that never starts shows why (wrong folder, mangled path...).
-            if (debugDialog != null) {
-                String ver = "";
-                try { ver = " " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
-                debugDialog.call("[YurNLator" + ver + "] launch: " + guestExecutable);
-                if (shortcut != null) debugDialog.call("[YurNLator] shortcut path: " + shortcut.path);
-            }
-
-            // Game-specific fixes in the game's own files (TLOU's address-space reservation).
-            com.winlator.cmod.session.GameFixes.apply(this, container, shortcut, envVars,
-                    line -> { if (debugDialog != null) debugDialog.call(line); });
-            com.winlator.cmod.session.LaunchEnv.user(envVars, container, shortcut);
-            com.winlator.cmod.session.OpenGLEnv.apply(envVars, graphicsDriver, container, shortcut);
-            com.winlator.cmod.session.LaunchEnv.defaults(envVars, container, shortcut, cpuAffinity.wineCpuTopology());
-            // MangoHud as the HUD: loaded with the game (it can't be added to a running one).
-            // Precise sensors (root / ADB, Settings): CPU / GPU load, clocks and temperatures for both HUDs.
-            com.winlator.cmod.core.HudSensorFeed.INSTANCE.start(this, imageFs.getRootDir());
-            hud.prepareLaunch(envVars, line -> { if (debugDialog != null) debugDialog.call(line); });
-
-            ArrayList<String> bindingPaths = new ArrayList<>();
-            for (String[] drive : container.drivesIterator()) {
-                bindingPaths.add(drive[1]);
-            }
-
-            guestProgramLauncherComponent.setBindingPaths(bindingPaths.toArray(new String[0]));
-
-            guestProgramLauncherComponent.setBox64Preset(launchConfig.getBox64Preset());
-
-            guestProgramLauncherComponent.setFEXCorePreset(launchConfig.getFexcorePreset());
-            guestProgramLauncherComponent.setWaylandRuntimeDir(waylandMode
-                    ? com.winlator.cmod.session.WaylandSession.runtimeDir(this).getPath() : null);
-        }
+        // The game's process and what the launch adds to its environment: session/GuestLaunch.
+        java.util.function.Consumer<String> log = line -> { if (debugDialog != null) debugDialog.call(line); };
+        guestProgramLauncherComponent = com.winlator.cmod.session.GuestLaunch.create(this, contentsManager, container,
+                shortcut, wineInfo, launchConfig, xServer.screenInfo, getOverrideEnvVars(), waylandMode, log);
+        com.winlator.cmod.session.GuestLaunch.environment(this, container, shortcut, envVars, graphicsDriver,
+                cpuAffinity.wineCpuTopology(), log);
+        // Precise sensors (root / ADB, Settings): CPU / GPU load, clocks and temperatures for both HUDs.
+        com.winlator.cmod.core.HudSensorFeed.INSTANCE.start(this, imageFs.getRootDir());
+        // MangoHud as the HUD: loaded with the game (it can't be added to a running one).
+        hud.prepareLaunch(envVars, log);
 
         if (overrideEnvVars != null) {
             envVars.putAll(overrideEnvVars);
@@ -1002,11 +966,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     }
 
-    private void createWrapperScript(String path, String content) {
-        File scriptFile = new File(path);
-        FileUtils.writeString(scriptFile, content);
-        scriptFile.setExecutable(true);
-    }
 
     private void setupUI() {
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);

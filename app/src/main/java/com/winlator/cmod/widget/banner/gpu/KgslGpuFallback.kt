@@ -27,8 +27,13 @@ object KgslGpuFallback {
         "$KGSL/gpubusy", "$KGSL/gpu_busy_percentage", "$KGSL/devfreq/gpu_load", "$KGSL/gpuload", "$QCOM_GPU/gpu_busy",
     )
 
-    private val loadIsBlocked: Boolean by lazy { kgslPresent() && LOAD_NODES.none { File(it).canRead() } }
-    private val clockIsBlocked: Boolean by lazy { kgslPresent() && clockNodes().none { File(it).canRead() } }
+    // YurNLator: "readable" means a read returns something. Some phones (Meizu 21) report the
+    // nodes as readable while SELinux refuses the read, and the fallback never ran there.
+    private val loadIsBlocked: Boolean by lazy { kgslPresent() && LOAD_NODES.none { readable(it) } }
+    private val clockIsBlocked: Boolean by lazy { kgslPresent() && clockNodes().none { readable(it) } }
+
+    private fun readable(path: String): Boolean =
+        runCatching { File(path).bufferedReader().use { it.readLine() }?.isNotBlank() == true }.getOrDefault(false)
 
     private var reader: KgslBusy.Reader? = null
     private var load: MemstoreLoad? = null

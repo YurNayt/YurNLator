@@ -127,7 +127,6 @@ public class XConnectorEpoll implements Runnable {
 
     public void killConnection(Client client) {
         client.connected = false;
-        connectionHandler.handleConnectionShutdown(client);
         if (multithreadedClients) {
             if (Thread.currentThread() != client.pollThread) {
                 client.requestShutdown();
@@ -143,6 +142,9 @@ public class XConnectorEpoll implements Runnable {
             }
             closeFd(client.shutdownFd);
         }
+        // After the client's own thread has stopped: releasing first freed the sound client's
+        // shared buffer and stream while that thread was still writing them (SIGSEGV on exit).
+        connectionHandler.handleConnectionShutdown(client);
         else removeFdFromEpoll(epollFd, client.clientSocket.fd);
         XOutputStream out = client.getOutputStream();
         if (out != null) out.markClosed();
