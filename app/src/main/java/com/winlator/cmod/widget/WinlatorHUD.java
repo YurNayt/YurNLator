@@ -1734,8 +1734,10 @@ public class WinlatorHUD extends View {
         if (driver != null && !driver.isEmpty()) {
             s = s.replace(driver, " ");
             // The driver's own name words ("Rutabaga", "Turnip") go too: it is shown after the GPU.
-            for (String w : driver.split("\\s+"))
-                if (w.matches("(?i)[a-z][a-z\\-]{2,}")) s = s.replaceAll("(?i)\\b" + java.util.regex.Pattern.quote(w) + "\\b", " ");
+            // Split on anything not a letter: "Rutabaga-26.10" stayed one word and Rutabaga was shown twice.
+            for (String w : driver.split("[^A-Za-z]+"))
+                if (w.length() >= 3 && !w.matches("(?i)adreno|mali|immortalis|xclipse|powervr|gpu"))
+                    s = s.replaceAll("(?i)\\b" + java.util.regex.Pattern.quote(w) + "\\b", " ");
             s = s.replaceAll("\\s+", " ").trim();
         }
         if (s.isEmpty()) s = name.replaceAll("[()\\[\\]]", " ").replaceAll("\\s+", " ").trim();
@@ -1754,7 +1756,8 @@ public class WinlatorHUD extends View {
         if (mesa.find()) return "Mesa " + mesa.group(1);
         s = s.replaceFirst("(?i)^mesa\\s+", "");               // "Mesa Turnip v27..." -> "Turnip v27..."
         java.util.regex.Matcher v = java.util.regex.Pattern.compile("\\s*\\bv?(\\d+)\\.(\\d+)[\\w.\\-]*").matcher(s);
-        if (v.find()) s = (s.substring(0, v.start()).trim() + " " + v.group(1) + "." + v.group(2)).trim();
+        // "Rutabaga-26.10.30" -> "Rutabaga 26.10" (the dash before the version was kept: "Rutabaga- 26.…").
+        if (v.find()) s = (s.substring(0, v.start()).replaceAll("[\\s_\\-]+$", "") + " " + v.group(1) + "." + v.group(2)).trim();
         return s.length() > 14 ? s.substring(0, 13).trim() + "…" : s;
     }
 
