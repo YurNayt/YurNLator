@@ -511,7 +511,9 @@ class FusionHudView(
     private fun resolutionString(): String {
         val dm = resources.displayMetrics
         val hz = (display?.refreshRate ?: 0f)
-        val base = "${dm.widthPixels}x${dm.heightPixels}"
+        // The game's resolution (the phone's panel size was shown: 2248x1080 for a 1280x720 game).
+        val game = runCatching { com.winlator.cmod.widget.banner.HudSession.gameResolution?.get() }.getOrNull()
+        val base = game ?: "${dm.widthPixels}x${dm.heightPixels}"
         return if (hz >= 1f) "$base @ ${hz.roundToInt()}Hz" else base
     }
 

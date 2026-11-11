@@ -146,6 +146,7 @@ final class GameLifecycle {
 
     /** The screen is destroyed: sensors, performance changes, Wayland and the task manager stop. */
     void destroy() {
+        com.winlator.cmod.widget.banner.HudSession.gameResolution = null;
         com.winlator.cmod.core.RendererDriverGuard.disarm(a);
         com.winlator.cmod.core.HudSensorFeed.INSTANCE.stop();
         if (a.perf != null) a.perf.stop();

@@ -456,6 +456,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServer.setWinHandler(winHandler);
         xServer.setRelativeMouseMovement(isRelativeMouseMovement);
         com.winlator.cmod.session.RefreshRate.advertise(this, xServer, wineInfo);
+        // The HUD's resolution: the game's (the mode it set inside the container's screen).
+        final XServer xs = xServer;
+        com.winlator.cmod.widget.banner.HudSession.gameResolution =
+                () -> xs.displayMode.getWidth() + "x" + xs.displayMode.getHeight();
 
         boolean[] winStarted = { false };
 

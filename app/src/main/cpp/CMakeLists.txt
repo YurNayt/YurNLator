@@ -28,6 +28,8 @@ target_link_libraries(ssbs dl)
 add_library(gpuclock SHARED
         gpuclock/kgsl_clock.c
         gpuclock/kgsl_busy.c
+        # Mali (CSF generation): load and clock from the GPU's hardware counters (/dev/mali0).
+        gpuclock/mali_counters.cpp
 )
 
 add_library(winlator SHARED
