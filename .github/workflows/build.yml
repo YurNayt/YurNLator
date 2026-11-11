@@ -80,7 +80,13 @@ jobs:
           APT="sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Dir::Cache::Archives=$HOME/apt-cache -o APT::Keep-Downloaded-Packages=true"
           PKGS="glslang-tools ninja-build zstd gcc-mingw-w64-x86-64-win32"
           ok=0
+          have() { command -v glslangValidator && command -v ninja && command -v zstd && command -v x86_64-w64-mingw32-gcc; } >/dev/null 2>&1
+          # The Ubuntu mirror can be unreachable for a while: the cached .debs install without it.
+          if have; then ok=1
+          elif ls ~/apt-cache/*.deb >/dev/null 2>&1 && sudo dpkg -i ~/apt-cache/*.deb >/dev/null && have; then ok=1; echo "installed from the apt cache"
+          fi
           for i in 1 2 3; do
+            [ "$ok" = 1 ] && break
             # Cached .debs: installing needs no download (the index update is small).
             if timeout 240 $APT update && timeout 420 $APT install -y --no-install-recommends $PKGS; then ok=1; break; fi
             echo "apt try $i failed, retrying"; sleep 10
