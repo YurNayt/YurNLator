@@ -201,12 +201,18 @@ private fun BenchScreen(
     }
 
     val s = state.value
+    // Landscape: the tabs' top bar (Library / Containers / Settings / Benchmark), like the other tabs.
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val landscape = config.screenWidthDp > config.screenHeightDp
+    val mainActivity = LocalContext.current as? com.winlator.cmod.MainActivity
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    if (landscape) com.winlator.cmod.ui.LandscapeMainNavigation(mainActivity, com.winlator.cmod.R.id.main_menu_bench, "Benchmark")
     LazyColumn(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        Modifier.fillMaxWidth().weight(1f),
         contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text("Benchmark", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            if (!landscape) Text("Benchmark", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text("Runs YurnBench (CPU, GPU and CPU+GPU, about a minute each, after a warm-up load) with every chosen GPU driver, Vulkan wrapper, DXVK and FEX / Box64. " +
                 "Proton stays the container's. Keep the phone on the charger, screen on.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -384,6 +390,7 @@ private fun BenchScreen(
         }
         item { TestLogSection() }
         item { HistorySection() }
+    }
     }
 }
 
