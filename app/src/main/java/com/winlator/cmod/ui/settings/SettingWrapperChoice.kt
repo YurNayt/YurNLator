@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.components.GlossaryHelpIcon
 import com.winlator.cmod.ui.components.KeepDialogFullscreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,6 +77,7 @@ internal fun SettingWrapperChoice(selected: String, onSelected: (String) -> Unit
                         Text(sub.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+                GlossaryHelpIcon("Vulkan Wrapper")
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }

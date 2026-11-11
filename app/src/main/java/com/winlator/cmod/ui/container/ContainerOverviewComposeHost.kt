@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.components.GlossarySheet
+import com.winlator.cmod.ui.components.glossaryRussian
 import android.content.Context
 import android.view.View
 import androidx.compose.foundation.BorderStroke
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.Button
@@ -128,6 +131,7 @@ private fun ContainerOverviewScreen(model: ContainerOverviewModel, callbacks: Co
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = padding.calculateBottomPadding() + 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            item(key = "glossary") { GlossaryEntryRow() }
             item(key = "container-sections") {
                 SectionGroup(model, sections, expanded, callbacks) { section ->
                     expanded = if (expanded == section) null else section
@@ -197,4 +201,32 @@ private fun SectionRow(item: SectionItem, expanded: Boolean, onClick: () -> Unit
             Icon(if (expanded) Icons.Outlined.KeyboardArrowDown else Icons.Outlined.KeyboardArrowRight, null, modifier = Modifier.size(21.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+/** "What do these settings mean?": opens the settings glossary. */
+@Composable
+private fun GlossaryEntryRow() {
+    var open by remember { mutableStateOf(false) }
+    val ru = glossaryRussian()
+    Surface(
+        onClick = { open = true },
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .72f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.MenuBook, null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(if (ru) "Справочник по настройкам" else "What do these settings mean?",
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                Text(if (ru) "Простыми словами о каждой настройке" else "Plain-language help for every setting",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.Outlined.KeyboardArrowRight, null, modifier = Modifier.size(21.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    if (open) GlossarySheet(onDismiss = { open = false })
 }

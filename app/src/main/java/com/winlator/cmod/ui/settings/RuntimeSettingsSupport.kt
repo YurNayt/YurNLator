@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.components.Glossary
+import com.winlator.cmod.ui.components.GlossaryHelpIcon
 import com.winlator.cmod.core.ProtonVersions
 import com.winlator.cmod.core.VersionGroups
 import com.winlator.cmod.contents.ContentCatalogs
@@ -564,6 +566,7 @@ internal fun SettingChoice(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                    GlossaryHelpIcon(label)
                     Icon(Icons.Outlined.KeyboardArrowDown, null)
                 }
             }
@@ -636,6 +639,7 @@ internal fun SettingWineRuntimeChoice(
                         )
                     }
                 }
+                GlossaryHelpIcon(label)
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
@@ -714,6 +718,7 @@ internal fun SettingInstallChoice(
                     Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(if (selected.isBlank()) "Choose a version" else VersionGroups.title(selected, prefix), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 }
+                GlossaryHelpIcon(label)
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
@@ -801,6 +806,7 @@ internal fun SettingDriverChoice(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                GlossaryHelpIcon(label)
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
@@ -850,6 +856,7 @@ internal fun SettingToggle(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        GlossaryHelpIcon(label)
         Switch(checked = checked, onCheckedChange = onChanged, enabled = enabled)
     }
 }
@@ -865,6 +872,7 @@ internal fun SettingText(
         value = value,
         onValueChange = onChanged,
         label = { Text(label) },
+        trailingIcon = if (Glossary.forLabel(label) != null) ({ GlossaryHelpIcon(label) }) else null,
         modifier = Modifier.fillMaxWidth().padding(12.dp),
         minLines = minLines,
         maxLines = if (minLines > 1) 5 else 1,
@@ -879,7 +887,10 @@ internal fun CpuSelectorRow(
     onToggle: (Int, Boolean) -> Unit
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp)) {
-        Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            GlossaryHelpIcon(title)
+        }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(7.dp)

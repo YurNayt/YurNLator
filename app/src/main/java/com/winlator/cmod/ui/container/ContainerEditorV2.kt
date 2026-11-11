@@ -2,6 +2,7 @@
 
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.components.GlossaryButton
 import com.winlator.cmod.session.MediaDecoder
 import com.winlator.cmod.ui.settings.CodecsCard
 import com.winlator.cmod.ui.shortcut.ShortcutDriveLettersEditorV2
@@ -654,7 +655,8 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         topBar = {
             TopAppBar(
                 title = { Text(if (editing == null) "New container" else state.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null) } }
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null) } },
+                actions = { GlossaryButton() }
             )
         },
         bottomBar = {

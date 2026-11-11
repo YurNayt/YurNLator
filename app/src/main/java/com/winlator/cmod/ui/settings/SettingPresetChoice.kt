@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.components.GlossaryHelpIcon
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -176,6 +177,7 @@ fun SettingPresetChoice(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                GlossaryHelpIcon(label)
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }

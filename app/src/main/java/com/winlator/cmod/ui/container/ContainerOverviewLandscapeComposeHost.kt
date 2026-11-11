@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.components.GlossaryButton
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -126,6 +127,7 @@ private fun LandscapeContainerOverview(model: ContainerOverviewModel, callbacks:
                             Text(active.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                             if (active.subtitle.isNotBlank()) Text(active.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
+                        GlossaryButton()
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .58f))
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.components.GlossaryHelpIcon
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -74,6 +75,7 @@ internal fun SettingSyncChoice(env: String, note: String? = null, onChanged: (St
                 }
                 if (hint != null) Text(hint, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            GlossaryHelpIcon("Sync")
             Icon(Icons.Outlined.KeyboardArrowDown, null)
         }
     }

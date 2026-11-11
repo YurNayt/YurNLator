@@ -2,6 +2,7 @@
 
 package com.winlator.cmod.ui.shortcut
 
+import com.winlator.cmod.ui.components.GlossaryButton
 import com.winlator.cmod.session.MediaDecoder
 import com.winlator.cmod.ui.settings.CodecsRows
 import com.winlator.cmod.ui.settings.PresetKind
@@ -542,7 +543,8 @@ internal fun ShortcutEditorV2(fragment: Fragment, shortcut: Shortcut, close: () 
         topBar = {
             TopAppBar(
                 title = { Text(state.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = ::closeEditor) { Icon(Icons.Outlined.ArrowBack, null) } }
+                navigationIcon = { IconButton(onClick = ::closeEditor) { Icon(Icons.Outlined.ArrowBack, null) } },
+                actions = { GlossaryButton() }
             )
         }
     ) { padding ->
