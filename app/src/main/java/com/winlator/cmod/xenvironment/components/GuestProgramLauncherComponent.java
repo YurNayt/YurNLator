@@ -392,7 +392,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         String renderer = GPUInformation.getRenderer(null, null);
 
-        if (renderer.contains("Mali")) 
+        if (renderer.matches("(?is).*(mali|immortalis).*")) 
             execEnvVars.put("BOX64_MMAP32", "0");
 
         if (execEnvVars.get("BOX64_MMAP32").equals("1") && !wineInfo.isArm64EC()) {

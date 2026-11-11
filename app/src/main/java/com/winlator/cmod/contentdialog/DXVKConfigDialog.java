@@ -16,6 +16,7 @@ import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.UnitUtils;
 import com.winlator.cmod.core.DefaultVersion;
 import com.winlator.cmod.core.EnvVars;
+import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.KeyValueSet;
 import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.core.VKD3DVersionItem;
@@ -320,6 +321,13 @@ public class DXVKConfigDialog extends ContentDialog {
         String asyncCache = config.get("asyncCache");
         if (!asyncCache.isEmpty() && !asyncCache.equals("0"))
             envVars.put("DXVK_GPLASYNCCACHE", "1");
+
+        // Mali / non-Adreno (from Winlator Mali 1.2.1): fewer D3D11 sync points. Mali drivers
+        // stall on frequent barriers; on by default, "Mali barrier tweaks" in the DXVK settings.
+        if (!"0".equals(config.get("maliTweaks")) && !GPUInformation.isAdrenoGPU(context)) {
+            if (!content.isEmpty()) content += "; ";
+            content += "d3d11.relaxedBarriers = True; d3d11.ignoreGraphicsBarriers = True; d3d11.allowMapFlagNoWait = True";
+        }
 
         if (!content.isEmpty())
             envVars.put("DXVK_CONFIG", content);

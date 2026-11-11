@@ -424,7 +424,7 @@ public class ContainerDetailFragment extends Fragment implements DXVKConfigDialo
 
         final View vGraphicsDriverConfig = view.findViewById(R.id.BTGraphicsDriverConfig);
         vGraphicsDriverConfig
-                .setTag(isEditMode() ? container.getGraphicsDriverConfig() : Container.DEFAULT_GRAPHICSDRIVERCONFIG);
+                .setTag(isEditMode() ? container.getGraphicsDriverConfig() : com.winlator.cmod.core.GpuProfileManager.defaultGraphicsDriverConfig(context));
 
         loadGraphicsDriverSpinner(sGraphicsDriver, sDXWrapper, vGraphicsDriverConfig,
                 isEditMode() ? container.getGraphicsDriver() : Container.DEFAULT_GRAPHICS_DRIVER,
@@ -1178,7 +1178,7 @@ public class ContainerDetailFragment extends Fragment implements DXVKConfigDialo
 
         envVarsView.setDarkMode(isDarkMode);
 
-        envVarsView.setEnvVars(new EnvVars(isEditMode() ? container.getEnvVars() : Container.DEFAULT_ENV_VARS));
+        envVarsView.setEnvVars(new EnvVars(isEditMode() ? container.getEnvVars() : com.winlator.cmod.core.GpuProfileManager.defaultEnvVars(context)));
         view.findViewById(R.id.BTAddEnvVar)
                 .setOnClickListener((v) -> (new AddEnvVarDialog(context, envVarsView)).show());
         return envVarsView;

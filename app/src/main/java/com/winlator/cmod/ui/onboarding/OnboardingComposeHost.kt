@@ -186,14 +186,14 @@ private fun prepareInitialContainer(
     ready.value = false
     try {
         val defaultDriver = GpuProfileManager.defaultGraphicsDriverVersion(activity)
-        val graphicsConfig = Container.DEFAULT_GRAPHICSDRIVERCONFIG.replace(
+        val graphicsConfig = GpuProfileManager.defaultGraphicsDriverConfig(activity).replace(
             ";version=;",
             ";version=$defaultDriver;"
         )
         val data = JSONObject().apply {
             put("name", "Container-${manager.nextContainerId}")
             put("screenSize", Container.DEFAULT_SCREEN_SIZE)
-            put("envVars", cleanContainerEnvironment(Container.DEFAULT_ENV_VARS))
+            put("envVars", cleanContainerEnvironment(GpuProfileManager.defaultEnvVars(activity)))
             put("graphicsDriver", Container.DEFAULT_GRAPHICS_DRIVER)
             put("graphicsDriverConfig", graphicsConfig)
             put("rendererNative", false)

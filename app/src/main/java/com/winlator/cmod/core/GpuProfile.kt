@@ -118,6 +118,33 @@ object GpuProfileManager {
     fun isMismatch(context: Context, profile: GpuProfile): Boolean =
         profile != detect(context).recommendedProfile
 
+    /**
+     * Graphics driver config for new containers. Mali: Winlator Mali 1.2.1's own wrapper (its
+     * default) and the BCn texture disk cache on (also its default), so a new container runs
+     * like there out of the box.
+     */
+    @JvmStatic
+    fun defaultGraphicsDriverConfig(context: Context): String {
+        var c = com.winlator.cmod.container.Container.DEFAULT_GRAPHICSDRIVERCONFIG
+        if (current(context) == GpuProfile.MALI) {
+            c = c.replace("bcnEmulationCache=0", "bcnEmulationCache=1") + ";wrapper=mali-wrapper"
+        }
+        return c
+    }
+
+    /**
+     * Environment for new containers. Mali: Turnip's TU_DEBUG says nothing there, and the
+     * wrapper's OpConstantComposite SPIR-V pass is off (Winlator Mali's default).
+     */
+    @JvmStatic
+    fun defaultEnvVars(context: Context): String {
+        if (current(context) != GpuProfile.MALI) return com.winlator.cmod.container.Container.DEFAULT_ENV_VARS
+        val env = EnvVars(com.winlator.cmod.container.Container.DEFAULT_ENV_VARS)
+        env.remove("TU_DEBUG")
+        env.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1")
+        return env.toString()
+    }
+
     /** Default graphics driver for new containers under the active profile. */
     @JvmStatic
     fun defaultGraphicsDriverVersion(context: Context): String = when (current(context)) {

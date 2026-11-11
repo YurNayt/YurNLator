@@ -213,6 +213,7 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     var vkd3dLevel by mutableStateOf(readConfig(wrapperConfig, "vkd3dLevel", ',').ifBlank { "12_1" })
     var frameRate by mutableStateOf(readConfig(wrapperConfig, "framerate", ',').ifBlank { "0" })
     var maxFrameLatency by mutableStateOf(readConfig(wrapperConfig, "maxFrameLatency", ',') == "1")
+    var maliTweaks by mutableStateOf(readConfig(wrapperConfig, "maliTweaks", ',') != "0")
     var async by mutableStateOf(readConfig(wrapperConfig, "async", ',') == "1")
     var asyncCache by mutableStateOf(readConfig(wrapperConfig, "asyncCache", ',') == "1")
     var ddrawWrapper by mutableStateOf(readConfig(wrapperConfig, "ddrawrapper", ',').ifBlank { "wined3d" })
@@ -945,6 +946,10 @@ private fun ShortcutCategoryV2(
                     SettingText("Frame Rate", s.frameRate) { s.frameRate = it.filter(Char::isDigit).take(4); s.wrapperValue("framerate", s.frameRate.ifBlank { "0" }) }
                     SettingsDivider()
                     SettingToggle("Max Frame Latency", s.maxFrameLatency) { s.maxFrameLatency = it; s.wrapperValue("maxFrameLatency", if (it) "1" else "0") }
+                    if (!com.winlator.cmod.core.GPUInformation.isAdrenoGPU(context)) {
+                        SettingsDivider()
+                        SettingToggle("Mali barrier tweaks", s.maliTweaks) { s.maliTweaks = it; s.wrapperValue("maliTweaks", if (it) "1" else "0") }
+                    }
                     val asyncMode = dxvkAsyncMode(s.dxvkVersion)
                     if (asyncMode != DxvkAsyncMode.NONE) {
                         SettingsDivider()

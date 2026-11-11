@@ -192,7 +192,7 @@ private class ContainerEditorStateV2(
         } else Container.DEFAULT_GRAPHICS_DRIVER
     )
     var graphicsConfig by mutableStateOf(
-        (editing?.graphicsDriverConfig ?: Container.DEFAULT_GRAPHICSDRIVERCONFIG).let { original ->
+        (editing?.graphicsDriverConfig ?: GpuProfileManager.defaultGraphicsDriverConfig(context)).let { original ->
             if (readConfig(original, "version", ';').isBlank()) writeConfig(original, "version", preferredDriver, ';') else original
         }
     )
@@ -219,6 +219,7 @@ private class ContainerEditorStateV2(
     var vkd3dLevel by mutableStateOf(readConfig(wrapperConfig, "vkd3dLevel", ',').ifBlank { "12_1" })
     var frameRate by mutableStateOf(readConfig(wrapperConfig, "framerate", ',').ifBlank { "0" })
     var maxFrameLatency by mutableStateOf(readConfig(wrapperConfig, "maxFrameLatency", ',') == "1")
+    var maliTweaks by mutableStateOf(readConfig(wrapperConfig, "maliTweaks", ',') != "0")
     var async by mutableStateOf(readConfig(wrapperConfig, "async", ',') == "1")
     var asyncCache by mutableStateOf(readConfig(wrapperConfig, "asyncCache", ',') == "1")
     var ddrawWrapper by mutableStateOf(readConfig(wrapperConfig, "ddrawrapper", ',').ifBlank { "none" })
@@ -249,7 +250,7 @@ private class ContainerEditorStateV2(
 
     var startup by mutableIntStateOf(editing?.startupSelection?.toInt() ?: Container.STARTUP_SELECTION_ESSENTIAL.toInt())
     var openGlDefaultInitialized by mutableStateOf((editing?.getExtra("openGlDefaultInitialized", "0") ?: "0") == "1")
-    private val initialEnvVars = cleanContainerEnvironment(editing?.envVars ?: Container.DEFAULT_ENV_VARS)
+    private val initialEnvVars = cleanContainerEnvironment(editing?.envVars ?: GpuProfileManager.defaultEnvVars(context))
     private val shouldAddMesaGlOverride = graphicsDriver.equals("freedreno", true) &&
         envValue(initialEnvVars, "MESA_GL_VERSION_OVERRIDE").isNullOrBlank()
     var autoMesaGlVersionOverride by mutableStateOf(
@@ -1082,6 +1083,12 @@ private fun ContainerCategoryV2(
                     SettingsDivider()
                     SettingToggle("Max Frame Latency", s.maxFrameLatency) {
                         s.maxFrameLatency = it; s.wrapperValue("maxFrameLatency", if (it) "1" else "0")
+                    }
+                    if (!com.winlator.cmod.core.GPUInformation.isAdrenoGPU(context)) {
+                        SettingsDivider()
+                        SettingToggle("Mali barrier tweaks", s.maliTweaks) {
+                            s.maliTweaks = it; s.wrapperValue("maliTweaks", if (it) "1" else "0")
+                        }
                     }
                     val asyncMode = dxvkAsyncMode(s.dxvkVersion)
                     if (asyncMode != DxvkAsyncMode.NONE) {
