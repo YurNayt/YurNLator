@@ -227,25 +227,25 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
     }
 
     // ---- HUD ----
-    @Override public int hudMode() { return a.savedHudMode(); }
+    @Override public int hudMode() { return a.hud.savedMode(); }
 
-    @Override public boolean mangoHudRunning() { return a.mangoHudLaunched; }
+    @Override public boolean mangoHudRunning() { return a.hud.mangoHudLaunched(); }
     @Override public boolean mangoHudLog() { return a.preferences.getBoolean("mangohud_log", false); }
     @Override public void setMangoHudLog(boolean on) {
         a.preferences.edit().putBoolean("mangohud_log", on).apply();
-        if (a.mangoHudLaunched) com.winlator.cmod.session.MangoHud.setVisible(a.imageFs.getRootDir(), a.savedHudMode() == 3, on);
+        if (a.hud.mangoHudLaunched()) com.winlator.cmod.session.MangoHud.setVisible(a.imageFs.getRootDir(), a.hud.savedMode() == 3, on);
     }
 
-    @Override public void setHudMode(int mode) { a.applyHudMode(mode); }
+    @Override public void setHudMode(int mode) { a.hud.apply(mode); }
     @Override public com.winlator.cmod.session.PerfSession performance() { return a.perf; }
 
-    @Override public boolean hudElement(int index) { return a.modernHud == null || a.modernHud.isElementOn(index); }
-    @Override public void setHudElement(int index, boolean on) { if (a.modernHud != null) a.modernHud.toggleElement(index, on); }
-    @Override public float hudScale() { return a.modernHud != null ? a.modernHud.getHudScale() : 1f; }
-    @Override public void setHudScale(float scale) { if (a.modernHud != null) a.modernHud.setHudScale(scale); }
-    @Override public float hudAlpha() { return a.modernHud != null ? a.modernHud.getHudAlpha() : 1f; }
-    @Override public void setHudAlpha(float alpha) { if (a.modernHud != null) a.modernHud.setHudAlpha(alpha); }
-    @Override public void resetHud() { if (a.modernHud != null) a.modernHud.forceReset(); }
+    @Override public boolean hudElement(int index) { return a.hud.modern() == null || a.hud.modern().isElementOn(index); }
+    @Override public void setHudElement(int index, boolean on) { { WinlatorHUD m = a.hud.modern(); if (m != null) m.toggleElement(index, on); } }
+    @Override public float hudScale() { return a.hud.modern() != null ? a.hud.modern().getHudScale() : 1f; }
+    @Override public void setHudScale(float scale) { { WinlatorHUD m = a.hud.modern(); if (m != null) m.setHudScale(scale); } }
+    @Override public float hudAlpha() { return a.hud.modern() != null ? a.hud.modern().getHudAlpha() : 1f; }
+    @Override public void setHudAlpha(float alpha) { { WinlatorHUD m = a.hud.modern(); if (m != null) m.setHudAlpha(alpha); } }
+    @Override public void resetHud() { { WinlatorHUD m = a.hud.modern(); if (m != null) m.forceReset(); } }
 
     private void applyFps(int fps) {
         a.applyFpsLimit(fps);

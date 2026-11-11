@@ -129,7 +129,7 @@ public final class SidebarHudPanel {
         bind(it.gpu, hud, 2);
         bind(it.cpuRam, hud, 3);
         bind(it.ram, hud, 7);
-        bind(it.battTemp, hud, 4);
+        bind(it.battTemp, hud, 15);
         bind(it.renderer, hud, 6);
     }
 

@@ -427,10 +427,14 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
             })
             Card {
                 Text("Shown in the HUD", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                listOf(0 to "FPS", 2 to "GPU load", 3 to "CPU load", 7 to "RAM", 4 to "Battery and temperature", 6 to "Renderer").forEach { (idx, name) ->
-                    val on = remember(opened, rev, idx) { bridge.hudElement(idx) }
-                    SwitchRow(name, checked = on) { bridge.setHudElement(idx, it); rev++ }
-                }
+                // Tiles, 3 per row: a lit tile is shown (WinlatorHUD item indices).
+                ToggleTiles(listOf(
+                    0 to "FPS", 13 to "1% / 0.1%", 6 to "Renderer",
+                    2 to "GPU load", 8 to "GPU clock", 9 to "GPU temp",
+                    3 to "CPU load", 10 to "CPU clock", 11 to "CPU temp",
+                    7 to "RAM", 4 to "Power", 12 to "Battery temp",
+                    14 to "GPU name",
+                ), isOn = { idx -> remember(opened, rev, idx) { bridge.hudElement(idx) } }) { idx, on -> bridge.setHudElement(idx, on); rev++ }
                 TextButton(onClick = { bridge.resetHud(); rev++ }) { Text("Reset HUD position") }
             }
         } else if (mode == 4) {
@@ -568,6 +572,33 @@ private fun PerformanceSection(bridge: QuickMenuBridge, opened: Int) {
         }
 
         TextButton(onClick = { perf.resetToDefaults(); rev++ }) { Text("Use the default settings for this game") }
+    }
+}
+
+/** On / off switches as small tiles, [perRow] in a row: lit (accent) = on. */
+@Composable
+private fun ToggleTiles(items: List<Pair<Int, String>>, perRow: Int = 3, isOn: @Composable (Int) -> Boolean, onToggle: (Int, Boolean) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (row in items.chunked(perRow)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for ((idx, name) in row) {
+                    val on = isOn(idx)
+                    Surface(
+                        onClick = { onToggle(idx, !on) },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (on) scheme.primary else scheme.surfaceVariant.copy(alpha = 0.45f),
+                        modifier = Modifier.weight(1f).height(46.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 6.dp)) {
+                            Text(name, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                                color = if (on) scheme.onPrimary else scheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
     }
 }
 

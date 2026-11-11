@@ -53,6 +53,12 @@ public class WinlatorHUD extends View {
     public static final int SHOW_CPU_TEMP = 1 << 8;
     public static final int SHOW_BATTERY_TEMP = 1 << 9;
     public static final int SHOW_CHARGE_STATE = 1 << 10;
+    public static final int SHOW_GPU_CLOCK = 1 << 11;
+    public static final int SHOW_GPU_TEMP = 1 << 12;
+    public static final int SHOW_CPU_CLOCK = 1 << 13;
+    /** 1% and 0.1% lows next to FPS. */
+    public static final int SHOW_LOWS = 1 << 14;
+    private static final String KEY_SHOW_V3 = "hud_show_v3";
 
     public static final int SHOW_GPU = SHOW_GPU_USAGE;
     public static final int SHOW_CPU = SHOW_CPU_USAGE;
@@ -61,7 +67,7 @@ public class WinlatorHUD extends View {
     private static final int LEGACY_SHOW_DEFAULT = 0x6F;
     private static final int SHOW_DEFAULT = SHOW_FPS | SHOW_GPU_USAGE | SHOW_CPU_USAGE
             | SHOW_POWER | SHOW_RENDERER | SHOW_RAM | SHOW_GPU_NAME | SHOW_CPU_TEMP
-            | SHOW_BATTERY_TEMP | SHOW_CHARGE_STATE;
+            | SHOW_BATTERY_TEMP | SHOW_CHARGE_STATE | SHOW_GPU_CLOCK | SHOW_GPU_TEMP | SHOW_CPU_CLOCK | SHOW_LOWS;
 
     private static final int C_BG = Color.argb(180, 0, 0, 0);
     private static final int C_WHITE = Color.WHITE;
@@ -444,6 +450,36 @@ public class WinlatorHUD extends View {
         frameAccum.incrementAndGet();
         com.winlator.cmod.widget.banner.BannerHud b = banner;
         if (b != null) b.tick();
+        frameTimes.tick();
+        ticksSinceSnapshot++;
+    }
+
+    /** Frame times for the 1% / 0.1% lows (Bannerlator's counter). */
+    private final com.winlator.cmod.widget.banner.FpsCounter frameTimes = new com.winlator.cmod.widget.banner.FpsCounter();
+    private volatile int ticksSinceSnapshot = 0;
+    private float lowsCarry = 0f;
+    private volatile String strLows = "";
+    private volatile float wDynLows = 0f;
+
+    /** Lows from the frame times; games whose frames only show in the present counters feed it evenly. */
+    private void updateLows(float gameFps, float windowMs) {
+        int counted = ticksSinceSnapshot;
+        ticksSinceSnapshot = 0;
+        if (counted == 0 && gameFps > 0f && windowMs > 0f) {
+            float exact = gameFps * windowMs / 1000f + lowsCarry;
+            int n = (int) exact;
+            lowsCarry = exact - n;
+            if (n > 0) frameTimes.addFrames(n, windowMs);
+        }
+        com.winlator.cmod.widget.banner.FpsCounter.FrametimeLows l = frameTimes.getFrametimeLows();
+        String text = l.sampleCount >= 100
+                ? String.format(Locale.US, "1%% %.0f  0.1%% %.0f", l.low1Fps, l.low01Fps) : "";
+        if (!text.equals(strLows)) {
+            float before = wDynLows;
+            strLows = text;
+            wDynLows = pSep.measureText(text);
+            if (wDynLows > before + 1f) requestRelayout();
+        }
     }
 
     // ---- Bannerlator styles (HUD style 4): this view keeps counting and deciding when the HUD is
@@ -497,8 +533,8 @@ public class WinlatorHUD extends View {
 
     private void readStats() {
         int mask = showMask;
-        if ((mask & SHOW_GPU_USAGE) != 0) readGpu();
-        if ((mask & (SHOW_CPU_USAGE | SHOW_CPU_TEMP)) != 0) readCpu();
+        if ((mask & (SHOW_GPU_USAGE | SHOW_GPU_CLOCK | SHOW_GPU_TEMP)) != 0) readGpu();
+        if ((mask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK | SHOW_CPU_TEMP)) != 0) readCpu();
         if ((mask & SHOW_RAM) != 0) readRam();
         if ((mask & (SHOW_POWER | SHOW_BATTERY_TEMP | SHOW_CHARGE_STATE)) != 0) readBattery();
     }
@@ -530,47 +566,55 @@ public class WinlatorHUD extends View {
     }
 
     private void readGpu() {
+        int mask = showMask;
         com.winlator.cmod.core.HudSensorSample precise = com.winlator.cmod.core.HudSensorFeed.INSTANCE.getLatest();
-        int rootValue = precise != null && precise.getGpuLoad() >= 0 ? precise.getGpuLoad() : readGpuRoot();
-        if (rootValue >= 0) {
-            // Precise sensors also give the GPU clock and temperature: "62% 680MHz 48°C".
-            String label = rootValue + "%";
-            if (precise != null && precise.getGpuMhz() > 0) label += " " + precise.getGpuMhz() + "MHz";
-            if (precise != null && precise.getGpuTemp() > 0) label += " " + precise.getGpuTemp() + "°C";
-            snapGpu = rootValue;
-            if (!label.equals(strGpu)) {
-                float before = wDynGpu;
-                strGpu = label;
-                wDynGpu = pVal.measureText(strGpu);
-                if (wDynGpu > before + 1f) uiHandler.post(this::requestRelayout);
+        int load = -1;
+        if ((mask & SHOW_GPU_USAGE) != 0) {
+            load = precise != null && precise.getGpuLoad() >= 0 ? precise.getGpuLoad() : readGpuRoot();
+            if (load < 0 && !gpuUnavailable) {
+                for (String path : gpuPaths) {
+                    load = readGpuSample(path);
+                    if (load >= 0) break;
+                }
+                if (load >= 0) gpuConsecutiveFailures = 0;
+                else if (++gpuConsecutiveFailures >= 3) gpuUnavailable = true;
             }
-            return;
+            // Bannerlator's readers: Adreno's kgsl counters work where sysfs is closed to apps.
+            if (load < 0) { Integer m = metrics().getGpuUsagePercent(); if (m != null) load = m; }
+            if (load >= 0) snapGpu = load;
         }
-        if (gpuUnavailable) return;
+        // Clock and temperature: precise sensors (root / ADB), else what an app may read.
+        int mhz = 0, temp = 0;
+        if ((mask & SHOW_GPU_CLOCK) != 0) {
+            if (precise != null && precise.getGpuMhz() > 0) mhz = precise.getGpuMhz();
+            else { Integer m = metrics().getGpuClockMhz(); if (m != null) mhz = m; }
+        }
+        if ((mask & SHOW_GPU_TEMP) != 0) {
+            if (precise != null && precise.getGpuTemp() > 0) temp = precise.getGpuTemp();
+            else { Integer t = metrics().getGpuTempC(); if (t != null) temp = t; }
+        }
+        StringBuilder label = new StringBuilder();
+        if ((mask & SHOW_GPU_USAGE) != 0) label.append(load >= 0 ? load + "%" : snapGpu >= 0 ? snapGpu + "%" : "N/A");
+        if (mhz > 0) { if (label.length() > 0) label.append(' '); label.append(mhz).append("MHz"); }
+        if (temp > 0) { if (label.length() > 0) label.append(' '); label.append(temp).append("°C"); }
+        if (label.length() == 0) label.append("N/A");
+        setGpuLabel(label.toString());
+    }
 
-        int value = -1;
-        for (String path : gpuPaths) {
-            value = readGpuSample(path);
-            if (value >= 0) break;
-        }
+    private void setGpuLabel(String label) {
+        if (label.equals(strGpu)) return;
+        float before = wDynGpu;
+        strGpu = label;
+        wDynGpu = pVal.measureText(strGpu);
+        if (wDynGpu > before + 1f) uiHandler.post(this::requestRelayout);
+    }
 
-        if (value >= 0) {
-            gpuConsecutiveFailures = 0;
-            if (value != snapGpu) {
-                snapGpu = value;
-                strGpu = value + "%";
-                wDynGpu = pVal.measureText(strGpu);
-            }
-            return;
-        }
+    /** Bannerlator's sysfs / kgsl readers (clock, temperatures, load where sysfs is closed). */
+    private com.winlator.cmod.widget.banner.HudMetrics hudMetrics;
 
-        if (++gpuConsecutiveFailures >= 3) {
-            gpuUnavailable = true;
-            if (snapGpu < 0) {
-                strGpu = "N/A";
-                wDynGpu = pVal.measureText(strGpu);
-            }
-        }
+    private com.winlator.cmod.widget.banner.HudMetrics metrics() {
+        if (hudMetrics == null) hudMetrics = new com.winlator.cmod.widget.banner.HudMetrics(getContext().getApplicationContext());
+        return hudMetrics;
     }
 
     private int readGpuSample(String path) {
@@ -658,12 +702,22 @@ public class WinlatorHUD extends View {
     private void readCpu() {
         // Precise sensors (root / ADB) read the real /proc/stat and thermal zones; without them
         // load is estimated from clocks.
+        int mask = showMask;
         com.winlator.cmod.core.HudSensorSample precise = com.winlator.cmod.core.HudSensorFeed.INSTANCE.getLatest();
         int usage = precise != null && precise.getCpuLoad() >= 0 ? precise.getCpuLoad() : CPUStatus.getCpuUsagePercent();
         int temp = precise != null && precise.getCpuTemp() > 0 ? precise.getCpuTemp() : CPUStatus.getCpuTempC();
-        String usageLabel = usage >= 0 ? usage + "%" : "N/A";
-        if (usage >= 0 && precise != null && precise.getCpuMhz() > 0)
-            usageLabel += precise.getCpuMhz() >= 1000 ? String.format(Locale.US, " %.1fGHz", precise.getCpuMhz() / 1000f) : " " + precise.getCpuMhz() + "MHz";
+        int mhz = 0;
+        if ((mask & SHOW_CPU_CLOCK) != 0) {
+            if (precise != null && precise.getCpuMhz() > 0) mhz = precise.getCpuMhz();
+            else { Integer m = metrics().getCpuClockMhz(); if (m != null) mhz = m; }
+        }
+        StringBuilder sb = new StringBuilder();
+        if ((mask & SHOW_CPU_USAGE) != 0) sb.append(usage >= 0 ? usage + "%" : "N/A");
+        if (mhz > 0) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(mhz >= 1000 ? String.format(Locale.US, "%.1fGHz", mhz / 1000f) : mhz + "MHz");
+        }
+        String usageLabel = sb.toString();
         if (usage == snapCpu && temp == snapCpuTemp && usageLabel.equals(strCpuUsage)) return;
 
         snapCpu = usage;
@@ -877,6 +931,7 @@ public class WinlatorHUD extends View {
             }
         }
         lastFpsNs = now;
+        if ((showMask & SHOW_LOWS) != 0) updateLows(snapFps, dt / 1_000_000f);
         if (banner != null) {
             banner.feedRate(snapFps, dt / 1_000_000f);
             banner.setPresentedFps(presentedFps);
@@ -932,7 +987,7 @@ public class WinlatorHUD extends View {
             hasGroup = true;
         }
 
-        if ((showMask & SHOW_GPU_USAGE) != 0) {
+        if ((showMask & (SHOW_GPU_USAGE | SHOW_GPU_CLOCK | SHOW_GPU_TEMP)) != 0) {
             if (hasGroup) x += drawSep(canvas, x, baseline);
             canvas.drawText("GPU ", x, baseline, pGpuUsage);
             x += wLabelGpu;
@@ -941,18 +996,18 @@ public class WinlatorHUD extends View {
             hasGroup = true;
         }
 
-        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_TEMP)) != 0) {
+        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK | SHOW_CPU_TEMP)) != 0) {
             if (hasGroup) x += drawSep(canvas, x, baseline);
             canvas.drawText("CPU ", x, baseline, pCpu);
             x += wLabelCpu;
 
-            if ((showMask & SHOW_CPU_USAGE) != 0) {
+            if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) {
                 canvas.drawText(strCpuUsage, x, baseline, pVal);
                 x += wDynCpuUsage;
             }
 
             if ((showMask & SHOW_CPU_TEMP) != 0) {
-                if ((showMask & SHOW_CPU_USAGE) != 0) x += wInnerSpace;
+                if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) x += wInnerSpace;
                 canvas.drawText(strCpuTemp, x, baseline, pVal);
                 x += wDynCpuTemp;
             }
@@ -1001,6 +1056,11 @@ public class WinlatorHUD extends View {
             canvas.drawText("FPS ", x, baseline, pFps);
             x += wLabelFps;
             canvas.drawText(strFps, x, baseline, pVal);
+            x += wDynFps;
+            if ((showMask & SHOW_LOWS) != 0 && !strLows.isEmpty()) {
+                x += wInnerSpace;
+                canvas.drawText(strLows, x, baseline, pSep);
+            }
         }
     }
 
@@ -1025,24 +1085,24 @@ public class WinlatorHUD extends View {
             y += lineH;
         }
 
-        if ((showMask & SHOW_GPU_USAGE) != 0) {
+        if ((showMask & (SHOW_GPU_USAGE | SHOW_GPU_CLOCK | SHOW_GPU_TEMP)) != 0) {
             canvas.drawText("GPU ", PAD, y + TS, pGpuUsage);
             canvas.drawText(strGpu, PAD + wLabelGpu, y + TS, pVal);
             y += lineH;
         }
 
-        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_TEMP)) != 0) {
+        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK | SHOW_CPU_TEMP)) != 0) {
             float x = PAD;
             canvas.drawText("CPU ", x, y + TS, pCpu);
             x += wLabelCpu;
 
-            if ((showMask & SHOW_CPU_USAGE) != 0) {
+            if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) {
                 canvas.drawText(strCpuUsage, x, y + TS, pVal);
                 x += wDynCpuUsage;
             }
 
             if ((showMask & SHOW_CPU_TEMP) != 0) {
-                if ((showMask & SHOW_CPU_USAGE) != 0) x += wInnerSpace;
+                if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) x += wInnerSpace;
                 canvas.drawText(strCpuTemp, x, y + TS, pVal);
             }
             y += lineH;
@@ -1077,6 +1137,8 @@ public class WinlatorHUD extends View {
         if ((showMask & SHOW_FPS) != 0) {
             canvas.drawText("FPS ", PAD, y + TS, pFps);
             canvas.drawText(strFps, PAD + wLabelFps, y + TS, pVal);
+            if ((showMask & SHOW_LOWS) != 0 && !strLows.isEmpty())
+                canvas.drawText(strLows, PAD + wLabelFps + wDynFps + wInnerSpace, y + TS, pSep);
         }
     }
 
@@ -1097,15 +1159,15 @@ public class WinlatorHUD extends View {
             width += wDynGpuName;
             groups++;
         }
-        if ((showMask & SHOW_GPU_USAGE) != 0) {
+        if ((showMask & (SHOW_GPU_USAGE | SHOW_GPU_CLOCK | SHOW_GPU_TEMP)) != 0) {
             width += wLabelGpu + wDynGpu;
             groups++;
         }
-        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_TEMP)) != 0) {
+        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK | SHOW_CPU_TEMP)) != 0) {
             width += wLabelCpu;
-            if ((showMask & SHOW_CPU_USAGE) != 0) width += wDynCpuUsage;
+            if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) width += wDynCpuUsage;
             if ((showMask & SHOW_CPU_TEMP) != 0) {
-                if ((showMask & SHOW_CPU_USAGE) != 0) width += wInnerSpace;
+                if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) width += wInnerSpace;
                 width += wDynCpuTemp;
             }
             groups++;
@@ -1128,6 +1190,7 @@ public class WinlatorHUD extends View {
         }
         if ((showMask & SHOW_FPS) != 0) {
             width += wLabelFps + wDynFps;
+            if ((showMask & SHOW_LOWS) != 0 && !strLows.isEmpty()) width += wInnerSpace + wDynLows;
             groups++;
         }
 
@@ -1147,17 +1210,17 @@ public class WinlatorHUD extends View {
             width += wDynGpuName;
             groups++;
         }
-        if ((showMask & SHOW_GPU_USAGE) != 0) {
+        if ((showMask & (SHOW_GPU_USAGE | SHOW_GPU_CLOCK | SHOW_GPU_TEMP)) != 0) {
             width += wLabelGpu + Math.max(wVal100pct, wDynGpu);
             groups++;
         }
-        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_TEMP)) != 0) {
+        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK | SHOW_CPU_TEMP)) != 0) {
             width += wLabelCpu;
-            if ((showMask & SHOW_CPU_USAGE) != 0) {
+            if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) {
                 width += Math.max(wVal100pct, wDynCpuUsage);
             }
             if ((showMask & SHOW_CPU_TEMP) != 0) {
-                if ((showMask & SHOW_CPU_USAGE) != 0) width += wInnerSpace;
+                if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) width += wInnerSpace;
                 width += Math.max(wValCpuTemp, wDynCpuTemp);
             }
             groups++;
@@ -1180,6 +1243,7 @@ public class WinlatorHUD extends View {
         }
         if ((showMask & SHOW_FPS) != 0) {
             width += wLabelFps + Math.max(wValFps, wDynFps);
+            if ((showMask & SHOW_LOWS) != 0 && !strLows.isEmpty()) width += wInnerSpace + wDynLows;
             groups++;
         }
 
@@ -1196,14 +1260,14 @@ public class WinlatorHUD extends View {
         if ((showMask & SHOW_GPU_NAME) != 0 && !gpuNameLabel.isEmpty()) {
             width = Math.max(width, PAD * 2 + wDynGpuName);
         }
-        if ((showMask & SHOW_GPU_USAGE) != 0) {
+        if ((showMask & (SHOW_GPU_USAGE | SHOW_GPU_CLOCK | SHOW_GPU_TEMP)) != 0) {
             width = Math.max(width, PAD * 2 + wLabelGpu + wDynGpu);
         }
-        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_TEMP)) != 0) {
+        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK | SHOW_CPU_TEMP)) != 0) {
             float row = wLabelCpu;
-            if ((showMask & SHOW_CPU_USAGE) != 0) row += wDynCpuUsage;
+            if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) row += wDynCpuUsage;
             if ((showMask & SHOW_CPU_TEMP) != 0) {
-                if ((showMask & SHOW_CPU_USAGE) != 0) row += wInnerSpace;
+                if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) row += wInnerSpace;
                 row += wDynCpuTemp;
             }
             width = Math.max(width, PAD * 2 + row);
@@ -1222,7 +1286,8 @@ public class WinlatorHUD extends View {
             width = Math.max(width, PAD * 2 + wLabelTmp + wDynTmp);
         }
         if ((showMask & SHOW_FPS) != 0) {
-            width = Math.max(width, PAD * 2 + wLabelFps + wDynFps);
+            float lows = (showMask & SHOW_LOWS) != 0 && !strLows.isEmpty() ? wInnerSpace + wDynLows : 0;
+            width = Math.max(width, PAD * 2 + wLabelFps + wDynFps + lows);
         }
         return width;
     }
@@ -1236,17 +1301,17 @@ public class WinlatorHUD extends View {
         if ((showMask & SHOW_GPU_NAME) != 0 && !gpuNameLabel.isEmpty()) {
             width = Math.max(width, PAD * 2 + wDynGpuName);
         }
-        if ((showMask & SHOW_GPU_USAGE) != 0) {
+        if ((showMask & (SHOW_GPU_USAGE | SHOW_GPU_CLOCK | SHOW_GPU_TEMP)) != 0) {
             width = Math.max(width,
                     PAD * 2 + wLabelGpu + Math.max(wVal100pct, wDynGpu));
         }
-        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_TEMP)) != 0) {
+        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK | SHOW_CPU_TEMP)) != 0) {
             float row = wLabelCpu;
-            if ((showMask & SHOW_CPU_USAGE) != 0) {
+            if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) {
                 row += Math.max(wVal100pct, wDynCpuUsage);
             }
             if ((showMask & SHOW_CPU_TEMP) != 0) {
-                if ((showMask & SHOW_CPU_USAGE) != 0) row += wInnerSpace;
+                if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK)) != 0) row += wInnerSpace;
                 row += Math.max(wValCpuTemp, wDynCpuTemp);
             }
             width = Math.max(width, PAD * 2 + row);
@@ -1267,8 +1332,9 @@ public class WinlatorHUD extends View {
                     PAD * 2 + wLabelTmp + Math.max(wValTemp, wDynTmp));
         }
         if ((showMask & SHOW_FPS) != 0) {
+            float lows = (showMask & SHOW_LOWS) != 0 && !strLows.isEmpty() ? wInnerSpace + wDynLows : 0;
             width = Math.max(width,
-                    PAD * 2 + wLabelFps + Math.max(wValFps, wDynFps));
+                    PAD * 2 + wLabelFps + Math.max(wValFps, wDynFps) + lows);
         }
         return width;
     }
@@ -1286,8 +1352,8 @@ public class WinlatorHUD extends View {
         float rows = 0;
         if ((showMask & SHOW_RENDERER) != 0) rows++;
         if ((showMask & SHOW_GPU_NAME) != 0 && !gpuNameLabel.isEmpty()) rows++;
-        if ((showMask & SHOW_GPU_USAGE) != 0) rows++;
-        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_TEMP)) != 0) rows++;
+        if ((showMask & (SHOW_GPU_USAGE | SHOW_GPU_CLOCK | SHOW_GPU_TEMP)) != 0) rows++;
+        if ((showMask & (SHOW_CPU_USAGE | SHOW_CPU_CLOCK | SHOW_CPU_TEMP)) != 0) rows++;
         if ((showMask & SHOW_RAM) != 0) rows++;
         if ((showMask & SHOW_POWER) != 0) rows++;
         else if ((showMask & SHOW_CHARGE_STATE) != 0 && snapCharging) rows++;
@@ -1463,6 +1529,11 @@ public class WinlatorHUD extends View {
                     .apply();
         } else {
             mask = prefs.getInt(KEY_SHOW, SHOW_DEFAULT);
+        }
+        // v3: clocks, GPU temperature and the lows became items of their own (on, as they were shown).
+        if (!prefs.getBoolean(KEY_SHOW_V3, false)) {
+            mask |= SHOW_GPU_CLOCK | SHOW_GPU_TEMP | SHOW_CPU_CLOCK | SHOW_LOWS;
+            prefs.edit().putInt(KEY_SHOW, mask).putBoolean(KEY_SHOW_V3, true).apply();
         }
 
         showMask = mask;
@@ -1784,24 +1855,29 @@ public class WinlatorHUD extends View {
         } catch (Exception ignored) {}
     }
 
+    /**
+     * Item indices of the quick menu / sidebar: 0 FPS, 2 GPU load, 3 CPU load, 4 power and charge
+     * (and, for the sidebar's old "battery and temperature" box, the battery temperature too),
+     * 6 renderer, 7 RAM, 8 GPU clock, 9 GPU temperature, 10 CPU clock, 11 CPU temperature,
+     * 12 battery temperature, 13 1% / 0.1% lows, 14 GPU name.
+     */
     private int idxToMask(int idx) {
         switch (idx) {
-            case 0:
-                return SHOW_FPS;
-            case 2:
-                return SHOW_GPU_USAGE;
-            case 3:
-                return SHOW_CPU_USAGE;
-            case 4:
-                // "Battery and temperature": power, battery temperature and charge state together
-                // (it switched the power item only: the battery temperature stayed).
-                return SHOW_POWER | SHOW_BATTERY_TEMP | SHOW_CHARGE_STATE;
-            case 6:
-                return SHOW_RENDERER;
-            case 7:
-                return SHOW_RAM;
-            default:
-                return 0;
+            case 0: return SHOW_FPS;
+            case 2: return SHOW_GPU_USAGE;
+            case 3: return SHOW_CPU_USAGE;
+            case 4: return SHOW_POWER | SHOW_CHARGE_STATE;
+            case 6: return SHOW_RENDERER;
+            case 7: return SHOW_RAM;
+            case 8: return SHOW_GPU_CLOCK;
+            case 9: return SHOW_GPU_TEMP;
+            case 10: return SHOW_CPU_CLOCK;
+            case 11: return SHOW_CPU_TEMP;
+            case 12: return SHOW_BATTERY_TEMP;
+            case 13: return SHOW_LOWS;
+            case 14: return SHOW_GPU_NAME;
+            case 15: return SHOW_POWER | SHOW_CHARGE_STATE | SHOW_BATTERY_TEMP; // sidebar: battery and temperature
+            default: return 0;
         }
     }
 }

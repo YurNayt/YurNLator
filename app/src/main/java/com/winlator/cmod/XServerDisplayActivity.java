@@ -173,8 +173,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
     XServer xServer;
     InputControlsManager inputControlsManager;
     ImageFs imageFs;
-    FrameRating classicHud = null;
-    WinlatorHUD modernHud = null;
+    /** The performance HUD: style, our HUD and Bannerlator's styles (session/HudController). */
+    final com.winlator.cmod.session.HudController hud = new com.winlator.cmod.session.HudController(
+            new com.winlator.cmod.session.HudController.Host() {
+                @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
+                @Override public Container container() { return container; }
+                @Override public Shortcut shortcut() { return shortcut; }
+                @Override public FrameLayout root() { return findViewById(R.id.FLXServerDisplay); }
+                @Override public XServerRendererView renderer() { return xServerView; }
+                @Override public boolean wayland() { return waylandMode; }
+                @Override public java.util.function.Supplier<float[]> compositorFrameGen() { return XServerDisplayActivity.this::waylandFrameGenStats; }
+                @Override public com.winlator.cmod.session.HudWindowTracker tracker() { return hudTracker; }
+                @Override public File imageFsRoot() { return imageFs.getRootDir(); }
+                @Override public boolean mangoHudLog() { return preferences.getBoolean("mangohud_log", false); }
+            });
     Runnable editInputControlsCallback;
     Shortcut shortcut;
     /** Resolved launch settings (shortcut over container), see session/LaunchConfig. */
@@ -216,8 +228,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Which X window the HUD counts frames of (session/HudWindowTracker). */
     final com.winlator.cmod.session.HudWindowTracker hudTracker =
             new com.winlator.cmod.session.HudWindowTracker(new com.winlator.cmod.session.HudWindowTracker.Host() {
-                @Override public WinlatorHUD modernHud() { return modernHud; }
-                @Override public FrameRating classicHud() { return classicHud; }
+                @Override public WinlatorHUD modernHud() { return hud.modern(); }
+                @Override public FrameRating classicHud() { return null; }
                 @Override public XServerRendererView renderer() { return xServerView; }
                 @Override public void runOnUi(Runnable r) { runOnUiThread(r); }
             });
@@ -521,8 +533,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         });
         ProcessHelper.addDebugCallback(new com.winlator.cmod.core.ApiSniffer(lc.getDxwrapperConfig(), label -> {
             actualApi = label;
-            if (modernHud != null) modernHud.setApiLabel(label);
-            if (classicHud != null) runOnUiThread(() -> classicHud.setApiLabel(label));
+            WinlatorHUD m = hud.modern();
+            if (m != null) m.setApiLabel(label);
             return kotlin.Unit.INSTANCE;
         }));
         // Which driver the game really runs on (a wrapper may load its own): HUD + session info.
@@ -533,7 +545,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (found.startsWith("driver ") && configured != null && !configured.isEmpty() && !"System".equalsIgnoreCase(configured))
                 label = configured + " (" + found + ")";
             actualDriver = label;
-            if (modernHud != null) modernHud.setDriverLabel(label);
+            WinlatorHUD m = hud.modern();
+            if (m != null) m.setDriverLabel(label);
             return kotlin.Unit.INSTANCE;
         }));
     }
@@ -882,17 +895,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
             @Override public void onGameFrame() {
                 // Also a game frame closes the loading screen (in case the compositor's first-frame signal is missed).
                 if (!shown) { shown = true; preloaderDialog.closeOnUiThread(); }
-                if (modernHud != null) modernHud.onFrame();
-                if (classicHud != null) classicHud.update();
+                WinlatorHUD m = hud.modern();
+                if (m != null) m.onFrame();
             }
             @Override public void onGameSurface(String window, String gpuName) {
                 // The game's window is up: close the loading screen as X11 does (at the window's first
                 // content), not only at its first rendered frame, which kept it up through the
                 // game's own loading.
                 if (window != null) preloaderDialog.closeOnUiThread();
-                if (window != null && gpuName != null && modernHud != null) {
-                    modernHud.setGpuName(gpuName);
-                    runOnUiThread(() -> modernHud.onRendererDetected("Wayland"));
+                WinlatorHUD m = hud.modern();
+                if (window != null && gpuName != null && m != null) {
+                    m.setGpuName(gpuName);
+                    runOnUiThread(() -> m.onRendererDetected("Wayland"));
                 }
             }
         });
@@ -945,12 +959,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // MangoHud as the HUD: loaded with the game (it can't be added to a running one).
             // Precise sensors (root / ADB, Settings): CPU / GPU load, clocks and temperatures for both HUDs.
             com.winlator.cmod.core.HudSensorFeed.INSTANCE.start(this, imageFs.getRootDir());
-            mangoHudLaunched = savedHudMode() == com.winlator.cmod.session.MangoHud.HUD_MODE;
-            if (mangoHudLaunched) com.winlator.cmod.session.MangoHud.prepareLaunch(envVars, imageFs.getRootDir(),
-                    preferences.getBoolean("mangohud_log", false));
-            if (debugDialog != null) debugDialog.call("[YurNLator] HUD style " + savedHudMode()
-                    + (mangoHudLaunched ? ": MangoHud on, config " + com.winlator.cmod.session.MangoHud.configFile(imageFs.getRootDir())
-                       + (preferences.getBoolean("mangohud_log", false) ? ", log to " + com.winlator.cmod.session.MangoHud.logFolder() : "") : ""));
+            hud.prepareLaunch(envVars, line -> { if (debugDialog != null) debugDialog.call(line); });
 
             ArrayList<String> bindingPaths = new ArrayList<>();
             for (String[] drive : container.drivesIterator()) {
@@ -1048,14 +1057,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         // The HUD the game (else the container) saved: ours, Bannerlator's styles next to it, or
         // MangoHud (in the game itself: nothing here).
-        if (container != null) {
-            int hudMode = savedHudMode();
-            if (hudMode == 2 || hudMode == 4) {
-                createModernHud(rootView);
-                modernHud.setBannerStyle(hudMode == 4);
-                modernHud.enableByUser();
-            }
-        }
+        hud.createAtLaunch();
 
         if (launchConfig != null && launchConfig.getFullscreenStretched()) scaling.toggleFullscreen();
 
@@ -1078,15 +1080,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServerView.setDirectFrameListener(hudTracker::onDirectFrame);
     }
 
-    /** Our HUD, added hidden (it shows itself when the game renders); the renderer counts frames for it. */
-    private void createModernHud(FrameLayout rootView) {
-        modernHud = new WinlatorHUD(this);
-        if (xServerView instanceof VulkanXServerView && !waylandMode) modernHud.setPresentCounter(((VulkanXServerView) xServerView)::getPresentStats);
-        if (waylandMode) modernHud.setCompositorFrameGen(this::waylandFrameGenStats);
-        modernHud.setVisibility(View.GONE);
-        rootView.addView(modernHud);
-        xServerView.setFrameRating(modernHud);
-    }
 
     ActivityResultLauncher<Intent> controlsEditorActivityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -1125,78 +1118,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void setupSidebarHudControls() {
         com.winlator.cmod.ui.ingame.SidebarHudPanel.setup(new com.winlator.cmod.ui.ingame.SidebarHudPanel.Host() {
             @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
-            @Override public WinlatorHUD modernHud() { return modernHud; }
-            @Override public FrameRating classicHud() { return classicHud; }
-            @Override public int savedMode() { return savedHudMode(); }
-            @Override public void apply(int mode) { applyHudMode(mode); }
+            @Override public WinlatorHUD modernHud() { return hud.modern(); }
+            @Override public FrameRating classicHud() { return null; }
+            @Override public int savedMode() { return hud.savedMode(); }
+            @Override public void apply(int mode) { hud.apply(mode); }
             @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return createSidebarSpinnerAdapter(items); }
         });
-    }
-
-    /**
-     * The one HUD switch (quick menu and sidebar): 0 off, 2 YurNLator, 4 Bannerlator styles, 3 MangoHud (drawn in the
-     * game; shown / hidden through its config when the session started with it).
-     */
-    void applyHudMode(int mode) {
-        if (mode == 1) mode = 2; // the classic HUD is gone: old saves open ours
-        // MangoHud (3) draws inside the game: hide ours; any other choice hides MangoHud.
-        if (mangoHudLaunched) com.winlator.cmod.session.MangoHud.setVisible(imageFs.getRootDir(), mode == 3,
-                preferences.getBoolean("mangohud_log", false));
-        if (mode == 0 || mode == 3) {
-            if (classicHud != null) classicHud.disableByUser();
-            if (modernHud != null) modernHud.disableByUser();
-        } else {
-            if (classicHud != null) classicHud.disableByUser(false);
-            if (modernHud != null) modernHud.disableByUser(false);
-            enableHudLazily(mode);
-            // The renderer reports frames to one HUD: point it at the one now shown
-            // (switching style used to leave FPS counting on the hidden one).
-            if (xServerView != null) xServerView.setFrameRating(mode == 2 || mode == 4 ? (Object) modernHud : (Object) classicHud);
-            hudTracker.adoptRendererWindow();
-        }
-        saveHudModeToContainer(mode);
-    }
-
-    void enableHudLazily(int style) {
-        FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
-        if (rootView == null || xServerView == null) return;
-        final XServerRendererView renderer = xServerView;
-
-
-        if (style == 2 || style == 4) {
-            if (modernHud == null) {
-                createModernHud(rootView);
-                if (hudTracker.adoptRendererWindow()) modernHud.onRendererDetected(hudTracker.rendererName());
-            }
-            modernHud.setBannerStyle(style == 4);
-            modernHud.enableByUser();
-        }
-    }
-
-    /** Started with MangoHud's layer (session/MangoHud). */
-    boolean mangoHudLaunched = false;
-
-    int savedHudMode() {
-        if (container == null) return 0;
-        String extra = shortcut != null ? shortcut.getExtra("hudMode", "") : "";
-        if (extra.isEmpty()) extra = container.getExtra("hudMode");
-        int m = extra.isEmpty() ? (container.isShowFPS() ? 2 : 0) : parseIntSafe(extra);
-        return m == 1 ? 2 : m;
-    }
-
-    private static int parseIntSafe(String s) { try { return Integer.parseInt(s.trim()); } catch (Exception e) { return 0; } }
-
-    void saveHudModeToContainer(int mode) {
-        if (container == null) return;
-        // The game's own HUD setting wins at launch: change it there when it has one.
-        if (shortcut != null && !shortcut.getExtra("hudMode", "").isEmpty()) {
-            shortcut.putExtra("hudMode", String.valueOf(mode));
-            shortcut.saveData();
-            return;
-        }
-        container.putExtra("hudMode", String.valueOf(mode));
-        container.setShowFPS(mode != 0);
-        container.saveData();
     }
 
     private void setupSidebarGraphicsControls() {
