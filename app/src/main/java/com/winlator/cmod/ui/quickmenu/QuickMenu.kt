@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.quickmenu
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -118,12 +120,14 @@ object QuickMenuHost {
     }
 }
 
-private enum class Section(val title: String, val icon: ImageVector) {
-    HUD("Performance HUD", Icons.Outlined.QueryStats),
-    PERF("Performance", Icons.Outlined.Speed),
-    SCREEN("Screen effects", Icons.Outlined.AutoFixHigh),
-    CONTROLS("Controls", Icons.Outlined.SportsEsports),
-    TASKS("Task manager", Icons.Outlined.ListAlt),
+private enum class Section(val titleRes: Int, val icon: ImageVector) {
+    HUD(R.string.l_qm_performance_hud, Icons.Outlined.QueryStats),
+    PERF(R.string.l_qm_performance, Icons.Outlined.Speed),
+    SCREEN(R.string.l_qm_screen_effects, Icons.Outlined.AutoFixHigh),
+    CONTROLS(R.string.l_qm_controls, Icons.Outlined.SportsEsports),
+    TASKS(R.string.l_qm_task_manager, Icons.Outlined.ListAlt);
+
+    val title: String get() = uiStr(titleRes)
 }
 
 @Composable
@@ -143,14 +147,14 @@ private fun QuickMenu(bridge: QuickMenuBridge, opened: Int) {
         ) {
             Column(Modifier.fillMaxSize()) {
                 Row(Modifier.fillMaxWidth().padding(start = 22.dp, end = 10.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Quick menu", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(uiStr(R.string.l_qm_quick_menu), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     // Always visible, also on short landscape screens where the rail scrolls.
                     TextButton(onClick = { confirmExit = true }) {
                         Icon(Icons.Outlined.ExitToApp, null, tint = scheme.error, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Exit game", color = scheme.error)
+                        Text(uiStr(R.string.l_qm_exit_game), color = scheme.error)
                     }
-                    IconButton(onClick = { bridge.close() }) { Icon(Icons.Outlined.Close, "Close") }
+                    IconButton(onClick = { bridge.close() }) { Icon(Icons.Outlined.Close, uiStr(R.string.l_qm_close)) }
                 }
                 Row(Modifier.fillMaxSize()) {
                     // Rail
@@ -163,11 +167,11 @@ private fun QuickMenu(bridge: QuickMenuBridge, opened: Int) {
                             RailButton(s.icon, s.title, selected = s == section) { section = s }
                         }
                         Spacer(Modifier.height(8.dp))
-                        RailButton(if (paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, if (paused) "Resume" else "Pause", selected = paused) {
+                        RailButton(if (paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, if (paused) uiStr(R.string.l_qm_resume) else uiStr(R.string.l_qm_pause), selected = paused) {
                             paused = !paused
                             bridge.setPaused(paused)
                         }
-                        RailButton(Icons.Outlined.ExitToApp, "Exit", selected = false, danger = true) { confirmExit = true }
+                        RailButton(Icons.Outlined.ExitToApp, uiStr(R.string.l_qm_exit), selected = false, danger = true) { confirmExit = true }
                     }
                     Box(Modifier.fillMaxSize().padding(end = 14.dp)) {
                         when (section) {
@@ -184,10 +188,10 @@ private fun QuickMenu(bridge: QuickMenuBridge, opened: Int) {
         if (confirmExit) AlertDialog(
             shape = RoundedCornerShape(28.dp), containerColor = QM_DIALOG_BG, tonalElevation = 0.dp,
             onDismissRequest = { confirmExit = false },
-            title = { Text("Exit the game?") },
-            text = { Text("Unsaved progress in the game will be lost.") },
-            confirmButton = { TextButton(onClick = { confirmExit = false; bridge.exitGame() }) { Text("Exit") } },
-            dismissButton = { TextButton(onClick = { confirmExit = false }) { Text("Cancel") } }
+            title = { Text(uiStr(R.string.l_qm_exit_the_game)) },
+            text = { Text(uiStr(R.string.l_qm_unsaved_progress_in_the_game_will)) },
+            confirmButton = { TextButton(onClick = { confirmExit = false; bridge.exitGame() }) { Text(uiStr(R.string.l_qm_exit)) } },
+            dismissButton = { TextButton(onClick = { confirmExit = false }) { Text(uiStr(R.string.l_qm_cancel)) } }
         )
     }
 }
@@ -365,14 +369,14 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
     var alpha by remember(opened, mode) { mutableFloatStateOf(bridge.hudAlpha()) }
     var rev by remember { mutableIntStateOf(0) }
 
-    SectionPage("Performance HUD") {
+    SectionPage(uiStr(R.string.l_qm_performance_hud)) {
         Card {
-            SwitchRow("Performance HUD", "Show or hide the in-game overlay", checked = mode != 0) { on ->
+            SwitchRow(uiStr(R.string.l_qm_performance_hud), uiStr(R.string.l_qm_show_or_hide_the_in_game), checked = mode != 0) { on ->
                 mode = if (on) 2 else 0
                 bridge.setHudMode(mode)
             }
             if (mode != 0) {
-                Label("Style")
+                Label(uiStr(R.string.l_qm_style))
                 Chips(listOf(2 to "YurNLator", 4 to "Bannerlator", 3 to "MangoHud"), mode) { mode = it; bridge.setHudMode(it) }
             }
         }
@@ -380,22 +384,22 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
             val running = remember(opened) { bridge.mangoHudRunning() }
             var log by remember(opened) { mutableStateOf(bridge.mangoHudLog()) }
             Card {
-                Text(if (running) "MangoHud is drawn inside the game: FPS, 1% / 0.1% lows, frame time graph and RAM; CPU and GPU rows too with precise sensors (Settings › Performance HUD, root or ADB). It costs the game some frames."
-                     else "MangoHud loads with the game: restart the game to see it (or turn on \"Keep MangoHud ready\" in the game's or container's settings to switch it on any time).",
+                Text(if (running) uiStr(R.string.l_qm_mangohud_is_drawn_inside_the_game)
+                     else uiStr(R.string.l_qm_mangohud_loads_with_the_game_restart),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                SwitchRow("Write a log", "MangoHud CSV in Download/YurNLator/MangoHud, from the next start", checked = log) {
+                SwitchRow(uiStr(R.string.l_qm_write_a_log), uiStr(R.string.l_qm_mangohud_csv_in_download_yurnlator_mangohud), checked = log) {
                     log = it; bridge.setMangoHudLog(it)
                 }
             }
         }
         Card {
-            SwitchRow("FPS limit", if (fps == 0) "Off: the game runs as fast as it can" else "Capped at $fps FPS", checked = fps != 0) { on ->
+            SwitchRow(uiStr(R.string.l_qm_fps_limit), if (fps == 0) uiStr(R.string.l_qm_off_the_game_runs_as_fast) else uiStr(R.string.l_qm_capped_at_1_d_fps, fps), checked = fps != 0) { on ->
                 fps = if (on) 60 else 0
                 custom = false
                 bridge.setFpsLimit(fps)
             }
             if (fps != 0 || custom) {
-                val chips = FPS_PRESETS.drop(1).map { it to it.toString() } + (-1 to "Custom")
+                val chips = FPS_PRESETS.drop(1).map { it to it.toString() } + (-1 to uiStr(R.string.l_qm_custom))
                 Chips(chips, if (custom) -1 else fps) { v ->
                     if (v == -1) custom = true
                     else { custom = false; fps = v; bridge.setFpsLimit(v) }
@@ -408,7 +412,7 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
                             val v = customText.toIntOrNull()
                             if (v != null && v in 10..240) { fps = v; bridge.setFpsLimit(v) }
                         },
-                        label = { Text("FPS (10 – 240)") },
+                        label = { Text(uiStr(R.string.l_qm_fps_10_240)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
@@ -417,34 +421,33 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
             }
         }
         if (mode == 2) {
-            StepSlider("HUD size", (scale - 0.5f) / 1.5f, "${(scale * 100).roundToInt()}%", onChange = { f ->
+            StepSlider(uiStr(R.string.l_qm_hud_size), (scale - 0.5f) / 1.5f, "${(scale * 100).roundToInt()}%", onChange = { f ->
                 scale = 0.5f + f * 1.5f
                 bridge.setHudScale(scale)
             })
-            StepSlider("HUD opacity", alpha, "${(alpha * 100).roundToInt()}%", onChange = { f ->
+            StepSlider(uiStr(R.string.l_qm_hud_opacity), alpha, "${(alpha * 100).roundToInt()}%", onChange = { f ->
                 alpha = f
                 bridge.setHudAlpha(f)
             })
             Card {
-                Text("Shown in the HUD", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                Text(uiStr(R.string.l_qm_shown_in_the_hud), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 // Tiles, 3 per row: a lit tile is shown (WinlatorHUD item indices).
                 ToggleTiles(listOf(
-                    0 to "FPS", 13 to "1% / 0.1%", 6 to "Renderer",
-                    2 to "GPU load", 8 to "GPU clock", 9 to "GPU temp",
-                    3 to "CPU load", 10 to "CPU clock", 11 to "CPU temp",
-                    7 to "RAM", 4 to "Power", 12 to "Battery temp",
-                    14 to "GPU name",
+                    0 to "FPS", 13 to "1% / 0.1%", 6 to uiStr(R.string.l_qm_renderer),
+                    2 to uiStr(R.string.l_qm_gpu_load), 8 to uiStr(R.string.l_qm_gpu_clock), 9 to uiStr(R.string.l_qm_gpu_temp),
+                    3 to uiStr(R.string.l_qm_cpu_load), 10 to uiStr(R.string.l_qm_cpu_clock), 11 to uiStr(R.string.l_qm_cpu_temp),
+                    7 to "RAM", 4 to uiStr(R.string.l_qm_power), 12 to uiStr(R.string.l_qm_battery_temp),
+                    14 to uiStr(R.string.l_qm_gpu_name),
                 ), isOn = { idx -> remember(opened, rev, idx) { bridge.hudElement(idx) } }) { idx, on -> bridge.setHudElement(idx, on); rev++ }
-                TextButton(onClick = { bridge.resetHud(); rev++ }) { Text("Reset HUD position") }
+                TextButton(onClick = { bridge.resetHud(); rev++ }) { Text(uiStr(R.string.l_qm_reset_hud_position)) }
             }
         } else if (mode == 4) {
-            StepSlider("HUD size", (scale - 0.5f) / 1.5f, "${(scale * 100).roundToInt()}%", onChange = { f ->
+            StepSlider(uiStr(R.string.l_qm_hud_size), (scale - 0.5f) / 1.5f, "${(scale * 100).roundToInt()}%", onChange = { f ->
                 scale = 0.5f + f * 1.5f
                 bridge.setHudScale(scale)
             })
             Card {
-                Text("Bannerlator's HUD styles: tap the HUD for the next one (Fusion Full, Tiles, Pill, Minimal, Mega, GameHub, GameNative). " +
-                     "Drag to move it, long-press to lock it in place. Clocks and temperatures are exact with precise sensors (Settings › Performance HUD).",
+                Text(uiStr(R.string.l_qm_bannerlator_s_hud_styles_tap_the),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -456,9 +459,9 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
 @Composable
 private fun PerformanceSection(bridge: QuickMenuBridge, opened: Int) {
     val perf = bridge.performance()
-    SectionPage("Performance") {
+    SectionPage(uiStr(R.string.l_qm_performance)) {
         if (perf == null) {
-            Card { Text("Available once the game has started.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Card { Text(uiStr(R.string.l_qm_available_once_the_game_has_started), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             return@SectionPage
         }
         val context = LocalContext.current
@@ -484,25 +487,25 @@ private fun PerformanceSection(bridge: QuickMenuBridge, opened: Int) {
         }
         Card {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                PerfStat("GPU clock", gpuMhz?.let { "$it MHz" } ?: "—")
-                PerfStat("Hottest sensor", tempC?.let { "$it °C" } ?: "—")
-                PerfStat("CPU governor", governor.ifEmpty { "—" })
+                PerfStat(uiStr(R.string.l_qm_gpu_clock), gpuMhz?.let { "$it MHz" } ?: "—")
+                PerfStat(uiStr(R.string.l_qm_hottest_sensor), tempC?.let { "$it °C" } ?: "—")
+                PerfStat(uiStr(R.string.l_qm_cpu_governor), governor.ifEmpty { "—" })
             }
         }
 
         val profile = remember(rev, opened, granted) { perf.currentProfile() }
         Card {
-            Label("Power profile")
+            Label(uiStr(R.string.l_qm_power_profile))
             Chips(listOf(
-                com.winlator.cmod.session.PerfSession.PROFILE_STOCK to "Stock",
-                com.winlator.cmod.session.PerfSession.PROFILE_BALANCED to "Balanced",
-                com.winlator.cmod.session.PerfSession.PROFILE_PERFORMANCE to "Performance",
+                com.winlator.cmod.session.PerfSession.PROFILE_STOCK to uiStr(R.string.l_qm_stock),
+                com.winlator.cmod.session.PerfSession.PROFILE_BALANCED to uiStr(R.string.l_qm_balanced),
+                com.winlator.cmod.session.PerfSession.PROFILE_PERFORMANCE to uiStr(R.string.l_qm_performance),
             ), profile) { perf.applyProfile(it); rev++ }
             Text(when (profile) {
-                com.winlator.cmod.session.PerfSession.PROFILE_STOCK -> "Android decides everything, as without YurNLator."
-                com.winlator.cmod.session.PerfSession.PROFILE_BALANCED -> "Sustained performance mode only: steadier clocks, less throttling."
-                com.winlator.cmod.session.PerfSession.PROFILE_PERFORMANCE -> "Everything below on (root items too when root is granted)."
-                else -> "Custom: your own mix of the switches below."
+                com.winlator.cmod.session.PerfSession.PROFILE_STOCK -> uiStr(R.string.l_qm_android_decides_everything_as_without_yurnlator)
+                com.winlator.cmod.session.PerfSession.PROFILE_BALANCED -> uiStr(R.string.l_qm_sustained_performance_mode_only_steadier_clocks)
+                com.winlator.cmod.session.PerfSession.PROFILE_PERFORMANCE -> uiStr(R.string.l_qm_everything_below_on_root_items_too)
+                else -> uiStr(R.string.l_qm_custom_your_own_mix_of_the)
             }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
@@ -510,68 +513,68 @@ private fun PerformanceSection(bridge: QuickMenuBridge, opened: Int) {
         fun PerfSwitch(key: String, title: String, subtitle: String, enabled: Boolean = true) {
             val on = remember(rev, opened, key) { perf.value(key) }
             val own = remember(rev, opened, key) { perf.isOwn(key) }
-            SwitchRow(title, subtitle + if (own) " · this game" else "", checked = on && enabled) {
+            SwitchRow(title, subtitle + if (own) uiStr(R.string.l_qm_this_game) else "", checked = on && enabled) {
                 if (enabled) { perf.set(key, it); rev++ }
             }
         }
 
         Card {
-            Label("Without root")
-            PerfSwitch(com.winlator.cmod.session.PerfSession.SUSTAINED, "Sustained performance mode",
-                "Android's mode for long sessions: steadier clocks that throttle less (some phones ignore it).")
-            PerfSwitch(com.winlator.cmod.session.PerfSession.PRIORITY, "Thread priority boost",
-                "The emulator's and the game's threads get a higher priority, so the scheduler favours them.")
-            PerfSwitch(com.winlator.cmod.session.PerfSession.BIG_CORES, "Prefer big cores",
-                "The game's processes run on the fast cores only (a core set in the task manager stays).")
+            Label(uiStr(R.string.l_qm_without_root))
+            PerfSwitch(com.winlator.cmod.session.PerfSession.SUSTAINED, uiStr(R.string.l_qm_sustained_performance_mode),
+                uiStr(R.string.l_qm_android_s_mode_for_long_sessions))
+            PerfSwitch(com.winlator.cmod.session.PerfSession.PRIORITY, uiStr(R.string.l_qm_thread_priority_boost),
+                uiStr(R.string.l_qm_the_emulator_s_and_the_game))
+            PerfSwitch(com.winlator.cmod.session.PerfSession.BIG_CORES, uiStr(R.string.l_qm_prefer_big_cores),
+                uiStr(R.string.l_qm_the_game_s_processes_run_on))
             val gpuPin = granted || com.winlator.cmod.perf.PerfGpuTurbo.isSupported
-            PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_GPU_CLOCK_LOCK, "GPU at max clock",
-                if (granted) "Pins the GPU's lowest clock to its highest (root)."
-                else if (gpuPin) "Adreno turbo: the GPU stays at its top clock (the kernel's thermal limits still apply)."
-                else "Needs an Adreno GPU or root.", enabled = gpuPin)
+            PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_GPU_CLOCK_LOCK, uiStr(R.string.l_qm_gpu_at_max_clock),
+                if (granted) uiStr(R.string.l_qm_pins_the_gpu_s_lowest_clock)
+                else if (gpuPin) uiStr(R.string.l_qm_adreno_turbo_the_gpu_stays_at)
+                else uiStr(R.string.l_qm_needs_an_adreno_gpu_or_root), enabled = gpuPin)
         }
 
         Card {
-            Label("Root")
+            Label(uiStr(R.string.l_qm_root))
             if (!granted) {
                 Text(when (root) {
-                    com.winlator.cmod.perf.RootManager.RootState.UNAVAILABLE -> "No root on this device."
-                    com.winlator.cmod.perf.RootManager.RootState.DENIED -> "Root was refused."
-                    else -> "Clocks, governor and cores need root."
+                    com.winlator.cmod.perf.RootManager.RootState.UNAVAILABLE -> uiStr(R.string.l_qm_no_root_on_this_device)
+                    com.winlator.cmod.perf.RootManager.RootState.DENIED -> uiStr(R.string.l_qm_root_was_refused)
+                    else -> uiStr(R.string.l_qm_clocks_governor_and_cores_need_root)
                 }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (root != com.winlator.cmod.perf.RootManager.RootState.UNAVAILABLE)
-                    TextButton(onClick = { scope.launch { com.winlator.cmod.perf.RootManager.requestGrant(); rev++ } }) { Text("Grant root") }
+                    TextButton(onClick = { scope.launch { com.winlator.cmod.perf.RootManager.requestGrant(); rev++ } }) { Text(uiStr(R.string.l_qm_grant_root)) }
             } else {
-                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_CPU_GOVERNOR, "CPU governor: performance",
-                    "Every core's governor set to performance.")
-                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_CPU_FREQ_LOCK, "CPU at max clock",
-                    "Each core's lowest clock pinned to its highest.")
-                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_CORES_ONLINE, "All cores online",
-                    "Keeps the system from parking cores.")
-                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_FAN_MAX, "Fan at full speed",
-                    "Phones and handhelds with a built-in fan.")
+                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_CPU_GOVERNOR, uiStr(R.string.l_qm_cpu_governor_performance),
+                    uiStr(R.string.l_qm_every_core_s_governor_set_to))
+                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_CPU_FREQ_LOCK, uiStr(R.string.l_qm_cpu_at_max_clock),
+                    uiStr(R.string.l_qm_each_core_s_lowest_clock_pinned))
+                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_CORES_ONLINE, uiStr(R.string.l_qm_all_cores_online),
+                    uiStr(R.string.l_qm_keeps_the_system_from_parking_cores))
+                PerfSwitch(com.winlator.cmod.perf.PerfRootApplier.KEY_FAN_MAX, uiStr(R.string.l_qm_fan_at_full_speed),
+                    uiStr(R.string.l_qm_phones_and_handhelds_with_a_built))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.winlator.cmod.perf.PerfRootApplier.freeMemoryNow() } }) { Text("Drop caches") }
-                    TextButton(onClick = { scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.winlator.cmod.perf.PerfRootApplier.deepCleanMemory() } }) { Text("Close background apps") }
+                    TextButton(onClick = { scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.winlator.cmod.perf.PerfRootApplier.freeMemoryNow() } }) { Text(uiStr(R.string.l_qm_drop_caches)) }
+                    TextButton(onClick = { scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.winlator.cmod.perf.PerfRootApplier.deepCleanMemory() } }) { Text(uiStr(R.string.l_qm_close_background_apps)) }
                 }
             }
-            Text("Everything changed here is put back when the game closes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(uiStr(R.string.l_qm_everything_changed_here_is_put_back), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         Card {
             val wdOn by com.winlator.cmod.perf.TempWatchdog.enabled.collectAsState()
             val mode by com.winlator.cmod.perf.TempWatchdog.mode.collectAsState()
             val ceiling by com.winlator.cmod.perf.TempWatchdog.ceilingC.collectAsState()
-            SwitchRow("Temperature guard", "Above $ceiling °C the clock, governor and GPU changes are put back.", checked = wdOn) {
+            SwitchRow(uiStr(R.string.l_qm_temperature_guard), uiStr(R.string.l_qm_above_1_d_c_the_clock, ceiling), checked = wdOn) {
                 com.winlator.cmod.perf.TempWatchdog.setWatchdogEnabled(it)
             }
             if (wdOn) Chips(listOf(
-                com.winlator.cmod.perf.TempWatchdog.ThresholdMode.CONSERVATIVE to "Cautious",
-                com.winlator.cmod.perf.TempWatchdog.ThresholdMode.BALANCED to "Balanced",
-                com.winlator.cmod.perf.TempWatchdog.ThresholdMode.AGGRESSIVE to "Late",
+                com.winlator.cmod.perf.TempWatchdog.ThresholdMode.CONSERVATIVE to uiStr(R.string.l_qm_cautious),
+                com.winlator.cmod.perf.TempWatchdog.ThresholdMode.BALANCED to uiStr(R.string.l_qm_balanced),
+                com.winlator.cmod.perf.TempWatchdog.ThresholdMode.AGGRESSIVE to uiStr(R.string.l_qm_late),
             ), mode) { com.winlator.cmod.perf.TempWatchdog.setMode(it) }
         }
 
-        TextButton(onClick = { perf.resetToDefaults(); rev++ }) { Text("Use the default settings for this game") }
+        TextButton(onClick = { perf.resetToDefaults(); rev++ }) { Text(uiStr(R.string.l_qm_use_the_default_settings_for_this)) }
     }
 }
 
@@ -612,10 +615,10 @@ private fun PerfStat(label: String, value: String) {
 
 // ---------- Screen ----------
 
-private val SHADERS = listOf(
-    0 to "Off", 1 to "DLS sharpen", 2 to "CRT", 3 to "HDR", 4 to "Natural",
-    10 to "Game Clarity", 11 to "Cinematic", 12 to "Vivid", 13 to "Competitive", 14 to "Adaptive Sharpen",
-    15 to "Filmic", 16 to "Arcade", 17 to "Retro CRT", 18 to "Upscale Sharp", 19 to "Pixel Clean", 20 to "Anime Edge"
+private val SHADERS get() = listOf(
+    0 to uiStr(R.string.l_qm_off), 1 to uiStr(R.string.l_qm_dls_sharpen), 2 to "CRT", 3 to "HDR", 4 to uiStr(R.string.l_qm_natural),
+    10 to uiStr(R.string.l_qm_game_clarity), 11 to uiStr(R.string.l_qm_cinematic), 12 to uiStr(R.string.l_qm_vivid), 13 to uiStr(R.string.l_qm_competitive), 14 to uiStr(R.string.l_qm_adaptive_sharpen),
+    15 to uiStr(R.string.l_qm_filmic), 16 to uiStr(R.string.l_qm_arcade), 17 to uiStr(R.string.l_qm_retro_crt), 18 to uiStr(R.string.l_qm_upscale_sharp), 19 to uiStr(R.string.l_qm_pixel_clean), 20 to uiStr(R.string.l_qm_anime_edge)
 )
 
 @Composable
@@ -630,20 +633,20 @@ private fun ScreenSection(bridge: QuickMenuBridge, opened: Int) {
     var gamma by remember(opened) { mutableFloatStateOf(bridge.gamma()) }
     var shaderMenu by remember { mutableStateOf(false) }
 
-    SectionPage("Screen effects") {
+    SectionPage(uiStr(R.string.l_qm_screen_effects)) {
         val zc0 = remember(opened) { bridge.zeroCopy() }
         if (zc0 >= 0) {
             var zc by remember(opened) { mutableStateOf(zc0 == 1) }
             Card {
-                SwitchRow("Direct presentation", "Wayland: the game's frames go to the screen without a copy (smoother on a busy GPU). Paused while an effect or upscaling is on.",
+                SwitchRow(uiStr(R.string.l_qm_direct_presentation), uiStr(R.string.l_qm_wayland_the_game_s_frames_go),
                     checked = zc) { zc = it; bridge.setZeroCopy(it) }
             }
         }
         if (!vulkan) {
-            Card { Text("Upscaling and shaders need the Vulkan renderer (container settings › Renderer).", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Card { Text(uiStr(R.string.l_qm_upscaling_and_shaders_need_the_vulkan), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             Card {
-                SwitchRow("Upscaling", "Sharper image at the game's resolution", checked = upscaler >= 0) { on ->
+                SwitchRow(uiStr(R.string.l_qm_upscaling), uiStr(R.string.l_qm_sharper_image_at_the_game_s), checked = upscaler >= 0) { on ->
                     upscaler = if (on) 1 else -1
                     bridge.setUpscaler(upscaler)
                     if (on && shader >= 10) shader = 0
@@ -653,8 +656,8 @@ private fun ScreenSection(bridge: QuickMenuBridge, opened: Int) {
             Card {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Shader", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                        Text(SHADERS.firstOrNull { it.first == shader }?.second ?: "Off", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(uiStr(R.string.l_qm_shader), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                        Text(SHADERS.firstOrNull { it.first == shader }?.second ?: uiStr(R.string.l_qm_off), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(checked = shader != 0, onCheckedChange = { on ->
                         shader = if (on) 10 else 0
@@ -668,7 +671,7 @@ private fun ScreenSection(bridge: QuickMenuBridge, opened: Int) {
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), modifier = Modifier.fillMaxWidth()) {
                             Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(SHADERS.firstOrNull { it.first == shader }?.second ?: "", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                                Text("Change", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                                Text(uiStr(R.string.l_qm_change), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
                             }
                         }
                         DropdownMenu(expanded = shaderMenu, onDismissRequest = { shaderMenu = false }) {
@@ -682,37 +685,37 @@ private fun ScreenSection(bridge: QuickMenuBridge, opened: Int) {
                             }
                         }
                     }
-                    if (shader >= 10) Text("Effect shaders replace upscaling while on.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (shader >= 10) Text(uiStr(R.string.l_qm_effect_shaders_replace_upscaling_while_on), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (upscaler >= 0 || shader != 0) {
-                StepSlider(if (shader >= 10) "Effect strength" else "Sharpness", sharp / 100f, "$sharp%",
+                StepSlider(if (shader >= 10) uiStr(R.string.l_qm_effect_strength) else uiStr(R.string.l_qm_sharpness), sharp / 100f, "$sharp%",
                     onChange = { f -> sharp = (f * 100).roundToInt(); bridge.setSharpness(sharp, false) },
                     onCommit = { bridge.setSharpness(sharp, true) })
             }
         }
         FrameGenCard(bridge, opened)
         if (vulkan) {
-            StepSlider("Brightness", (bright + 100) / 200f, "$bright%", step = 0.025f,
+            StepSlider(uiStr(R.string.l_qm_brightness), (bright + 100) / 200f, "$bright%", step = 0.025f,
                 onChange = { f -> bright = (f * 200 - 100).roundToInt(); bridge.setColorAdjust(bright, contrast, gamma, false) },
                 onCommit = { bridge.setColorAdjust(bright, contrast, gamma, true) })
-            StepSlider("Contrast", (contrast + 100) / 200f, "$contrast%", step = 0.025f,
+            StepSlider(uiStr(R.string.l_qm_contrast), (contrast + 100) / 200f, "$contrast%", step = 0.025f,
                 onChange = { f -> contrast = (f * 200 - 100).roundToInt(); bridge.setColorAdjust(bright, contrast, gamma, false) },
                 onCommit = { bridge.setColorAdjust(bright, contrast, gamma, true) })
-            StepSlider("Gamma", (gamma - 0.5f) / 2f, String.format(Locale.getDefault(), "%.2fx", gamma), step = 0.025f,
+            StepSlider(uiStr(R.string.l_qm_gamma), (gamma - 0.5f) / 2f, String.format(Locale.getDefault(), "%.2fx", gamma), step = 0.025f,
                 onChange = { f -> gamma = 0.5f + f * 2f; bridge.setColorAdjust(bright, contrast, gamma, false) },
                 onCommit = { bridge.setColorAdjust(bright, contrast, gamma, true) })
             if (bright != 0 || contrast != 0 || kotlin.math.abs(gamma - 1f) > 0.005f) {
-                TextButton(onClick = { bright = 0; contrast = 0; gamma = 1f; bridge.setColorAdjust(0, 0, 1f, true) }) { Text("Reset picture") }
+                TextButton(onClick = { bright = 0; contrast = 0; gamma = 1f; bridge.setColorAdjust(0, 0, 1f, true) }) { Text(uiStr(R.string.l_qm_reset_picture)) }
             }
         }
         Card {
-            Text("Image scaling", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-            Chips(listOf(0 to "Fit", 1 to "Fullscreen", 2 to "Stretch"), scaling) { scaling = it; bridge.setScaling(it) }
+            Text(uiStr(R.string.l_qm_image_scaling), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+            Chips(listOf(0 to uiStr(R.string.l_qm_fit), 1 to uiStr(R.string.l_qm_fullscreen), 2 to uiStr(R.string.l_qm_stretch)), scaling) { scaling = it; bridge.setScaling(it) }
         }
         Card {
-            ActionRow(Icons.Outlined.ZoomIn, "Magnifier", "Zoom into part of the screen") { bridge.openMagnifier(); bridge.close() }
-            ActionRow(Icons.Outlined.PictureInPicture, "Picture in picture") { bridge.enterPip(); bridge.close() }
+            ActionRow(Icons.Outlined.ZoomIn, uiStr(R.string.l_qm_magnifier), uiStr(R.string.l_qm_zoom_into_part_of_the_screen)) { bridge.openMagnifier(); bridge.close() }
+            ActionRow(Icons.Outlined.PictureInPicture, uiStr(R.string.l_qm_picture_in_picture)) { bridge.enterPip(); bridge.close() }
         }
     }
 }
@@ -731,31 +734,31 @@ private fun ControlsSection(bridge: QuickMenuBridge, opened: Int) {
     var noMouse by remember(opened) { mutableStateOf(bridge.mouseDisabled()) }
     var mouseSpeed by remember(opened) { mutableFloatStateOf(bridge.mouseSpeed()) }
 
-    SectionPage("Controls") {
+    SectionPage(uiStr(R.string.l_qm_controls)) {
         Card {
-            Text("On-screen controls profile", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-            Chips(listOf(0 to "None") + profiles.map { it.id to it.name }, profile) { profile = it; bridge.setControlProfile(it) }
-            ActionRow(Icons.Outlined.Edit, "Edit controls", "Open the editor for this profile") { bridge.editControls() }
+            Text(uiStr(R.string.l_qm_on_screen_controls_profile), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+            Chips(listOf(0 to uiStr(R.string.l_qm_none)) + profiles.map { it.id to it.name }, profile) { profile = it; bridge.setControlProfile(it) }
+            ActionRow(Icons.Outlined.Edit, uiStr(R.string.l_qm_edit_controls), uiStr(R.string.l_qm_open_the_editor_for_this_profile)) { bridge.editControls() }
         }
         Card {
-            SwitchRow("Show touch controls", "Off: the on-screen buttons are hidden and don't react (a gamepad still works)", checked = touch) { touch = it; bridge.setTouchControls(it) }
-            SwitchRow("Hide when not touched", "Buttons fade out after 5 s without a touch and keep working; any touch brings them back", checked = timeout) { timeout = it; bridge.setTouchTimeout(it) }
-            SwitchRow("Vibrate on touch", checked = haptics) { haptics = it; bridge.setTouchHaptics(it) }
+            SwitchRow(uiStr(R.string.l_qm_show_touch_controls), uiStr(R.string.l_qm_off_the_on_screen_buttons_are), checked = touch) { touch = it; bridge.setTouchControls(it) }
+            SwitchRow(uiStr(R.string.l_qm_hide_when_not_touched), uiStr(R.string.l_qm_buttons_fade_out_after_5_s), checked = timeout) { timeout = it; bridge.setTouchTimeout(it) }
+            SwitchRow(uiStr(R.string.l_qm_vibrate_on_touch), checked = haptics) { haptics = it; bridge.setTouchHaptics(it) }
         }
-        StepSlider("Controls opacity", opacity, "${(opacity * 100).roundToInt()}%", onChange = { f -> opacity = f; bridge.setControlsOpacity(f) })
+        StepSlider(uiStr(R.string.l_qm_controls_opacity), opacity, "${(opacity * 100).roundToInt()}%", onChange = { f -> opacity = f; bridge.setControlsOpacity(f) })
         Card {
-            SwitchRow("Relative mouse", "Mouse moves by touch delta, for 3D games", checked = relative) { relative = it; bridge.setRelativeMouse(it) }
-            SwitchRow("Disable mouse", checked = noMouse) { noMouse = it; bridge.setMouseDisabled(it) }
+            SwitchRow(uiStr(R.string.l_qm_relative_mouse), uiStr(R.string.l_qm_mouse_moves_by_touch_delta_for), checked = relative) { relative = it; bridge.setRelativeMouse(it) }
+            SwitchRow(uiStr(R.string.l_qm_disable_mouse), checked = noMouse) { noMouse = it; bridge.setMouseDisabled(it) }
         }
         StepSlider(
-            "Mouse sensitivity", (mouseSpeed - 0.1f) / 4.9f,
+            uiStr(R.string.l_qm_mouse_sensitivity), (mouseSpeed - 0.1f) / 4.9f,
             String.format(java.util.Locale.US, "%.1f×", mouseSpeed), step = 0.1f / 4.9f,
             onChange = { f -> mouseSpeed = 0.1f + f * 4.9f; bridge.setMouseSpeed(mouseSpeed) }
         )
         GyroCard(bridge, opened)
         Card {
-            ActionRow(Icons.Outlined.Keyboard, "Show keyboard") { bridge.showKeyboard(); bridge.close() }
-            ActionRow(Icons.Outlined.Vibration, "Gamepad vibration") { bridge.vibrationSettings() }
+            ActionRow(Icons.Outlined.Keyboard, uiStr(R.string.l_qm_show_keyboard)) { bridge.showKeyboard(); bridge.close() }
+            ActionRow(Icons.Outlined.Vibration, uiStr(R.string.l_qm_gamepad_vibration)) { bridge.vibrationSettings() }
         }
     }
 }
@@ -773,7 +776,7 @@ private fun TasksSection(bridge: QuickMenuBridge, opened: Int) {
         bridge.startTasks { tasks = it }
         onDispose { bridge.stopTasks() }
     }
-    SectionPage("Task manager") {
+    SectionPage(uiStr(R.string.l_qm_task_manager)) {
         Card {
             info.forEach { row ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -785,17 +788,17 @@ private fun TasksSection(bridge: QuickMenuBridge, opened: Int) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.weight(1f)) { Metric("CPU", "${tasks.cpuPercent}%") }
-            Box(Modifier.weight(1.4f)) { Metric("Memory", tasks.memory) }
+            Box(Modifier.weight(1.4f)) { Metric(uiStr(R.string.l_qm_memory), tasks.memory) }
         }
         Card {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Processes: ${tasks.processes.size}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                TextButton(onClick = { newTask = true }) { Text("+ New task") }
+                Text(uiStr(R.string.l_qm_processes_1_d, tasks.processes.size), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                TextButton(onClick = { newTask = true }) { Text(uiStr(R.string.l_qm_new_task)) }
             }
-            if (tasks.processes.isEmpty()) Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            if (tasks.processes.isEmpty()) Text(uiStr(R.string.l_qm_loading), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             tasks.processes.forEach { p -> ProcessRow(p, bridge, onCores = { cores = p }) { ending = p } }
         }
-        if (bridge.logsAvailable()) Card { TextButton(onClick = { bridge.showLogs(); bridge.close() }) { Text("Show logs") } }
+        if (bridge.logsAvailable()) Card { TextButton(onClick = { bridge.showLogs(); bridge.close() }) { Text(uiStr(R.string.l_qm_show_logs)) } }
     }
     cores?.let { p -> CoresDialog(p, bridge) { cores = null } }
     if (newTask) NewTaskDialog(bridge) { newTask = false }
@@ -803,10 +806,10 @@ private fun TasksSection(bridge: QuickMenuBridge, opened: Int) {
         AlertDialog(
             shape = RoundedCornerShape(28.dp), containerColor = QM_DIALOG_BG, tonalElevation = 0.dp,
             onDismissRequest = { ending = null },
-            title = { Text("End ${p.name}?") },
-            text = { Text("The process is closed without saving.") },
-            confirmButton = { TextButton(onClick = { bridge.endProcess(p.name); ending = null }) { Text("End") } },
-            dismissButton = { TextButton(onClick = { ending = null }) { Text("Cancel") } }
+            title = { Text(uiStr(R.string.l_qm_end_1_s, p.name)) },
+            text = { Text(uiStr(R.string.l_qm_the_process_is_closed_without_saving)) },
+            confirmButton = { TextButton(onClick = { bridge.endProcess(p.name); ending = null }) { Text(uiStr(R.string.l_qm_end)) } },
+            dismissButton = { TextButton(onClick = { ending = null }) { Text(uiStr(R.string.l_qm_cancel)) } }
         )
     }
 }
@@ -825,17 +828,17 @@ private fun ProcessRow(p: QmProcess, bridge: QuickMenuBridge, onCores: () -> Uni
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(p.name + if (p.wow64) " *32" else "", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("PID ${p.pid} · ${p.memory}" + (if (p.cores.isNotEmpty()) " · cores ${p.cores}" else ""), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("PID ${p.pid} · ${p.memory}" + (if (p.cores.isNotEmpty()) uiStr(R.string.l_qm_cores_1_s, p.cores) else ""), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "Actions") }
+            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, uiStr(R.string.l_qm_actions)) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(18.dp),
                 containerColor = QM_DIALOG_BG, tonalElevation = 0.dp, shadowElevation = 12.dp) {
-                DropdownMenuItem(text = { Text("Bring to front") }, leadingIcon = { Icon(Icons.Outlined.OpenInNew, null) },
+                DropdownMenuItem(text = { Text(uiStr(R.string.l_qm_bring_to_front)) }, leadingIcon = { Icon(Icons.Outlined.OpenInNew, null) },
                     onClick = { menu = false; bridge.bringToFront(p.name); bridge.close() })
-                DropdownMenuItem(text = { Text("Processor affinity") }, leadingIcon = { Icon(Icons.Outlined.Memory, null) },
+                DropdownMenuItem(text = { Text(uiStr(R.string.l_qm_processor_affinity)) }, leadingIcon = { Icon(Icons.Outlined.Memory, null) },
                     onClick = { menu = false; onCores() })
-                DropdownMenuItem(text = { Text("End process", color = MaterialTheme.colorScheme.error) },
+                DropdownMenuItem(text = { Text(uiStr(R.string.l_qm_end_process), color = MaterialTheme.colorScheme.error) },
                     leadingIcon = { Icon(Icons.Outlined.Close, null, tint = MaterialTheme.colorScheme.error) },
                     onClick = { menu = false; onEnd() })
             }
@@ -851,8 +854,8 @@ private fun pct(v: Float) = String.format(Locale.US, "%d%%", (v * 100).roundToIn
 
 private val GYRO_BUTTONS = listOf(4 to "LB", 5 to "RB", 10 to "LT", 11 to "RT", 8 to "L3", 9 to "R3", 0 to "A", 1 to "B", 2 to "X", 3 to "Y")
 /** Mouse (physical, touchpad or on-screen) and keyboard keys: GyroInput.BUTTON_MOUSE_BASE / BUTTON_KEY_BASE + X keycode. */
-private val GYRO_MOUSE_KEYS = listOf(101 to "Right mouse", 100 to "Left mouse", 102 to "Middle mouse",
-    250 to "Shift", 237 to "Ctrl", 264 to "Alt", 265 to "Space", 224 to "Q", 226 to "E", 241 to "F", 227 to "R", 254 to "C")
+private val GYRO_MOUSE_KEYS get() = listOf(101 to uiStr(R.string.l_qm_right_mouse), 100 to uiStr(R.string.l_qm_left_mouse), 102 to uiStr(R.string.l_qm_middle_mouse),
+    250 to "Shift", 237 to "Ctrl", 264 to "Alt", 265 to uiStr(R.string.l_qm_space), 224 to "Q", 226 to "E", 241 to "F", 227 to "R", 254 to "C")
 
 @Composable
 private fun GyroCard(bridge: QuickMenuBridge, opened: Int) {
@@ -860,32 +863,32 @@ private fun GyroCard(bridge: QuickMenuBridge, opened: Int) {
     fun update(next: QmGyro) { g = next; bridge.setGyro(next) }
     Card {
         SwitchRow(
-            "Gyroscope",
-            if (!g.available) "This phone has no gyroscope" else "Aim by turning the phone",
+            uiStr(R.string.l_qm_gyroscope),
+            if (!g.available) uiStr(R.string.l_qm_this_phone_has_no_gyroscope) else uiStr(R.string.l_qm_aim_by_turning_the_phone),
             checked = g.enabled && g.available
         ) { if (g.available) update(g.copy(enabled = it)) }
         if (g.enabled && g.available) {
-            Label("Controls")
-            Chips(listOf(0 to "Mouse", 1 to "Right stick", 2 to "Left stick"), g.target) { update(g.copy(target = it)) }
+            Label(uiStr(R.string.l_qm_controls))
+            Chips(listOf(0 to uiStr(R.string.l_qm_mouse), 1 to uiStr(R.string.l_qm_right_stick), 2 to uiStr(R.string.l_qm_left_stick)), g.target) { update(g.copy(target = it)) }
             if (g.target == 0) {
-                Label("Mouse goes to")
-                Chips(listOf(0 to "Auto", 1 to "Game (Windows input)", 2 to "Desktop pointer"), g.mouseMode) { update(g.copy(mouseMode = it)) }
+                Label(uiStr(R.string.l_qm_mouse_goes_to))
+                Chips(listOf(0 to uiStr(R.string.l_qm_auto), 1 to uiStr(R.string.l_qm_game_windows_input), 2 to uiStr(R.string.l_qm_desktop_pointer)), g.mouseMode) { update(g.copy(mouseMode = it)) }
             }
-            Label("Active")
-            Chips(listOf(0 to "Always", 1 to "Hold button", 2 to "Toggle button"), g.activation) { update(g.copy(activation = it)) }
+            Label(uiStr(R.string.l_qm_active))
+            Chips(listOf(0 to uiStr(R.string.l_qm_always), 1 to uiStr(R.string.l_qm_hold_button), 2 to uiStr(R.string.l_qm_toggle_button)), g.activation) { update(g.copy(activation = it)) }
             if (g.activation != 0) {
-                Label("Gamepad button")
+                Label(uiStr(R.string.l_qm_gamepad_button))
                 Chips(GYRO_BUTTONS, g.button) { update(g.copy(button = it)) }
-                Label("…or mouse button / key")
+                Label(uiStr(R.string.l_qm_or_mouse_button_key))
                 Chips(GYRO_MOUSE_KEYS, g.button) { update(g.copy(button = it)) }
             }
-            SwitchRow("High polling rate", "Smoother, uses a bit more battery", checked = g.fast) { update(g.copy(fast = it)) }
-            SwitchRow("Invert horizontal", checked = g.invertX) { update(g.copy(invertX = it)) }
-            SwitchRow("Invert vertical", checked = g.invertY) { update(g.copy(invertY = it)) }
+            SwitchRow(uiStr(R.string.l_qm_high_polling_rate), uiStr(R.string.l_qm_smoother_uses_a_bit_more_battery), checked = g.fast) { update(g.copy(fast = it)) }
+            SwitchRow(uiStr(R.string.l_qm_invert_horizontal), checked = g.invertX) { update(g.copy(invertX = it)) }
+            SwitchRow(uiStr(R.string.l_qm_invert_vertical), checked = g.invertY) { update(g.copy(invertY = it)) }
         }
     }
     if (g.enabled && g.available) {
-        StepSlider("Gyro sensitivity", (g.sensitivity - 0.1f) / 4.9f, String.format(Locale.US, "%.1fx", g.sensitivity), step = 0.02f,
+        StepSlider(uiStr(R.string.l_qm_gyro_sensitivity), (g.sensitivity - 0.1f) / 4.9f, String.format(Locale.US, "%.1fx", g.sensitivity), step = 0.02f,
             onChange = { f -> g = g.copy(sensitivity = 0.1f + f * 4.9f) },
             onCommit = { bridge.setGyro(g) })
     }
@@ -900,37 +903,37 @@ private fun FrameGenCard(bridge: QuickMenuBridge, opened: Int) {
     fun update(next: QmFrameGen) { fg = next; bridge.setFrameGen(next) }
     Card {
         SwitchRow(
-            "Frame generation",
-            (when (fg.engine) { "lsfg" -> "LSFG"; "wfg" -> "WFG"; else -> "Win-FG" }) + ": generated frames between real ones, shown by the emulator",
+            uiStr(R.string.l_qm_frame_generation),
+            (when (fg.engine) { "lsfg" -> "LSFG"; "wfg" -> "WFG"; else -> "Win-FG" }) + uiStr(R.string.l_qm_generated_frames_between_real_ones_shown),
             checked = fg.on
         ) { update(fg.copy(on = it)) }
         if (!fg.loaded) {
-            Text("Needs the Vulkan renderer (container settings › Renderer).",
+            Text(uiStr(R.string.l_qm_needs_the_vulkan_renderer_container_settings),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
         if (fg.on) {
-            Label("Engine")
+            Label(uiStr(R.string.l_qm_engine))
             Chips(listOf("winfg" to "Win-FG", "wfg" to "WFG", "lsfg" to "LSFG"), fg.engine) { update(fg.copy(engine = it)) }
             if (fg.engine == "lsfg" && !fg.lsfgImported) {
-                Text("Import your own Lossless.dll in Settings › Frame generation first; until then Win-FG runs.",
+                Text(uiStr(R.string.l_qm_import_your_own_lossless_dll_in),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             if (fg.engine != "winfg") {
-                Label("Target (adaptive: generates as many frames as fit)")
-                Chips(listOf(0 to "Off", 60 to "60", 90 to "90", 120 to "120", 144 to "144"), fg.target) { update(fg.copy(target = it)) }
+                Label(uiStr(R.string.l_qm_target_adaptive_generates_as_many_frames))
+                Chips(listOf(0 to uiStr(R.string.l_qm_off), 60 to "60", 90 to "90", 120 to "120", 144 to "144"), fg.target) { update(fg.copy(target = it)) }
             }
-            Label(if (fg.engine != "winfg" && fg.target > 0) "Multiplier (ignored with a target)" else "Multiplier")
+            Label(if (fg.engine != "winfg" && fg.target > 0) uiStr(R.string.l_qm_multiplier_ignored_with_a_target) else uiStr(R.string.l_qm_multiplier))
             Chips(listOf(2 to "2×", 3 to "3×", 4 to "4×"), fg.multiplier) { update(fg.copy(multiplier = it)) }
             if (fg.engine != "lsfg") {
-                Label(if (fg.engine == "wfg") "Motion search (detail vs speed)" else "Mode")
-                Chips(listOf(0 to "Quality", 1 to "Balanced", 2 to "Performance"), fg.preset) { update(fg.copy(preset = it)) }
+                Label(if (fg.engine == "wfg") uiStr(R.string.l_qm_motion_search_detail_vs_speed) else uiStr(R.string.l_qm_mode))
+                Chips(listOf(0 to uiStr(R.string.l_qm_quality), 1 to uiStr(R.string.l_qm_balanced), 2 to uiStr(R.string.l_qm_performance)), fg.preset) { update(fg.copy(preset = it)) }
             }
-            Text("Works best when the game holds a steady FPS: set the FPS limit to half (2×) of the screen rate.",
+            Text(uiStr(R.string.l_qm_works_best_when_the_game_holds),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
     if (fg.on && fg.engine != "wfg") {
-        StepSlider("Motion detail", (fg.flowScale - 0.2f) / 0.8f, "${(fg.flowScale * 100).roundToInt()}%", step = 0.05f,
+        StepSlider(uiStr(R.string.l_qm_motion_detail), (fg.flowScale - 0.2f) / 0.8f, "${(fg.flowScale * 100).roundToInt()}%", step = 0.05f,
             onChange = { f -> fg = fg.copy(flowScale = 0.2f + f * 0.8f) },
             onCommit = { bridge.setFrameGen(fg) })
     }
@@ -950,7 +953,7 @@ private fun CoresDialog(p: QmProcess, bridge: QuickMenuBridge, onDone: () -> Uni
         title = { Text(p.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Cores this process may run on", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(uiStr(R.string.l_qm_cores_this_process_may_run_on), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // 4 per row (2 rows on an 8-core phone); a selected core is filled with the accent.
                 for (row in 0 until (n + 3) / 4) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -965,7 +968,7 @@ private fun CoresDialog(p: QmProcess, bridge: QuickMenuBridge, onDone: () -> Uni
                                 modifier = Modifier.weight(1f).height(48.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text("CPU $i", fontWeight = FontWeight.SemiBold,
+                                    Text(uiStr(R.string.l_qm_cpu_1_d, i), fontWeight = FontWeight.SemiBold,
                                         color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
@@ -974,8 +977,8 @@ private fun CoresDialog(p: QmProcess, bridge: QuickMenuBridge, onDone: () -> Uni
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { bridge.setProcessCores(p.pid, mask); onDone() }) { Text("Apply") } },
-        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } }
+        confirmButton = { TextButton(onClick = { bridge.setProcessCores(p.pid, mask); onDone() }) { Text(uiStr(R.string.l_qm_apply)) } },
+        dismissButton = { TextButton(onClick = onDone) { Text(uiStr(R.string.l_qm_cancel)) } }
     )
 }
 
@@ -987,11 +990,11 @@ private fun NewTaskDialog(bridge: QuickMenuBridge, onDone: () -> Unit) {
     AlertDialog(
         shape = RoundedCornerShape(28.dp), containerColor = QM_DIALOG_BG, tonalElevation = 0.dp,
         onDismissRequest = onDone,
-        title = { Text("New task") },
+        title = { Text(uiStr(R.string.l_qm_new_task_2)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = command, onValueChange = { command = it }, singleLine = true,
-                    label = { Text("Program") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                    label = { Text(uiStr(R.string.l_qm_program)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("taskmgr.exe", "cmd.exe", "regedit.exe", "winecfg.exe").forEach { c ->
                         FilterChip(selected = command == c, onClick = { command = c }, label = { Text(c.removeSuffix(".exe")) }, shape = RoundedCornerShape(12.dp))
@@ -999,8 +1002,8 @@ private fun NewTaskDialog(bridge: QuickMenuBridge, onDone: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(enabled = command.isNotBlank(), onClick = { bridge.runTask(command.trim()); onDone() }) { Text("Run") } },
-        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } }
+        confirmButton = { TextButton(enabled = command.isNotBlank(), onClick = { bridge.runTask(command.trim()); onDone() }) { Text(uiStr(R.string.l_qm_run)) } },
+        dismissButton = { TextButton(onClick = onDone) { Text(uiStr(R.string.l_qm_cancel)) } }
     )
 }
 
