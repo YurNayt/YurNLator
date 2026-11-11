@@ -1,7 +1,25 @@
 {
  "version": 1,
- "updated": 1793782834,
+ "updated": 1794409328,
  "presets": [
+  {
+   "id": "092348668d3b",
+   "game": "eurotrucks2",
+   "game_key": "eurotrucks2",
+   "exe": "eurotrucks2.exe",
+   "title": "",
+   "author": "",
+   "device": "Xiaomi 24117RN76O",
+   "soc": "MT6789",
+   "gpu": "Mali-G57 MC2",
+   "created": 1794409316,
+   "app_version": "0.1.0-dev.201",
+   "issue": 4,
+   "likes": 0,
+   "comments": 0,
+   "login": "",
+   "published": 1794409328
+  },
   {
    "id": "ebb102f467e7",
    "game": "NeedForSpeedPayback",
