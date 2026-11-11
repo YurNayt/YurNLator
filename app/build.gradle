@@ -190,6 +190,7 @@ android {
     lint {
         checkReleaseBuilds false
         disable 'ExpiredTargetSdkVersion'
+        disable 'MissingTranslation'
     }
 
     ndkVersion '29.0.14206865'
@@ -227,7 +228,7 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
 
     // Winlator’s dependencies
-    implementation 'androidx.appcompat:appcompat:1.4.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.preference:preference:1.2.1'
     // Precise HUD sensors with ADB rights (Shizuku runs our shell as the shell user)
     implementation 'dev.rikka.shizuku:api:13.1.5'

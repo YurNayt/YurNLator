@@ -680,4 +680,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="game_folder">Game Folder</string>
 
     <string name="magnifier_not_available">Magnifier is not available in DisplayX mode</string>
+    <string name="app_language">App language</string>
+    <string name="app_language_system">Follow system language</string>
+    <string name="app_language_english" translatable="false">English</string>
+    <string name="app_language_russian" translatable="false">Русский</string>
 </resources>

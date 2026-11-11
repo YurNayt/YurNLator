@@ -8,6 +8,7 @@ class YurnApp : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashReports.install(this)
+        com.winlator.cmod.ui.UiStrings.install(this)
         // A driver that crashed the app while being probed is not loaded here again.
         runCatching { com.winlator.cmod.core.GPUInformation.recoverFromProbeCrash(this) }
         // Performance controls (from Bannerlator): restore anything a killed session left changed,

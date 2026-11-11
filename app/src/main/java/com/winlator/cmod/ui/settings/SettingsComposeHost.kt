@@ -193,6 +193,7 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             item("appearance-title") { SectionTitle("APPEARANCE") }
+            item("language") { AppLanguagePreferenceCard() }
             item("theme") { WinlatorThemePreferenceCard() }
             item("gpu-profile") { GpuProfilePreferenceCard() }
 
