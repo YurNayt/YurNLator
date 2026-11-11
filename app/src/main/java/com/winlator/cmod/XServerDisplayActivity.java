@@ -166,7 +166,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     XServerRendererView xServerView;
     InputControlsView inputControlsView;
     TouchpadView touchpadView;
-    private XEnvironment environment;
+    XEnvironment environment;
     DrawerLayout drawerLayout;
     private ContainerManager containerManager;
     protected Container container;
@@ -216,7 +216,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Performance controls of this game (session/PerfSession). */
     com.winlator.cmod.session.PerfSession perf;
     TaskManagerSidebar taskManagerSidebar;
-    private WineRequestHandler wineRequestHandler;
+    WineRequestHandler wineRequestHandler;
     float globalCursorSpeed = 1.0f;
     final com.winlator.cmod.ui.ingame.Magnifier magnifier = new com.winlator.cmod.ui.ingame.Magnifier();
     /** Fit / fullscreen / soft stretch (session/ScreenScaling). */
@@ -233,11 +233,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 @Override public XServerRendererView renderer() { return xServerView; }
                 @Override public void runOnUi(Runnable r) { runOnUiThread(r); }
             });
-    private boolean cursorLock;
+    boolean cursorLock;
     private final float[] xform = XForm.getInstance();
     private ContentsManager contentsManager;
     private boolean navigationFocused = false;
-    private MidiHandler midiHandler;
+    MidiHandler midiHandler;
     private String midiSoundFont = "";
     private String lc_all = "";
     private String vkbasaltConfig = "";
@@ -251,7 +251,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private SensorManager sensorManager;
 
     /** Play time and launch count of the game (session/Playtime). */
-    private com.winlator.cmod.session.Playtime playtime;
+    com.winlator.cmod.session.Playtime playtime;
     private String shortcutName;
     private Handler handler;
 
@@ -332,7 +332,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         Runnable runnable = () -> {
             setupUI();
-            setupSidebarInputControls();
+            sidebar.setupInput();
             if (controlsProfile.isEmpty()) {
 
                 touchControls.restoreSaved(inputControlsManager.getProfiles());
@@ -716,120 +716,30 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
-
-        if (environment != null) {
-            xServerView.onResume();
-            environment.onResume();
-        }
-        if (playtime != null) playtime.resume();
-        if (gyroInput != null) gyroInput.apply();
-        if (!isInPictureInPictureMode())
-            ProcessHelper.resumeAllWineProcesses();
+        lifecycle.resume();
     }
 
     @Override
     public void onPause() {
-        if (taskManagerSidebar != null) taskManagerSidebar.stop();
-        if (gyroInput != null) gyroInput.stop();
-        quickMenuBridge.stopTasks();
+        lifecycle.beforePause();
         super.onPause();
-
-        if (!isInPictureInPictureMode()) {
-            if (environment != null) {
-                environment.onPause();
-                xServerView.onPause();
-            }
-
-            ProcessHelper.pauseAllWineProcesses();
-        }
-
-        if (playtime != null) playtime.pause();
+        lifecycle.afterPause();
     }
 
-    void enterPipMode() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        int w = xServer.screenInfo.width;
-        int h = xServer.screenInfo.height;
-        PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder()
-                .setAspectRatio(new Rational(w, h));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && xServerView != null) {
-            int[] loc = new int[2];
-            xServerView.getLocationOnScreen(loc);
-            Rect hint = new Rect(loc[0], loc[1],
-                    loc[0] + xServerView.getWidth(), loc[1] + xServerView.getHeight());
-            builder.setSourceRectHint(hint);
-        }
-        enterPictureInPictureMode(builder.build());
-    }
+    void enterPipMode() { lifecycle.enterPip(); }
 
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode,
             Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
-        if (xServerView == null) return;
-        xServerView.setPipMode(isInPictureInPictureMode);
-        if (!isInPictureInPictureMode) {
-            xServerView.post(() -> {
-                if (xServerView == null) return;
-                int w = xServerView.getWidth();
-                int h = xServerView.getHeight();
-                if (w > 0 && h > 0) xServerView.onSurfaceChanged(w, h);
-            });
-            // With the touch controls on, the SurfaceView's surface sometimes stays where the PiP
-            // window animation left it: the picture shows shifted right and cut, the HUD and the
-            // controls (normal views) are fine. Hiding and showing the view makes Android place
-            // the surface again (the renderer re-attaches it as after a pause).
-            xServerView.postDelayed(() -> {
-                if (xServerView == null || isInPictureInPictureMode()) return;
-                xServerView.setVisibility(View.INVISIBLE);
-                xServerView.post(() -> {
-                    if (xServerView == null) return;
-                    xServerView.setVisibility(View.VISIBLE);
-                    xServerView.requestLayout();
-                });
-            }, 400);
-        }
+        lifecycle.pipChanged(isInPictureInPictureMode);
     }
 
-
-
-    void exit() {
-        com.winlator.cmod.core.RendererDriverGuard.disarm(this);
-        NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID);
-        boolean removeLoadingBar = PreferenceManager.getDefaultSharedPreferences(this)
-                .getBoolean("remove_loading_bar_when_booting_games", false);
-        if (!removeLoadingBar) preloaderDialog.showOnUiThread(R.string.shutdown);
-
-        if (xServerView != null) {
-            xServerView.forceCleanup();
-            xServerView.setVisibility(View.GONE);
-        }
-
-        if (playtime != null) playtime.pause();
-
-        if (midiHandler != null)
-            midiHandler.stop();
-
-        if (environment != null)
-            environment.stopEnvironmentComponents();
-        if (winHandler != null)
-            winHandler.stop();
-        if (wineRequestHandler != null)
-            wineRequestHandler.stop();
-
-        com.winlator.cmod.session.WineShutdown.terminateAll(() -> {
-            preloaderDialog.closeOnUiThread();
-            runOnUiThread(this::finish);
-        });
-    }
+    void exit() { lifecycle.exit(); }
 
     @Override
     protected void onDestroy() {
-        com.winlator.cmod.core.RendererDriverGuard.disarm(this);
-        com.winlator.cmod.core.HudSensorFeed.INSTANCE.stop();
-        if (perf != null) perf.stop();
-        if (waylandSession != null) { waylandSession.stop(); waylandSession = null; }
-        if (taskManagerSidebar != null) taskManagerSidebar.stop();
+        lifecycle.destroy();
         super.onDestroy();
     }
 
@@ -840,25 +750,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onBackPressed() {
-        if (environment != null) {
-            if (!drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                drawerLayout.openDrawer(GravityCompat.START);
-            } else
-                drawerLayout.closeDrawers();
-        }
-    }
+    public void onBackPressed() { lifecycle.back(); }
 
     void showVibrationDialog() { com.winlator.cmod.ui.ingame.InputDispatch.showVibrationDialog(this, winHandler); }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-
-        if (hasFocus && cursorLock)
-            touchpadView.requestPointerCapture();
-        else if (!hasFocus)
-            touchpadView.releasePointerCapture();
+        lifecycle.focusChanged(hasFocus);
     }
 
     /**
@@ -1011,8 +910,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
 
-        setupSidebarHudControls();
-        setupSidebarGraphicsControls();
+        sidebar.setupHud();
+        sidebar.setupGraphics();
         quickMenuBridge.applySaved();
         applyFrameGen();
         // Every renderer: direct (DRI3) frames tell the HUD which window is the game's.
@@ -1031,69 +930,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
 
 
-    private ArrayAdapter<String> createSidebarSpinnerAdapter(String[] items) {
-        return new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, items) {
-            @NonNull
-            @Override
-            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-                TextView view = (TextView) super.getView(position, convertView, parent);
-                view.setTextColor(Color.parseColor("#EEF7FF"));
-                view.setTextSize(14);
-                view.setSingleLine(true);
-                return view;
-            }
 
-            @Override
-            public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-                TextView view = (TextView) super.getDropDownView(position, convertView, parent);
-                view.setTextColor(Color.parseColor("#EEF7FF"));
-                view.setBackgroundColor(Color.parseColor("#0E2231"));
-                view.setTextSize(14);
-                return view;
-            }
-        };
-    }
-
-    private void setupSidebarHudControls() {
-        com.winlator.cmod.ui.ingame.SidebarHudPanel.setup(new com.winlator.cmod.ui.ingame.SidebarHudPanel.Host() {
-            @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
-            @Override public WinlatorHUD modernHud() { return hud.modern(); }
-            @Override public FrameRating classicHud() { return null; }
-            @Override public int savedMode() { return hud.savedMode(); }
-            @Override public void apply(int mode) { hud.apply(mode); }
-            @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return createSidebarSpinnerAdapter(items); }
-        });
-    }
-
-    private void setupSidebarGraphicsControls() {
-        com.winlator.cmod.ui.ingame.SidebarGraphicsPanel.setup(new com.winlator.cmod.ui.ingame.SidebarGraphicsPanel.Host() {
-            @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
-            @Override public XServerRendererView renderer() { return xServerView; }
-            @Override public Container container() { return container; }
-            @Override public Shortcut shortcut() { return shortcut; }
-            @Override public void applyFpsLimit(int fps) { XServerDisplayActivity.this.applyFpsLimit(fps); }
-            @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return createSidebarSpinnerAdapter(items); }
-        });
-    }
-
-    void setupSidebarInputControls() {
-        com.winlator.cmod.ui.ingame.SidebarInputPanel.setup(new com.winlator.cmod.ui.ingame.SidebarInputPanel.Host() {
-            @Override public android.app.Activity activity() { return XServerDisplayActivity.this; }
-            @Override public InputControlsView controls() { return inputControlsView; }
-            @Override public InputControlsManager manager() { return inputControlsManager; }
-            @Override public SharedPreferences prefs() { return preferences; }
-            @Override public com.winlator.cmod.ui.ingame.TouchControls touch() { return touchControls; }
-            @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return createSidebarSpinnerAdapter(items); }
-            @Override public void openEditor(int profileId, Runnable onBack) {
-                Intent intent = new Intent(XServerDisplayActivity.this, MainActivity.class);
-                intent.putExtra("edit_input_controls", true);
-                intent.putExtra("selected_profile_id", profileId);
-                editInputControlsCallback = onBack;
-                controlsEditorActivityResultLauncher.launch(intent);
-            }
-            @Override public void clearTouchpadListener() { if (touchpadView != null) touchpadView.setOnTouchListener(null); }
-        });
-    }
 
 
 
@@ -1246,6 +1083,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     GyroInput gyroInput;
     final XServerQuickMenuBridge quickMenuBridge = new XServerQuickMenuBridge(this);
+    /** Pause / resume, picture-in-picture, back, focus, exit (GameLifecycle). */
+    final GameLifecycle lifecycle = new GameLifecycle(this);
     final XServerSidebar sidebar = new XServerSidebar(this);
 
 

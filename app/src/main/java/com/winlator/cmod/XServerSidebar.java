@@ -1,6 +1,19 @@
 package com.winlator.cmod;
 
+import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.widget.ArrayAdapter;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.winlator.cmod.container.Container;
+import com.winlator.cmod.container.Shortcut;
+import com.winlator.cmod.inputcontrols.InputControlsManager;
+import com.winlator.cmod.widget.FrameRating;
+import com.winlator.cmod.widget.InputControlsView;
+import com.winlator.cmod.widget.WinlatorHUD;
 import android.graphics.drawable.GradientDrawable;
 import android.util.TypedValue;
 import android.view.View;
@@ -240,5 +253,70 @@ final class XServerSidebar {
         if (parent != null && sub != null) {
             parent.setOnClickListener(v -> openSidebarPanel(parentId, subId));
         }
+    }
+
+    /** Spinners of the side panels: light text on the panel's dark blue. */
+    ArrayAdapter<String> spinnerAdapter(String[] items) {
+        return new ArrayAdapter<String>(a, android.R.layout.simple_spinner_item, items) {
+            @NonNull
+            @Override
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                TextView view = (TextView) super.getView(position, convertView, parent);
+                view.setTextColor(Color.parseColor("#EEF7FF"));
+                view.setTextSize(14);
+                view.setSingleLine(true);
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                TextView view = (TextView) super.getDropDownView(position, convertView, parent);
+                view.setTextColor(Color.parseColor("#EEF7FF"));
+                view.setBackgroundColor(Color.parseColor("#0E2231"));
+                view.setTextSize(14);
+                return view;
+            }
+        };
+    }
+
+    /** YurNLator base, part 15: the side panels were set up by the game screen. */
+    void setupHud() {
+        com.winlator.cmod.ui.ingame.SidebarHudPanel.setup(new com.winlator.cmod.ui.ingame.SidebarHudPanel.Host() {
+            @Override public android.app.Activity activity() { return a; }
+            @Override public WinlatorHUD modernHud() { return a.hud.modern(); }
+            @Override public FrameRating classicHud() { return null; }
+            @Override public int savedMode() { return a.hud.savedMode(); }
+            @Override public void apply(int mode) { a.hud.apply(mode); }
+            @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return XServerSidebar.this.spinnerAdapter(items); }
+        });
+    }
+
+    void setupGraphics() {
+        com.winlator.cmod.ui.ingame.SidebarGraphicsPanel.setup(new com.winlator.cmod.ui.ingame.SidebarGraphicsPanel.Host() {
+            @Override public android.app.Activity activity() { return a; }
+            @Override public XServerRendererView renderer() { return a.xServerView; }
+            @Override public Container container() { return a.container; }
+            @Override public Shortcut shortcut() { return a.shortcut; }
+            @Override public void applyFpsLimit(int fps) { a.applyFpsLimit(fps); }
+            @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return XServerSidebar.this.spinnerAdapter(items); }
+        });
+    }
+    void setupInput() {
+        com.winlator.cmod.ui.ingame.SidebarInputPanel.setup(new com.winlator.cmod.ui.ingame.SidebarInputPanel.Host() {
+            @Override public android.app.Activity activity() { return a; }
+            @Override public InputControlsView controls() { return a.inputControlsView; }
+            @Override public InputControlsManager manager() { return a.inputControlsManager; }
+            @Override public SharedPreferences prefs() { return a.preferences; }
+            @Override public com.winlator.cmod.ui.ingame.TouchControls touch() { return a.touchControls; }
+            @Override public ArrayAdapter<String> spinnerAdapter(String[] items) { return XServerSidebar.this.spinnerAdapter(items); }
+            @Override public void openEditor(int profileId, Runnable onBack) {
+                android.content.Intent intent = new android.content.Intent(a, MainActivity.class);
+                intent.putExtra("edit_input_controls", true);
+                intent.putExtra("selected_profile_id", profileId);
+                a.editInputControlsCallback = onBack;
+                a.controlsEditorActivityResultLauncher.launch(intent);
+            }
+            @Override public void clearTouchpadListener() { if (a.touchpadView != null) a.touchpadView.setOnTouchListener(null); }
+        });
     }
 }
