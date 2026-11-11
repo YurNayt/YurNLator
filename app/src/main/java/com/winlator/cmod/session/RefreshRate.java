@@ -29,6 +29,11 @@ public final class RefreshRate {
 
     /** Tells Wine (RandR) every refresh rate the panel has and the current one. */
     public static void advertise(Activity activity, XServer xServer) {
+        advertise(activity, xServer, null);
+    }
+
+    /** Wine before 10: its virtual desktop has only 60 Hz modes, so 60 Hz is reported as current. */
+    public static void advertise(Activity activity, XServer xServer, WineInfo wineInfo) {
         RandrExtension randr = xServer.getExtension(RandrExtension.MAJOR_OPCODE);
         if (randr == null) return;
 
@@ -49,9 +54,17 @@ public final class RefreshRate {
         for (short hz : distinct) rates[index++] = hz;
 
         short activeRate = (short)Math.round(display.getRefreshRate());
-        randr.setRefreshRates(rates, activeRate);
+        boolean sixty = wineMajor(wineInfo) > 0 && wineMajor(wineInfo) < 10;
+        randr.setRefreshRates(rates, activeRate, sixty);
         Log.d(TAG, "RandR advertising refresh rates "
-                + java.util.Arrays.toString(rates) + ", active=" + activeRate);
+                + java.util.Arrays.toString(rates) + ", active=" + activeRate + (sixty ? ", current 60 (Wine < 10)" : ""));
+    }
+
+    /** "9.0" / "10.0-3" / "11.0" → 9 / 10 / 11; 0 when unknown. */
+    static int wineMajor(WineInfo wineInfo) {
+        if (wineInfo == null || wineInfo.version == null) return 0;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^\\D*(\\d+)").matcher(wineInfo.version);
+        return m.find() ? Integer.parseInt(m.group(1)) : 0;
     }
 
     /** The panel's highest refresh rate (the game screen asks Android for it). */

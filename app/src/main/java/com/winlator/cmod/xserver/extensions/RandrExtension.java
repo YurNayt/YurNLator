@@ -35,15 +35,23 @@ public class RandrExtension implements Extension {
     }
 
     public void setRefreshRates(short[] rates, short activeRate) {
+        setRefreshRates(rates, activeRate, false);
+    }
+
+    /**
+     * [sixtyCurrent]: 60 Hz is reported as current (when the panel has it), else the panel's top
+     * rate. Wine before 10 builds its virtual desktop's modes at 60 Hz only: a game that asks for
+     * the current rate (CS:S through its launcher: 1024x768@120) got DISP_CHANGE_BADMODE and hung.
+     */
+    public void setRefreshRates(short[] rates, short activeRate, boolean sixtyCurrent) {
         if (rates == null || rates.length == 0) return;
 
         short[] copy = rates.clone();
         refreshRates = copy;
 
-        // The panel's top rate is current (high refresh rate games). A game asking for a mode
-        // Wine's virtual desktop lacks now just takes Wine's offscreen path, which is shown
-        // (PresentExtension / DrawRequests.copyArea).
-        currentRate = copy[0];
+        short current = copy[0];
+        if (sixtyCurrent) for (short hz : copy) if (hz == 60) { current = 60; break; }
+        currentRate = current;
     }
 
     @Override

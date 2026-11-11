@@ -600,7 +600,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServer = new XServer(new ScreenInfo(screenSize), com.winlator.cmod.session.RendererSetup.xServerFormat(container, shortcut));
         xServer.setWinHandler(winHandler);
         xServer.setRelativeMouseMovement(isRelativeMouseMovement);
-        com.winlator.cmod.session.RefreshRate.advertise(this, xServer);
+        com.winlator.cmod.session.RefreshRate.advertise(this, xServer, wineInfo);
 
         boolean[] winStarted = { false };
 
