@@ -1100,7 +1100,7 @@ private fun ContainerCategoryV2(
                         SettingToggle("Async Cache", s.asyncCache) { s.asyncCache = it; s.wrapperValue("asyncCache", if (it) "1" else "0") }
                     }
                     SettingsDivider()
-                    SettingChoice("DDraw Wrapper", s.ddrawWrapper, listOf("none", "wined3d", "cnc-ddraw", "dd7to9")) {
+                    SettingChoice("DDraw Wrapper", s.ddrawWrapper, listOf("none", "wined3d", "cnc-ddraw", "dd7to9", "d7vk")) {
                         s.ddrawWrapper = it; s.wrapperValue("ddrawrapper", it)
                     }
                 }

@@ -242,7 +242,7 @@ internal fun ContainerRuntimePane(
                     SettingsDivider(); SettingToggle("Max Frame Latency", maxFrameLatency) { maxFrameLatency = it; saveWrapper("maxFrameLatency", if (it) "1" else "0") }
                     SettingsDivider(); SettingToggle("Async", async) { async = it; saveWrapper("async", if (it) "1" else "0") }
                     SettingsDivider(); SettingToggle("Async Cache", asyncCache) { asyncCache = it; saveWrapper("asyncCache", if (it) "1" else "0") }
-                    SettingsDivider(); SettingChoice("DDraw Wrapper", ddrawWrapper, listOf("wined3d", "cnc-ddraw", "dd7to9", "none")) { ddrawWrapper = it; saveWrapper("ddrawrapper", it) }
+                    SettingsDivider(); SettingChoice("DDraw Wrapper", ddrawWrapper, listOf("wined3d", "cnc-ddraw", "dd7to9", "d7vk", "none")) { ddrawWrapper = it; saveWrapper("ddrawrapper", it) }
                 } else {
                     SettingsDivider(); SettingToggle("CSMT", csmt) { csmt = it; saveWrapper("csmt", if (it) "3" else "0") }
                     SettingsDivider(); SettingToggle("Strict Shader Math", strictShaderMath) { strictShaderMath = it; saveWrapper("strict_shader_math", if (it) "1" else "0") }

@@ -960,7 +960,7 @@ private fun ShortcutCategoryV2(
                         SettingToggle("Async Cache", s.asyncCache) { s.asyncCache = it; s.wrapperValue("asyncCache", if (it) "1" else "0") }
                     }
                     SettingsDivider()
-                    SettingChoice("DDraw Wrapper", s.ddrawWrapper, listOf("wined3d", "cnc-ddraw", "dd7to9", "none")) { s.ddrawWrapper = it; s.wrapperValue("ddrawrapper", it) }
+                    SettingChoice("DDraw Wrapper", s.ddrawWrapper, listOf("wined3d", "cnc-ddraw", "dd7to9", "d7vk", "none")) { s.ddrawWrapper = it; s.wrapperValue("ddrawrapper", it) }
                 } else {
                     SettingsDivider()
                     SettingToggle("CSMT", s.csmt) { s.csmt = it; s.wrapperValue("csmt", if (it) "3" else "0") }

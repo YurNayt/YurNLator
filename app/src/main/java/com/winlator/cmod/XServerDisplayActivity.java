@@ -444,6 +444,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         this.graphicsDriverConfig = GraphicsDriverConfigDialog.parseGraphicsDriverConfig(graphicsDriverConfig);
+        // A bundled Turnip no longer in the APK -> the current one; a newly bundled one is unpacked now
+        // (the renderer, Wayland and the game all read the driver from here).
+        String driverId = this.graphicsDriverConfig.get("version");
+        if (driverId != null && !driverId.isEmpty() && !"System".equalsIgnoreCase(driverId)) {
+            com.winlator.cmod.contents.AdrenotoolsManager atm = new com.winlator.cmod.contents.AdrenotoolsManager(this);
+            String resolved = atm.resolveBundled(driverId);
+            if (atm.isFromResources(resolved)) atm.extractDriverFromResources(resolved);
+            this.graphicsDriverConfig.put("version", resolved);
+        }
         this.dxwrapperConfig = DXVKConfigDialog.parseConfig(dxwrapperConfig);
 
         if (!wineInfo.isWin64()) {

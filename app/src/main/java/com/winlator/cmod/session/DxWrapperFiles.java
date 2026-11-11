@@ -129,6 +129,8 @@ public final class DxWrapperFiles {
             if (ddrawrapper.contains("None")) {
                 Log.d(TAG, "No DDraw wrapper selected, restoring original ddraw files");
                 restoreOriginal("ddraw.dll", "d3dimm.dll");
+            } else if (ddrawrapper.equals("d7vk")) {
+                applyD7vk();
             } else {
                 if (ddrawrapper.equals("cnc-ddraw"))
                     envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\windows\\syswow64\\ddraw.ini");
@@ -140,6 +142,20 @@ public final class DxWrapperFiles {
             Log.d(TAG, "Restoring original DLL files for wined3d");
             restoreOriginal(ALL_DLLS);
         }
+    }
+
+    /**
+     * D7VK (DirectDraw / D3D7 on Vulkan, bundled from Ludashi 5.0): its ddraw.dll goes where 32-bit
+     * DLLs live, and Wine's own ddraw.dll next to it as ddraw_.dll (it hands the 2D / DirectDraw
+     * part to Wine's).
+     */
+    private void applyD7vk() {
+        Log.d(TAG, "Extracting D7VK");
+        extract("ddrawrapper/d7vk.tzst");
+        File dir = new File(windowsDir, wineInfo.isWin64() ? "syswow64" : "system32");
+        File builtin = new File(imageFs.getWinePath() + "/lib/wine/i386-windows/ddraw.dll");
+        if (!builtin.isFile() || !FileUtils.copy(builtin, new File(dir, "ddraw_.dll")))
+            Log.e(TAG, "D7VK: Wine's ddraw.dll not found at " + builtin);
     }
 
     private void extract(String asset) {

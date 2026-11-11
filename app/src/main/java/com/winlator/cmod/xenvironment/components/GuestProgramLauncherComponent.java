@@ -96,6 +96,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             File destination) {
         ContentProfile profile = resolveInstalledRuntimeProfile(type, version);
         if (profile != null) return contentsManager.applyContent(profile);
+        // FEX 2611 (from Ludashi 5.0) ships its Wine unixlibs too (usr/lib/wine/aarch64-unix):
+        // the archive is laid out from the image's root.
+        if (type == ContentProfile.ContentType.CONTENT_TYPE_FEXCORE && "2611".equals(version))
+            destination = environment.getImageFs().getRootDir();
         return TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD,
                 context,
@@ -111,6 +115,12 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         if (shortcut != null)
             box64Version = shortcut.getExtra("box64Version", shortcut.container.getBox64Version());
+
+        // Box64 0.4.2 is no longer bundled (0.4.5 is, from Ludashi 5.0): the standard path moves
+        // to it unless 0.4.2 was installed as a package. WOWBox64 (arm64ec) has its own archive.
+        boolean retiredBundledBox64 = "0.4.2".equals(box64Version)
+                && resolveInstalledRuntimeProfile(ContentProfile.ContentType.CONTENT_TYPE_BOX64, box64Version) == null;
+        if (retiredBundledBox64) box64Version = com.winlator.cmod.core.DefaultVersion.BOX64;
 
         Log.d("GuestProgramLauncherComponent", "box64Version: " + box64Version);
 
@@ -129,6 +139,14 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             } else {
                 Log.e("GuestProgramLauncherComponent", "Unable to apply Box64 version " + box64Version);
             }
+        }
+        if (retiredBundledBox64 && box64Version.equals(container.getExtra("box64Version"))) {
+            if ("0.4.2".equals(container.getBox64Version())) container.setBox64Version(box64Version);
+            if (shortcut != null && "0.4.2".equals(shortcut.getExtra("box64Version", null))) {
+                shortcut.putExtra("box64Version", box64Version);
+                shortcut.saveData();
+            }
+            container.saveData();
         }
 
         File box64File = new File(rootDir, "/usr/bin/box64");
@@ -149,6 +167,18 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if (shortcut != null) {
             wowbox64Version = shortcut.getExtra("box64Version", shortcut.container.getBox64Version());
             fexcoreVersion = shortcut.getExtra("fexcoreVersion", shortcut.container.getFEXCoreVersion());
+        }
+
+        // FEX 2601 is no longer bundled (2611 is): containers on it move up unless it was installed as a package.
+        boolean retiredBundledFex = "2601".equals(fexcoreVersion)
+                && resolveInstalledRuntimeProfile(ContentProfile.ContentType.CONTENT_TYPE_FEXCORE, fexcoreVersion) == null;
+        if (retiredBundledFex) {
+            fexcoreVersion = com.winlator.cmod.core.DefaultVersion.FEXCORE;
+            if ("2601".equals(container.getFEXCoreVersion())) { container.setFEXCoreVersion(fexcoreVersion); containerDataChanged = true; }
+            if (shortcut != null && "2601".equals(shortcut.getExtra("fexcoreVersion", null))) {
+                shortcut.putExtra("fexcoreVersion", fexcoreVersion);
+                shortcut.saveData();
+            }
         }
 
         Log.d("GuestProgramLauncherComponent", "box64Version in use: " + wowbox64Version);
@@ -173,7 +203,13 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                 ContentProfile.ContentType.CONTENT_TYPE_FEXCORE, fexcoreVersion);
         boolean fexcoreFilesMissing = fexcoreProfile != null
                 && !contentsManager.isContentApplied(fexcoreProfile);
-        if (!fexcoreVersion.equals(container.getExtra("fexcoreVersion")) || fexcoreFilesMissing) {
+        boolean bundledUnixlibs = fexcoreProfile == null && "2611".equals(fexcoreVersion);
+        File unixlibDir = new File(rootDir, "usr/lib/wine/aarch64-unix");
+        boolean bundledUnixlibsMissing = bundledUnixlibs
+                && (!"2611-unixlibs".equals(container.getExtra("fexcoreBundledRevision"))
+                || !new File(unixlibDir, "libarm64ecfex.so").isFile()
+                || !new File(unixlibDir, "libwow64fex.so").isFile());
+        if (!fexcoreVersion.equals(container.getExtra("fexcoreVersion")) || fexcoreFilesMissing || bundledUnixlibsMissing) {
             if (fexcoreFilesMissing) {
                 Log.w("GuestProgramLauncherComponent",
                         "FEXCore files are missing or incomplete; reapplying " + fexcoreVersion);
@@ -186,6 +222,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                     system32dir);
             if (applied) {
                 container.putExtra("fexcoreVersion", fexcoreVersion);
+                if (bundledUnixlibs) container.putExtra("fexcoreBundledRevision", "2611-unixlibs");
                 containerDataChanged = true;
             } else {
                 Log.e("GuestProgramLauncherComponent", "Unable to apply FEXCore version " + fexcoreVersion);

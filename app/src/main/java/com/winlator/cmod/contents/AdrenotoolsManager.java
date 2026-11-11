@@ -45,6 +45,20 @@ public class AdrenotoolsManager {
             adrenotoolsContentDir.mkdirs();
     }
     
+    /**
+     * A bundled Turnip that is no longer in the APK (turnip26.2.0, replaced by the current bundled
+     * one) and was never unpacked on this phone: the current bundled Turnip instead.
+     */
+    public String resolveBundled(String adrenotoolsDriverId) {
+        if (adrenotoolsDriverId == null || !adrenotoolsDriverId.startsWith("turnip")) return adrenotoolsDriverId;
+        if (isFromResources(adrenotoolsDriverId) || new File(adrenotoolsContentDir, adrenotoolsDriverId + "/meta.json").isFile())
+            return adrenotoolsDriverId;
+        String current = com.winlator.cmod.core.DefaultVersion.WRAPPER_ADRENO;
+        if (!isFromResources(current)) return adrenotoolsDriverId;
+        Log.i("AdrenotoolsManager", "retired bundled driver " + adrenotoolsDriverId + " -> " + current);
+        return current;
+    }
+
     public String getAssetPath(String adrenotoolsDriverId) {
         return "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst";
     }
@@ -276,7 +290,11 @@ public class AdrenotoolsManager {
     }
     
     public void setDriverById(EnvVars envVars, ImageFs imagefs, String adrenotoolsDriverId) {
+        adrenotoolsDriverId = resolveBundled(adrenotoolsDriverId);
         boolean isFromResources = isFromResources(adrenotoolsDriverId);
+        // A bundled driver is unpacked once at install; one bundled later (an update) is unpacked here.
+        if (isFromResources && !new File(adrenotoolsContentDir, adrenotoolsDriverId + "/meta.json").isFile())
+            extractDriverFromResources(adrenotoolsDriverId);
 
         if (isFromResources || enumarateInstalledDrivers().contains(adrenotoolsDriverId)) {
             String driverPath = getDriverPath(adrenotoolsDriverId);
