@@ -982,32 +982,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
-        touchpadView = new TouchpadView(this, xServer, timeoutHandler, hideControlsRunnable);
-        touchpadView.setSensitivity(globalCursorSpeed);
-        touchpadView.setMouseEnabled(!isMouseDisabled);
-        touchpadView.setFourFingersTapCallback(() -> {
-            if (!drawerLayout.isDrawerOpen(GravityCompat.START))
-                drawerLayout.openDrawer(GravityCompat.START);
-        });
-        View.OnCapturedPointerListener capturedPointerListener = new View.OnCapturedPointerListener() {
-            @Override
-            public boolean onCapturedPointer(View view, MotionEvent event) {
-                handleCapturedPointer(event);
-                return true;
-            }
-        };
-        touchpadView.setOnCapturedPointerListener(cursorLock ? capturedPointerListener : null);
-        touchpadView.setFocusable(true);
-        touchpadView.setFocusableInTouchMode(true);
-        rootView.addView(touchpadView);
-
-        inputControlsView = new InputControlsView(this, timeoutHandler, hideControlsRunnable);
-        inputControlsView
-                .setOverlayOpacity(preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY));
-        inputControlsView.setTouchpadView(touchpadView);
-        inputControlsView.setXServer(xServer);
-        inputControlsView.setVisibility(View.GONE);
-        rootView.addView(inputControlsView);
+        com.winlator.cmod.ui.ingame.TouchControls.Views touchViews = touchControls.createViews(this, rootView, xServer,
+                globalCursorSpeed, isMouseDisabled,
+                () -> { if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START); },
+                cursorLock ? (view, event) -> { handleCapturedPointer(event); return true; } : null);
+        touchpadView = touchViews.touchpad;
+        inputControlsView = touchViews.controls;
 
         boolean isTimeoutEnabled = preferences.getBoolean("touchscreen_timeout_enabled", false);
         if (isTimeoutEnabled) {

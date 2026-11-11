@@ -147,4 +147,37 @@ public final class TouchControls {
         else { handler.removeCallbacks(hideRunnable); c.setVisibility(View.GONE); }
         c.invalidate();
     }
+
+    /** The touchpad (mouse over the whole screen) and the on-screen controls, both added to [root]. */
+    public static final class Views {
+        public final TouchpadView touchpad;
+        public final InputControlsView controls;
+        Views(TouchpadView touchpad, InputControlsView controls) { this.touchpad = touchpad; this.controls = controls; }
+    }
+
+    /**
+     * YurNLator base, part 13: the game screen's touch views, made here (were in setupUI). The
+     * controls start hidden; [onFourFingers] opens the menu; [capturedPointer] (null: off) gets an
+     * external mouse while the pointer is captured.
+     */
+    public Views createViews(android.content.Context context, android.widget.FrameLayout root,
+                             com.winlator.cmod.xserver.XServer xServer, float cursorSpeed, boolean mouseDisabled,
+                             Runnable onFourFingers, View.OnCapturedPointerListener capturedPointer) {
+        TouchpadView touchpad = new TouchpadView(context, xServer, handler, hideRunnable);
+        touchpad.setSensitivity(cursorSpeed);
+        touchpad.setMouseEnabled(!mouseDisabled);
+        touchpad.setFourFingersTapCallback(onFourFingers);
+        touchpad.setOnCapturedPointerListener(capturedPointer);
+        touchpad.setFocusable(true);
+        touchpad.setFocusableInTouchMode(true);
+        root.addView(touchpad);
+
+        InputControlsView controlsView = new InputControlsView(context, handler, hideRunnable);
+        controlsView.setOverlayOpacity(prefs.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY));
+        controlsView.setTouchpadView(touchpad);
+        controlsView.setXServer(xServer);
+        controlsView.setVisibility(View.GONE);
+        root.addView(controlsView);
+        return new Views(touchpad, controlsView);
+    }
 }

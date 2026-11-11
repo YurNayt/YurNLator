@@ -51,6 +51,20 @@ object Tombstone {
 
     private fun ours(f: Frame) = f.file.contains("/data/app/") || f.file.contains("com.yurnayt")
 
+    /** Library paths in the crashing thread's backtrace (null when [raw] isn't a tombstone). */
+    fun crashingFiles(raw: ByteArray): List<String>? = runCatching {
+        var tid = 0
+        val threads = ArrayList<Thread>()
+        Reader(raw).fields { n, v, s ->
+            when (n) {
+                6 -> tid = v.toInt()
+                16 -> { var t: Thread? = null; s!!.fields { k, _, ss -> if (k == 2) t = thread(ss!!) }; t?.let { threads += it } }
+            }
+        }
+        val crash = threads.firstOrNull { it.id == tid } ?: return null
+        crash.frames.map { it.file }
+    }.getOrNull()
+
     /** Null when [raw] isn't a tombstone protobuf. */
     fun format(raw: ByteArray): String? = runCatching {
         var tid = 0; var signal = ""; var fault = ""; var abort = ""
