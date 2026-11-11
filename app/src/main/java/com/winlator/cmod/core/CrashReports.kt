@@ -70,8 +70,10 @@ object CrashReports {
                 // The thread's own header line: the main thread's block also starts with the dump's
                 // "----- pid ... -----" / "Cmd line:" lines, and was dropped (no main thread in ANRs).
                 val head = b.lineSequence().map { it.trimStart() }.firstOrNull { it.startsWith("\"") }.orEmpty()
-                head.startsWith("\"main\"") || Regex("(?i)render|xserver|vulkan|wayland|winhandler|gyro|surface|GLThread").containsMatchIn(head)
-            }.take(8)
+                head.startsWith("\"main\"") || Regex("(?i)render|xserver|xconnector|xclient|vulkan|wayland|winhandler|gyro|surface|GLThread|GameExit").containsMatchIn(head) ||
+                    // Any thread inside our code (the one the main thread waits for is usually one of them).
+                    (b.contains("at com.winlator.") && !b.contains("MessageQueue.nativePollOnce"))
+            }.take(14)
             "\n\n--- ANR threads ---\n" + keep.joinToString("\n\n") { it.lines().take(45).joinToString("\n") }
         } else {
             Tombstone.format(raw)?.let { return it }

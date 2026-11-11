@@ -54,7 +54,7 @@ public class XConnectorEpoll implements Runnable {
             throw new RuntimeException("Failed to add shutdown fd to epoll.");
         }
 
-        epollThread = new Thread(this);
+        epollThread = new Thread(this, "XConnectorEpoll");
     }
 
     public synchronized void start() {
@@ -68,12 +68,13 @@ public class XConnectorEpoll implements Runnable {
         running = false;
         requestShutdown();
 
-        while (epollThread.isAlive()) {
-            try {
-                epollThread.join();
-            }
-            catch (InterruptedException e) {}
+        // Bounded: a client stuck inside a request (a hung game) kept this thread busy and the wait
+        // never ended. Wine is ended right after, which closes the sockets the thread is on.
+        try {
+            epollThread.join(2000);
         }
+        catch (InterruptedException e) {}
+        if (epollThread.isAlive()) epollThread.interrupt();
         epollThread = null;
     }
 
@@ -90,6 +91,7 @@ public class XConnectorEpoll implements Runnable {
         if (multithreadedClients) {
             client.shutdownFd = createEventFd();
             client.pollThread = new Thread(() -> {
+                Thread.currentThread().setName("XClient-" + fd);
                 connectionHandler.handleNewConnection(client);
                 while (client.connected && waitForSocketRead(client.clientSocket.fd, client.shutdownFd));
             });

@@ -106,7 +106,12 @@ final class GameLifecycle {
     }
 
     /** Leaves the game: servers stopped, Wine ended, then the screen closes. */
+    private boolean exiting;
+
     void exit() {
+        // Exit and the game ending by itself can both arrive: the session stops once.
+        if (exiting) return;
+        exiting = true;
         com.winlator.cmod.core.RendererDriverGuard.disarm(a);
         NotificationManagerCompat.from(a).cancel(XServerDisplayActivity.NOTIFICATION_ID);
         boolean removeLoadingBar = PreferenceManager.getDefaultSharedPreferences(a)
@@ -118,15 +123,25 @@ final class GameLifecycle {
             a.xServerView.setVisibility(View.GONE);
         }
         if (a.playtime != null) a.playtime.pause();
-        if (a.midiHandler != null) a.midiHandler.stop();
-        if (a.environment != null) a.environment.stopEnvironmentComponents();
-        if (a.winHandler != null) a.winHandler.stop();
-        if (a.wineRequestHandler != null) a.wineRequestHandler.stop();
 
-        com.winlator.cmod.session.WineShutdown.terminateAll(() -> {
-            a.preloaderDialog.closeOnUiThread();
-            a.runOnUiThread(a::finish);
-        });
+        // Stopping the servers waits for their threads: off the UI thread. A game hung inside an
+        // X request kept the X server's thread busy and the wait froze the whole app (ANR on Exit).
+        Thread stopper = new Thread(() -> {
+            try {
+                if (a.midiHandler != null) a.midiHandler.stop();
+                if (a.environment != null) a.environment.stopEnvironmentComponents();
+                if (a.winHandler != null) a.winHandler.stop();
+                if (a.wineRequestHandler != null) a.wineRequestHandler.stop();
+            } catch (Throwable e) {
+                android.util.Log.w("GameLifecycle", "stopping the session", e);
+            }
+            com.winlator.cmod.session.WineShutdown.terminateAll(() -> {
+                a.preloaderDialog.closeOnUiThread();
+                a.runOnUiThread(a::finish);
+            });
+        }, "GameExit");
+        stopper.setDaemon(true);
+        stopper.start();
     }
 
     /** The screen is destroyed: sensors, performance changes, Wayland and the task manager stop. */
