@@ -381,20 +381,11 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
             var log by remember(opened) { mutableStateOf(bridge.mangoHudLog()) }
             Card {
                 Text(if (running) "MangoHud is drawn inside the game: FPS, 1% / 0.1% lows, frame time graph and RAM; CPU and GPU rows too with precise sensors (Settings › Performance HUD, root or ADB). It costs the game some frames."
-                     else "MangoHud loads with the game: restart the game to see it.",
+                     else "MangoHud loads with the game: restart the game to see it (or turn on \"Keep MangoHud ready\" in the game's or container's settings to switch it on any time).",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SwitchRow("Write a log", "MangoHud CSV in Download/YurNLator/MangoHud, from the next start", checked = log) {
                     log = it; bridge.setMangoHudLog(it)
                 }
-            }
-        }
-        if (mode != 0) {
-            var preload by remember(opened) { mutableStateOf(bridge.mangoHudPreload()) }
-            Card {
-                SwitchRow("Keep MangoHud ready",
-                    "Loaded hidden with every game (from the next start), so MangoHud can be switched on and off any time. " +
-                        "Off: nothing of MangoHud runs unless it is the style at the start. Hidden it still hooks every frame: a small cost.",
-                    checked = preload) { preload = it; bridge.setMangoHudPreload(it) }
             }
         }
         Card {

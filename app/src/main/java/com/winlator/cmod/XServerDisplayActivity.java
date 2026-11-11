@@ -186,7 +186,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 @Override public com.winlator.cmod.session.HudWindowTracker tracker() { return hudTracker; }
                 @Override public File imageFsRoot() { return imageFs.getRootDir(); }
                 @Override public boolean mangoHudLog() { return preferences.getBoolean("mangohud_log", false); }
-                @Override public boolean mangoHudPreload() { return preferences.getBoolean("mangohud_preload", false); }
+                @Override public boolean mangoHudPreload() {
+                    // The game's own "Keep MangoHud ready", else the container's (settings of both).
+                    String own = shortcut != null ? shortcut.getExtra("mangohudPreload", "") : "";
+                    if (!own.isEmpty()) return own.equals("1");
+                    return container != null && container.getExtra("mangohudPreload", "0").equals("1");
+                }
             });
     Runnable editInputControlsCallback;
     Shortcut shortcut;

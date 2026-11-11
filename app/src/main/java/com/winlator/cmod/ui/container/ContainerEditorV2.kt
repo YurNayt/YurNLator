@@ -235,6 +235,7 @@ private class ContainerEditorStateV2(
     var syncCpu by mutableStateOf(editing?.isSyncCpuTopology ?: false)
     /** Force SSBS (arm64ec Proton): on unless turned off. */
     var forceSsbs by mutableStateOf(editing?.getExtra("forceSsbs", "1") != "0")
+    var mangoPreload by mutableStateOf(editing?.getExtra("mangohudPreload", "0") == "1")
 
     private val cpuCount = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
     val cpu64 = mutableStateListOf<Boolean>().apply {
@@ -324,7 +325,7 @@ private class ContainerEditorStateV2(
         renderer, rendererPresentMode, rendererDriver, filterMode, surfaceFormat, trueDisplayX, displayBackend,
         displayXPerformanceMode, displayXPresentAtRefreshRate, graphicsDriver, graphicsConfig,
         wrapper, wrapperConfig, emulator, fexVersion, boxVersion, fexPreset, boxPreset, exclusive, xinput, dinput,
-        syncCpu, forceSsbs, startup, openGlDefaultInitialized, autoMesaGlVersionOverride, envVars,
+        syncCpu, forceSsbs, mangoPreload, startup, openGlDefaultInitialized, autoMesaGlVersionOverride, envVars,
         cpu64.joinToString(), cpu32.joinToString(), components.entries.sortedBy { it.key }.joinToString()
     ).joinToString("|")
 }
@@ -463,6 +464,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         container.setCPUListWoW64(state.cpu32.indices.filter { state.cpu32[it] }.joinToString(","))
         container.setSyncCpuTopology(state.syncCpu)
         container.putExtra("forceSsbs", if (state.forceSsbs) "1" else "0")
+        container.putExtra("mangohudPreload", if (state.mangoPreload) "1" else "0")
         container.setGraphicsDriver(state.graphicsDriver)
         container.setGraphicsDriverConfig(state.graphicsConfig)
         container.setRendererNative(state.renderer == "EGL")
@@ -561,6 +563,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                 put("extraData", JSONObject()
                     .put("hudMode", state.hudMode.toString())
                     .put("forceSsbs", if (state.forceSsbs) "1" else "0")
+                    .put("mangohudPreload", if (state.mangoPreload) "1" else "0")
                     .put("mouseWarpOverride", state.mouseWarp)
                     .put("useDisplayX", "0")
                     .put("surfaceFormat", state.surfaceFormat)
@@ -839,6 +842,9 @@ private fun ContainerCategoryV2(
                 SettingChoice("Performance HUD", hudLabel, hudEntries) {
                     s.hudMode = when (it) { "MangoHud" -> 3; "Bannerlator" -> 4; "YurNLator" -> 2; else -> 0 }
                 }
+                SettingsDivider()
+                // Loaded hidden with the games, so the quick menu can switch MangoHud on any time (a small cost).
+                SettingToggle("Keep MangoHud ready", s.mangoPreload) { s.mangoPreload = it }
             }
             SettingsCard {
                 SettingChoice("Locale (LC_ALL)", localeDisplayValue(s.locale), localeEntries) {

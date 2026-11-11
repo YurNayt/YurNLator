@@ -1723,13 +1723,22 @@ public class WinlatorHUD extends View {
         // Freedreno's / the wrapper's short chip name: "FD750" -> "Adreno 750".
         java.util.regex.Matcher fd = java.util.regex.Pattern.compile("(?i)^\\s*FD(\\d{3})\\s*$").matcher(name);
         if (fd.find()) return "Adreno " + fd.group(1);
+        // Brackets go, their words stay: "Wrapper(Turnip Adreno (TM) 750)" lost the whole
+        // "(Turnip Adreno 750)", came back empty and the raw name was shown with the driver after it
+        // (Turnip twice, too long for the row).
         String s = name.replaceAll("(?i)\\((tm|r)\\)", " ")
-                .replaceAll("\\s*\\([^)]*\\)", " ")
+                .replaceAll("[()\\[\\]]", " ")
                 .replaceAll("(?i)\\b(qualcomm|arm|turnip|freedreno|panvk|panfrost|mesa|wrapper|vulkan|driver)\\b", " ")
                 .replaceAll("(?i)\\bv?\\d+\\.\\d+[\\w.\\-]*", " ")
                 .replaceAll("\\s+", " ").trim();
-        if (driver != null && !driver.isEmpty()) s = s.replace(driver, " ").replaceAll("\\s+", " ").trim();
-        if (s.isEmpty()) s = name.trim();
+        if (driver != null && !driver.isEmpty()) {
+            s = s.replace(driver, " ");
+            // The driver's own name words ("Rutabaga", "Turnip") go too: it is shown after the GPU.
+            for (String w : driver.split("\\s+"))
+                if (w.matches("(?i)[a-z][a-z\\-]{2,}")) s = s.replaceAll("(?i)\\b" + java.util.regex.Pattern.quote(w) + "\\b", " ");
+            s = s.replaceAll("\\s+", " ").trim();
+        }
+        if (s.isEmpty()) s = name.replaceAll("[()\\[\\]]", " ").replaceAll("\\s+", " ").trim();
         return s.length() > 18 ? s.substring(0, 17).trim() + "…" : s;
     }
 

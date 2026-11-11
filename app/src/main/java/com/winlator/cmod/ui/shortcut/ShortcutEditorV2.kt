@@ -239,6 +239,8 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     var relativeMouse by mutableStateOf(shortcut.getExtra("enableRelativeMouse", "0") == "1")
     var disableMouse by mutableStateOf(shortcut.getExtra("disableMouse", "0") == "1")
     var simulatedTouch by mutableStateOf(shortcut.getExtra("simTouchScreen", "0") == "1")
+    /** MangoHud loaded hidden with the game: the game's own value, else the container's. */
+    var mangoPreload by mutableStateOf(shortcut.getExtra("mangohudPreload", container.getExtra("mangohudPreload", "0")) == "1")
     var syncCpu by mutableStateOf(shortcut.getExtra("syncCpuTopology", if (container.isSyncCpuTopology()) "1" else "0") == "1")
     /** Force SSBS: the game's own "1" / "0", else the container's (on by default). */
     var forceSsbs by mutableStateOf(shortcut.getExtra("forceSsbs", container.getExtra("forceSsbs", "1")) != "0")
@@ -741,6 +743,9 @@ private fun ShortcutCategoryV2(
                     s.winlatorHudMode = when (it) { "MangoHud" -> 3; "Bannerlator" -> 4; "YurNLator" -> 2; else -> 0 }
                     s.extra("hudMode", s.winlatorHudMode.toString())
                 }
+                SettingsDivider()
+                // Loaded hidden with the game, so the quick menu can switch MangoHud on any time (a small cost).
+                SettingToggle("Keep MangoHud ready", s.mangoPreload) { s.mangoPreload = it; s.extra("mangohudPreload", if (it) "1" else "0") }
                 SettingsDivider()
                 SettingToggle("DXVK HUD", s.dxvkHud) { s.updateDxvkHud(it) }
             }
