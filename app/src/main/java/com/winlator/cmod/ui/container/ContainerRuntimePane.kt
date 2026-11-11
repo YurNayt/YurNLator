@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.settings.PresetKind
 import com.winlator.cmod.ui.settings.SettingPresetChoice
 import com.winlator.cmod.contents.DriverSources
@@ -140,7 +142,7 @@ internal fun ContainerRuntimePane(
         scope.launch {
             val installed = installRuntimeComponent(context, type, version)
             installing = installing - key
-            if (installed == null) Toast.makeText(context, "Unable to install $version", Toast.LENGTH_SHORT).show()
+            if (installed == null) Toast.makeText(context, uiStr(R.string.l_ed_unable_to_install_1_s, version), Toast.LENGTH_SHORT).show()
             else { done(installed); revision++ }
         }
     }
@@ -151,7 +153,7 @@ internal fun ContainerRuntimePane(
         scope.launch {
             val installed = installAdrenoDriver(context, option)
             installing = installing - key
-            if (installed == null) Toast.makeText(context, "Unable to install ${option.label}", Toast.LENGTH_SHORT).show()
+            if (installed == null) Toast.makeText(context, uiStr(R.string.l_ed_unable_to_install_1_s, option.label), Toast.LENGTH_SHORT).show()
             else { driverVersion = installed; saveGraphics("version", installed); revision++ }
         }
     }
@@ -252,7 +254,7 @@ internal fun ContainerRuntimePane(
                 }
             }
             SettingsCard {
-                Text("Runtime", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+                Text(L10nDict.t("Runtime"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
                 SettingsDivider()
                 if (arm64) {
                     SettingChoice("32-bit Emulator", emulator, listOf("FEXCore", "WOWBox64")) {

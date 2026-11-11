@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,22 +31,21 @@ fun AddDriverSourceDialog(onDismiss: () -> Unit, onAdded: (String) -> Unit = {})
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add driver author") },
+        title = { Text(uiStr(R.string.l_ds_add_driver_author)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = name, onValueChange = { name = it; error = null },
-                    label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                    label = { Text(uiStr(R.string.l_lbl_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = link, onValueChange = { link = it; error = null },
-                    label = { Text("GitHub owner/repo or JSON link") },
+                    label = { Text(uiStr(R.string.l_ds_github_owner_repo_or_json_link)) },
                     placeholder = { Text("owner/repo") },
                     singleLine = true, modifier = Modifier.fillMaxWidth()
                 )
                 Text(
-                    "Every .zip in the repository's GitHub releases is listed as a driver. " +
-                        "A JSON link must be a list of {\"verName\", \"remoteUrl\"} entries.",
+                    uiStr(R.string.l_ds_every_zip_in_the_repository_s),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -55,7 +56,7 @@ fun AddDriverSourceDialog(onDismiss: () -> Unit, onAdded: (String) -> Unit = {})
             TextButton(onClick = {
                 val feed = DriverSources.parseFeed(link)
                 if (feed == null) {
-                    error = "Use owner/repo, a github.com link or a .json link"
+                    error = uiStr(R.string.l_ds_use_owner_repo_a_github_com)
                 } else {
                     val result = DriverSources.addCustom(context, name, feed)
                     if (result == null) {
@@ -63,9 +64,9 @@ fun AddDriverSourceDialog(onDismiss: () -> Unit, onAdded: (String) -> Unit = {})
                         onDismiss()
                     } else error = result
                 }
-            }) { Text("Add") }
+            }) { Text(uiStr(R.string.l_lbl_add)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(uiStr(R.string.l_qm_cancel)) } }
     )
 }
 
@@ -75,11 +76,11 @@ fun RemoveDriverSourceDialog(source: DriverSource, onDismiss: () -> Unit) {
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Remove ${source.name}?") },
-        text = { Text("Its drivers disappear from downloads. Drivers you already installed stay.") },
+        title = { Text(uiStr(R.string.l_ds_remove_1_s, source.name)) },
+        text = { Text(uiStr(R.string.l_ds_its_drivers_disappear_from_downloads_drivers)) },
         confirmButton = {
-            TextButton(onClick = { DriverSources.removeCustom(context, source); onDismiss() }) { Text("Remove") }
+            TextButton(onClick = { DriverSources.removeCustom(context, source); onDismiss() }) { Text(uiStr(R.string.l_ctr_remove)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(uiStr(R.string.l_qm_cancel)) } }
     )
 }

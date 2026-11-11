@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.L10nDict
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable

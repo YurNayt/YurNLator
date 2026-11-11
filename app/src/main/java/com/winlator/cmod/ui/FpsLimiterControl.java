@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui;
 
+import com.winlator.cmod.ui.UiStrings;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.res.ColorStateList;
@@ -245,8 +246,8 @@ public class FpsLimiterControl extends LinearLayout {
         boolean customMode = position >= CUSTOM_POSITION;
         customValue.setVisibility(customMode ? VISIBLE : GONE);
 
-        if (position <= 0) valueLabel.setText("Off");
-        else if (customMode) valueLabel.setText("Custom");
+        if (position <= 0) valueLabel.setText(UiStrings.get(R.string.l_qm_off));
+        else if (customMode) valueLabel.setText(UiStrings.get(R.string.l_qm_custom));
         else valueLabel.setText((position * STEP_FPS) + " FPS");
     }
 

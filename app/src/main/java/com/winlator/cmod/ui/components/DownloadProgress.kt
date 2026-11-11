@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.components
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,11 +47,11 @@ fun DownloadProgress(key: String?, modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     when {
-                        s.installing -> "Installing…"
-                        s.paused -> "Paused · " + (if (pct >= 0) "$pct % · " else "") + sizeText(s)
+                        s.installing -> uiStr(R.string.l_dl_installing)
+                        s.paused -> uiStr(R.string.l_dl_paused) + (if (pct >= 0) "$pct % · " else "") + sizeText(s)
                         pct >= 0 -> "$pct % · " + sizeText(s)
-                        s.done > 0 -> "Downloading · ${mb(s.done)} MB"
-                        else -> "Connecting…"
+                        s.done > 0 -> uiStr(R.string.l_dl_downloading_1_s_mb, mb(s.done))
+                        else -> uiStr(R.string.l_dl_connecting)
                     },
                     style = MaterialTheme.typography.labelMedium,
                     color = scheme.onSurfaceVariant
@@ -59,7 +61,7 @@ fun DownloadProgress(key: String?, modifier: Modifier = Modifier) {
                 Spacer(Modifier.width(4.dp))
                 IconButton(onClick = { if (s.paused) DownloadTracker.resume(key) else DownloadTracker.pause(key) }, modifier = Modifier.size(36.dp)) {
                     Icon(if (s.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
-                        if (s.paused) "Resume" else "Pause", tint = scheme.primary)
+                        if (s.paused) uiStr(R.string.l_qm_resume) else uiStr(R.string.l_qm_pause), tint = scheme.primary)
                 }
                 IconButton(onClick = { DownloadTracker.cancel(key) }, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Outlined.Close, "Cancel", tint = scheme.onSurfaceVariant)

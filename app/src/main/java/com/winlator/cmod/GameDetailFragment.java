@@ -1,5 +1,7 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.ui.UiStrings;
+import com.winlator.cmod.R;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -122,7 +124,7 @@ public class GameDetailFragment extends Fragment {
                                 ShortcutsFragment.disableShortcutOnScreen(requireContext(), shortcut);
                                 getParentFragmentManager().popBackStack();
                             } else {
-                                android.widget.Toast.makeText(requireContext(), "Couldn't remove the shortcut's files", android.widget.Toast.LENGTH_LONG).show();
+                                android.widget.Toast.makeText(requireContext(), UiStrings.get(R.string.l_sc_couldn_t_remove_the_shortcut_s), android.widget.Toast.LENGTH_LONG).show();
                             }
                         });
                     }

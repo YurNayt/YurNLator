@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.onboarding
 
+import com.winlator.cmod.ui.uiStr
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -41,14 +42,14 @@ internal fun ClassicWelcomeLandscape(
             Column(Modifier.weight(.9f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Image(painterResource(R.drawable.yurn_launcher_art), "YurNLator", Modifier.size(132.dp))
                 Spacer(Modifier.height(14.dp))
-                Text("Welcome to YurNLator", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                Text("Your lightweight PC emulator for Android.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                Text(uiStr(R.string.l_ob_welcome_to_yurnlator), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                Text(uiStr(R.string.l_ob_your_lightweight_pc_emulator_for_android), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
             Spacer(Modifier.width(36.dp))
             Column(Modifier.weight(1f)) {
-                ClassicWelcomeCard(Icons.Outlined.Apps, "Get started", "Choose components", start)
+                ClassicWelcomeCard(Icons.Outlined.Apps, uiStr(R.string.l_ob_get_started), uiStr(R.string.l_ob_choose_components), start)
                 Spacer(Modifier.height(10.dp))
-                ClassicWelcomeCard(Icons.Outlined.SkipNext, "Skip", "Use the components bundled with YurNLator and configure everything later.", skip)
+                ClassicWelcomeCard(Icons.Outlined.SkipNext, uiStr(R.string.l_ob_skip), uiStr(R.string.l_ob_use_the_components_bundled_with_yurnlator), skip)
                 Spacer(Modifier.height(10.dp))
                 ClassicCoreStatusCard(ready, progress, retry)
             }

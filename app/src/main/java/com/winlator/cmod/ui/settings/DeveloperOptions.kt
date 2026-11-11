@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import android.content.ContentValues
 import android.content.Context
 import android.os.Build
@@ -164,10 +166,10 @@ internal fun DriverSaverDialog(onDismiss: () -> Unit) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.fillMaxSize()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onDismiss) { Icon(Icons.Outlined.ArrowBack, "Back") }
+                    IconButton(onClick = onDismiss) { Icon(Icons.Outlined.ArrowBack, uiStr(R.string.l_lib_back)) }
                     Column(Modifier.weight(1f)) {
-                        Text("Save GPU drivers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                        Text("To ${DeveloperOptions.FOLDER}, not installed", style = MaterialTheme.typography.bodySmall,
+                        Text(uiStr(R.string.l_dev_save_gpu_drivers), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text(uiStr(R.string.l_dev_to_1_s_not_installed, DeveloperOptions.FOLDER), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -178,12 +180,12 @@ internal fun DriverSaverDialog(onDismiss: () -> Unit) {
                     return@Column
                 }
                 if (list.isEmpty()) {
-                    Text("Couldn't load the driver lists. Check the connection.", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
+                    Text(uiStr(R.string.l_dev_couldn_t_load_the_driver_lists), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
                     return@Column
                 }
                 val authors = remember(list) { list.map { it.repository }.distinct() }
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item { FilterChip(selected = author == null, onClick = { author = null }, label = { Text("All (${list.size})") }) }
+                    item { FilterChip(selected = author == null, onClick = { author = null }, label = { Text(uiStr(R.string.l_dev_all_1_s, list.size)) }) }
                     items(authors) { a -> FilterChip(selected = author == a, onClick = { author = a }, label = { Text(a) }) }
                 }
                 OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), singleLine = true,
@@ -203,7 +205,7 @@ internal fun DriverSaverDialog(onDismiss: () -> Unit) {
                                     Spacer(Modifier.width(8.dp))
                                     when {
                                         e.url in progress -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                                        saved[e.url] == true -> Text("Saved", color = MaterialTheme.colorScheme.primary)
+                                        saved[e.url] == true -> Text(uiStr(R.string.l_dev_saved), color = MaterialTheme.colorScheme.primary)
                                         else -> OutlinedButton(onClick = {
                                             progress[e.url] = 0f
                                             scope.launch {
@@ -216,10 +218,10 @@ internal fun DriverSaverDialog(onDismiss: () -> Unit) {
                                                 progress.remove(e.url)
                                                 if (err == null) {
                                                     saved[e.url] = true
-                                                    Toast.makeText(context, "Saved: ${DeveloperOptions.lastSaved}", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, uiStr(R.string.l_dev_saved_1_s, DeveloperOptions.lastSaved), Toast.LENGTH_SHORT).show()
                                                 } else Toast.makeText(context, "${e.name}: $err", Toast.LENGTH_LONG).show()
                                             }
-                                        }) { Icon(Icons.Outlined.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Save") }
+                                        }) { Icon(Icons.Outlined.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(uiStr(R.string.l_set_save)) }
                                     }
                                 }
                                 progress[e.url]?.let { f ->

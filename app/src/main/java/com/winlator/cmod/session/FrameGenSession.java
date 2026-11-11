@@ -1,5 +1,7 @@
 package com.winlator.cmod.session;
 
+import com.winlator.cmod.ui.UiStrings;
+import com.winlator.cmod.R;
 import android.app.Activity;
 import android.widget.Toast;
 
@@ -161,7 +163,7 @@ public final class FrameGenSession {
                 }
                 String line = "[YurNLator] Wayland frame generation: " + (why == null ? "running" : "not running, " + why);
                 if (log != null) log.accept(line);
-                if (why != null) Toast.makeText(activity, "Frame generation (Wayland) not running: " + why, Toast.LENGTH_LONG).show();
+                if (why != null) Toast.makeText(activity, UiStrings.get(R.string.l_xs_frame_generation_wayland_not_running_1, why), Toast.LENGTH_LONG).show();
             }
         }, 4000);
     }

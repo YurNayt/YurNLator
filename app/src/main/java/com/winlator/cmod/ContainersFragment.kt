@@ -1,5 +1,7 @@
 package com.winlator.cmod
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -124,7 +126,7 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
         val container = manager.getContainerById(containerId) ?: return
         manager.duplicateContainerAsync(container) {
             refresh()
-            Toast.makeText(ctx, "Container duplicated", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, uiStr(R.string.l_cs_container_duplicated), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -133,13 +135,13 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
         val manager = ContainerManager(ctx)
         val container = manager.getContainerById(containerId) ?: return
         AlertDialog.Builder(ctx)
-            .setTitle("Remove container?")
-            .setMessage("${container.name} and its container files will be deleted.")
+            .setTitle(uiStr(R.string.l_cs_remove_container))
+            .setMessage(uiStr(R.string.l_cs_1_s_and_its_container_files, container.name))
             .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton("Remove") { _, _ ->
+            .setPositiveButton(uiStr(R.string.l_ctr_remove)) { _, _ ->
                 manager.removeContainerAsync(container) {
                     refresh()
-                    Toast.makeText(ctx, "Container removed", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, uiStr(R.string.l_cs_container_removed), Toast.LENGTH_SHORT).show()
                 }
             }
             .show()
@@ -169,7 +171,7 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
      */
     private fun repairWine(container: com.winlator.cmod.container.Container) {
         val ctx = context?.applicationContext ?: return
-        Toast.makeText(ctx, "Repairing ${container.name}…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(ctx, uiStr(R.string.l_cs_repairing_1_s, container.name), Toast.LENGTH_SHORT).show()
         viewLifecycleOwner.lifecycleScope.launch {
             val ok = withContext(Dispatchers.IO) {
                 runCatching {

@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import com.winlator.cmod.ui.components.KeepDialogFullscreen
 import com.winlator.cmod.core.GpuProfileManager
 import com.winlator.cmod.core.DriverNames
@@ -77,7 +79,7 @@ internal fun DriverDownloadsDialog(
             val id = withContext(Dispatchers.IO) {
                 runCatching { AdrenotoolsManager(context).installDriver(uri) }.getOrDefault("")
             }
-            if (id.isBlank()) Toast.makeText(context, "Not a driver archive (.zip with meta.json)", Toast.LENGTH_LONG).show()
+            if (id.isBlank()) Toast.makeText(context, uiStr(R.string.l_rt_not_a_driver_archive_zip_with), Toast.LENGTH_LONG).show()
             else {
                 LocalInstalls.mark(context, GPU_DRIVER, id)
                 onInstall(DriverOption(id, id, true))
@@ -100,7 +102,7 @@ internal fun DriverDownloadsDialog(
                     fileLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
                 },
                 busyIds = busyIds,
-                busyLabel = "Downloading",
+                busyLabel = uiStr(R.string.l_ob_downloading),
                 downloadKey = { "driver:" + it.id }
             )
         }
@@ -109,8 +111,8 @@ internal fun DriverDownloadsDialog(
     removing?.let { item ->
         AlertDialog(
             onDismissRequest = { removing = null },
-            title = { Text("Delete ${DriverNames.parse(item.name).title}?") },
-            text = { Text("The driver files are removed. Containers and games that use it switch to the default driver.") },
+            title = { Text(uiStr(R.string.l_pre_delete_1_s, DriverNames.parse(item.name).title)) },
+            text = { Text(uiStr(R.string.l_dd_the_driver_files_are_removed_containers)) },
             confirmButton = {
                 TextButton(onClick = {
                     val id = item.id
@@ -121,9 +123,9 @@ internal fun DriverDownloadsDialog(
                         if (id.equals(selected, ignoreCase = true)) onSelected(GpuProfileManager.defaultGraphicsDriverVersion(context))
                         DriverSources.revision.intValue++ // editors reload their driver list
                     }
-                }) { Text("Delete") }
+                }) { Text(uiStr(R.string.l_set_delete)) }
             },
-            dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { removing = null }) { Text(uiStr(R.string.l_qm_cancel)) } }
         )
     }
 }

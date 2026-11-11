@@ -1,5 +1,7 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.ui.UiStrings;
+import com.winlator.cmod.R;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
@@ -102,7 +104,7 @@ public class FileManagerFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         if (getActivity() != null && ((AppCompatActivity) getActivity()).getSupportActionBar() != null) {
-            ((AppCompatActivity) getActivity()).getSupportActionBar().setTitle("File Manager");
+            ((AppCompatActivity) getActivity()).getSupportActionBar().setTitle(UiStrings.get(R.string.l_set_file_manager));
         }
     }
 
@@ -393,7 +395,7 @@ public class FileManagerFragment extends Fragment {
         View arrow = getView() != null ? getView().findViewById(R.id.IVDriveArrow) : null;
         if (arrow != null) arrow.setRotation(180f);
         if (discoveredExternalStorageRoots.isEmpty()) {
-            Toast.makeText(getContext(), "No external storage found", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_no_external_storage_found), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -406,39 +408,39 @@ public class FileManagerFragment extends Fragment {
         File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         File dRoot = downloads.exists() ? downloads : fRoot;
         driveOptionsPanel.addView(createDriveOptionRow(
-                "Drive D:", "Downloads", samePath(currentDriveRoot, dRoot), () -> openDrive(dRoot, dRoot)));
+                UiStrings.get(R.string.l_fm_drive_d), UiStrings.get(R.string.l_fm_downloads), samePath(currentDriveRoot, dRoot), () -> openDrive(dRoot, dRoot)));
         driveOptionsPanel.addView(createDriveOptionRow(
-                "Drive F:", "Internal storage", samePath(currentDriveRoot, fRoot) && !samePath(dRoot, fRoot),
+                UiStrings.get(R.string.l_fm_drive_f), UiStrings.get(R.string.l_fm_internal_storage), samePath(currentDriveRoot, fRoot) && !samePath(dRoot, fRoot),
                 () -> openDrive(fRoot, fRoot)));
 
         boolean inDriveC = currentDir != null && normalizeFilePath(currentDir.getAbsolutePath()).contains("/.wine/drive_c");
         driveOptionsPanel.addView(createDriveOptionRow(
-                "Drive C:", "Wine System", inDriveC, this::handleDriveCSelection));
+                UiStrings.get(R.string.l_fm_drive_c), UiStrings.get(R.string.l_fm_wine_system), inDriveC, this::handleDriveCSelection));
 
         File rootFs = new File(requireContext().getFilesDir(), "imagefs");
         driveOptionsPanel.addView(createDriveOptionRow(
-                "Drive Z:", "RootFS", samePath(currentDriveRoot, rootFs), () -> {
+                UiStrings.get(R.string.l_fm_drive_z), "RootFS", samePath(currentDriveRoot, rootFs), () -> {
                     if (rootFs.exists()) openDrive(rootFs, rootFs);
-                    else Toast.makeText(getContext(), "RootFS not found", Toast.LENGTH_SHORT).show();
+                    else Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_rootfs_not_found), Toast.LENGTH_SHORT).show();
                 }));
 
         if (discoveredExternalStorageRoots != null) {
             for (File external : discoveredExternalStorageRoots) {
                 driveOptionsPanel.addView(createDriveOptionRow(
-                        "External Storage", external.getName(), samePath(currentDriveRoot, external), () -> openDrive(external, external)));
+                        UiStrings.get(R.string.l_fm_external_storage), external.getName(), samePath(currentDriveRoot, external), () -> openDrive(external, external)));
             }
         }
 
         driveOptionsPanel.addView(createDriveOptionRow(
-                "Add External Storage",
-                discoveredExternalStorageRoots == null ? "Find SD card or USB storage" : "Scan again",
+                UiStrings.get(R.string.l_fm_add_external_storage),
+                discoveredExternalStorageRoots == null ? UiStrings.get(R.string.l_fm_find_sd_card_or_usb_storage) : UiStrings.get(R.string.l_fm_scan_again),
                 false,
                 this::discoverExternalStorage));
     }
 
     private void openDrive(File directory, File driveRoot) {
         if (directory == null || !directory.exists() || !directory.isDirectory() || !directory.canRead()) {
-            Toast.makeText(getContext(), "Storage is not accessible", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_storage_is_not_accessible), Toast.LENGTH_SHORT).show();
             return;
         }
         currentDriveRoot = driveRoot != null ? driveRoot : inferDriveRoot(directory);
@@ -503,8 +505,8 @@ public class FileManagerFragment extends Fragment {
         ArrayList<Container> containers = containerManager.getContainers();
         if (containers == null || containers.isEmpty()) {
             new AlertDialog.Builder(getContext())
-                    .setTitle("No Containers")
-                    .setMessage("You need to create a container first to access Drive C:.")
+                    .setTitle(UiStrings.get(R.string.l_fm_no_containers))
+                    .setMessage(UiStrings.get(R.string.l_fm_you_need_to_create_a_container))
                     .setPositiveButton("OK", null)
                     .show();
             return;
@@ -516,7 +518,7 @@ public class FileManagerFragment extends Fragment {
             String[] names = new String[containers.size()];
             for (int i = 0; i < containers.size(); i++) names[i] = containers.get(i).getName();
             new AlertDialog.Builder(getContext())
-                    .setTitle("Select Container Drive C:")
+                    .setTitle(UiStrings.get(R.string.l_fm_select_container_drive_c))
                     .setItems(names, (dialog, which) -> navigateToContainerDriveC(containers.get(which)))
                     .show();
         }
@@ -527,12 +529,12 @@ public class FileManagerFragment extends Fragment {
         File windowsDir = new File(driveC, "windows");
         if (driveC.exists() && driveC.isDirectory() && windowsDir.exists()) {
             openDrive(driveC, driveC);
-            Toast.makeText(getContext(), "Opened C: (" + container.getName() + ")", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_opened_c_1_s, container.getName()), Toast.LENGTH_SHORT).show();
         } else {
             new AlertDialog.Builder(getContext())
-                    .setTitle("Drive C: Not Initialized")
-                    .setMessage("The Wine system files (Drive C:) for '" + container.getName() + "' are missing.\n\n" +
-                            "Please RUN this container once to generate the filesystem.")
+                    .setTitle(UiStrings.get(R.string.l_fm_drive_c_not_initialized))
+                    .setMessage(UiStrings.get(R.string.l_fm_the_wine_system_files_drive_c, container.getName()) +
+                            UiStrings.get(R.string.l_fm_please_run_this_container_once_to))
                     .setPositiveButton("OK", null)
                     .show();
         }
@@ -541,7 +543,7 @@ public class FileManagerFragment extends Fragment {
     private void navigateUp() {
         if (currentDir == null) return;
         if (currentDriveRoot != null && samePath(currentDir, currentDriveRoot)) {
-            Toast.makeText(getContext(), "Drive root reached", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_drive_root_reached), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -549,13 +551,13 @@ public class FileManagerFragment extends Fragment {
         if (parent != null && parent.canRead() && isWithinRoot(parent, currentDriveRoot)) {
             loadDirectory(parent);
         } else {
-            Toast.makeText(getContext(), "Drive root reached", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_drive_root_reached), Toast.LENGTH_SHORT).show();
         }
     }
 
     private void loadDirectory(File dir) {
         if (dir == null || !dir.exists() || !dir.isDirectory() || !dir.canRead()) {
-            Toast.makeText(getContext(), "Folder is not accessible", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_folder_is_not_accessible), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -597,19 +599,19 @@ public class FileManagerFragment extends Fragment {
         String primary = normalizeFilePath(Environment.getExternalStorageDirectory().getAbsolutePath());
         String dl = normalizeFilePath(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath());
         if (path.contains("/.wine/drive_c")) {
-            tvDriveName.setText("Drive C:");
+            tvDriveName.setText(UiStrings.get(R.string.l_fm_drive_c));
             ivDriveIcon.setImageResource(R.drawable.icon_wine);
         } else if (path.equals(dl) || path.startsWith(dl + File.separator)) {
-            tvDriveName.setText("Drive D:");
+            tvDriveName.setText(UiStrings.get(R.string.l_fm_drive_d));
             ivDriveIcon.setImageResource(R.drawable.ic_internal_storage);
         } else if (path.equals(primary) || path.startsWith(primary + File.separator)) {
-            tvDriveName.setText("Drive F:");
+            tvDriveName.setText(UiStrings.get(R.string.l_fm_drive_f));
             ivDriveIcon.setImageResource(R.drawable.ic_internal_storage);
         } else if (path.startsWith("/storage/") && !path.startsWith("/storage/emulated")) {
-            tvDriveName.setText("External Storage");
+            tvDriveName.setText(UiStrings.get(R.string.l_fm_external_storage));
             ivDriveIcon.setImageResource(R.drawable.ic_internal_storage);
         } else {
-            tvDriveName.setText("Drive Z:");
+            tvDriveName.setText(UiStrings.get(R.string.l_fm_drive_z));
             ivDriveIcon.setImageResource(android.R.drawable.ic_menu_manage);
         }
     }
@@ -617,7 +619,7 @@ public class FileManagerFragment extends Fragment {
     private void performContainerAction(File file, ContainerAction action) {
         ArrayList<Container> containers = containerManager.getContainers();
         if (containers == null || containers.isEmpty()) {
-            Toast.makeText(getContext(), "Create a container first!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_create_a_container_first), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -627,7 +629,7 @@ public class FileManagerFragment extends Fragment {
             String[] names = new String[containers.size()];
             for (int i = 0; i < containers.size(); i++) names[i] = containers.get(i).getName();
             new AlertDialog.Builder(getContext())
-                    .setTitle("Select Container")
+                    .setTitle(UiStrings.get(R.string.l_fm_select_container))
                     .setItems(names, (dialog, which) -> action.onContainerSelected(containers.get(which)))
                     .show();
         }
@@ -807,7 +809,7 @@ public class FileManagerFragment extends Fragment {
     private void runFileDirectly(File file, Container container) {
         try {
             if (!ensureExternalStorageMapped(container, file)) {
-                Toast.makeText(getContext(), "No free drive letter for external storage", Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_no_free_drive_letter_for_external), Toast.LENGTH_LONG).show();
                 return;
             }
 
@@ -828,7 +830,7 @@ public class FileManagerFragment extends Fragment {
             intent.putExtra("shortcut_path", tempShortcut.getAbsolutePath());
             startActivity(intent);
         } catch (Exception e) {
-            Toast.makeText(getContext(), "Error launching: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_error_launching_1_s, e.getMessage()), Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
     }
@@ -836,7 +838,7 @@ public class FileManagerFragment extends Fragment {
     private void createShortcutDirectly(File file, Container container) {
         try {
             if (!ensureExternalStorageMapped(container, file)) {
-                Toast.makeText(getContext(), "No free drive letter for external storage", Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_no_free_drive_letter_for_external), Toast.LENGTH_LONG).show();
                 return;
             }
 
@@ -855,7 +857,7 @@ public class FileManagerFragment extends Fragment {
                 writer.println("Icon=" + displayName);
                 writer.println("container_id:" + container.id);
             }
-            Toast.makeText(getContext(), "Game added to Library!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_game_added_to_library), Toast.LENGTH_SHORT).show();
             // Offer the Windows components the game needs (Visual C++, .NET, PhysX…) that the container lacks.
             com.winlator.cmod.ui.components.WindowsComponentsDialog.recommendAfterAdding(requireContext(), container, file);
 
@@ -888,12 +890,12 @@ public class FileManagerFragment extends Fragment {
         this.clipboardFile = file;
         this.isCutOperation = isCut;
         if (fabPaste != null) fabPaste.setVisibility(View.VISIBLE);
-        Toast.makeText(getContext(), (isCut ? "Cut: " : "Copied: ") + file.getName(), Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), UiStrings.get(isCut ? R.string.l_fm_cut_1_s : R.string.l_fm_copied, file.getName()), Toast.LENGTH_SHORT).show();
     }
 
     private void startPasteOperation() {
         if (clipboardFile == null || !clipboardFile.exists()) {
-            Toast.makeText(getContext(), "Nothing to paste", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_nothing_to_paste), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -901,15 +903,15 @@ public class FileManagerFragment extends Fragment {
         File dest = new File(currentDir, source.getName());
         if (dest.exists()) {
             AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-            builder.setTitle("File Conflict");
-            builder.setMessage("The destination \"" + dest.getName() + "\" already exists.");
-            builder.setPositiveButton("Replace", (dialog, which) -> {
+            builder.setTitle(UiStrings.get(R.string.l_fm_file_conflict));
+            builder.setMessage(UiStrings.get(R.string.l_fm_the_destination_1_s_already_exists, dest.getName()));
+            builder.setPositiveButton(UiStrings.get(R.string.l_fg_replace), (dialog, which) -> {
                 deleteRecursive(dest);
                 executePaste(source, dest);
             });
-            builder.setNeutralButton("Rename", (dialog, which) ->
+            builder.setNeutralButton(UiStrings.get(R.string.l_fm_rename), (dialog, which) ->
                     executePaste(source, getUniqueDestination(currentDir, source.getName())));
-            builder.setNegativeButton("Cancel", null);
+            builder.setNegativeButton(UiStrings.get(R.string.l_qm_cancel), null);
             builder.show();
         } else {
             executePaste(source, dest);
@@ -936,12 +938,12 @@ public class FileManagerFragment extends Fragment {
 
     private void executePaste(File source, File dest) {
         if (isCutOperation && source.renameTo(dest)) {
-            Toast.makeText(getContext(), "Moved instantly", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_moved_instantly), Toast.LENGTH_SHORT).show();
             finishPaste(true);
             return;
         }
 
-        showProgressDialog(isCutOperation ? "Moving..." : "Copying...");
+        showProgressDialog(isCutOperation ? UiStrings.get(R.string.l_fm_moving) : UiStrings.get(R.string.l_fm_copying));
         isOperationCancelled = false;
         new Thread(() -> {
             try {
@@ -957,10 +959,10 @@ public class FileManagerFragment extends Fragment {
                 new Handler(Looper.getMainLooper()).post(() -> {
                     dismissProgressDialog();
                     if (!isOperationCancelled) {
-                        Toast.makeText(getContext(), "Success!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_success), Toast.LENGTH_SHORT).show();
                         finishPaste(isCutOperation);
                     } else {
-                        Toast.makeText(getContext(), "Cancelled", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_cancelled), Toast.LENGTH_SHORT).show();
                         deleteRecursive(dest);
                         loadDirectory(currentDir);
                     }
@@ -969,7 +971,7 @@ public class FileManagerFragment extends Fragment {
                 final String errorMsg = e.getMessage();
                 new Handler(Looper.getMainLooper()).post(() -> {
                     dismissProgressDialog();
-                    Toast.makeText(getContext(), "Error: " + errorMsg + ". Source preserved.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_error_1_s_source_preserved, errorMsg), Toast.LENGTH_LONG).show();
                     deleteRecursive(dest);
                     loadDirectory(currentDir);
                 });
@@ -1006,12 +1008,12 @@ public class FileManagerFragment extends Fragment {
         layout.addView(progressBar);
 
         progressText = new TextView(getContext());
-        progressText.setText("Calculating...");
+        progressText.setText(UiStrings.get(R.string.l_fm_calculating));
         progressText.setPadding(0, 20, 0, 0);
         layout.addView(progressText);
 
         builder.setView(layout);
-        builder.setNegativeButton("Cancel", (d, w) -> isOperationCancelled = true);
+        builder.setNegativeButton(UiStrings.get(R.string.l_qm_cancel), (d, w) -> isOperationCancelled = true);
         progressDialog = builder.create();
         progressDialog.show();
     }
@@ -1091,7 +1093,7 @@ public class FileManagerFragment extends Fragment {
 
     private void renameFile(File file) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("Rename");
+        builder.setTitle(UiStrings.get(R.string.l_fm_rename));
         final EditText input = new EditText(getContext());
         input.setText(file.getName());
         builder.setView(input);
@@ -1099,9 +1101,9 @@ public class FileManagerFragment extends Fragment {
             String newName = input.getText().toString();
             File newFile = new File(file.getParent(), newName);
             if (file.renameTo(newFile)) loadDirectory(currentDir);
-            else Toast.makeText(getContext(), "Rename failed", Toast.LENGTH_SHORT).show();
+            else Toast.makeText(getContext(), UiStrings.get(R.string.l_fm_rename_failed), Toast.LENGTH_SHORT).show();
         });
-        builder.setNegativeButton("Cancel", null);
+        builder.setNegativeButton(UiStrings.get(R.string.l_qm_cancel), null);
         builder.show();
     }
 
@@ -1113,36 +1115,36 @@ public class FileManagerFragment extends Fragment {
     private void showFileOptions(File file, View anchor) {
         PopupMenu popup = new PopupMenu(getContext(), anchor);
         if (isExecutable(file)) {
-            popup.getMenu().add("Run / Open").setOnMenuItemClickListener(item -> {
+            popup.getMenu().add(UiStrings.get(R.string.l_fm_run_open)).setOnMenuItemClickListener(item -> {
                 performContainerAction(file, container -> runFileDirectly(file, container));
                 return true;
             });
-            popup.getMenu().add("Add this game").setOnMenuItemClickListener(item -> {
+            popup.getMenu().add(UiStrings.get(R.string.l_fm_add_this_game)).setOnMenuItemClickListener(item -> {
                 performContainerAction(file, container -> createShortcutDirectly(file, container));
                 return true;
             });
         }
-        popup.getMenu().add("Copy").setOnMenuItemClickListener(item -> {
+        popup.getMenu().add(UiStrings.get(R.string.l_fm_copy)).setOnMenuItemClickListener(item -> {
             copyToClipboard(file, false);
             return true;
         });
-        popup.getMenu().add("Cut (Move)").setOnMenuItemClickListener(item -> {
+        popup.getMenu().add(UiStrings.get(R.string.l_fm_cut_move)).setOnMenuItemClickListener(item -> {
             copyToClipboard(file, true);
             return true;
         });
-        popup.getMenu().add("Rename").setOnMenuItemClickListener(item -> {
+        popup.getMenu().add(UiStrings.get(R.string.l_fm_rename)).setOnMenuItemClickListener(item -> {
             renameFile(file);
             return true;
         });
-        popup.getMenu().add("Delete").setOnMenuItemClickListener(item -> {
+        popup.getMenu().add(UiStrings.get(R.string.l_set_delete)).setOnMenuItemClickListener(item -> {
             new AlertDialog.Builder(getContext())
-                    .setTitle("Delete")
-                    .setMessage("Are you sure you want to delete " + file.getName() + "?")
-                    .setPositiveButton("Yes", (d, w) -> {
+                    .setTitle(UiStrings.get(R.string.l_set_delete))
+                    .setMessage(UiStrings.get(R.string.l_fm_are_you_sure_you_want_to, file.getName()))
+                    .setPositiveButton(UiStrings.get(R.string.l_fm_yes), (d, w) -> {
                         deleteRecursive(file);
                         loadDirectory(currentDir);
                     })
-                    .setNegativeButton("No", null)
+                    .setNegativeButton(UiStrings.get(R.string.l_fm_no), null)
                     .show();
             return true;
         });
@@ -1249,7 +1251,7 @@ public class FileManagerFragment extends Fragment {
         File[] children = file.listFiles();
         int count = children == null ? 0 : children.length;
         String date = modifiedLabel(file);
-        return "Folder  •  " + count + (count == 1 ? " item" : " items") + (date.isEmpty() ? "" : "  •  " + date);
+        return UiStrings.get(R.string.l_fm_folder_items_1_s, count) + (date.isEmpty() ? "" : "  •  " + date);
     }
 
     private String fileDetails(File file) {

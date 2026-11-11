@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -59,7 +61,7 @@ fun FrameGenPreferenceCard() {
 
     fun import(uri: Uri) {
         busy = true
-        status = "Translating the shaders for this GPU…"
+        status = uiStr(R.string.l_fg_translating_the_shaders_for_this_gpu)
         scope.launch {
             val result = withContext(Dispatchers.IO) { importLossless(context, uri) }
             busy = false
@@ -74,12 +76,12 @@ fun FrameGenPreferenceCard() {
 
     fun autoFind() {
         busy = true
-        status = "Looking for Lossless.dll…"
+        status = uiStr(R.string.l_fg_looking_for_lossless_dll)
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 val found = findLossless(context)
-                if (found == null) "Not found: Steam folders of the containers, Download, Documents. Use Import."
-                else importLosslessFrom(context) { found.inputStream() }.let { "Found ${found.parentFile?.name}/Lossless.dll · $it" }
+                if (found == null) uiStr(R.string.l_fg_not_found_steam_folders_of_the)
+                else importLosslessFrom(context) { found.inputStream() }.let { uiStr(R.string.l_fg_found_1_s_lossless_dll_2, found.parentFile?.name, it) }
             }
             busy = false
             status = result
@@ -99,7 +101,7 @@ fun FrameGenPreferenceCard() {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Default engine", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+            Text(uiStr(R.string.l_fg_default_engine), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(WinFrameGen.ENGINE_WINFG to "Win-FG", WinFrameGen.ENGINE_WFG to "WFG", WinFrameGen.ENGINE_LSFG to "LSFG").forEach { (id, label) ->
                     FilterChip(selected = engine == id, onClick = {
@@ -109,13 +111,13 @@ fun FrameGenPreferenceCard() {
                 }
             }
             Text(
-                "Win-FG and WFG are built in; LSFG uses your Lossless.dll. Turn frame generation on in the in-game menu (Vulkan renderer); a container or game can choose its own engine there.",
+                uiStr(R.string.l_fg_win_fg_and_wfg_are_built),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f))
-            Text("Your LSFG (Lossless.dll)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+            Text(uiStr(R.string.l_fg_your_lsfg_lossless_dll), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
             Text(
-                "From your own Lossless Scaling (Steam): steamapps/common/Lossless Scaling/Lossless.dll. Nothing is bundled or downloaded.",
+                uiStr(R.string.l_fg_from_your_own_lossless_scaling_steam),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -130,10 +132,10 @@ fun FrameGenPreferenceCard() {
                 OutlinedButton(enabled = !busy, onClick = { picker.launch(arrayOf("*/*")) }) {
                     Icon(Icons.Outlined.FileOpen, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (LsfgNative.isDllAvailable(context)) "Replace" else "Import Lossless.dll")
+                    Text(if (LsfgNative.isDllAvailable(context)) uiStr(R.string.l_fg_replace) else uiStr(R.string.l_fg_import_lossless_dll))
                 }
                 if (!LsfgNative.isDllAvailable(context) && !busy) {
-                    TextButton(onClick = { autoFind() }) { Text("Find") }
+                    TextButton(onClick = { autoFind() }) { Text(uiStr(R.string.l_fg_find)) }
                 }
                 if (LsfgNative.isDllAvailable(context) && !busy) {
                     TextButton(onClick = {
@@ -143,7 +145,7 @@ fun FrameGenPreferenceCard() {
                     }) {
                         Icon(Icons.Outlined.DeleteOutline, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Remove")
+                        Text(uiStr(R.string.l_ctr_remove))
                     }
                 }
             }
@@ -152,10 +154,10 @@ fun FrameGenPreferenceCard() {
 }
 
 private fun lsfgStatusText(context: android.content.Context): String {
-    if (!LsfgNative.isDllAvailable(context)) return "Not imported"
+    if (!LsfgNative.isDllAvailable(context)) return uiStr(R.string.l_fg_not_imported)
     val variant = LsfgNative.cacheVariant(context)
-    return if (variant != LsfgNative.VARIANT_NONE) "Ready · shaders: " + LsfgNative.variantName(variant)
-    else "Imported · shaders are prepared at the next game start"
+    return if (variant != LsfgNative.VARIANT_NONE) uiStr(R.string.l_fg_ready_shaders) + LsfgNative.variantName(variant)
+    else uiStr(R.string.l_fg_imported_shaders_are_prepared_at_the)
 }
 
 /**
@@ -196,7 +198,7 @@ private fun importLosslessFrom(context: android.content.Context, open: () -> jav
     val tmp = File(target.parentFile, "Lossless.dll.import")
     return try {
         open()?.use { input -> tmp.outputStream().use { input.copyTo(it) } }
-            ?: return "Could not read the file"
+            ?: return uiStr(R.string.l_fg_could_not_read_the_file)
         val valid = LsfgNative.validate(tmp)
         if (valid != LsfgNative.STATUS_OK) {
             tmp.delete()
@@ -208,6 +210,6 @@ private fun importLosslessFrom(context: android.content.Context, open: () -> jav
         if (built == LsfgNative.STATUS_OK) lsfgStatusText(context) else LsfgNative.explain(built)
     } catch (e: Exception) {
         tmp.delete()
-        "Import failed: " + (e.message ?: e.javaClass.simpleName)
+        uiStr(R.string.l_fg_import_failed) + (e.message ?: e.javaClass.simpleName)
     }
 }

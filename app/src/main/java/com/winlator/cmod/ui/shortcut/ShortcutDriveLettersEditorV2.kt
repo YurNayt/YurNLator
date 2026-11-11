@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.shortcut
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import com.winlator.cmod.ui.components.ChoiceOption
 import com.winlator.cmod.ui.components.ChoiceSheet
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -93,9 +95,9 @@ internal fun ShortcutDriveLettersEditorV2(container: Container) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Drive letters", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(uiStr(R.string.l_drv_drive_letters), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Changes apply to this container",
+                    uiStr(R.string.l_drv_changes_apply_to_this_container),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -105,13 +107,13 @@ internal fun ShortcutDriveLettersEditorV2(container: Container) {
                 onClick = { if (nextLetter != null) entries.add(ShortcutDriveEntryV2(nextLetter, "")) },
                 enabled = nextLetter != null
             ) {
-                Icon(Icons.Outlined.Add, "Add drive")
+                Icon(Icons.Outlined.Add, uiStr(R.string.l_drv_add_drive))
             }
         }
 
         if (entries.isEmpty()) {
             Text(
-                "No custom drives",
+                uiStr(R.string.l_drv_no_custom_drives),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -169,7 +171,7 @@ private fun ShortcutDriveLetterRowV2(
                 }
             }
             if (letterMenuOpen) ChoiceSheet(
-                "Drive letter",
+                uiStr(R.string.l_drv_drive_letter),
                 availableLetters.map { ChoiceOption(it, "$it:") },
                 entry.letter,
                 { onLetter(it.value) },
@@ -182,11 +184,11 @@ private fun ShortcutDriveLetterRowV2(
             onValueChange = onPath,
             modifier = Modifier.weight(1f),
             singleLine = true,
-            label = { Text("Path") },
+            label = { Text(uiStr(R.string.l_drv_path)) },
             placeholder = { Text("/storage/emulated/0/...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
             shape = RoundedCornerShape(10.dp)
         )
-        IconButton(onClick = onBrowse) { Icon(Icons.Outlined.FolderOpen, "Choose folder") }
-        IconButton(onClick = onRemove) { Icon(Icons.Outlined.DeleteOutline, "Remove drive") }
+        IconButton(onClick = onBrowse) { Icon(Icons.Outlined.FolderOpen, uiStr(R.string.l_drv_choose_folder)) }
+        IconButton(onClick = onRemove) { Icon(Icons.Outlined.DeleteOutline, uiStr(R.string.l_drv_remove_drive)) }
     }
 }

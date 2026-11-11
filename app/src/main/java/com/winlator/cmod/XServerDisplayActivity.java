@@ -1,5 +1,7 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.ui.UiStrings;
+import com.winlator.cmod.R;
 import com.winlator.cmod.ui.quickmenu.QuickMenuHost;
 import com.winlator.cmod.winhandler.GyroInput;
 
@@ -396,7 +398,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         waylandMode = launchConfig.getWayland() && com.winlator.cmod.session.WaylandSupport.isLayerCapable(wineInfo.path);
         if (launchConfig.getWayland() && !waylandMode) {
             Log.w("XServerDisplayActivity", "wayland: layer " + wineInfo.path + " has no winewayland.so, launching on X11");
-            runOnUiThread(() -> Toast.makeText(this, "This Proton has no Wayland driver: use a Bannerlator layer, e.g. Proton-11.0-2-arm64ec (v16) or GE-Proton-11.0-9 (v16). Starting on X11.", Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> Toast.makeText(this, UiStrings.get(R.string.l_xs_this_proton_has_no_wayland_driver), Toast.LENGTH_LONG).show());
         }
     }
 

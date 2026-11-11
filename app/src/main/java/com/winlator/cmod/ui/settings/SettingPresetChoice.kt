@@ -319,7 +319,7 @@ private fun PresetSheet(
                                 name = it.replace(Regex("[,|]+"), "")
                                 if (name.isNotBlank()) { store.save(preset.id, name, envOf(values)); onChanged() }
                             },
-                            label = { Text("Name") },
+                            label = { Text(uiStr(R.string.l_lbl_name)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f)
                         )

@@ -702,9 +702,9 @@ internal fun SettingInstallChoice(
                     if (sameType) {
                         onSelected(result.versionName)
                         expanded = false
-                        Toast.makeText(context, "Installed ${result.versionName}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, uiStr(R.string.l_rt_installed_1_s_2, result.versionName), Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(context, "Installed ${result.versionName}: it's a ${result.type} package, choose it in ${result.type}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, uiStr(R.string.l_rt_installed_1_s_it_s_a, result.versionName, result.type), Toast.LENGTH_LONG).show()
                     }
                 }
             }

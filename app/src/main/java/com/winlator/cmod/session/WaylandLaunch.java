@@ -1,5 +1,7 @@
 package com.winlator.cmod.session;
 
+import com.winlator.cmod.ui.UiStrings;
+import com.winlator.cmod.R;
 import android.app.Activity;
 import android.util.Log;
 import android.widget.Toast;
@@ -36,7 +38,7 @@ public final class WaylandLaunch {
             return new Driver(atm.getDriverPath(driverId), atm.getLibraryName(driverId));
         }
         if (GPUInformation.isAdrenoGPU(activity))
-            Toast.makeText(activity, "Wayland on Adreno needs a Turnip driver in Driver Version (System can't share frames).", Toast.LENGTH_LONG).show();
+            Toast.makeText(activity, UiStrings.get(R.string.l_xs_wayland_on_adreno_needs_a_turnip), Toast.LENGTH_LONG).show();
         return new Driver(null, null);
     }
 

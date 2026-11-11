@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.presets
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.ColorDrawable
@@ -124,13 +126,13 @@ private fun date(sec: Long): String =
 
 private fun openUrl(context: Context, url: String) {
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-        .onFailure { Toast.makeText(context, "No browser to open the link", Toast.LENGTH_LONG).show() }
+        .onFailure { Toast.makeText(context, uiStr(R.string.l_pre_no_browser_to_open_the_link), Toast.LENGTH_LONG).show() }
 }
 
 private fun shareText(context: Context, subject: String, text: String) {
     val send = Intent(Intent.ACTION_SEND).setType("text/plain")
         .putExtra(Intent.EXTRA_SUBJECT, subject).putExtra(Intent.EXTRA_TEXT, text)
-    runCatching { context.startActivity(Intent.createChooser(send, "Share preset").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    runCatching { context.startActivity(Intent.createChooser(send, uiStr(R.string.l_pre_share_preset)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 }
 
 @Composable
@@ -168,7 +170,7 @@ private fun PresetsScreen(shortcut: Shortcut, close: () -> Unit) {
                 runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }
                     .getOrNull()?.let(PresetHub::importText)
             }
-            if (p == null) Toast.makeText(context, "That file isn't a YurNLator preset", Toast.LENGTH_LONG).show()
+            if (p == null) Toast.makeText(context, uiStr(R.string.l_pre_that_file_isn_t_a_yurnlator), Toast.LENGTH_LONG).show()
             else page = Page.Detail(null, p)
         }
     }
@@ -177,17 +179,17 @@ private fun PresetsScreen(shortcut: Shortcut, close: () -> Unit) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { if (page is Page.List) close() else page = Page.List }) { Icon(Icons.Outlined.ArrowBack, "Back") }
+            IconButton(onClick = { if (page is Page.List) close() else page = Page.List }) { Icon(Icons.Outlined.ArrowBack, uiStr(R.string.l_lib_back)) }
             Column(Modifier.weight(1f)) {
                 Text(
-                    when (page) { is Page.Share -> "Share my settings"; is Page.Detail -> "Preset"; else -> "Community presets" },
+                    when (page) { is Page.Share -> uiStr(R.string.l_pre_share_my_settings); is Page.Detail -> uiStr(R.string.l_pre_preset); else -> uiStr(R.string.l_lib_community_presets) },
                     style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold
                 )
                 Text(shortcut.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (page is Page.List) {
-                IconButton(onClick = { importer.launch(arrayOf("application/json", "text/plain", "*/*")) }) { Icon(Icons.Outlined.FileOpen, "Import file") }
-                IconButton(onClick = { reload++ }) { Icon(Icons.Outlined.Refresh, "Refresh") }
+                IconButton(onClick = { importer.launch(arrayOf("application/json", "text/plain", "*/*")) }) { Icon(Icons.Outlined.FileOpen, uiStr(R.string.l_pre_import_file)) }
+                IconButton(onClick = { reload++ }) { Icon(Icons.Outlined.Refresh, uiStr(R.string.l_pre_refresh)) }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(.5f))
@@ -231,27 +233,27 @@ private fun PresetList(
             Button(onClick = share, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) {
                 Icon(Icons.Outlined.CloudUpload, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Share my settings for this game", fontWeight = FontWeight.SemiBold)
+                Text(uiStr(R.string.l_pre_share_my_settings_for_this_game), fontWeight = FontWeight.SemiBold)
             }
         }
         if (undoState >= 0 && PresetApply.canUndo(shortcut)) item {
             Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(.35f)) {
                 Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Preset applied", fontWeight = FontWeight.SemiBold)
+                        Text(uiStr(R.string.l_pre_preset_applied), fontWeight = FontWeight.SemiBold)
                         Text(PresetApply.appliedLabel(shortcut), style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                     TextButton(onClick = {
-                        if (PresetApply.undo(shortcut)) Toast.makeText(context, "Your previous settings are back", Toast.LENGTH_SHORT).show()
+                        if (PresetApply.undo(shortcut)) Toast.makeText(context, uiStr(R.string.l_pre_your_previous_settings_are_back), Toast.LENGTH_SHORT).show()
                         undoState++
-                    }) { Text("Undo") }
+                    }) { Text(uiStr(R.string.l_pre_undo)) }
                 }
             }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                FilterChip(selected = !everything, onClick = { everything = false }, label = { Text("This game") })
-                FilterChip(selected = everything, onClick = { everything = true }, label = { Text("All games") })
+                FilterChip(selected = !everything, onClick = { everything = false }, label = { Text(uiStr(R.string.l_pre_this_game)) })
+                FilterChip(selected = everything, onClick = { everything = true }, label = { Text(uiStr(R.string.l_pre_all_games)) })
                 Spacer(Modifier.weight(1f))
                 if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
@@ -259,17 +261,17 @@ private fun PresetList(
         if (everything) item {
             OutlinedTextField(
                 value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                leadingIcon = { Icon(Icons.Outlined.Search, null) }, placeholder = { Text("Game, preset or .exe") },
+                leadingIcon = { Icon(Icons.Outlined.Search, null) }, placeholder = { Text(uiStr(R.string.l_pre_game_preset_or_exe)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
             )
         }
         if (offline) item {
-            Text("Couldn't reach the library" + if (!all.isNullOrEmpty()) " — showing the saved copy." else ". Check the connection and tap refresh.",
+            Text(uiStr(if (!all.isNullOrEmpty()) R.string.l_pre_couldn_t_reach_the_library_showing else R.string.l_pre_offline_nocopy),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
         if (!loading && list.isEmpty()) item {
             Text(
-                if (everything) "Nothing found." else "No presets for this game yet. Get it running well and share your settings: you'll be the first.",
+                if (everything) uiStr(R.string.l_pre_nothing_found) else uiStr(R.string.l_pre_no_presets_for_this_game_yet),
                 Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -295,10 +297,10 @@ private fun PresetCard(e: PresetHub.IndexEntry, sameChip: Boolean, sameGpu: Bool
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(e.title.ifBlank { "Preset" }, Modifier.weight(1f, false), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (sameChip) Badge("Your chip", MaterialTheme.colorScheme.primary)
-                else if (sameGpu) Badge("Your GPU", MaterialTheme.colorScheme.primary)
-                if (mine) Badge("Mine", MaterialTheme.colorScheme.tertiary)
+                Text(e.title.ifBlank { uiStr(R.string.l_pre_preset) }, Modifier.weight(1f, false), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (sameChip) Badge(uiStr(R.string.l_pre_your_chip), MaterialTheme.colorScheme.primary)
+                else if (sameGpu) Badge(uiStr(R.string.l_pre_your_gpu), MaterialTheme.colorScheme.primary)
+                if (mine) Badge(uiStr(R.string.l_pre_mine), MaterialTheme.colorScheme.tertiary)
             }
             if (showGame) Text(e.game, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(listOf(e.author.ifBlank { "anonymous" }, e.device, e.hardware).filter { it.isNotBlank() }.joinToString(" · "),
@@ -348,7 +350,7 @@ private fun PresetDetail(
     val p = preset
     if (p == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (failed) Text("Couldn't download this preset.", color = MaterialTheme.colorScheme.error)
+            if (failed) Text(uiStr(R.string.l_pre_couldn_t_download_this_preset), color = MaterialTheme.colorScheme.error)
             else CircularProgressIndicator()
         }
         return
@@ -359,18 +361,18 @@ private fun PresetDetail(
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.widthIn(max = 720.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(p.title.ifBlank { "Preset" }, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(p.title.ifBlank { uiStr(R.string.l_pre_preset) }, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text(p.game + if (p.exe.isNotBlank()) " · ${p.exe}" else "", style = MaterialTheme.typography.bodyMedium)
-            Text(listOf("by " + p.author.ifBlank { "anonymous" }, p.deviceModel, p.hardware, "Android API ${p.android}".takeIf { p.android > 0 }, p.appVersion, date(p.created))
+            Text(listOf(uiStr(R.string.l_pre_by_1_s, p.author.ifBlank { uiStr(R.string.l_pre_anonymous) }), p.deviceModel, p.hardware, "Android API ${p.android}".takeIf { p.android > 0 }, p.appVersion, date(p.created))
                 .filterNotNull().filter { it.isNotBlank() }.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (otherGame) Text("Made for another game: apply it only if you know the games are alike.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        if (otherGame) Text(uiStr(R.string.l_pre_made_for_another_game_apply_it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         if (p.notes.isNotBlank()) Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
             Text(p.notes, Modifier.fillMaxWidth().padding(12.dp))
         }
 
-        Text("What it needs", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(uiStr(R.string.l_pre_what_it_needs), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         val r = reqs
         if (r == null) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         else r.forEach { q ->
@@ -380,10 +382,10 @@ private fun PresetDetail(
                     if (q.note.isNotBlank()) Text(q.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 when (q.state) {
-                    PresetApply.State.INSTALLED -> Badge("Installed", Color(0xFF3FB950))
-                    PresetApply.State.DOWNLOAD -> Badge("Will download", MaterialTheme.colorScheme.primary)
-                    PresetApply.State.MISSING -> Badge("Not available", MaterialTheme.colorScheme.error)
-                    PresetApply.State.KEEP -> Badge("Yours kept", MaterialTheme.colorScheme.onSurfaceVariant)
+                    PresetApply.State.INSTALLED -> Badge(uiStr(R.string.l_pre_installed), Color(0xFF3FB950))
+                    PresetApply.State.DOWNLOAD -> Badge(uiStr(R.string.l_pre_will_download), MaterialTheme.colorScheme.primary)
+                    PresetApply.State.MISSING -> Badge(uiStr(R.string.l_pre_not_available), MaterialTheme.colorScheme.error)
+                    PresetApply.State.KEEP -> Badge(uiStr(R.string.l_pre_yours_kept), MaterialTheme.colorScheme.onSurfaceVariant)
                     PresetApply.State.INFO -> {}
                 }
             }
@@ -403,21 +405,21 @@ private fun PresetDetail(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(enabled = busy == null && r != null, onClick = {
                 scope.launch {
-                    busy = "Preparing…"
+                    busy = uiStr(R.string.l_pre_preparing)
                     result = runCatching {
                         PresetApply.apply(context, shortcut, p) { msg -> scope.launch { busy = msg } }
-                    }.getOrElse { listOf("Failed: " + (it.message ?: it.javaClass.simpleName)) }
+                    }.getOrElse { listOf(uiStr(R.string.l_pre_failed) + (it.message ?: it.javaClass.simpleName)) }
                     busy = null
                     reqs = runCatching { PresetApply.check(context, shortcut, p) }.getOrNull() ?: reqs
-                    Toast.makeText(context, "Preset applied to ${shortcut.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, uiStr(R.string.l_pre_preset_applied_to_1_s, shortcut.name), Toast.LENGTH_SHORT).show()
                 }
-            }) { Text(if (result == null) "Apply to this game" else "Apply again") }
+            }) { Text(if (result == null) uiStr(R.string.l_pre_apply_to_this_game) else uiStr(R.string.l_pre_apply_again)) }
             if (entry != null && hasService) {
                 val liked = social?.liked == true
                 OutlinedButton(onClick = {
                     scope.launch {
                         val r = withContext(Dispatchers.IO) { PresetHub.toggleLike(context, entry.id) }
-                        if (r == null) Toast.makeText(context, "No connection", Toast.LENGTH_SHORT).show()
+                        if (r == null) Toast.makeText(context, uiStr(R.string.l_pre_no_connection), Toast.LENGTH_SHORT).show()
                         else onSocial(entry.id, PresetHub.Social(r.first, social?.comments ?: comments?.size ?: 0, r.second))
                     }
                 }) {
@@ -426,27 +428,27 @@ private fun PresetDetail(
                     Text("${entry.likes + (social?.likes ?: 0)}")
                 }
             } else if (p.issue > 0) OutlinedButton(onClick = { openUrl(context, PresetHub.issueUrl(p.issue)) }) {
-                Icon(Icons.Outlined.ThumbUp, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Like / comment")
+                Icon(Icons.Outlined.ThumbUp, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(uiStr(R.string.l_pre_like_comment))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { shareText(context, "YurNLator preset: ${p.game}", PresetHub.exportText(p)) }) {
-                Icon(Icons.Outlined.Share, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Send")
+                Icon(Icons.Outlined.Share, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(uiStr(R.string.l_pre_send))
             }
             if (mine && entry != null) TextButton(enabled = busy == null, onClick = {
                 scope.launch {
-                    busy = "Removing…"
+                    busy = uiStr(R.string.l_pre_removing)
                     val res = withContext(Dispatchers.IO) { PresetHub.delete(context, p.id) }
                     busy = null
                     when (res) {
-                        is PresetHub.Publish.Sent -> { Toast.makeText(context, "Removal requested: gone within a few minutes", Toast.LENGTH_LONG).show(); done() }
-                        is PresetHub.Publish.OpenBrowser -> { openUrl(context, res.url); Toast.makeText(context, "Submit the issue on GitHub to remove it", Toast.LENGTH_LONG).show() }
+                        is PresetHub.Publish.Sent -> { Toast.makeText(context, uiStr(R.string.l_pre_removal_requested_gone_within_a_few), Toast.LENGTH_LONG).show(); done() }
+                        is PresetHub.Publish.OpenBrowser -> { openUrl(context, res.url); Toast.makeText(context, uiStr(R.string.l_pre_submit_the_issue_on_github_to), Toast.LENGTH_LONG).show() }
                         is PresetHub.Publish.Failed -> Toast.makeText(context, res.reason, Toast.LENGTH_LONG).show()
                     }
                 }
             }) {
                 Icon(Icons.Outlined.DeleteOutline, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error); Spacer(Modifier.width(6.dp))
-                Text("Remove from library", color = MaterialTheme.colorScheme.error)
+                Text(uiStr(R.string.l_lib_remove_from_library), color = MaterialTheme.colorScheme.error)
             }
         }
 
@@ -461,8 +463,8 @@ private fun PresetDetail(
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(.5f))
         Row(Modifier.fillMaxWidth().clickable { showAll = !showAll }, verticalAlignment = Alignment.CenterVertically) {
-            Text("Settings (${p.settings.size})", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(if (showAll) "Hide" else "Show", color = MaterialTheme.colorScheme.primary)
+            Text(uiStr(R.string.l_pre_settings_1_s, p.settings.size), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(if (showAll) uiStr(R.string.l_bench_hide) else uiStr(R.string.l_bench_show), color = MaterialTheme.colorScheme.primary)
         }
         if (showAll) p.settings.toSortedMap(compareBy<String>({ CommunityPreset.label(it) }, { it })).forEach { (k, v) ->
             Column {
@@ -496,24 +498,22 @@ private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
         uri ?: return@rememberLauncherForActivityResult
         scope.launch(Dispatchers.IO) {
             val ok = runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(PresetHub.exportText(b.first).toByteArray()) } }.isSuccess
-            withContext(Dispatchers.Main) { Toast.makeText(context, if (ok) "Saved" else "Couldn't save", Toast.LENGTH_SHORT).show() }
+            withContext(Dispatchers.Main) { Toast.makeText(context, if (ok) uiStr(R.string.l_pre_saved) else uiStr(R.string.l_pre_couldn_t_save), Toast.LENGTH_SHORT).show() }
         }
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Everyone with YurNLator will be able to apply your settings for ${shortcut.name}. " +
-            "Included: graphics driver, DXVK / VKD3D, Box64 / FEXCore, renderer, frame generation, audio, input and environment " +
-            "variables (passwords and tokens are removed). Not included: your files, controls, cover art and CPU core list.",
+        Text(uiStr(R.string.l_pre_everyone_with_yurnlator_will_be_able, shortcut.name),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(title, { title = it.take(80) }, Modifier.fillMaxWidth(), singleLine = true,
-            label = { Text("Preset name") }, placeholder = { Text("e.g. Stable 60 FPS, medium settings") })
+            label = { Text(uiStr(R.string.l_pre_preset_name)) }, placeholder = { Text(uiStr(R.string.l_pre_e_g_stable_60_fps_medium)) })
         OutlinedTextField(notes, { notes = it.take(1500) }, Modifier.fillMaxWidth().height(150.dp),
-            label = { Text("Notes") }, placeholder = { Text("FPS you get, in-game settings, what works and what doesn't") })
+            label = { Text(uiStr(R.string.l_pre_notes)) }, placeholder = { Text(uiStr(R.string.l_pre_fps_you_get_in_game_settings)) })
         OutlinedTextField(author, { author = it.take(40) }, Modifier.fillMaxWidth(), singleLine = true,
-            label = { Text("Your name (optional)") })
+            label = { Text(uiStr(R.string.l_pre_your_name_optional)) })
         if (hasArgs) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { includeArgs = !includeArgs }) {
             Checkbox(includeArgs, { includeArgs = it })
-            Text("Include launch arguments: ${shortcut.getExtra("execArgs").take(60)}", style = MaterialTheme.typography.bodyMedium)
+            Text(uiStr(R.string.l_pre_include_launch_arguments_1_s, shortcut.getExtra("execArgs").take(60)), style = MaterialTheme.typography.bodyMedium)
         }
 
         Button(enabled = !busy, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp), onClick = {
@@ -526,11 +526,11 @@ private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
                 busy = false
                 when (res) {
                     is PresetHub.Publish.Sent -> {
-                        Toast.makeText(context, "Published: it appears in the library within a few minutes", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, uiStr(R.string.l_pre_published_it_appears_in_the_library), Toast.LENGTH_LONG).show()
                         done()
                     }
                     is PresetHub.Publish.OpenBrowser -> {
-                        Toast.makeText(context, "GitHub opens: tap \"Submit new issue\". The preset is checked and added within a few minutes.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, uiStr(R.string.l_pre_github_opens_tap_submit_new_issue), Toast.LENGTH_LONG).show()
                         openUrl(context, res.url)
                         done()
                     }
@@ -539,10 +539,9 @@ private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
             }
         }) {
             if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-            else { Icon(Icons.Outlined.CloudUpload, null); Spacer(Modifier.width(8.dp)); Text("Publish", fontWeight = FontWeight.SemiBold) }
+            else { Icon(Icons.Outlined.CloudUpload, null); Spacer(Modifier.width(8.dp)); Text(uiStr(R.string.l_pre_publish), fontWeight = FontWeight.SemiBold) }
         }
-        Text("Publishing uses GitHub (github.com/${PresetHub.REPO}): if the browser asks, sign in and tap Submit. " +
-            "Only this phone can remove the preset later.",
+        Text(uiStr(R.string.l_pre_publishing_uses_github_github_com_1, PresetHub.REPO),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(enabled = !busy, onClick = {
@@ -550,13 +549,13 @@ private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
                     val b = build(); built = b
                     saver.launch(shortcut.name.replace(Regex("[^A-Za-z0-9 _.-]"), "_") + ".yurnpreset.json")
                 }
-            }) { Text("Save to file") }
+            }) { Text(uiStr(R.string.l_pre_save_to_file)) }
             OutlinedButton(enabled = !busy, onClick = {
                 scope.launch {
                     val b = build(); built = b
                     shareText(context, "YurNLator preset: ${shortcut.name}", PresetHub.exportText(b.first))
                 }
-            }) { Icon(Icons.Outlined.Share, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Send") }
+            }) { Icon(Icons.Outlined.Share, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(uiStr(R.string.l_pre_send)) }
         }
         Spacer(Modifier.height(24.dp))
     }
@@ -571,24 +570,24 @@ private fun CommentsSection(id: String, comments: List<PresetHub.Comment>?, onAd
     val hw = remember { listOf(android.os.Build.MODEL, CommunityPreset.soc()).filter { it.isNotBlank() }.joinToString(" · ") }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Comments" + (comments?.let { " (${it.size})" } ?: ""), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(uiStr(R.string.l_pre_comments) + (comments?.let { " (${it.size})" } ?: ""), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         when {
-            comments == null -> Text("Couldn't load comments.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            comments.isEmpty() -> Text("No comments yet. Tried it? Say what FPS you got and on which phone.",
+            comments == null -> Text(uiStr(R.string.l_pre_couldn_t_load_comments), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            comments.isEmpty() -> Text(uiStr(R.string.l_pre_no_comments_yet_tried_it_say),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             else -> comments.forEach { c ->
                 Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surface,
                     border = BorderStroke(1.dp, if (c.mine) MaterialTheme.colorScheme.primary.copy(.5f) else MaterialTheme.colorScheme.outlineVariant)) {
                     Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(listOf(c.name + if (c.mine) " (you)" else "", c.hw, date(c.created)).filter { it.isNotBlank() }.joinToString(" · "),
+                        Text(listOf(c.name + if (c.mine) uiStr(R.string.l_pre_you) else "", c.hw, date(c.created)).filter { it.isNotBlank() }.joinToString(" · "),
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(c.text, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
         }
-        OutlinedTextField(text, { text = it.take(1000) }, Modifier.fillMaxWidth(), label = { Text("Your comment") },
-            placeholder = { Text("FPS, what works, what to change") }, minLines = 2)
+        OutlinedTextField(text, { text = it.take(1000) }, Modifier.fillMaxWidth(), label = { Text(uiStr(R.string.l_pre_your_comment)) },
+            placeholder = { Text(uiStr(R.string.l_pre_fps_what_works_what_to_change)) }, minLines = 2)
         Button(enabled = !sending && text.trim().length >= 2, onClick = {
             scope.launch {
                 sending = true
@@ -597,10 +596,10 @@ private fun CommentsSection(id: String, comments: List<PresetHub.Comment>?, onAd
                 }
                 sending = false
                 if (c != null) { onAdded(c); text = "" }
-                else Toast.makeText(context, err ?: "Not sent", Toast.LENGTH_SHORT).show()
+                else Toast.makeText(context, err ?: uiStr(R.string.l_pre_not_sent), Toast.LENGTH_SHORT).show()
             }
-        }) { Text(if (sending) "Sending…" else "Send comment") }
-        Text("Shown as \"${PresetHub.savedAuthor(context).ifBlank { "anonymous" }}\" — the name from Share my settings.",
+        }) { Text(if (sending) uiStr(R.string.l_pre_sending) else uiStr(R.string.l_pre_send_comment)) }
+        Text(uiStr(R.string.l_pre_shown_as_1_s_the_name, PresetHub.savedAuthor(context).ifBlank { uiStr(R.string.l_pre_anonymous) }),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

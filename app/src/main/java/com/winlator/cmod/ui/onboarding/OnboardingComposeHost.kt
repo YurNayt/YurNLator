@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.onboarding
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -178,7 +180,7 @@ private fun prepareInitialContainer(
     val contents = ContentsManager(activity).apply { syncContents() }
     val wineInfo = WineInfo.fromIdentifier(activity, contents, runtimeIdentifier)
     if (wineInfo.path.isNullOrBlank()) {
-        Toast.makeText(activity, "The selected Wine/Proton layer is no longer installed.", Toast.LENGTH_LONG).show()
+        Toast.makeText(activity, uiStr(R.string.l_ob_the_selected_wine_proton_layer_is), Toast.LENGTH_LONG).show()
         return
     }
 
@@ -215,7 +217,7 @@ private fun prepareInitialContainer(
             preparing.value = false
             if (created == null) {
                 ready.value = false
-                Toast.makeText(activity, "Unable to create the first container.", Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, uiStr(R.string.l_ob_unable_to_create_the_first_container), Toast.LENGTH_LONG).show()
             } else {
                 ready.value = true
             }
@@ -223,7 +225,7 @@ private fun prepareInitialContainer(
     } catch (_: Exception) {
         preparing.value = false
         ready.value = false
-        Toast.makeText(activity, "Unable to prepare the first container.", Toast.LENGTH_LONG).show()
+        Toast.makeText(activity, uiStr(R.string.l_ob_unable_to_prepare_the_first_container), Toast.LENGTH_LONG).show()
     }
 }
 

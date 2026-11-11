@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.components
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import android.content.Context
 import android.graphics.drawable.ColorDrawable
 import android.view.ViewGroup
@@ -115,7 +117,7 @@ object WindowsComponentsDialog {
 
     private fun check(context: Context, container: Container, exe: File, always: Boolean) {
         val main = android.os.Handler(android.os.Looper.getMainLooper())
-        if (always) Toast.makeText(context, "Checking what ${exe.name} needs…", Toast.LENGTH_SHORT).show()
+        if (always) Toast.makeText(context, uiStr(R.string.l_wc_checking_what_1_s_needs, exe.name), Toast.LENGTH_SHORT).show()
         Thread {
             val recs = runCatching { recommendations(context, container, exe, always) }.getOrNull()
             main.post {
@@ -123,8 +125,8 @@ object WindowsComponentsDialog {
                     when {
                         recs == null -> if (always) open(context, container, null, emptyList())
                         recs.isNotEmpty() -> open(context, container, exe, recs)
-                        always -> { Toast.makeText(context, "${exe.name}: no extra components found", Toast.LENGTH_LONG).show(); open(context, container, null, emptyList()) }
-                        else -> Toast.makeText(context, "Windows components: nothing missing for ${exe.name}", Toast.LENGTH_SHORT).show()
+                        always -> { Toast.makeText(context, uiStr(R.string.l_wc_1_s_no_extra_components_found, exe.name), Toast.LENGTH_LONG).show(); open(context, container, null, emptyList()) }
+                        else -> Toast.makeText(context, uiStr(R.string.l_wc_windows_components_nothing_missing_for_1, exe.name), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -213,7 +215,7 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
             }
             if (error == null) {
                 ComponentInstallRecords.add(context, container.id, name)
-                out += "${DependencyDetector.labelOf(name)}: installed"
+                out += uiStr(R.string.l_wc_1_s_installed, DependencyDetector.labelOf(name))
             } else out += "${DependencyDetector.labelOf(name)}: $error"
         }
         job = null
@@ -229,9 +231,9 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(enabled = job == null, onClick = close) { Icon(Icons.Outlined.ArrowBack, "Back") }
+            IconButton(enabled = job == null, onClick = close) { Icon(Icons.Outlined.ArrowBack, uiStr(R.string.l_lib_back)) }
             Column(Modifier.weight(1f)) {
-                Text(if (exe != null) "Components this game needs" else "Windows components",
+                Text(if (exe != null) uiStr(R.string.l_wc_components_this_game_needs) else uiStr(R.string.l_lib_windows_components),
                     style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 Text(container.name + (exe?.let { " · " + it.name } ?: ""), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -240,7 +242,7 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(.5f))
         job?.let { j ->
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                Text("Installing ${DependencyDetector.labelOf(j.name)}", fontWeight = FontWeight.SemiBold)
+                Text(uiStr(R.string.l_wc_installing_1_s, DependencyDetector.labelOf(j.name)), fontWeight = FontWeight.SemiBold)
                 if (j.stage.isNotBlank()) Text(j.stage, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.size(6.dp))
                 LinearProgressIndicator(progress = { j.progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
@@ -253,14 +255,14 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
             return@Column
         }
         if (failed) {
-            Text("Couldn't load the component list. Check the connection.", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
+            Text(uiStr(R.string.l_wc_couldn_t_load_the_component_list), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
             return@Column
         }
 
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (recs.isNotEmpty()) {
                 item {
-                    Text("Found in the game's exe and folder. They usually fix games that close at start or miss sound / video.",
+                    Text(uiStr(R.string.l_wc_found_in_the_game_s_exe),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 items(recs, key = { "rec-" + it.componentName }) { r ->
@@ -272,7 +274,7 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
                             onCheckedChange = { if (it) selected.add(r.componentName) else selected.remove(r.componentName) })
                         Column(Modifier.weight(1f)) {
                             Text(r.label, fontWeight = FontWeight.SemiBold)
-                            Text(if (done) "Installed" else r.reason, style = MaterialTheme.typography.bodySmall,
+                            Text(if (done) uiStr(R.string.l_wc_installed) else r.reason, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -281,15 +283,15 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         val todo = selected.filter { it !in installed }
                         Button(enabled = job == null && todo.isNotEmpty(), onClick = { scope.launch { report(install(todo)) } }) {
-                            Text("Install selected (${todo.size})")
+                            Text(uiStr(R.string.l_wc_install_selected_1_s, todo.size))
                         }
-                        TextButton(enabled = job == null, onClick = close) { Text("Not now") }
+                        TextButton(enabled = job == null, onClick = close) { Text(uiStr(R.string.l_wc_not_now)) }
                     }
                 }
                 item { HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(.5f)) }
-                item { Text("All components", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+                item { Text(uiStr(R.string.l_wc_all_components), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
             } else item {
-                Text("Installed straight into this container, without opening it. Components marked \"needs its own setup\" can't be installed here yet.",
+                Text(uiStr(R.string.l_wc_installed_straight_into_this_container_without),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item {
@@ -298,8 +300,8 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = !onlyInstalled, onClick = { onlyInstalled = false }, label = { Text("All") })
-                    FilterChip(selected = onlyInstalled, onClick = { onlyInstalled = true }, label = { Text("Installed (${installed.size})") })
+                    FilterChip(selected = !onlyInstalled, onClick = { onlyInstalled = false }, label = { Text(uiStr(R.string.l_lib_all)) })
+                    FilterChip(selected = onlyInstalled, onClick = { onlyInstalled = true }, label = { Text(uiStr(R.string.l_wc_installed_1_s, installed.size)) })
                 }
             }
             val shown = list.filter { c ->
@@ -318,7 +320,7 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
                                 }.getOrElse { ComponentUninstaller.Outcome.Failed(it.message ?: "failed") }
                             }
                             when (outcome) {
-                                is ComponentUninstaller.Outcome.Removed -> Toast.makeText(context, "${c.name} removed", Toast.LENGTH_SHORT).show()
+                                is ComponentUninstaller.Outcome.Removed -> Toast.makeText(context, uiStr(R.string.l_wc_1_s_removed, c.name), Toast.LENGTH_SHORT).show()
                                 is ComponentUninstaller.Outcome.Failed -> Toast.makeText(context, outcome.message, Toast.LENGTH_LONG).show()
                                 else -> {}
                             }
@@ -341,13 +343,13 @@ private fun ComponentRow(c: Component, installed: Boolean, idle: Boolean, instal
                 Text(if (label != c.name) "$label · ${c.name}" else c.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (c.description.isNotBlank()) Text(c.description, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (!installed && blocked != null) Text(if (blocked.contains("installer step")) "Needs its own setup: not yet" else blocked,
+                if (!installed && blocked != null) Text(if (blocked.contains("installer step")) uiStr(R.string.l_wc_needs_its_own_setup_not_yet) else blocked,
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
             }
             Spacer(Modifier.width(8.dp))
             when {
-                installed -> TextButton(enabled = idle, onClick = remove) { Text("Remove") }
-                blocked == null -> OutlinedButton(enabled = idle, onClick = install) { Text("Install") }
+                installed -> TextButton(enabled = idle, onClick = remove) { Text(uiStr(R.string.l_ctr_remove)) }
+                blocked == null -> OutlinedButton(enabled = idle, onClick = install) { Text(uiStr(R.string.l_ob_install)) }
             }
         }
     }

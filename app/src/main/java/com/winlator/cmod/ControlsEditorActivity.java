@@ -1,5 +1,6 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.ui.UiStrings;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -147,13 +148,13 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         popupContent.setPadding(pad, pad, pad, pad);
 
         TextView title = new TextView(this);
-        title.setText("Scheme Color");
+        title.setText(UiStrings.get(R.string.l_ce_scheme_color));
         title.setTextColor(0xffffffff);
         title.setTextSize(14);
         popupContent.addView(title);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("Applies to every control that doesn't have its own custom color");
+        subtitle.setText(UiStrings.get(R.string.l_ce_applies_to_every_control_that_doesn));
         subtitle.setTextColor(0xffaaaaaa);
         subtitle.setTextSize(11);
         LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);

@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.onboarding
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,14 +27,14 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun OnboardingAccessScreen(back: () -> Unit, next: () -> Unit) {
-    val title = "Per" + "mis" + "sions"
-    val action = "Grant " + "per" + "mis" + "sions"
+    val title = uiStr(R.string.l_ob_permissions)
+    val action = uiStr(R.string.l_ob_grant_permissions)
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
         Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Outlined.Security, null, modifier = Modifier.size(52.dp))
             Spacer(Modifier.height(14.dp))
             Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("YurNLator needs storage and notification access to manage games and keep sessions running.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(uiStr(R.string.l_ob_yurnlator_needs_storage_and_notification_access), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(20.dp))
             Button(onClick = next, modifier = Modifier.fillMaxWidth().height(50.dp)) {
                 Icon(Icons.Outlined.NotificationsNone, null)
@@ -40,7 +42,7 @@ internal fun OnboardingAccessScreen(back: () -> Unit, next: () -> Unit) {
                 Text(action)
             }
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("Back") }
+            OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text(uiStr(R.string.l_lib_back)) }
         }
     }
 }

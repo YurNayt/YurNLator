@@ -73,7 +73,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Opacity" />
+                android:text="@string/l_xml_opacity" />
 
             <TextView
                 android:id="@+id/TVOpacity"
@@ -92,7 +92,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Theme Color" />
+            android:text="@string/l_xml_theme_color" />
 
         <LinearLayout
             android:id="@+id/LLColorList"
@@ -223,7 +223,7 @@
             android:id="@+id/CBTurbo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Turbo (autofire while held)" />
+            android:text="@string/l_xml_turbo_autofire_while_held" />
 
         <LinearLayout
             android:id="@+id/LLCustomTextIcon"
@@ -261,7 +261,7 @@
                     android:id="@+id/BTRemoveIcon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Remove"
+                    android:text="@string/l_ctr_remove"
                     android:textSize="12sp"
                     android:visibility="gone"
                     style="@style/Widget.AppCompat.Button.Borderless" />
@@ -270,7 +270,7 @@
                     android:id="@+id/BTBrowseIcon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Browse…"
+                    android:text="@string/l_xml_browse"
                     android:textSize="12sp"
                     style="@style/Widget.AppCompat.Button.Borderless" />
             </LinearLayout>
@@ -292,7 +292,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Move mouse cursor while dragging" />
+                android:text="@string/l_xml_move_mouse_cursor_while_dragging" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.L10nDict
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -365,7 +366,7 @@ private fun ContainerSectionScreen(
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Text("Save", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(L10nDict.t("Save"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -628,9 +629,9 @@ private fun ReadOnlySetting(
         SettingIcon(icon)
         Spacer(Modifier.width(13.dp))
         Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(L10nDict.t(label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(2.dp))
-            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+            Text(L10nDict.t(value), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -676,10 +677,10 @@ private fun ChoiceSetting(
                     Spacer(Modifier.width(13.dp))
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(L10nDict.t(label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        selected,
+                        L10nDict.t(selected),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -702,13 +703,13 @@ private fun ChoiceSetting(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 20.dp)
             ) {
                 Text(
-                    label,
+                    L10nDict.t(label),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
                 )
                 Text(
-                    "Choose an option",
+                    L10nDict.t("Choose an option"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 10.dp)
@@ -733,12 +734,12 @@ private fun ChoiceSetting(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 13.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(value, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                                Text(L10nDict.t(value), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                                 if (value == selected) {
                                     Icon(Icons.Outlined.Check, null)
                                 } else if (!installed) {
                                     Text(
-                                        "Download",
+                                        L10nDict.t("Download"),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -768,9 +769,9 @@ private fun ActionSetting(
             SettingIcon(icon)
             Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                Text(L10nDict.t(title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 Text(
-                    subtitle,
+                    L10nDict.t(subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
@@ -847,7 +848,7 @@ private fun RendererOptionsPanel(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Swap red/blue channels", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Text(L10nDict.t("Swap red/blue channels"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 Switch(checked = swapRB, onCheckedChange = onSwapRB)
             }
         }
@@ -1036,7 +1037,7 @@ private fun WrapperOptionsPanel(
                     Icon(Icons.Outlined.Memory, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Manage installed versions", style = MaterialTheme.typography.titleSmall)
+                        Text(L10nDict.t("Manage installed versions"), style = MaterialTheme.typography.titleSmall)
                         Text(
                             "Install or remove DXVK, VKD3D and emulator components",
                             style = MaterialTheme.typography.bodySmall,
@@ -1061,7 +1062,7 @@ private fun CompactTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
-        label = { Text(label) },
+        label = { Text(L10nDict.t(label)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Ascii
@@ -1076,7 +1077,7 @@ private fun ToggleSetting(label: String, checked: Boolean, onCheckedChange: (Boo
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Text(L10nDict.t(label), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
@@ -1096,7 +1097,7 @@ private fun CustomResolutionFields(
             value = width,
             onValueChange = onWidth,
             modifier = Modifier.weight(1f),
-            label = { Text("Width") },
+            label = { Text(L10nDict.t("Width")) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = RoundedCornerShape(10.dp)
@@ -1105,7 +1106,7 @@ private fun CustomResolutionFields(
             value = height,
             onValueChange = onHeight,
             modifier = Modifier.weight(1f),
-            label = { Text("Height") },
+            label = { Text(L10nDict.t("Height")) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = RoundedCornerShape(10.dp)
@@ -1158,7 +1159,7 @@ private fun GroupDivider() {
 @Composable
 private fun InfoText(text: String) {
     Text(
-        text,
+        L10nDict.t(text),
         modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant

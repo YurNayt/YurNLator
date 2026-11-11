@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.components.ChoiceOption
 import com.winlator.cmod.ui.components.ChoiceSheet
 import android.app.Dialog
@@ -178,7 +180,7 @@ private fun AdvancedContainerScreen(containerId: Int, onCancel: () -> Unit, onSa
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Column(Modifier.fillMaxSize().padding(16.dp)) {
-                Text("Advanced", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Text(L10nDict.t("Advanced"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                 Text(
                     "Environment, Windows components, startup, game controller and processor affinity",
                     style = MaterialTheme.typography.bodySmall,
@@ -191,9 +193,9 @@ private fun AdvancedContainerScreen(containerId: Int, onCancel: () -> Unit, onSa
                 ) {
                     tabs.forEachIndexed { index, title ->
                         if (tab == index) {
-                            Button(onClick = { tab = index }, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)) { Text(title) }
+                            Button(onClick = { tab = index }, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)) { Text(L10nDict.t(title)) }
                         } else {
-                            OutlinedButton(onClick = { tab = index }, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)) { Text(title) }
+                            OutlinedButton(onClick = { tab = index }, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)) { Text(L10nDict.t(title)) }
                         }
                     }
                 }
@@ -243,7 +245,7 @@ private fun AdvancedContainerScreen(containerId: Int, onCancel: () -> Unit, onSa
                     modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                    TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text(L10nDict.t("Cancel")) }
                     Button(
                         onClick = {
                             container.setEnvVars(envRows.joinToString(" ") {
@@ -265,7 +267,7 @@ private fun AdvancedContainerScreen(containerId: Int, onCancel: () -> Unit, onSa
                             onSaved()
                         },
                         modifier = Modifier.weight(1f)
-                    ) { Text("Save") }
+                    ) { Text(L10nDict.t("Save")) }
                 }
             }
         }
@@ -291,7 +293,7 @@ private fun AdvancedEnvironmentPage(rows: MutableList<AdvancedEnvEntry>) {
             ) {
                 Icon(Icons.Outlined.Add, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(7.dp))
-                Text("Add variable")
+                Text(L10nDict.t("Add variable"))
             }
         }
     }
@@ -305,14 +307,14 @@ private fun AdvancedEnvironmentPage(rows: MutableList<AdvancedEnvEntry>) {
                     val clean = name.trim().replace(" ", "")
                     if (clean.isNotEmpty() && rows.none { it.name == clean }) rows.add(AdvancedEnvEntry(clean, value.trim()))
                     addOpen = false
-                }) { Text("Add") }
+                }) { Text(L10nDict.t("Add")) }
             },
-            dismissButton = { TextButton(onClick = { addOpen = false }) { Text("Cancel") } },
-            title = { Text("Add environment variable") },
+            dismissButton = { TextButton(onClick = { addOpen = false }) { Text(L10nDict.t("Cancel")) } },
+            title = { Text(L10nDict.t("Add environment variable")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true)
-                    OutlinedTextField(value, { value = it }, label = { Text("Value") }, singleLine = true)
+                    OutlinedTextField(name, { name = it }, label = { Text(L10nDict.t("Name")) }, singleLine = true)
+                    OutlinedTextField(value, { value = it }, label = { Text(L10nDict.t("Value")) }, singleLine = true)
                 }
             }
         )
@@ -387,14 +389,14 @@ private fun AdvancedStartupInputPage(
     )
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(10.dp)) {
         item {
-            Text("System", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 6.dp))
+            Text(uiStr(R.string.l_cov_system), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 6.dp))
             AdvancedChoice("Startup Selection", startupEntries[startup.coerceIn(0, 2)], startupEntries) {
                 onStartup(startupEntries.indexOf(it).coerceAtLeast(0))
             }
         }
         item { HorizontalDivider(Modifier.padding(vertical = 10.dp)) }
         item {
-            Text("Game Controller", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 6.dp))
+            Text(L10nDict.t("Game Controller"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 6.dp))
             AdvancedToggle("Enable XInput for Games in Wine", xinput, exclusive, onXInput)
             AdvancedToggle("Enable DInput for Games in Wine", dinput, exclusive, onDInput)
             AdvancedToggle("Exclusive Input", exclusive, true, onExclusive)
@@ -415,11 +417,11 @@ private fun AdvancedCpuPage(sync: Boolean, onSync: (Boolean) -> Unit, cpu64: Mut
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { AdvancedToggle("Sync with Wine", sync, true, onSync) }
         item {
-            Text("Processor Affinity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(L10nDict.t("Processor Affinity"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             CpuSelector(cpu64)
         }
         item {
-            Text("Processor Affinity (32-bit apps)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(L10nDict.t("Processor Affinity (32-bit apps)"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             CpuSelector(cpu32)
         }
     }
@@ -450,7 +452,7 @@ private fun AdvancedToggle(label: String, checked: Boolean, enabled: Boolean, on
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Text(L10nDict.t(label), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         Switch(checked = checked, enabled = enabled, onCheckedChange = onChange)
     }
 }
@@ -465,13 +467,13 @@ private fun AdvancedChoice(label: String, selected: String, entries: List<String
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(selected, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(L10nDict.t(label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(L10nDict.t(selected), style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
-        if (expanded) ChoiceSheet(label, entries.map { ChoiceOption(it) }, selected, { onSelected(it.value) }, { expanded = false })
+        if (expanded) ChoiceSheet(L10nDict.t(label), entries.map { ChoiceOption(it, L10nDict.t(it)) }, selected, { onSelected(it.value) }, { expanded = false })
     }
 }
 
@@ -496,8 +498,8 @@ private fun AdvancedMultiChoice(selected: String, entries: List<String>, onSelec
         }
         AlertDialog(
             onDismissRequest = { open = false },
-            confirmButton = { TextButton(onClick = { onSelected(draft.joinToString(",")); open = false }) { Text("Done") } },
-            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
+            confirmButton = { TextButton(onClick = { onSelected(draft.joinToString(",")); open = false }) { Text(L10nDict.t("Done")) } },
+            dismissButton = { TextButton(onClick = { open = false }) { Text(L10nDict.t("Cancel")) } },
             text = {
                 LazyColumn(Modifier.heightIn(max = 430.dp)) {
                     items(entries) { option ->

@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.onboarding
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import com.winlator.cmod.core.LocalInstalls
 import com.winlator.cmod.ui.components.BrowserItem
 import com.winlator.cmod.ui.components.ComponentBrowser
@@ -203,7 +205,7 @@ internal fun OnboardingComponentsScreen(
                 }
             },
             busyIds = setOfNotNull(installing) + wrappers.busyIds,
-            busyLabel = if (wrapperBusy) "Downloading" else installingLabel,
+            busyLabel = if (wrapperBusy) uiStr(R.string.l_ob_downloading) else installingLabel,
             busyProgress = if (wrapperBusy) wrappers.progress else installingProgress,
             typeHeader = { type ->
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -233,10 +235,10 @@ internal fun OnboardingComponentsScreen(
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Column(Modifier.weight(.9f).fillMaxHeight()) {
-                    Text("Choose components", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text(uiStr(R.string.l_ob_choose_components), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                     Text(
-                        if (managerMode) "Install and manage runtime versions."
-                        else "Install a Wine or Proton layer before continuing.",
+                        if (managerMode) uiStr(R.string.l_ob_install_and_manage_runtime_versions)
+                        else uiStr(R.string.l_ob_install_a_wine_or_proton_layer),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(14.dp))
@@ -250,7 +252,7 @@ internal fun OnboardingComponentsScreen(
                     if (category == "GPU driver") {
                         Spacer(Modifier.height(10.dp))
                         OutlinedButton(onClick = { cb.onBrowseDriver() }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Install local driver")
+                            Text(uiStr(R.string.l_ob_install_local_driver))
                         }
                     }
                     if (showBundled) {
@@ -269,8 +271,8 @@ internal fun OnboardingComponentsScreen(
                     if (!managerMode && !hasInstalledRuntime) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            if (!ready.value) "Wait for $bundledRuntimeName to finish installing, or install another Wine/Proton version."
-                            else "Install at least one Wine or Proton version to continue.",
+                            if (!ready.value) uiStr(R.string.l_ob_wait_for_1_s_to_finish, bundledRuntimeName)
+                            else uiStr(R.string.l_ob_install_at_least_one_wine_or),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -293,10 +295,10 @@ internal fun OnboardingComponentsScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
-                    Text("Choose components", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                    Text(uiStr(R.string.l_ob_choose_components), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                     Text(
-                        if (managerMode) "Install and manage runtime versions."
-                        else "Install as many versions as you want. At least one Wine or Proton is required.",
+                        if (managerMode) uiStr(R.string.l_ob_install_and_manage_runtime_versions)
+                        else uiStr(R.string.l_ob_install_as_many_versions_as_you),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(16.dp))
@@ -309,7 +311,7 @@ internal fun OnboardingComponentsScreen(
                     CategorySelector(category, categories) { category = it }
                     if (category == "GPU driver") {
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = { cb.onBrowseDriver() }) { Text("Install local driver") }
+                        OutlinedButton(onClick = { cb.onBrowseDriver() }) { Text(uiStr(R.string.l_ob_install_local_driver)) }
                     }
                     if (showBundled) {
                         Spacer(Modifier.height(10.dp))
@@ -339,8 +341,8 @@ internal fun OnboardingComponentsScreen(
                 if (!managerMode && !hasInstalledRuntime) {
                     item {
                         Text(
-                            if (!ready.value) "Continue unlocks when $bundledRuntimeName finishes installing or another Wine/Proton layer is installed."
-                            else "Install at least one Wine or Proton version to continue.",
+                            if (!ready.value) uiStr(R.string.l_ob_continue_unlocks_when_1_s_finishes, bundledRuntimeName)
+                            else uiStr(R.string.l_ob_install_at_least_one_wine_or),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -353,7 +355,7 @@ internal fun OnboardingComponentsScreen(
             next = onContinue,
             landscape = landscape,
             nextEnabled = managerMode || hasInstalledRuntime,
-            nextLabel = if (managerMode) "Done" else "Continue"
+            nextLabel = if (managerMode) uiStr(R.string.l_ed_done) else uiStr(R.string.l_ob_continue)
         )
     }
 }
@@ -373,7 +375,7 @@ private fun ComponentList(
         else if (list.isEmpty()) item {
             Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface) {
                 Text(
-                    "No components available in this category.",
+                    uiStr(R.string.l_ob_no_components_available_in_this_category),
                     Modifier.padding(16.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -401,8 +403,8 @@ private fun SourceSelector(local: () -> Unit) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(Modifier.height(56.dp)) {
-            SourcePart(Icons.Outlined.Dns, "Winlator servers", true, {}, Modifier.weight(1f))
-            SourcePart(Icons.Outlined.Folder, "Local package", false, local, Modifier.weight(1f))
+            SourcePart(Icons.Outlined.Dns, uiStr(R.string.l_ob_winlator_servers), true, {}, Modifier.weight(1f))
+            SourcePart(Icons.Outlined.Folder, uiStr(R.string.l_ob_local_package), false, local, Modifier.weight(1f))
         }
     }
 }
@@ -435,7 +437,7 @@ private fun CategorySelector(selected: String, categories: List<String>, select:
                 color = if (selected == it) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Text(it, Modifier.padding(horizontal = 13.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge)
+                Text(com.winlator.cmod.ui.L10nDict.t(it), Modifier.padding(horizontal = 13.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -464,11 +466,11 @@ private fun CoreComponentCard(
             Column(Modifier.weight(1f)) {
                 Text(bundledRuntimeName, fontWeight = FontWeight.SemiBold)
                 val status = when {
-                    busy -> "Working…"
-                    installed && inUse -> "Bundled • Installed • In use"
-                    installed -> "Bundled • Installed"
-                    !ready.value -> "Bundled • Installing ${progress.value}%"
-                    else -> "Bundled • Not installed"
+                    busy -> uiStr(R.string.l_ob_working)
+                    installed && inUse -> uiStr(R.string.l_ob_bundled_installed_in_use)
+                    installed -> uiStr(R.string.l_ob_bundled_installed)
+                    !ready.value -> uiStr(R.string.l_ob_bundled_installing_1_s, progress.value)
+                    else -> uiStr(R.string.l_ob_bundled_not_installed)
                 }
                 Text(status, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
@@ -477,12 +479,12 @@ private fun CoreComponentCard(
                 installed -> OutlinedButton(onClick = onRemove, enabled = !locked && !inUse) {
                     Icon(Icons.Outlined.DeleteOutline, null)
                     Spacer(Modifier.width(5.dp))
-                    Text(if (inUse) "In use" else "Delete")
+                    Text(if (inUse) uiStr(R.string.l_ob_in_use) else uiStr(R.string.l_set_delete))
                 }
                 else -> OutlinedButton(onClick = onInstall, enabled = !locked) {
                     Icon(Icons.Outlined.Download, null)
                     Spacer(Modifier.width(5.dp))
-                    Text("Install")
+                    Text(uiStr(R.string.l_ob_install))
                 }
             }
         }
@@ -512,9 +514,9 @@ private fun ComponentCard(
                     Text(item.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val status = when {
                         busy && installingProgress >= 0 ->
-                            "${installingLabel ?: "Installing"} • ${installingProgress}%"
-                        busy -> installingLabel ?: "Working…"
-                        item.inUse -> "${componentTypeTitle(item.type)} • In use"
+                            "${installingLabel ?: uiStr(R.string.l_ob_installing)} • ${installingProgress}%"
+                        busy -> installingLabel ?: uiStr(R.string.l_ob_working)
+                        item.inUse -> uiStr(R.string.l_ob_1_s_in_use, componentTypeTitle(item.type))
                         else -> componentTypeTitle(item.type)
                     }
                     Text(
@@ -528,10 +530,10 @@ private fun ComponentCard(
                     OutlinedButton(onClick = { cb.onRemove(item.id) }, enabled = !locked && !item.inUse) {
                         Icon(Icons.Outlined.DeleteOutline, null)
                         Spacer(Modifier.width(5.dp))
-                        Text(if (item.inUse) "In use" else "Delete")
+                        Text(if (item.inUse) uiStr(R.string.l_ob_in_use) else uiStr(R.string.l_set_delete))
                     }
                 } else if (!item.installed) {
-                    OutlinedButton(onClick = { cb.onInstall(item.id) }, enabled = !locked) { Text("Download") }
+                    OutlinedButton(onClick = { cb.onInstall(item.id) }, enabled = !locked) { Text(uiStr(R.string.l_lbl_download)) }
                 } else Icon(Icons.Outlined.Check, null)
             }
             if (busy) {
@@ -562,10 +564,10 @@ private fun InstallProgressCard(label: String?, progress: Int) {
                 Icon(Icons.Outlined.InsertDriveFile, null, modifier = Modifier.size(28.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Component installation", fontWeight = FontWeight.SemiBold)
+                    Text(uiStr(R.string.l_ob_component_installation), fontWeight = FontWeight.SemiBold)
                     Text(
-                        if (progress >= 0) "${label ?: "Installing"} • ${progress}%"
-                        else label ?: "Installing component…",
+                        if (progress >= 0) "${label ?: uiStr(R.string.l_ob_installing)} • ${progress}%"
+                        else label ?: uiStr(R.string.l_ob_installing_component),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
@@ -593,7 +595,7 @@ private fun LoadingCard() {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 3.dp)
             Spacer(Modifier.width(12.dp))
-            Text("Loading component catalog…")
+            Text(uiStr(R.string.l_ob_loading_component_catalog))
         }
     }
 }
@@ -621,7 +623,7 @@ private fun ComponentsFooter(
                 onClick = back,
                 modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(12.dp)
-            ) { Text("Back") }
+            ) { Text(uiStr(R.string.l_lib_back)) }
             Button(
                 onClick = next,
                 enabled = nextEnabled,

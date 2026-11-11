@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.gpu
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -57,7 +59,7 @@ fun DetectedGpuCard(detected: DetectedGpu, modifier: Modifier = Modifier) {
             }
             Spacer(Modifier.width(12.dp))
             Column {
-                Text("Detected GPU", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(uiStr(R.string.l_gpu_detected_gpu), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(detected.renderer, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(detected.vendor.displayName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -96,20 +98,17 @@ fun GpuProfileOptions(
         AlertDialog(
             onDismissRequest = { pendingMismatch = null },
             icon = { Icon(Icons.Outlined.WarningAmber, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Use the ${profile.title} profile?") },
+            title = { Text(uiStr(R.string.l_gpu_use_the_1_s_profile, profile.title)) },
             text = {
                 Text(
-                    "Your device has ${detected.vendor.displayName} (${detected.renderer}), " +
-                        "but this profile is made for ${profile.title} GPUs.\n\n" +
-                        "Games may run badly, show a black screen or not start at all. " +
-                        "You can switch back any time in Settings → GPU profile."
+                    uiStr(R.string.l_gpu_your_device_has_1_s_2, detected.vendor.displayName, detected.renderer, profile.title)
                 )
             },
             confirmButton = {
-                TextButton(onClick = { onSelected(profile); pendingMismatch = null }) { Text("Use anyway") }
+                TextButton(onClick = { onSelected(profile); pendingMismatch = null }) { Text(uiStr(R.string.l_gpu_use_anyway)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingMismatch = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingMismatch = null }) { Text(uiStr(R.string.l_qm_cancel)) }
             }
         )
     }
@@ -138,7 +137,7 @@ private fun ProfileOption(profile: GpuProfile, selected: Boolean, recommended: B
                     if (recommended) {
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Recommended",
+                            uiStr(R.string.l_gpu_recommended),
                             modifier = Modifier
                                 .background(scheme.primary.copy(alpha = 0.14f), RoundedCornerShape(50))
                                 .padding(horizontal = 8.dp, vertical = 2.dp),
@@ -183,7 +182,7 @@ fun GpuProfilePreferenceCard(modifier: Modifier = Modifier) {
             }
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
-                Text("GPU profile", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                Text(uiStr(R.string.l_gpu_gpu_profile), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 Text(
                     "${current.title} · ${detected.renderer}",
                     style = MaterialTheme.typography.bodySmall,
@@ -191,7 +190,7 @@ fun GpuProfilePreferenceCard(modifier: Modifier = Modifier) {
                 )
                 if (mismatch) {
                     Text(
-                        "Doesn't match your GPU — games may not work",
+                        uiStr(R.string.l_gpu_doesn_t_match_your_gpu_games),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -204,12 +203,12 @@ fun GpuProfilePreferenceCard(modifier: Modifier = Modifier) {
     if (open) {
         AlertDialog(
             onDismissRequest = { open = false },
-            title = { Text("GPU profile") },
+            title = { Text(uiStr(R.string.l_gpu_gpu_profile)) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     DetectedGpuCard(detected)
                     Text(
-                        "Applies to containers you create from now on. Existing containers keep their settings.",
+                        uiStr(R.string.l_gpu_applies_to_containers_you_create_from),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -219,7 +218,7 @@ fun GpuProfilePreferenceCard(modifier: Modifier = Modifier) {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { open = false }) { Text("Done") } }
+            confirmButton = { TextButton(onClick = { open = false }) { Text(uiStr(R.string.l_ed_done)) } }
         )
     }
 }

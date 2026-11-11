@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.components.ChoiceOption
 import com.winlator.cmod.ui.components.ChoiceSheet
 import android.graphics.Color as AndroidColor
@@ -106,7 +107,7 @@ internal fun ContainerSystemInline(containerId: Int, callbacks: ContainerInlineC
             value = name,
             onValueChange = { name = it },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
-            label = { Text("Container name") },
+            label = { Text(L10nDict.t("Container name")) },
             singleLine = true,
             shape = RoundedCornerShape(10.dp)
         )
@@ -124,14 +125,14 @@ internal fun ContainerSystemInline(containerId: Int, callbacks: ContainerInlineC
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(wallpaperLabel, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OutlinedButton(onClick = { imagePicker.launch("image/*") }) { Text("Choose image") }
+                OutlinedButton(onClick = { imagePicker.launch("image/*") }) { Text(L10nDict.t("Choose image")) }
             }
         } else {
             OutlinedTextField(
                 value = backgroundColor,
                 onValueChange = { backgroundColor = it.take(7) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
-                label = { Text("Background color") },
+                label = { Text(L10nDict.t("Background color")) },
                 singleLine = true,
                 shape = RoundedCornerShape(10.dp)
             )
@@ -208,7 +209,7 @@ internal fun ContainerStorageInline(containerId: Int, callbacks: ContainerInline
                     value = drive.path,
                     onValueChange = { drives[index] = drive.copy(path = it) },
                     modifier = Modifier.weight(1f),
-                    label = { Text("Target Path") },
+                    label = { Text(L10nDict.t("Target Path")) },
                     singleLine = true,
                     shape = RoundedCornerShape(10.dp)
                 )
@@ -230,7 +231,7 @@ internal fun ContainerStorageInline(containerId: Int, callbacks: ContainerInline
                 drives.add(InlineDrive(letters.firstOrNull { it !in used } ?: "E:", "/storage/emulated/0"))
             },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp)
-        ) { Text("Add") }
+        ) { Text(L10nDict.t("Add")) }
         SSSave {
             val serialized = drives.filter { it.path.isNotBlank() }.joinToString("") {
                 "${it.letter.removeSuffix(":")}:${it.path}"
@@ -259,8 +260,8 @@ private fun SSPanel(indented: Boolean = true, content: @Composable ColumnScope.(
 @Composable
 private fun SSReadOnly(label: String, value: String) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp)) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+        Text(L10nDict.t(label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(L10nDict.t(value), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -274,13 +275,13 @@ private fun SSChoice(label: String, selected: String, entries: Array<String>, on
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(selected, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(L10nDict.t(label), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(L10nDict.t(selected), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Icon(Icons.Outlined.KeyboardArrowDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        if (open) ChoiceSheet(label, entries.map { ChoiceOption(it) }, selected, { onSelected(it.value) }, { open = false })
+        if (open) ChoiceSheet(L10nDict.t(label), entries.map { ChoiceOption(it, L10nDict.t(it)) }, selected, { onSelected(it.value) }, { open = false })
     }
 }
 
@@ -299,11 +300,11 @@ private fun SSCompactChoice(selected: String, entries: Array<String>, onSelected
                 Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(selected, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                Text(L10nDict.t(selected), modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
                 Icon(Icons.Outlined.KeyboardArrowDown, null, modifier = Modifier.size(18.dp))
             }
         }
-        if (open) ChoiceSheet("Choose", entries.map { ChoiceOption(it) }, selected, { onSelected(it.value) }, { open = false })
+        if (open) ChoiceSheet(L10nDict.t("Choose"), entries.map { ChoiceOption(it, L10nDict.t(it)) }, selected, { onSelected(it.value) }, { open = false })
     }
 }
 
@@ -312,7 +313,7 @@ private fun SSSave(onClick: () -> Unit) {
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
-    ) { Text("Save", fontWeight = FontWeight.SemiBold) }
+    ) { Text(L10nDict.t("Save"), fontWeight = FontWeight.SemiBold) }
 }
 
 @Composable

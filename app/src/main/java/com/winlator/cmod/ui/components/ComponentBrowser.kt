@@ -1,5 +1,8 @@
 package com.winlator.cmod.ui.components
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
+import com.winlator.cmod.ui.L10nDict
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -117,9 +120,9 @@ val ALL_COMPONENT_TYPES = listOf(
 )
 
 /** User-facing name of an internal type ("AdrenoTools" -> "GPU driver"). */
-fun componentTypeTitle(type: String): String =
+fun componentTypeTitle(type: String): String = L10nDict.t(
     ALL_COMPONENT_TYPES.firstOrNull { type in it.types && it.types.size == 1 }?.title
-        ?: if (type == GPU_DRIVER) "GPU driver" else type
+        ?: if (type == GPU_DRIVER) "GPU driver" else type)
 
 private const val AUTHOR_ALL = "All"
 private const val AUTHOR_INSTALLED = "Installed"
@@ -195,7 +198,7 @@ fun ComponentBrowser(
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             item {
-                                Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+                                Text(L10nDict.t(title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
                             }
                             items(types, key = { it.key }) { t ->
@@ -256,10 +259,10 @@ private fun TypeList(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                    Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(L10nDict.t(title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text(L10nDict.t(subtitle), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, "Close") }
+                IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, uiStr(R.string.l_qm_close)) }
             }
             Spacer(Modifier.height(6.dp))
         }
@@ -290,9 +293,9 @@ private fun TypeCard(type: ComponentType, items: List<BrowserItem>, loading: Boo
             ) { Icon(type.icon, null, tint = if (selected) scheme.primary else scheme.onSurface) }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(type.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(L10nDict.t(type.title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    if (loading && ofType.isEmpty()) "Loading…" else "$installed installed · $available available",
+                    if (loading && ofType.isEmpty()) uiStr(R.string.l_qm_loading) else uiStr(R.string.l_cb_1_s_installed_2_s_available, installed, available),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant
                 )
@@ -409,18 +412,18 @@ private fun TypePage(
         // Top bar: menu (switch type) on the left, title, close on the right.
         Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (types.size > 1) {
-                IconButton(onClick = onOpenMenu) { Icon(Icons.Outlined.Menu, "Component types") }
+                IconButton(onClick = onOpenMenu) { Icon(Icons.Outlined.Menu, uiStr(R.string.l_cb_component_types)) }
             } else {
                 Spacer(Modifier.width(12.dp))
             }
             Text(
-                type.title,
+                L10nDict.t(type.title),
                 modifier = Modifier.weight(1f).padding(start = 4.dp),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
             )
-            IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, "Close") }
+            IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, uiStr(R.string.l_qm_close)) }
         }
 
         // Author selector, scrolls sideways.
@@ -455,9 +458,9 @@ private fun TypePage(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         when {
-                            type.isGpuDriver -> "Install driver from file (.zip)"
-                            type.isWrapper -> "Install wrapper from file (.tzst)"
-                            else -> "Install from file"
+                            type.isGpuDriver -> uiStr(R.string.l_cb_install_driver_from_file_zip)
+                            type.isWrapper -> uiStr(R.string.l_cb_install_wrapper_from_file_tzst)
+                            else -> uiStr(R.string.l_wrp_install_from_file)
                         }
                     )
                 }
@@ -491,11 +494,11 @@ private fun TypePage(
             }
             when {
                 shown.isNotEmpty() -> Unit
-                loading -> item(key = "loading") { Hint("Loading the list…") }
+                loading -> item(key = "loading") { Hint(uiStr(R.string.l_cb_loading_the_list)) }
                 selectedAuthor == AUTHOR_ALL || selectedAuthor == AUTHOR_INSTALLED || selectedAuthor == AUTHOR_MY_FILES ->
-                    item(key = "empty") { Hint("Nothing here yet.") }
+                    item(key = "empty") { Hint(uiStr(R.string.l_cb_nothing_here_yet)) }
                 else -> item(key = "empty") {
-                    Hint("No saved list from $selectedAuthor yet. Connect to the internet once and it will appear, also offline later.")
+                    Hint(uiStr(R.string.l_cb_no_saved_list_from_1_s, selectedAuthor))
                 }
             }
         }
@@ -527,7 +530,7 @@ private fun AuthorChip(
                 Icon(icon, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
             }
-            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            Text(L10nDict.t(label), style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
     }
 }
@@ -569,15 +572,15 @@ private fun ItemCard(
                         parsed?.tags?.let { addAll(it) }
                         if (parsed == null) VersionGroups.note(item.name)?.let { add(it) }
                         addAll(item.details)
-                        if (fromFile) add("From your files")
-                        if (item.inUse) add("In use")
+                        if (fromFile) add(uiStr(R.string.l_cb_from_your_files))
+                        if (item.inUse) add(uiStr(R.string.l_ob_in_use))
                         else if (item.installed && isEmpty()) add("Installed")
                         if (showAuthor && !item.installed) item.author?.let { add(it) }
                     }.joinToString(" · ")
                     val status = when {
                         tracked -> details
-                        busy && busyProgress >= 0 -> "${busyLabel ?: "Installing"} • $busyProgress%"
-                        busy -> busyLabel ?: "Working…"
+                        busy && busyProgress >= 0 -> "${busyLabel ?: uiStr(R.string.l_ob_installing)} • $busyProgress%"
+                        busy -> busyLabel ?: uiStr(R.string.l_ob_working)
                         else -> details
                     }
                     if (status.isNotEmpty()) {
@@ -585,7 +588,7 @@ private fun ItemCard(
                     }
                     if (group != null) {
                         Text(
-                            VersionGroups.moreLabel(group.more) + if (group.installed > 0) " · ${group.installed} installed" else "",
+                            VersionGroups.moreLabel(group.more) + if (group.installed > 0) uiStr(R.string.l_cb_1_s_installed, group.installed) else "",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary
@@ -598,16 +601,16 @@ private fun ItemCard(
                     item.installed && item.removable -> OutlinedButton(onClick = { onRemove(item) }, enabled = !locked && !item.inUse) {
                         Icon(Icons.Outlined.DeleteOutline, null)
                         Spacer(Modifier.width(5.dp))
-                        Text(if (item.inUse) "In use" else "Delete")
+                        Text(if (item.inUse) uiStr(R.string.l_ob_in_use) else uiStr(R.string.l_set_delete))
                     }
-                    !item.installed -> OutlinedButton(onClick = { onInstall(item) }, enabled = !locked) { Text("Download") }
+                    !item.installed -> OutlinedButton(onClick = { onInstall(item) }, enabled = !locked) { Text(uiStr(R.string.l_lbl_download)) }
                     else -> Icon(Icons.Outlined.Check, null)
                 }
                 if (group != null) {
                     IconButton(onClick = group.onToggle) {
                         Icon(
                             if (group.expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
-                            contentDescription = if (group.expanded) "Hide versions" else "Show versions",
+                            contentDescription = if (group.expanded) uiStr(R.string.l_cb_hide_versions) else uiStr(R.string.l_cb_show_versions),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -631,7 +634,7 @@ private fun ItemCard(
 @Composable
 private fun SectionLabel(text: String) {
     Text(
-        text.uppercase(),
+        L10nDict.t(text).uppercase(),
         modifier = Modifier.padding(start = 4.dp, top = 6.dp),
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.SemiBold,
@@ -649,7 +652,7 @@ private fun Hint(text: String) {
     )
 }
 
-/** Mali profile: "N Adreno-only versions hidden · Show" (or "Hide" when they're shown). */
+/** Mali profile: "N Adreno-only versions hidden · Show" (or uiStr(R.string.l_bench_hide) when they're shown). */
 @Composable
 private fun MaliNotice(hidden: Int, showAll: Boolean, gpuDriver: Boolean, onShowAll: (Boolean) -> Unit) {
     if (!showAll && hidden == 0) return
@@ -658,15 +661,15 @@ private fun MaliNotice(hidden: Int, showAll: Boolean, gpuDriver: Boolean, onShow
         Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 when {
-                    showAll -> "Showing all versions, including Adreno-only ones"
-                    gpuDriver -> "$hidden Turnip / Adreno drivers hidden: on Mali use System or PanVK"
-                    else -> "$hidden Adreno-only versions hidden for your Mali GPU"
+                    showAll -> uiStr(R.string.l_cb_showing_all_versions_including_adreno_only)
+                    gpuDriver -> uiStr(R.string.l_cb_1_s_turnip_adreno_drivers_hidden, hidden)
+                    else -> uiStr(R.string.l_cb_1_s_adreno_only_versions_hidden, hidden)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
-            TextButton(onClick = { onShowAll(!showAll) }) { Text(if (showAll) "Hide" else "Show") }
+            TextButton(onClick = { onShowAll(!showAll) }) { Text(if (showAll) uiStr(R.string.l_bench_hide) else uiStr(R.string.l_bench_show)) }
         }
     }
 }

@@ -79,7 +79,7 @@ class BenchFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         // The toolbar is shared by all tabs; without this it keeps "Library".
-        (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.title = "Benchmark"
+        (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.title = uiStr(R.string.l_nav_benchmark)
         val ctx = context ?: return
         val more = Bench.onReturn(ctx)
         state.value = Bench.load(ctx)
@@ -107,7 +107,7 @@ class BenchFragment : Fragment() {
             if (hot != null && s.running) {
                 if (coolSince == 0L) coolSince = System.currentTimeMillis()
                 if (System.currentTimeMillis() - coolSince < limit) {
-                    cooling.value = "Cooling down: $hot"
+                    cooling.value = uiStr(R.string.l_bench_cooling_down_1_s, hot)
                     scheduleNext(10_000)
                     return@Runnable
                 }
@@ -224,21 +224,18 @@ private fun BenchScreen(
         contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            if (!landscape) Text("Benchmark", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text("Runs YurnBench (CPU, GPU and CPU+GPU, about a minute each, after a warm-up load) with every chosen GPU driver, Vulkan wrapper, DXVK and FEX / Box64. " +
-                "Proton stays the container's. Keep the phone on the charger, screen on.",
+            if (!landscape) Text(uiStr(R.string.l_nav_benchmark), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(uiStr(R.string.l_bench_runs_yurnbench_cpu_gpu_and_cpu),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         if (s != null && (s.running || s.results.isNotEmpty())) {
             item { Progress(s, cooling.value, stop, reset) }
             if (!s.running && !s.long && s.results.any { it.ok }) item {
-                Section("Confirm the best") {
-                    Text((if (s.game != null) "Runs every working bundle 3 times more, measured the same way, cooling down in between, "
-                        else "Runs the 3 best bundles of each API 3 times each with phases 2.5× longer than usual, cooling down in between, ") +
-                        "and shows the average and the spread. Takes about ${Bench.confirmation(s).size * (if (s.game != null) 4 else 5) / 2} min.",
+                Section(uiStr(R.string.l_bench_confirm_the_best)) {
+                    Text(uiStr(if (s.game != null) R.string.l_bench_runs_every_working_bundle_3_times else R.string.l_bench_confirm_api, Bench.confirmation(s).size * (if (s.game != null) 4 else 5) / 2),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = { start(s.containerId, Bench.confirmation(s), true, s.wrapper, s.game) }) { Text("Confirm best (long runs)") }
+                    Button(onClick = { start(s.containerId, Bench.confirmation(s), true, s.wrapper, s.game) }) { Text(uiStr(R.string.l_bench_confirm_best_long_runs)) }
                 }
             }
             listOf(Combo.API11 to "DX11 (DXVK)", Combo.API12 to "DX12 (VKD3D)").forEach { (api, title) ->
@@ -247,7 +244,7 @@ private fun BenchScreen(
                 val groups = Bench.aggregate(runs)
                 val bestGroup = groups.firstOrNull { it.ok.isNotEmpty() }
                 val bestKey = bestGroup?.combo?.key
-                item { Text(title + if (s.long) " · confirmation, ${groups.firstOrNull()?.runs?.size ?: 0} runs each" else "",
+                item { Text(title + if (s.long) uiStr(R.string.l_bench_confirmation_1_s_runs_each, groups.firstOrNull()?.runs?.size ?: 0) else "",
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
                 items(groups.size) { i ->
                     val g = groups[i]
@@ -256,22 +253,21 @@ private fun BenchScreen(
                     ResultCard(shown, g.combo.key == bestKey, if (g.runs.size > 1) g else null, tie, s.game != null) {
                         val game = s.game
                         if (game != null) {
-                            if (Bench.applyToGame(game, g.combo)) Toast.makeText(context, "Applied to ${game.name}", Toast.LENGTH_SHORT).show()
-                        } else if (Bench.apply(context, s.containerId, g.combo)) Toast.makeText(context, "Applied to the container", Toast.LENGTH_SHORT).show()
+                            if (Bench.applyToGame(game, g.combo)) Toast.makeText(context, uiStr(R.string.l_bench_applied_to_1_s, game.name), Toast.LENGTH_SHORT).show()
+                        } else if (Bench.apply(context, s.containerId, g.combo)) Toast.makeText(context, uiStr(R.string.l_bench_applied_to_the_container), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
             if (s.running) return@LazyColumn
-            item { Spacer(Modifier.height(8.dp)); Text("New series", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+            item { Spacer(Modifier.height(8.dp)); Text(uiStr(R.string.l_bench_new_series), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
         }
 
         item {
             var rootOn by remember { mutableStateOf(RootMode.enabled(context)) }
             var checking by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
-            Section("Precise measurements (root)") {
-                Text("With root: real CPU cycles and instructions (Android's simpleperf) and the GPU clock and load " +
-                    "the system hides from apps. Without root: the game's own CPU time and the CPU clocks.",
+            Section(uiStr(R.string.l_bench_precise_measurements_root)) {
+                Text(uiStr(R.string.l_bench_with_root_real_cpu_cycles_and),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(if (rootOn) "On" else "Off", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
@@ -283,14 +279,14 @@ private fun BenchScreen(
                             val ok = withContext(Dispatchers.IO) { RootMode.available() }
                             checking = false
                             if (ok) { rootOn = true; RootMode.setEnabled(context, true) }
-                            else Toast.makeText(context, "No root access (or it was denied)", Toast.LENGTH_LONG).show()
+                            else Toast.makeText(context, uiStr(R.string.l_bench_no_root_access_or_it_was), Toast.LENGTH_LONG).show()
                         }
                     })
                 }
             }
         }
         item {
-            Section("Container (its Proton stays for the whole series)") {
+            Section(uiStr(R.string.l_bench_container_its_proton_stays_for_the)) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     containers.forEach { c ->
                         FilterChip(selected = container?.id == c.id, onClick = { container = c },
@@ -300,16 +296,16 @@ private fun BenchScreen(
             }
         }
         item {
-            Section("What to run") {
+            Section(uiStr(R.string.l_bench_what_to_run)) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = !gameMode, onClick = { gameMode = false }, label = { Text("YurnBench") })
-                    FilterChip(selected = gameMode, onClick = { gameMode = true }, label = { Text("A game") })
+                    FilterChip(selected = gameMode, onClick = { gameMode = true }, label = { Text(uiStr(R.string.l_bench_a_game)) })
                 }
                 if (gameMode) {
                     val games = remember(container?.id) {
                         runCatching { ContainerManager(context).loadShortcuts().filter { it.container.id == container?.id } }.getOrDefault(emptyList())
                     }
-                    if (games.isEmpty()) Text("No games in this container.", style = MaterialTheme.typography.bodySmall)
+                    if (games.isEmpty()) Text(uiStr(R.string.l_bench_no_games_in_this_container), style = MaterialTheme.typography.bodySmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         games.forEach { g ->
                             FilterChip(selected = gamePath == g.file.path, onClick = {
@@ -324,9 +320,9 @@ private fun BenchScreen(
                     }
                     if (gamePath.isNotEmpty()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(gamePreset?.let { "Built-in benchmark: ${it.title}" } ?: "No known benchmark: your arguments, or a scene",
+                            Text(gamePreset?.let { uiStr(R.string.l_bench_built_in_benchmark_1_s, it.title) } ?: uiStr(R.string.l_bench_no_known_benchmark_your_arguments_or),
                                 Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                            TextButton(onClick = { showPresets = !showPresets }) { Text(if (showPresets) "Hide" else "Presets") }
+                            TextButton(onClick = { showPresets = !showPresets }) { Text(if (showPresets) uiStr(R.string.l_bench_hide) else uiStr(R.string.l_bench_presets)) }
                         }
                         if (showPresets) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BenchPreset.ALL.forEach { p ->
@@ -335,29 +331,26 @@ private fun BenchScreen(
                                 }, label = { Text(p.title) })
                             }
                             FilterChip(selected = gamePreset == null, onClick = { gamePreset = null; gameArgs = ""; showPresets = false },
-                                label = { Text("Custom") })
+                                label = { Text(uiStr(R.string.l_qm_custom)) })
                         }
                         gamePreset?.note?.takeIf { it.isNotEmpty() }?.let {
                             Text(it, style = MaterialTheme.typography.bodySmall, color = Color(0xFFE3B341))
                         }
                         androidx.compose.material3.OutlinedTextField(value = gameArgs, onValueChange = { gameArgs = it },
-                            label = { Text("Benchmark arguments (after the game's own)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            label = { Text(uiStr(R.string.l_bench_benchmark_arguments_after_the_game_s)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Measure until the game ends (its benchmark quits by itself)", Modifier.weight(1f),
+                            Text(uiStr(R.string.l_bench_measure_until_the_game_ends_its), Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodySmall)
                             Switch(checked = gameUntilEnd, onCheckedChange = { gameUntilEnd = it })
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             androidx.compose.material3.OutlinedTextField(value = gameWarmup, onValueChange = { gameWarmup = it.filter(Char::isDigit).take(3) },
-                                label = { Text("Warm-up, s") }, singleLine = true, modifier = Modifier.weight(1f))
+                                label = { Text(uiStr(R.string.l_bench_warm_up_s)) }, singleLine = true, modifier = Modifier.weight(1f))
                             if (!gameUntilEnd) androidx.compose.material3.OutlinedTextField(value = gameMeasure, onValueChange = { gameMeasure = it.filter(Char::isDigit).take(3) },
-                                label = { Text("Measure, s") }, singleLine = true, modifier = Modifier.weight(1f))
+                                label = { Text(uiStr(R.string.l_bench_measure_s)) }, singleLine = true, modifier = Modifier.weight(1f))
                         }
                     }
-                    Text("The FPS and 1% / 0.1% lows are measured by our HUD from when the game renders, after the warm-up. " +
-                        "A game's own benchmark is found by its .exe (Presets for the list, or type your own arguments). " +
-                        "A benchmark that quits by itself is measured to its end, so every run covers the same scenes. " +
-                        "Other games: whatever is on screen is measured (a menu scene, a loaded save), so keep it the same between runs.",
+                    Text(uiStr(R.string.l_bench_the_fps_and_1_0_1),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -368,10 +361,10 @@ private fun BenchScreen(
             val containerWrapper = container?.let {
                 Regex("(?:^|;)wrapper=([^;]*)").find(it.getGraphicsDriverConfig().orEmpty())?.groupValues?.get(1)
             }.orEmpty()
-            Section("Vulkan wrappers (${wrappers.size.coerceAtLeast(1)})") {
+            Section(uiStr(R.string.l_bench_vulkan_wrappers_1_s, wrappers.size.coerceAtLeast(1))) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = wrappers.isEmpty(), onClick = { wrappers.clear() },
-                        label = { Text("Container's" + (installed.firstOrNull { it.id == containerWrapper }?.let { " (${it.name})" } ?: "")) })
+                        label = { Text(uiStr(R.string.l_bench_container_s) + (installed.firstOrNull { it.id == containerWrapper }?.let { " (${it.name})" } ?: "")) })
                     installed.forEach { w ->
                         FilterChip(selected = w.id in wrappers, onClick = { if (w.id in wrappers) wrappers.remove(w.id) else wrappers.add(w.id) },
                             label = { Text(w.name + (w.author?.let { " · $it" } ?: "")) })
@@ -383,8 +376,8 @@ private fun BenchScreen(
         if (container != null && ch == null) item { CircularProgressIndicator(Modifier.size(24.dp)) }
         if (ch != null) {
             item {
-                Section("GPU drivers (${drivers.size})") {
-                    if (ch.drivers.isEmpty()) Text("No installed drivers.", style = MaterialTheme.typography.bodySmall)
+                Section(uiStr(R.string.l_bench_gpu_drivers_1_s, drivers.size)) {
+                    if (ch.drivers.isEmpty()) Text(uiStr(R.string.l_bench_no_installed_drivers), style = MaterialTheme.typography.bodySmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ch.drivers.forEach { (id, label) ->
                             FilterChip(selected = id in drivers, onClick = { if (id in drivers) drivers.remove(id) else drivers.add(id) }, label = { Text(label) })
@@ -398,13 +391,13 @@ private fun BenchScreen(
                         FilterChip(selected = dx11, onClick = { dx11 = !dx11 }, label = { Text("DX11 (DXVK)") })
                         FilterChip(selected = dx12, onClick = { dx12 = !dx12 }, label = { Text("DX12 (VKD3D)") })
                     }
-                    if (dx12) Text("DX12 runs use the container's DXVK for presenting and compare the VKD3D versions.",
+                    if (dx12) Text(uiStr(R.string.l_bench_dx12_runs_use_the_container_s),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (dx12) item {
                 Section("VKD3D (${vkd3ds.size})") {
-                    if (ch.vkd3d.isEmpty()) Text("No installed VKD3D.", style = MaterialTheme.typography.bodySmall)
+                    if (ch.vkd3d.isEmpty()) Text(uiStr(R.string.l_bench_no_installed_vkd3d), style = MaterialTheme.typography.bodySmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ch.vkd3d.forEach { v -> FilterChip(selected = v in vkd3ds, onClick = { if (v in vkd3ds) vkd3ds.remove(v) else vkd3ds.add(v) }, label = { Text(v) }) }
                     }
@@ -447,29 +440,29 @@ private fun BenchScreen(
                 // A game: loading (~1.5 min) + warm-up + measuring (a built-in benchmark ~2 min) per run.
                 val perRun = if (game != null) 90 + game.warmup + (if (game.measure == BenchGame.UNTIL_END) 120 else game.measure) else 80
                 val minutes = ((combos.size - known) * perRun + 60 + 59) / 60
-                Text("${combos.size} bundles" + (if (known > 0) ", $known skipped as known conflicts" else "") +
-                    ", about $minutes min." + if (combos.size - known > 24) " Large series: pick fewer for a first try." else "",
+                Text(uiStr(R.string.l_bench_bundles_1_s, combos.size) + (if (known > 0) uiStr(R.string.l_bench_known_skipped, known) else "") +
+                    uiStr(R.string.l_bench_about_min, minutes) + if (combos.size - known > 24) uiStr(R.string.l_bench_large_series) else "",
                     style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(8.dp))
                 Button(enabled = combos.isNotEmpty() && s?.running != true && container != null && (!gameMode || game != null), onClick = {
                     start(container!!.id, combos, false, "", game)
-                }) { Text("Start") }
+                }) { Text(uiStr(R.string.l_bench_start)) }
             }
         }
         val proton = container?.getWineVersion().orEmpty()
         val mine = conflicts.filter { it.proton == proton }
         if (mine.isNotEmpty()) item {
-            Section("Known conflicts with this Proton (${mine.size}): not run again") {
+            Section(uiStr(R.string.l_bench_known_conflicts_with_this_proton_1, mine.size)) {
                 mine.forEach { c ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(c.label, style = MaterialTheme.typography.bodyMedium)
                             Text(c.reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                         }
-                        TextButton(onClick = { Bench.forgetConflict(context, c); conflicts = Bench.conflicts(context) }) { Text("Retry") }
+                        TextButton(onClick = { Bench.forgetConflict(context, c); conflicts = Bench.conflicts(context) }) { Text(uiStr(R.string.l_bench_retry)) }
                     }
                 }
-                TextButton(onClick = { Bench.forgetConflicts(context); conflicts = emptyList() }) { Text("Forget all conflicts") }
+                TextButton(onClick = { Bench.forgetConflicts(context); conflicts = emptyList() }) { Text(uiStr(R.string.l_bench_forget_all_conflicts)) }
             }
         }
         item { TestLogSection() }
@@ -491,14 +484,14 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun Progress(s: BenchState, cooling: String?, stop: () -> Unit, reset: () -> Unit) {
-    Section((if (s.long) "Confirmation. " else "") +
-        if (s.running) "Running: ${minOf(s.next + 1, s.combos.size)} of ${s.combos.size}" else "Series: ${s.results.size} of ${s.combos.size} done") {
+    Section((if (s.long) uiStr(R.string.l_bench_confirmation_prefix) else "") +
+        if (s.running) uiStr(R.string.l_bench_running_1_s_of_2_s, minOf(s.next + 1, s.combos.size), s.combos.size) else uiStr(R.string.l_bench_series_done, s.results.size, s.combos.size)) {
         cooling?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Color(0xFF58A6FF)) }
         LinearProgressIndicator(progress = { if (s.combos.isEmpty()) 0f else s.results.size.toFloat() / s.combos.size }, modifier = Modifier.fillMaxWidth())
-        if (s.running) s.combos.getOrNull(s.next)?.let { Text("Next: " + it.label, style = MaterialTheme.typography.bodySmall) }
+        if (s.running) s.combos.getOrNull(s.next)?.let { Text(uiStr(R.string.l_bench_next_1_s, it.label), style = MaterialTheme.typography.bodySmall) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (s.running) OutlinedButton(onClick = stop) { Text("Stop") }
-            TextButton(onClick = reset) { Text("Clear results") }
+            if (s.running) OutlinedButton(onClick = stop) { Text(uiStr(R.string.l_bench_stop)) }
+            TextButton(onClick = reset) { Text(uiStr(R.string.l_bench_clear_results)) }
         }
     }
 }
@@ -515,18 +508,18 @@ private fun ResultCard(r: RunResult, best: Boolean, agg: Bench.Aggregate?, tie: 
                     color = when { r.ok -> MaterialTheme.colorScheme.primary; r.status == "skipped" -> MaterialTheme.colorScheme.onSurfaceVariant
                         else -> MaterialTheme.colorScheme.error })
             }
-            if (tie) Text("≈ as good as the best: within 1%, the run-to-run noise", style = MaterialTheme.typography.bodySmall, color = Color(0xFF3FB950))
-            if (agg != null) Text("Average of ${agg.ok.size} of ${agg.runs.size} runs: ${agg.min}–${agg.max} (±${agg.spreadPercent}%)" +
-                (if (agg.ok.size < agg.runs.size) " · ${agg.runs.size - agg.ok.size} failed" else "") + ". Details: the best run.",
+            if (tie) Text(uiStr(R.string.l_bench_as_good_as_the_best_within), style = MaterialTheme.typography.bodySmall, color = Color(0xFF3FB950))
+            if (agg != null) Text(uiStr(R.string.l_bench_average_of_1_s_of_2, agg.ok.size, agg.runs.size, agg.min, agg.max, agg.spreadPercent) +
+                (if (agg.ok.size < agg.runs.size) uiStr(R.string.l_bench_failed_n, agg.runs.size - agg.ok.size) else "") + uiStr(R.string.l_bench_details_best),
                 style = MaterialTheme.typography.bodySmall, color = Color(0xFF58A6FF))
             if (r.ok && game) {
-                Text("Game ${f(r.mix.avg)} FPS (1% low ${f(r.mix.low1)}" +
-                    (r.telemetry.optDouble("game_low01", 0.0).takeIf { it > 0 }?.let { ", 0.1% low ${f(it)}" } ?: "") + ")",
+                Text(uiStr(R.string.l_bench_game_1_s_fps_1_low, f(r.mix.avg), f(r.mix.low1)) +
+                    (r.telemetry.optDouble("game_low01", 0.0).takeIf { it > 0 }?.let { uiStr(R.string.l_bench_0_1_low_1_s, f(it)) } ?: "") + ")",
                     style = MaterialTheme.typography.bodySmall)
                 if (r.detail.isNotBlank()) Text(r.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(clocks(r), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Battery ${f(r.tempBefore.toDouble())}→${f(r.tempAfter.toDouble())} °C" +
-                    (if (r.maxCpuTemp > 0) " · CPU up to ${r.maxCpuTemp} °C" else ""),
+                Text(uiStr(R.string.l_bench_battery_1_s_2_s_c, f(r.tempBefore.toDouble()), f(r.tempAfter.toDouble())) +
+                    (if (r.maxCpuTemp > 0) uiStr(R.string.l_bench_cpu_up_to_1_s_c, r.maxCpuTemp) else ""),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else if (r.ok) {
                 Text("GPU ${f(r.gpu.avg)} FPS (1% low ${f(r.gpu.low1)}) · CPU+GPU ${f(r.mix.avg)} FPS (1% low ${f(r.mix.low1)})",
@@ -538,19 +531,19 @@ private fun ResultCard(r: RunResult, best: Boolean, agg: Bench.Aggregate?, tie: 
                     style = MaterialTheme.typography.bodySmall)
                 Text("CPU ${r.cpuSt.toInt()} / ${r.cpuMt.toInt()} Mops (1 core / all)" +
                     (if (r.cpuPerMcycle > 0) " · ${String.format("%.2f", r.cpuPerMcycle)} ops per CPU cycle" +
-                        when (r.cyclesSource) { "hw" -> " (hardware counters)"; "busy" -> " (game's CPU time)"; else -> " (from clocks)" } else ""),
+                        when (r.cyclesSource) { "hw" -> uiStr(R.string.l_bench_hardware_counters); "busy" -> uiStr(R.string.l_bench_game_s_cpu_time); else -> uiStr(R.string.l_bench_from_clocks) } else ""),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 cpuUse(r)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 Text(clocks(r), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (r.throttlePercent >= 3) Text("Throttled: ~${r.scoreFullClocks} at full clocks (+${r.throttlePercent}%), an estimate",
+                if (r.throttlePercent >= 3) Text(uiStr(R.string.l_bench_throttled_1_s_at_full_clocks, r.scoreFullClocks, r.throttlePercent),
                     style = MaterialTheme.typography.bodySmall, color = Color(0xFFE3B341))
-                Text("Battery ${f(r.tempBefore.toDouble())}→${f(r.tempAfter.toDouble())} °C" +
-                    (if (r.maxCpuTemp > 0) " · CPU up to ${r.maxCpuTemp} °C" else "") + (if (r.adapter.isNotBlank()) " · ${r.adapter}" else ""),
+                Text(uiStr(R.string.l_bench_battery_1_s_2_s_c, f(r.tempBefore.toDouble()), f(r.tempAfter.toDouble())) +
+                    (if (r.maxCpuTemp > 0) uiStr(R.string.l_bench_cpu_up_to_1_s_c, r.maxCpuTemp) else "") + (if (r.adapter.isNotBlank()) " · ${r.adapter}" else ""),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else if (r.detail.isNotBlank()) Text(r.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (best) Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Best", color = Color(0xFF3FB950), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                TextButton(onClick = apply) { Text(if (game) "Apply to the game" else "Apply to container") }
+                Text(uiStr(R.string.l_bench_best), color = Color(0xFF3FB950), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                TextButton(onClick = apply) { Text(if (game) uiStr(R.string.l_bench_apply_to_the_game) else uiStr(R.string.l_bench_apply_to_container)) }
             }
         }
     }
@@ -567,7 +560,7 @@ private fun clocks(r: RunResult): String {
     else r.gpuBusy("gpu").takeIf { it >= 0 }?.let { parts += "GPU busy ${it.toInt()}%" }
     val c = r.cpuMhz("cpu")
     if (c > 0) parts += "CPU ${String.format("%.2f", c / 1000)} GHz" + (r.cpuMtRatio?.let { " (${(it * 100).toInt()}%)" } ?: "")
-    return if (parts.isEmpty()) "Clocks: not readable on this phone" else parts.joinToString(" · ")
+    return if (parts.isEmpty()) uiStr(R.string.l_bench_clocks_not_readable_on_this_phone) else parts.joinToString(" · ")
 }
 
 /** "Game CPU: 87% of all cores, 21.4 s CPU time · IPC 1.42" from the CPU and CPU+GPU phases. */
@@ -588,8 +581,8 @@ private fun HistorySection() {
     var history by remember { mutableStateOf(Bench.history(context)) }
     var open by remember { mutableStateOf(false) }
     if (history.isEmpty()) return
-    Section("History of best bundles (${history.size})") {
-        TextButton(onClick = { open = !open }) { Text(if (open) "Hide" else "Show") }
+    Section(uiStr(R.string.l_bench_history_of_best_bundles_1_s, history.size)) {
+        TextButton(onClick = { open = !open }) { Text(if (open) uiStr(R.string.l_bench_hide) else uiStr(R.string.l_bench_show)) }
         if (open) {
             val fmt = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT)
             history.forEach { h ->
@@ -601,12 +594,12 @@ private fun HistorySection() {
                         Text("${h.score}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                     Text(listOf(fmt.format(java.util.Date(h.date * 1000)),
-                        if (h.long) "confirmed, ${h.runs} runs ±${h.spread}%" else "best of ${h.bundles}",
+                        if (h.long) uiStr(R.string.l_bench_confirmed_1_s_runs_2_s, h.runs, h.spread) else uiStr(R.string.l_bench_best_of_1_s, h.bundles),
                         "GPU ${h.gpuFps.toInt()} · CPU+GPU ${f(h.mixFps)} FPS", h.container + " · " + h.proton)
                         .joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            TextButton(onClick = { Bench.clearHistory(context); history = emptyList() }) { Text("Clear history") }
+            TextButton(onClick = { Bench.clearHistory(context); history = emptyList() }) { Text(uiStr(R.string.l_bench_clear_history)) }
         }
     }
 }
@@ -623,15 +616,15 @@ private fun TestLogSection() {
     val filters = remember { mutableStateMapOf<String, Set<String>>() }
     val dims: List<Pair<String, (Bench.LoggedRun) -> String>> = listOf(
         "API" to { e -> if (e.run.combo.dx12) "DX12" else "DX11" },
-        "Driver" to { e -> e.run.combo.driverLabel },
-        "Wrapper" to { e -> e.run.combo.wrapperLabel.ifEmpty { "Container's" } },
+        uiStr(R.string.l_bench_driver) to { e -> e.run.combo.driverLabel },
+        uiStr(R.string.l_bench_wrapper) to { e -> e.run.combo.wrapperLabel.ifEmpty { uiStr(R.string.l_bench_container_s) } },
         "DXVK / VKD3D" to { e -> e.run.combo.layer },
         "FEX / Box64" to { e -> (if (e.run.combo.emulator == "FEXCore") "FEX " else "Box64 ") + e.run.combo.emulatorVersion },
         "Proton" to { e -> e.proton.ifEmpty { "?" } },
-        "Container" to { e -> e.container.ifEmpty { "?" } },
+        uiStr(R.string.l_bench_container) to { e -> e.container.ifEmpty { "?" } },
     )
-    Section("Test history (${log.size} runs)") {
-        TextButton(onClick = { open = !open }) { Text(if (open) "Hide" else "Show") }
+    Section(uiStr(R.string.l_bench_test_history_1_s_runs, log.size)) {
+        TextButton(onClick = { open = !open }) { Text(if (open) uiStr(R.string.l_bench_hide) else uiStr(R.string.l_bench_show)) }
         if (open) {
             dims.forEach { (name, key) ->
                 val values = log.map(key).distinct().sorted()
@@ -646,9 +639,9 @@ private fun TestLogSection() {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                FilterChip(selected = failed, onClick = { failed = !failed }, label = { Text("Show failed") })
+                FilterChip(selected = failed, onClick = { failed = !failed }, label = { Text(uiStr(R.string.l_bench_show_failed)) })
                 Spacer(Modifier.width(8.dp))
-                if (filters.values.any { it.isNotEmpty() }) TextButton(onClick = { filters.clear() }) { Text("Reset filters") }
+                if (filters.values.any { it.isNotEmpty() }) TextButton(onClick = { filters.clear() }) { Text(uiStr(R.string.l_bench_reset_filters)) }
             }
             val shown = log.filter { e ->
                 (failed || e.run.ok) && dims.all { (name, key) -> filters[name].orEmpty().let { it.isEmpty() || key(e) in it } }
@@ -659,7 +652,7 @@ private fun TestLogSection() {
                 Triple(runs, if (ok.isEmpty()) -1 else ok.average().toInt(), ok)
             }.sortedByDescending { it.second }
             val fmt = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT)
-            Text("${groups.size} bundles, ${shown.size} runs", style = MaterialTheme.typography.bodySmall)
+            Text(uiStr(R.string.l_bench_1_s_bundles_2_s_runs, groups.size, shown.size), style = MaterialTheme.typography.bodySmall)
             groups.take(100).forEach { (runs, avg, ok) ->
                 val last = runs.maxBy { it.date }
                 Column(Modifier.padding(vertical = 4.dp)) {
@@ -671,12 +664,12 @@ private fun TestLogSection() {
                             color = if (avg >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                     }
                     val spread = if (ok.size > 1) " (${ok.min()}–${ok.max()})" else ""
-                    Text(listOf("${runs.size} run" + (if (runs.size > 1) "s" else "") + spread,
-                        "last " + fmt.format(java.util.Date(last.date * 1000)), last.container + " · " + last.proton)
+                    Text(listOf(uiStr(R.string.l_bench_runs_1_s, runs.size) + spread,
+                        uiStr(R.string.l_bench_last) + fmt.format(java.util.Date(last.date * 1000)), last.container + " · " + last.proton)
                         .joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            TextButton(onClick = { Bench.clearRunLog(context); log = emptyList() }) { Text("Clear test history") }
+            TextButton(onClick = { Bench.clearRunLog(context); log = emptyList() }) { Text(uiStr(R.string.l_bench_clear_test_history)) }
         }
     }
 }

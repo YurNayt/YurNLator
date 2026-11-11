@@ -1,5 +1,7 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.ui.UiStrings;
+import com.winlator.cmod.R;
 import static androidx.core.content.ContextCompat.getSystemService;
 
 import android.app.Activity;
@@ -202,16 +204,16 @@ public class ShortcutsFragment extends Fragment {
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
 
-        MenuItem viewItem = menu.add(0, MENU_VIEW_MODE, 0, isGridView ? "List View" : "Grid View");
+        MenuItem viewItem = menu.add(0, MENU_VIEW_MODE, 0, isGridView ? UiStrings.get(R.string.l_sc_list_view) : UiStrings.get(R.string.l_sc_grid_view));
         viewItem.setIcon(R.drawable.ui_ic_view);
         viewItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 
-        MenuItem searchItem = menu.add(0, MENU_SEARCH, 1, "Search");
+        MenuItem searchItem = menu.add(0, MENU_SEARCH, 1, UiStrings.get(R.string.l_sc_search));
         searchItem.setIcon(R.drawable.ui_ic_search);
         searchItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS |
                 MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW);
         SearchView searchView = new SearchView(requireContext());
-        searchView.setQueryHint("Search games");
+        searchView.setQueryHint(UiStrings.get(R.string.l_sc_search_games));
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -227,23 +229,23 @@ public class ShortcutsFragment extends Fragment {
         });
         searchItem.setActionView(searchView);
 
-        MenuItem addItem = menu.add(0, MENU_FILE_MANAGER, 2, "Open File Manager");
+        MenuItem addItem = menu.add(0, MENU_FILE_MANAGER, 2, UiStrings.get(R.string.l_sc_open_file_manager));
         addItem.setIcon(R.drawable.ui_ic_add);
         addItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 
         MainActivity activity = (MainActivity) requireActivity();
-        SubMenu moreMenu = menu.addSubMenu(0, MENU_MORE, 3, "More");
+        SubMenu moreMenu = menu.addSubMenu(0, MENU_MORE, 3, UiStrings.get(R.string.l_sc_more));
         MenuItem moreItem = moreMenu.getItem();
         moreItem.setIcon(R.drawable.ui_ic_more);
         moreItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 
-        moreMenu.add(MENU_GROUP_LOCK, MENU_LOCK_ORIENTATION, 0, "Lock screen orientation")
+        moreMenu.add(MENU_GROUP_LOCK, MENU_LOCK_ORIENTATION, 0, UiStrings.get(R.string.l_lib_lock_screen_orientation))
                 .setCheckable(true)
                 .setChecked(activity.isOrientationLocked());
-        moreMenu.add(MENU_GROUP_ORIENTATION_MODE, MENU_VERTICAL_MODE, 1, "Vertical mode")
+        moreMenu.add(MENU_GROUP_ORIENTATION_MODE, MENU_VERTICAL_MODE, 1, UiStrings.get(R.string.l_lib_vertical_mode))
                 .setCheckable(true)
                 .setChecked(activity.isVerticalModeEnabled());
-        moreMenu.add(MENU_GROUP_ORIENTATION_MODE, MENU_HORIZONTAL_MODE, 2, "Horizontal mode")
+        moreMenu.add(MENU_GROUP_ORIENTATION_MODE, MENU_HORIZONTAL_MODE, 2, UiStrings.get(R.string.l_lib_horizontal_mode))
                 .setCheckable(true)
                 .setChecked(activity.isHorizontalModeEnabled());
         moreMenu.setGroupCheckable(MENU_GROUP_LOCK, true, false);
@@ -564,11 +566,11 @@ public class ShortcutsFragment extends Fragment {
                 while ((length = is.read(buffer)) > 0) os.write(buffer, 0, length);
             }
 
-            Toast.makeText(getContext(), "Icon updated!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_sc_icon_updated), Toast.LENGTH_SHORT).show();
             loadShortcutsList();
 
         } catch (Exception e) {
-            Toast.makeText(getContext(), "Error saving icon", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), UiStrings.get(R.string.l_sc_error_saving_icon), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -669,11 +671,11 @@ public class ShortcutsFragment extends Fragment {
                 boolean fileDeleted = shortcut.remove();
 
                 if (!fileDeleted) {
-                    Toast.makeText(context, "Couldn't remove the shortcut's files", Toast.LENGTH_LONG).show();
+                    Toast.makeText(context, UiStrings.get(R.string.l_sc_couldn_t_remove_the_shortcut_s), Toast.LENGTH_LONG).show();
                 } else {
                     disableShortcutOnScreen(requireContext(), shortcut);
                     loadShortcutsList();
-                    Toast.makeText(context, "Shortcut removed.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, UiStrings.get(R.string.l_sc_shortcut_removed), Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -681,14 +683,14 @@ public class ShortcutsFragment extends Fragment {
             ContainerManager containerManager = new ContainerManager(context);
             ArrayList<Container> containers = containerManager.getContainers();
             AlertDialog.Builder builder = new AlertDialog.Builder(context);
-            builder.setTitle("Select a container");
+            builder.setTitle(UiStrings.get(R.string.l_sc_select_a_container));
             String[] containerNames = new String[containers.size()];
             for (int i = 0; i < containers.size(); i++) {
                 containerNames[i] = containers.get(i).getName();
             }
             builder.setItems(containerNames, (dialog, which) -> {
                 if (shortcut.cloneToContainer(containers.get(which))) {
-                    Toast.makeText(context, "Cloned successfully.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, UiStrings.get(R.string.l_sc_cloned_successfully), Toast.LENGTH_SHORT).show();
                     loadShortcutsList();
                 }
             });

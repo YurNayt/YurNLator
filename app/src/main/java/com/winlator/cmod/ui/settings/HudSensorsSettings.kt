@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -43,10 +45,10 @@ fun HudSensorsCard() {
 
     fun test() {
         busy = true
-        status = "Reading…"
+        status = uiStr(R.string.l_hs_reading)
         scope.launch {
             val s = withContext(Dispatchers.IO) { HudSensorFeed.probe(context) }
-            status = if (s == null) "No access: the shell didn't start."
+            status = if (s == null) uiStr(R.string.l_hs_no_access_the_shell_didn_t)
                      else "CPU ${s.cpuText()}\nGPU ${s.gpuText()}"
             busy = false
         }
@@ -57,22 +59,22 @@ fun HudSensorsCard() {
         when (want) {
             HudSensorAccess.OFF -> { mode = want; HudSensorAccess.setMode(context, want); status = "" }
             HudSensorAccess.ROOT -> {
-                busy = true; status = "Asking for root…"
+                busy = true; status = uiStr(R.string.l_hs_asking_for_root)
                 scope.launch {
                     val ok = withContext(Dispatchers.IO) { RootMode.available() }
                     busy = false
                     if (ok) { mode = want; HudSensorAccess.setMode(context, want); test() }
-                    else status = "Root wasn't granted (no su, or the root manager refused)."
+                    else status = uiStr(R.string.l_hs_root_wasn_t_granted_no_su)
                 }
             }
             HudSensorAccess.ADB -> when (HudSensorAccess.shizukuState()) {
-                0 -> status = "Shizuku isn't running. Install Shizuku, start it (wireless debugging or adb), then pick ADB again."
+                0 -> status = uiStr(R.string.l_hs_shizuku_isn_t_running_install_shizuku)
                 1 -> {
-                    status = "Allow YurNLator in Shizuku's dialog…"
+                    status = uiStr(R.string.l_hs_allow_yurnlator_in_shizuku_s_dialog)
                     HudSensorAccess.requestShizuku { granted ->
                         scope.launch {
                             if (granted) { mode = want; HudSensorAccess.setMode(context, want); test() }
-                            else status = "Shizuku permission was denied."
+                            else status = uiStr(R.string.l_hs_shizuku_permission_was_denied)
                         }
                     }
                 }
@@ -88,19 +90,18 @@ fun HudSensorsCard() {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.padding(horizontal = 15.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Precise sensors", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            Text(uiStr(R.string.l_hs_precise_sensors), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             Text(
-                "Android hides the real CPU load, GPU load and clocks, and most temperatures from apps. " +
-                    "With root or ADB rights (through Shizuku) both HUDs and MangoHud show them. Applies from the next game start.",
+                uiStr(R.string.l_hs_android_hides_the_real_cpu_load),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(HudSensorAccess.OFF to "Off", HudSensorAccess.ROOT to "Root", HudSensorAccess.ADB to "ADB (Shizuku)").forEach { (key, label) ->
+                listOf(HudSensorAccess.OFF to uiStr(R.string.l_qm_off), HudSensorAccess.ROOT to "Root", HudSensorAccess.ADB to "ADB (Shizuku)").forEach { (key, label) ->
                     FilterChip(selected = mode == key, onClick = { choose(key) }, label = { Text(label) }, enabled = !busy)
                 }
             }
             if (mode != HudSensorAccess.OFF) {
-                OutlinedButton(onClick = { test() }, enabled = !busy) { Text("Test") }
+                OutlinedButton(onClick = { test() }, enabled = !busy) { Text(uiStr(R.string.l_hs_test)) }
             }
             if (status.isNotEmpty()) {
                 Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

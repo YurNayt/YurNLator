@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.components
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,7 +73,7 @@ fun rememberWrapperItems(onInstalled: (String) -> Unit = {}): WrapperItems {
             removable = w.id != WrapperManager.BUILTIN_ID && !WrapperManager.isBundled(w.id),
             localKey = LocalInstalls.key(WrapperManager.TYPE, w.id),
             details = listOfNotNull(
-                if (w.id == WrapperManager.BUILTIN_ID || WrapperManager.isBundled(w.id)) "Comes with the app" else null,
+                if (w.id == WrapperManager.BUILTIN_ID || WrapperManager.isBundled(w.id)) uiStr(R.string.l_wrp_comes_with_the_app) else null,
                 WrapperManager.targetsLabel(w.targets)
             )
         )
@@ -95,7 +97,7 @@ fun rememberWrapperItems(onInstalled: (String) -> Unit = {}): WrapperItems {
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val id = withContext(Dispatchers.IO) { WrapperManager.installFromFile(context, uri) }
-            if (id == null) Toast.makeText(context, "Not a wrapper archive (.tzst)", Toast.LENGTH_LONG).show()
+            if (id == null) Toast.makeText(context, uiStr(R.string.l_wrp_not_a_wrapper_archive_tzst), Toast.LENGTH_LONG).show()
             else onInstalled(id)
         }
     }

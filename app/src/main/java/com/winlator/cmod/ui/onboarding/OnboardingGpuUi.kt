@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.onboarding
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,9 +50,9 @@ internal fun OnboardingGpuScreen(onBack: () -> Unit, onContinue: () -> Unit) {
     }
 
     val header: @Composable () -> Unit = {
-        Text("Your graphics chip", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
+        Text(uiStr(R.string.l_ob_your_graphics_chip), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            "We picked settings that suit your GPU. You can change the profile later in Settings.",
+            uiStr(R.string.l_ob_we_picked_settings_that_suit_your),
             modifier = Modifier.padding(top = 8.dp),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -62,8 +64,8 @@ internal fun OnboardingGpuScreen(onBack: () -> Unit, onContinue: () -> Unit) {
             DetectedGpuCard(detected)
             GpuProfileOptions(detected, selected) { selected = it }
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text("Back") }
-                Button(onClick = confirm, modifier = Modifier.weight(1f)) { Text("Continue") }
+                OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text(uiStr(R.string.l_lib_back)) }
+                Button(onClick = confirm, modifier = Modifier.weight(1f)) { Text(uiStr(R.string.l_ob_continue)) }
             }
         }
     }

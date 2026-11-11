@@ -1,5 +1,7 @@
 package com.winlator.cmod.core
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.AlertDialog
@@ -144,25 +146,25 @@ object CrashReports {
         val report = (if (parts.first().startsWith("YurNLator")) "" else header(activity) + "\n") + parts.joinToString("\n\n---\n\n")
         val saved = saveToDownloads(activity, report)
         val text = TextView(activity).apply {
-            setText((if (saved != null) "Saved: $saved\n\n" else "") + report)
+            setText((if (saved != null) uiStr(R.string.l_crash_saved_1_s, saved) else "") + report)
             setTextIsSelectable(true)
             textSize = 11f
             setPadding(48, 24, 48, 24)
         }
         AlertDialog.Builder(activity)
-            .setTitle("YurNLator closed unexpectedly last time")
+            .setTitle(uiStr(R.string.l_crash_yurnlator_closed_unexpectedly_last_time))
             .setView(ScrollView(activity).apply { addView(text) })
-            .setPositiveButton("Share") { _, _ ->
+            .setPositiveButton(uiStr(R.string.l_crash_share)) { _, _ ->
                 val send = Intent(Intent.ACTION_SEND).setType("text/plain")
                     .putExtra(Intent.EXTRA_SUBJECT, "YurNLator crash report")
                     .putExtra(Intent.EXTRA_TEXT, report)
-                activity.startActivity(Intent.createChooser(send, "Send the crash report"))
+                activity.startActivity(Intent.createChooser(send, uiStr(R.string.l_crash_send_the_crash_report)))
             }
-            .setNeutralButton("Copy") { _, _ ->
+            .setNeutralButton(uiStr(R.string.l_fm_copy)) { _, _ ->
                 val cm = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 cm.setPrimaryClip(ClipData.newPlainText("YurNLator crash", report))
             }
-            .setNegativeButton("Close", null)
+            .setNegativeButton(uiStr(R.string.l_qm_close), null)
             .show()
     }
 }
