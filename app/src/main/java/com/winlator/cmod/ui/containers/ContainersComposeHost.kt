@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.containers
 
+import com.winlator.cmod.ui.uiStr
 import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
@@ -122,9 +123,9 @@ private fun ContainersScreen(
             LandscapeMainNavigation(
                 activity = activity,
                 selected = R.id.main_menu_containers,
-                title = "Containers",
+                title = uiStr(R.string.l_ctr_containers),
                 actionIcon = Icons.Outlined.Add,
-                actionDescription = "Add container",
+                actionDescription = uiStr(R.string.l_ctr_add_container),
                 onAction = callbacks::onAdd
             )
         }
@@ -148,10 +149,10 @@ private fun ContainersScreen(
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    Text("No containers yet", style = MaterialTheme.typography.titleLarge)
+                    Text(uiStr(R.string.l_ctr_no_containers_yet), style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Create a container to prepare your first Windows environment.",
+                        uiStr(R.string.l_ctr_create_a_container_to_prepare_your),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -181,12 +182,12 @@ private fun ContainersScreen(
             }
         }
     }
-    // Portrait has no top bar action, so "Add container" is a floating button.
+    // Portrait has no top bar action, so uiStr(R.string.l_ctr_add_container) is a floating button.
     if (!landscape) {
         FloatingActionButton(
             onClick = callbacks::onAdd,
             modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp)
-        ) { Icon(Icons.Outlined.Add, "Add container") }
+        ) { Icon(Icons.Outlined.Add, uiStr(R.string.l_ctr_add_container)) }
     }
     }
 }
@@ -252,7 +253,7 @@ private fun ContainerCard(
                     )
                     container.updateLabel?.let { newer ->
                         Text(
-                            "Update available: $newer · Edit to switch",
+                            uiStr(R.string.l_ctr_update_available_1_s_edit_to, newer),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -269,7 +270,7 @@ private fun ContainerCard(
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.PlayArrow, "Run", modifier = Modifier.size(27.dp))
+                        Icon(Icons.Outlined.PlayArrow, uiStr(R.string.l_qm_run), modifier = Modifier.size(27.dp))
                     }
                 }
             }
@@ -284,16 +285,16 @@ private fun ContainerCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (compact) {
-                    IconButton(onClick = { callbacks.onEdit(container.id) }) { Icon(Icons.Outlined.Edit, "Edit") }
-                    IconButton(onClick = { callbacks.onDuplicate(container.id) }) { Icon(Icons.Outlined.ContentCopy, "Duplicate") }
-                    IconButton(onClick = { callbacks.onRemove(container.id) }) { Icon(Icons.Outlined.DeleteOutline, "Remove") }
+                    IconButton(onClick = { callbacks.onEdit(container.id) }) { Icon(Icons.Outlined.Edit, uiStr(R.string.l_set_edit)) }
+                    IconButton(onClick = { callbacks.onDuplicate(container.id) }) { Icon(Icons.Outlined.ContentCopy, uiStr(R.string.l_ctr_duplicate)) }
+                    IconButton(onClick = { callbacks.onRemove(container.id) }) { Icon(Icons.Outlined.DeleteOutline, uiStr(R.string.l_ctr_remove)) }
                 } else {
-                    ContainerAction(Icons.Outlined.Edit, "Edit") { callbacks.onEdit(container.id) }
-                    ContainerAction(Icons.Outlined.ContentCopy, "Duplicate") { callbacks.onDuplicate(container.id) }
-                    ContainerAction(Icons.Outlined.DeleteOutline, "Remove") { callbacks.onRemove(container.id) }
+                    ContainerAction(Icons.Outlined.Edit, uiStr(R.string.l_set_edit)) { callbacks.onEdit(container.id) }
+                    ContainerAction(Icons.Outlined.ContentCopy, uiStr(R.string.l_ctr_duplicate)) { callbacks.onDuplicate(container.id) }
+                    ContainerAction(Icons.Outlined.DeleteOutline, uiStr(R.string.l_ctr_remove)) { callbacks.onRemove(container.id) }
                 }
                 IconButton(onClick = { callbacks.onInfo(container.id) }) {
-                    Icon(Icons.Outlined.Info, "Container info")
+                    Icon(Icons.Outlined.Info, uiStr(R.string.l_ctr_container_info))
                 }
             }
         }

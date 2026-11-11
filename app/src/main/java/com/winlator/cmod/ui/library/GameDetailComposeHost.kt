@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.library
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -136,7 +138,7 @@ private fun LandscapeDetail(title: String, subtitle: String, artwork: Bitmap?, f
             border = BorderStroke(1.dp, Color.White.copy(.16f))
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.ArrowBack, "Back", modifier = Modifier.size(24.dp))
+                Icon(Icons.Outlined.ArrowBack, uiStr(R.string.l_lib_back), modifier = Modifier.size(24.dp))
             }
         }
 
@@ -162,7 +164,7 @@ private fun LandscapeDetail(title: String, subtitle: String, artwork: Bitmap?, f
                             Text(subtitle, color = Color.White.copy(.72f), style = MaterialTheme.typography.bodyLarge)
                         }
                         IconButton(onClick = toggleFavorite) {
-                            Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder, "Favorite", tint = Color.White)
+                            Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder, uiStr(R.string.l_lib_favorite), tint = Color.White)
                         }
                     }
                     Spacer(Modifier.height(20.dp))
@@ -174,22 +176,22 @@ private fun LandscapeDetail(title: String, subtitle: String, artwork: Bitmap?, f
                     ) {
                         Icon(Icons.Outlined.PlayArrow, null)
                         Spacer(Modifier.size(8.dp))
-                        Text("Play", fontWeight = FontWeight.Bold)
+                        Text(uiStr(R.string.l_lib_play), fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DetailAction(Icons.Outlined.Settings, "Configure", Modifier.weight(1f), callbacks::onConfigure)
-                        DetailAction(Icons.Outlined.PlayArrow, "Enter container", Modifier.weight(1f), callbacks::onArguments)
+                        DetailAction(Icons.Outlined.Settings, uiStr(R.string.l_lib_configure), Modifier.weight(1f), callbacks::onConfigure)
+                        DetailAction(Icons.Outlined.PlayArrow, uiStr(R.string.l_lib_enter_container), Modifier.weight(1f), callbacks::onArguments)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DetailAction(Icons.Outlined.Public, "Community presets", Modifier.weight(1f), callbacks::onPresets)
-                        DetailAction(Icons.Outlined.Extension, "Windows components", Modifier.weight(1f), callbacks::onComponents)
+                        DetailAction(Icons.Outlined.Public, uiStr(R.string.l_lib_community_presets), Modifier.weight(1f), callbacks::onPresets)
+                        DetailAction(Icons.Outlined.Extension, uiStr(R.string.l_lib_windows_components), Modifier.weight(1f), callbacks::onComponents)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DetailAction(Icons.Outlined.Folder, "Game folder", Modifier.weight(1f), callbacks::onGameFolder)
-                        DetailAction(Icons.Outlined.DeleteOutline, "Remove", Modifier.weight(1f), callbacks::onRemove, true)
+                        DetailAction(Icons.Outlined.Folder, uiStr(R.string.l_lib_game_folder), Modifier.weight(1f), callbacks::onGameFolder)
+                        DetailAction(Icons.Outlined.DeleteOutline, uiStr(R.string.l_ctr_remove), Modifier.weight(1f), callbacks::onRemove, true)
                     }
                 }
                 }
@@ -206,7 +208,7 @@ private fun PortraitDetail(title: String, subtitle: String, artwork: Bitmap?, fa
             if (artwork != null) Image(artwork.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(.18f), Color.Transparent, Color.Black.copy(.88f)))))
             IconButton(onClick = toggleFavorite, modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).size(48.dp)) {
-                Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder, "Favorite", tint = Color.White)
+                Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder, uiStr(R.string.l_lib_favorite), tint = Color.White)
             }
             Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
                 Text(title, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -219,13 +221,13 @@ private fun PortraitDetail(title: String, subtitle: String, artwork: Bitmap?, fa
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
-            ) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.size(8.dp)); Text("Play", fontWeight = FontWeight.Bold) }
-            DetailAction(Icons.Outlined.Settings, "Configure", Modifier.fillMaxWidth(), callbacks::onConfigure)
-            DetailAction(Icons.Outlined.PlayArrow, "Enter container", Modifier.fillMaxWidth(), callbacks::onArguments)
-            DetailAction(Icons.Outlined.Public, "Community presets", Modifier.fillMaxWidth(), callbacks::onPresets)
-            DetailAction(Icons.Outlined.Extension, "Windows components", Modifier.fillMaxWidth(), callbacks::onComponents)
-            DetailAction(Icons.Outlined.Folder, "Game folder", Modifier.fillMaxWidth(), callbacks::onGameFolder)
-            DetailAction(Icons.Outlined.DeleteOutline, "Remove", Modifier.fillMaxWidth(), callbacks::onRemove, true)
+            ) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.size(8.dp)); Text(uiStr(R.string.l_lib_play), fontWeight = FontWeight.Bold) }
+            DetailAction(Icons.Outlined.Settings, uiStr(R.string.l_lib_configure), Modifier.fillMaxWidth(), callbacks::onConfigure)
+            DetailAction(Icons.Outlined.PlayArrow, uiStr(R.string.l_lib_enter_container), Modifier.fillMaxWidth(), callbacks::onArguments)
+            DetailAction(Icons.Outlined.Public, uiStr(R.string.l_lib_community_presets), Modifier.fillMaxWidth(), callbacks::onPresets)
+            DetailAction(Icons.Outlined.Extension, uiStr(R.string.l_lib_windows_components), Modifier.fillMaxWidth(), callbacks::onComponents)
+            DetailAction(Icons.Outlined.Folder, uiStr(R.string.l_lib_game_folder), Modifier.fillMaxWidth(), callbacks::onGameFolder)
+            DetailAction(Icons.Outlined.DeleteOutline, uiStr(R.string.l_ctr_remove), Modifier.fillMaxWidth(), callbacks::onRemove, true)
             Spacer(Modifier.height(12.dp))
         }
     }

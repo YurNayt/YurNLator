@@ -1,5 +1,7 @@
 package com.winlator.cmod.bench
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.Switch
@@ -216,7 +218,7 @@ private fun BenchScreen(
     val landscape = config.screenWidthDp > config.screenHeightDp
     val mainActivity = LocalContext.current as? com.winlator.cmod.MainActivity
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-    if (landscape) com.winlator.cmod.ui.LandscapeMainNavigation(mainActivity, com.winlator.cmod.R.id.main_menu_bench, "Benchmark")
+    if (landscape) com.winlator.cmod.ui.LandscapeMainNavigation(mainActivity, com.winlator.cmod.R.id.main_menu_bench, uiStr(R.string.l_nav_benchmark))
     LazyColumn(
         Modifier.fillMaxWidth().weight(1f),
         contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)

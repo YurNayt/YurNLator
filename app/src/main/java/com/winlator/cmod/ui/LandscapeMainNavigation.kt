@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui
 
+import com.winlator.cmod.ui.uiStr
 import androidx.compose.material.icons.outlined.Speed
 import android.app.Activity
 import android.content.res.Configuration
@@ -145,17 +146,17 @@ fun LandscapeMainNavigation(
         if (actionIcon != null && onAction != null) {
             Destination(actionIcon, actionDescription, false, onAction)
         }
-        Destination(Icons.Outlined.Home, "Library", selected == R.id.main_menu_shortcuts) {
+        Destination(Icons.Outlined.Home, uiStr(R.string.l_lib_library), selected == R.id.main_menu_shortcuts) {
             activity?.navigateToMainDestination(R.id.main_menu_shortcuts)
         }
-        Destination(Icons.Outlined.Inventory2, "Containers", selected == R.id.main_menu_containers) {
+        Destination(Icons.Outlined.Inventory2, uiStr(R.string.l_ctr_containers), selected == R.id.main_menu_containers) {
             activity?.navigateToMainDestination(R.id.main_menu_containers)
         }
-        Destination(Icons.Outlined.Settings, "Settings", selected == R.id.main_menu_settings) {
+        Destination(Icons.Outlined.Settings, uiStr(R.string.l_set_settings), selected == R.id.main_menu_settings) {
             activity?.navigateToMainDestination(R.id.main_menu_settings)
         }
         if (activity != null && com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(activity)) {
-            Destination(Icons.Outlined.Speed, "Benchmark", selected == R.id.main_menu_bench) {
+            Destination(Icons.Outlined.Speed, uiStr(R.string.l_nav_benchmark), selected == R.id.main_menu_bench) {
                 activity.navigateToMainDestination(R.id.main_menu_bench)
             }
         }

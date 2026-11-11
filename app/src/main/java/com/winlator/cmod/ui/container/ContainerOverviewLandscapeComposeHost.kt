@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.container
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import com.winlator.cmod.ui.components.GlossaryButton
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
@@ -70,12 +72,12 @@ private data class LandscapeSection(val id: String, val title: String, val subti
 private fun LandscapeContainerOverview(model: ContainerOverviewModel, callbacks: ContainerOverviewCallbacks) {
     val sections = remember(model) {
         listOf(
-            LandscapeSection(ContainerOverviewComposeHost.SECTION_SYSTEM, "System", "Wine ${model.wineVersion}", Icons.Outlined.Settings),
-            LandscapeSection(ContainerOverviewComposeHost.SECTION_VIDEO, "Video", "${model.renderer}  •  ${model.screenSize}", Icons.Outlined.DesktopWindows),
-            LandscapeSection(ContainerOverviewComposeHost.SECTION_AUDIO, "Audio", model.audioDriver, Icons.Outlined.VolumeUp),
-            LandscapeSection(ContainerOverviewComposeHost.SECTION_COMPATIBILITY, "Compatibility", model.emulator, Icons.Outlined.VerifiedUser),
-            LandscapeSection(ContainerOverviewComposeHost.SECTION_STORAGE, "Storage", "", Icons.Outlined.Folder),
-            LandscapeSection(ContainerOverviewComposeHost.SECTION_ADVANCED, "Advanced", "", Icons.Outlined.Tune)
+            LandscapeSection(ContainerOverviewComposeHost.SECTION_SYSTEM, uiStr(R.string.l_cov_system), "Wine ${model.wineVersion}", Icons.Outlined.Settings),
+            LandscapeSection(ContainerOverviewComposeHost.SECTION_VIDEO, uiStr(R.string.l_cov_video), "${model.renderer}  •  ${model.screenSize}", Icons.Outlined.DesktopWindows),
+            LandscapeSection(ContainerOverviewComposeHost.SECTION_AUDIO, uiStr(R.string.l_cov_audio), model.audioDriver, Icons.Outlined.VolumeUp),
+            LandscapeSection(ContainerOverviewComposeHost.SECTION_COMPATIBILITY, uiStr(R.string.l_cov_compatibility), model.emulator, Icons.Outlined.VerifiedUser),
+            LandscapeSection(ContainerOverviewComposeHost.SECTION_STORAGE, uiStr(R.string.l_cov_storage), "", Icons.Outlined.Folder),
+            LandscapeSection(ContainerOverviewComposeHost.SECTION_ADVANCED, uiStr(R.string.l_cov_advanced), "", Icons.Outlined.Tune)
         )
     }
     var selected by remember { mutableStateOf(ContainerOverviewComposeHost.SECTION_SYSTEM) }
@@ -91,7 +93,7 @@ private fun LandscapeContainerOverview(model: ContainerOverviewModel, callbacks:
                         .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()).height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
-                ) { Text("Launch Environment", fontWeight = FontWeight.SemiBold) }
+                ) { Text(uiStr(R.string.l_cov_launch_environment), fontWeight = FontWeight.SemiBold) }
             }
         }
     ) { padding ->
