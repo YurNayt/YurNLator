@@ -1,43 +1,14 @@
 package com.winlator.cmod;
 
-import com.winlator.cmod.winhandler.ProcessInfo;
-import com.winlator.cmod.winhandler.OnGetProcessInfoListener;
-import com.winlator.cmod.core.CPUStatus;
-import com.winlator.cmod.widget.CPUListView;
-import com.winlator.cmod.ui.quickmenu.QuickMenuBridge;
 import com.winlator.cmod.ui.quickmenu.QuickMenuHost;
-import com.winlator.cmod.ui.quickmenu.QmInfo;
-import com.winlator.cmod.ui.quickmenu.QmGyro;
-import com.winlator.cmod.ui.quickmenu.QmFrameGen;
-import com.winlator.cmod.core.WinFrameGen;
 import com.winlator.cmod.winhandler.GyroInput;
-import com.winlator.cmod.ui.quickmenu.QmOption;
-import com.winlator.cmod.ui.quickmenu.QmProcess;
-import com.winlator.cmod.ui.quickmenu.QmTasks;
-import com.winlator.cmod.contents.WrapperManager;
-import static com.winlator.cmod.core.AppUtils.showToast;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.PictureInPictureParams;
-import android.graphics.Rect;
-import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
-import android.util.Rational;
-import android.util.TypedValue;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -45,16 +16,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.CheckBox;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.Spinner;
-import android.widget.Switch;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -62,10 +24,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.preference.PreferenceManager;
@@ -73,62 +31,35 @@ import androidx.preference.PreferenceManager;
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.container.Shortcut;
-import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.DebugDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
-import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
-import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
-import com.winlator.cmod.contents.AdrenotoolsManager;
 import com.winlator.cmod.core.AppUtils;
-import com.winlator.cmod.core.DefaultVersion;
 import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.FileUtils;
-import com.winlator.cmod.core.MaliCompat;
-import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.KeyValueSet;
 import com.winlator.cmod.session.DxWrapperFiles;
 import com.winlator.cmod.core.OnExtractFileListener;
 import com.winlator.cmod.core.PreloaderDialog;
-import com.winlator.cmod.core.ProcessHelper;
-import com.winlator.cmod.core.StringUtils;
-import com.winlator.cmod.core.TarCompressorUtils;
 import com.winlator.cmod.core.WineInfo;
-import com.winlator.cmod.core.WineRegistryEditor;
 import com.winlator.cmod.core.WineRequestHandler;
-import com.winlator.cmod.core.WineStartMenuCreator;
-import com.winlator.cmod.core.WineThemeManager;
-import com.winlator.cmod.core.WineUtils;
 import com.winlator.cmod.inputcontrols.ControlsProfile;
-import com.winlator.cmod.inputcontrols.ExternalController;
 import com.winlator.cmod.inputcontrols.InputControlsManager;
-import com.winlator.cmod.math.Mathf;
 import com.winlator.cmod.math.XForm;
 import com.winlator.cmod.midi.MidiHandler;
-import com.winlator.cmod.midi.MidiManager;
 import com.winlator.cmod.widget.FrameRating;
-import com.winlator.cmod.widget.SeekBar;
 import com.winlator.cmod.widget.WinlatorHUD;
 import com.winlator.cmod.widget.InputControlsView;
-import com.winlator.cmod.widget.LogView;
-import com.winlator.cmod.widget.MagnifierView;
 import com.winlator.cmod.widget.TouchpadView;
 import com.winlator.cmod.widget.XServerRendererView;
 import com.winlator.cmod.widget.VulkanXServerView;
-import com.winlator.cmod.widget.EGLXServerView;
-import com.winlator.cmod.widget.DisplayXServerView;
 import com.winlator.cmod.winhandler.MouseEventFlags;
 import com.winlator.cmod.winhandler.TaskManagerSidebar;
 import com.winlator.cmod.winhandler.WinHandler;
-import com.winlator.cmod.xconnector.UnixSocketConfig;
 import com.winlator.cmod.xenvironment.ImageFs;
 import com.winlator.cmod.xenvironment.XEnvironment;
-import com.winlator.cmod.xenvironment.components.ALSAServerComponent;
 import com.winlator.cmod.xenvironment.components.GuestProgramLauncherComponent;
-import com.winlator.cmod.xenvironment.components.PulseAudioComponent;
-import com.winlator.cmod.xenvironment.components.SysVSharedMemoryComponent;
-import com.winlator.cmod.xenvironment.components.XServerComponent;
 import com.winlator.cmod.xserver.Drawable;
 import com.winlator.cmod.xserver.Pointer;
 import com.winlator.cmod.xserver.Property;
@@ -136,30 +67,12 @@ import com.winlator.cmod.xserver.ScreenInfo;
 import com.winlator.cmod.xserver.Window;
 import com.winlator.cmod.xserver.WindowManager;
 import com.winlator.cmod.xserver.XServer;
-import com.winlator.cmod.xserver.extensions.RandrExtension;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import cn.sherlock.com.sun.media.sound.SF2Soundbank;
 
 public class XServerDisplayActivity extends AppCompatActivity {
-
 
     public static String NOTIFICATION_CHANNEL_ID = "Winlator";
     public static int NOTIFICATION_ID = -1;
@@ -209,10 +122,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
     HashMap<String, String> graphicsDriverConfig;
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
-    private String emulator = Container.DEFAULT_EMULATOR;
     String dxwrapper = Container.DEFAULT_DXWRAPPER;
     private KeyValueSet dxwrapperConfig;
-    private String startupSelection;
     WineInfo wineInfo;
     private final EnvVars envVars = new EnvVars();
     private boolean firstTimeBoot = false;
@@ -242,7 +153,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
     boolean cursorLock;
     private final float[] xform = XForm.getInstance();
     private ContentsManager contentsManager;
-    private boolean navigationFocused = false;
     MidiHandler midiHandler;
     private String midiSoundFont = "";
     private String lc_all = "";
@@ -254,33 +164,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
     boolean isMouseDisabled = false;
     private boolean simulateTouchScreen = false;
 
-    private SensorManager sensorManager;
-
     /** Play time and launch count of the game (session/Playtime). */
     com.winlator.cmod.session.Playtime playtime;
-    private String shortcutName;
-    private Handler handler;
 
     private Handler timeoutHandler = new Handler(Looper.getMainLooper());
-    private Runnable hideControlsRunnable;
     com.winlator.cmod.ui.ingame.TouchControls touchControls;
-
-    private boolean isDarkMode;
-
-    private String screenEffectProfile;
 
     private GuestProgramLauncherComponent guestProgramLauncherComponent;
     private EnvVars overrideEnvVars;
-
-    private void createNotifcationChannel() {
-        String name = "YurNLator";
-        String description = "YurNLator X server messages";
-        int importance = NotificationManager.IMPORTANCE_HIGH;
-        NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance);
-        channel.setDescription(description);
-        NotificationManager notificationManager = getSystemService(NotificationManager.class);
-        notificationManager.createNotificationChannel(channel);
-    }
 
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
@@ -328,11 +219,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 .getBoolean("remove_loading_bar_when_booting_games", false);
         if (!removeLoadingBarWhenBootingGames) preloaderDialog.show(R.string.starting_up);
 
-
         inputControlsManager = new InputControlsManager(this);
         createXServer(lc.getScreenSize());
-        loadMidiSoundFont();
-        postRunningNotification();
+        // MIDI sound font and the "running" notification: session/SessionServices.
+        com.winlator.cmod.session.SessionServices.loadMidi(this, midiSoundFont, h -> midiHandler = h);
+        com.winlator.cmod.session.SessionServices.postRunningNotification(this, NOTIFICATION_CHANNEL_ID, NOTIFICATION_ID);
 
         String controlsProfile = shortcut != null ? shortcut.getExtra("controlsProfile", "") : "";
 
@@ -365,8 +256,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             runnable.run();
     }
 
-
-
     /** Stage 1: full screen, screen kept on, the display's highest refresh rate, the layout. */
     private void setupWindow() {
         AppUtils.hideSystemUI(this);
@@ -386,16 +275,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         cursorLock = preferences.getBoolean("cursor_lock", true);
 
-        isDarkMode = preferences.getBoolean("dark_mode", false);
-
-        handler = new Handler(Looper.getMainLooper());
         playtime = new com.winlator.cmod.session.Playtime(this);
         playtime.resume();
 
         // On-screen controls: ui/ingame/TouchControls (YurNLator base, part 10).
         touchControls = new com.winlator.cmod.ui.ingame.TouchControls(preferences, timeoutHandler,
                 () -> inputControlsView, () -> touchpadView, () -> winHandler, () -> globalCursorSpeed);
-        hideControlsRunnable = touchControls.hideRunnable();
 
         contentsManager = new ContentsManager(this);
         contentsManager.syncContents();
@@ -478,9 +363,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         container = target.container;
         shortcut = target.shortcut;
-        shortcutName = target.shortcutName;
-
-        playtime.setName(shortcutName);
+        playtime.setName(target.shortcutName);
         playtime.countLaunch();
         containerManager.activateContainer(container);
 
@@ -511,50 +394,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    /** Stage 7: what the session log and the HUD learn from Wine's output (API, driver, DXVK build). */
+    /** Stage 7: what the session log and the HUD learn from Wine's output (session/SessionLog). */
     private void setupLogCallbacks(boolean enableLogs, com.winlator.cmod.session.LaunchConfig lc) {
-        ProcessHelper.removeAllDebugCallbacks();
-        if (enableLogs) {
-            LogView.setFilename(getExecutable());
-            ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
-            // Time marks in the log (it has no timestamps): where a slow start loses its time.
-            final long logStart = android.os.SystemClock.elapsedRealtime();
-            final long[] lastMark = {logStart};
-            final DebugDialog log = debugDialog;
-            ProcessHelper.addDebugCallback(line -> {
-                long now = android.os.SystemClock.elapsedRealtime();
-                if (now - lastMark[0] < 5000) return;
-                lastMark[0] = now;
-                log.call("[YurNLator +" + ((now - logStart) / 1000) + "s]");
-                String xo = com.winlator.cmod.xserver.OffscreenStats.drain();
-                if (xo != null) log.call(xo);
-            });
-        }
-        // Which API and layer the game uses (VKD3D · DX12, DXVK · DX11…): the HUD's first item.
-        ProcessHelper.addDebugCallback(line -> {
-            if (dxvkBuild == null && line != null) {
-                java.util.regex.Matcher m = java.util.regex.Pattern.compile("^info:\\s+DXVK:\\s+v?(\\S+)").matcher(line.trim());
-                if (m.find()) dxvkBuild = m.group(1);
-            }
-        });
-        ProcessHelper.addDebugCallback(new com.winlator.cmod.core.ApiSniffer(lc.getDxwrapperConfig(), label -> {
-            actualApi = label;
-            WinlatorHUD m = hud.modern();
-            if (m != null) m.setApiLabel(label);
-            return kotlin.Unit.INSTANCE;
-        }));
-        // Which driver the game really runs on (a wrapper may load its own): HUD + session info.
-        ProcessHelper.addDebugCallback(new com.winlator.cmod.core.DriverSniffer(found -> {
-            // Only a version number ("driver 26.99.99" from DXVK): name the configured driver.
-            String label = found;
-            String configured = graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null;
-            if (found.startsWith("driver ") && configured != null && !configured.isEmpty() && !"System".equalsIgnoreCase(configured))
-                label = configured + " (" + found + ")";
-            actualDriver = label;
-            WinlatorHUD m = hud.modern();
-            if (m != null) m.setDriverLabel(label);
-            return kotlin.Unit.INSTANCE;
-        }));
+        debugDialog = com.winlator.cmod.session.SessionLog.install(this, enableLogs, shortcut, lc.getDxwrapperConfig(),
+                () -> graphicsDriverConfig != null ? graphicsDriverConfig.get("version") : null,
+                new com.winlator.cmod.session.SessionLog.Host() {
+                    @Override public void dxvkBuild(String build) { dxvkBuild = build; }
+                    @Override public void api(String label) {
+                        actualApi = label;
+                        WinlatorHUD m = hud.modern();
+                        if (m != null) m.setApiLabel(label);
+                    }
+                    @Override public void driver(String label) {
+                        actualDriver = label;
+                        WinlatorHUD m = hud.modern();
+                        if (m != null) m.setDriverLabel(label);
+                    }
+                });
     }
 
     /** Stage 8: the launch's drivers, emulator, wrapper and input options into the screen's fields. */
@@ -562,7 +418,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         graphicsDriver = lc.getGraphicsDriver();
         String graphicsDriverConfig = lc.getGraphicsDriverConfig();
         audioDriver = lc.getAudioDriver();
-        emulator = lc.getEmulator();
         midiSoundFont = container.getMIDISoundFont();
         dxwrapper = lc.getDxwrapper();
         String dxwrapperConfig = lc.getDxwrapperConfig();
@@ -635,75 +490,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         });
     }
 
-    /** MIDI: the container's sound font, loaded in the background. */
-    private void loadMidiSoundFont() {
-        if (!midiSoundFont.equals("")) {
-            try {
-                final InputStream in;
-                if (midiSoundFont.equals(MidiManager.DEFAULT_SF2_FILE)) {
-                    in = getAssets().open(MidiManager.SF2_ASSETS_DIR + "/" + midiSoundFont);
-                } else {
-                    in = null;
-                }
-                MidiManager.OnMidiLoadedCallback callback = new MidiManager.OnMidiLoadedCallback() {
-                    @Override
-                    public void onSuccess(SF2Soundbank soundbank) {
-                        midiHandler = new MidiHandler();
-                        midiHandler.setSoundBank(soundbank);
-                        midiHandler.start();
-                    }
-
-                    @Override
-                    public void onFailed(Exception e) {
-                        if (in != null) {
-                            try {
-                                in.close();
-                            } catch (Exception e2) {
-                            }
-                        }
-                    }
-                };
-                if (midiSoundFont.equals(MidiManager.DEFAULT_SF2_FILE)) {
-                    MidiManager.load(in, callback);
-                } else {
-                    MidiManager.load(new File(MidiManager.getSoundFontDir(this), midiSoundFont), callback);
-                }
-            } catch (Exception e) {
-            }
-        }
-    }
-
-    /** The "running" notification (only when the app's keep-alive service doesn't show one). */
-    private void postRunningNotification() {
-        createNotifcationChannel();
-
-        Intent notificationIntent = new Intent(this, XServerDisplayActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent,
-                PendingIntent.FLAG_IMMUTABLE);
-        // YurNLator: one notification only. When the app's keep-alive service already shows
-        // its notification, the game screen doesn't post a second one.
-        if (!com.winlator.cmod.services.NotificationService.isRunning()) {
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_stat_ab_gear_0011)
-                    .setContentTitle(getString(R.string.app_name))
-                    .setContentText(getString(R.string.app_name) + " is running, don't close this notification")
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setContentIntent(pendingIntent)
-                    .setAutoCancel(false);
-
-            NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, builder.build());
-        }
-    }
-
-    private boolean parseBoolean(String value) {
-
-        if ("true".equalsIgnoreCase(value) || "1".equals(value) || "yes".equalsIgnoreCase(value)) {
-            return true;
-        }
-
-        return false;
-    }
-
     private void handleCapturedPointer(MotionEvent event) {
         com.winlator.cmod.session.CapturedMouse.handle(event, xServer, winHandler, xform);
     }
@@ -774,10 +560,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         catch (Throwable t) { return null; }
     }
 
-
     /** Gets the prefix ready for this launch: session/PrefixSetup (YurNLator base, part 5). */
     private void setupWineSystemFiles() {
-        startupSelection = launchConfig.getStartupSelection();
         String wrapperId = DxWrapperFiles.wrapperId(this.dxwrapper, dxwrapperConfig.get("version"),
                 dxwrapperConfig.get("vkd3dVersion"), dxwrapperConfig.get("ddrawrapper"));
         new com.winlator.cmod.session.PrefixSetup(this, imageFs, wineInfo, container, launchConfig, xServer.screenInfo,
@@ -828,7 +612,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         dxwrapperConfig = null;
 
     }
-
 
     private void setupUI() {
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
@@ -885,7 +668,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServerView.setDirectFrameListener(hudTracker::onDirectFrame);
     }
 
-
     ActivityResultLauncher<Intent> controlsEditorActivityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -894,12 +676,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     editInputControlsCallback = null;
                 }
             });
-
-
-
-
-
-
 
     void startTouchscreenTimeout() { touchControls.startTimeout(); }
 
@@ -921,8 +697,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return super.dispatchGenericMotionEvent(event) || ours;
     }
 
-    private static final int RECAPTURE_DELAY_MS = 10000;
-
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         // Keys: ui/ingame/InputDispatch (null = this activity's own dispatch).
@@ -942,32 +716,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return inputControlsView;
     }
 
-    private static final String TAG = "DXWrapperExtraction";
-
     private DxWrapperFiles dxWrapperFiles() {
         return new DxWrapperFiles(this, imageFs, wineInfo, contentsManager, onExtractFileListener);
-    }
-
-
-    private void restoreOriginalDllFiles(final String... dlls) {
-        dxWrapperFiles().restoreOriginal(dlls);
-    }
-
-
-    private String getExecutable() {
-        String filename = "wfm.exe";
-        if (shortcut != null && shortcut.path != null) {
-            String cleanPath = shortcut.path.replace("\"", "");
-            int lastSlash = cleanPath.lastIndexOf('/');
-            int lastBackslash = cleanPath.lastIndexOf('\\');
-            int lastSeparator = Math.max(lastSlash, lastBackslash);
-            if (lastSeparator != -1) {
-                filename = cleanPath.substring(lastSeparator + 1);
-            } else {
-                filename = cleanPath;
-            }
-        }
-        return filename;
     }
 
     public XServer getXServer() {
@@ -986,10 +736,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return container;
     }
 
-    public void setDXWrapper(String dxwrapper) {
-        this.dxwrapper = dxwrapper;
-    }
-
     public EnvVars getOverrideEnvVars() {
         if (overrideEnvVars == null) {
             overrideEnvVars = new EnvVars();
@@ -1004,18 +750,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             container.saveData();
         }
     }
-
-
-
-
-    public String getScreenEffectProfile() {
-        return screenEffectProfile;
-    }
-
-    public void setScreenEffectProfile(String screenEffectProfile) {
-        this.screenEffectProfile = screenEffectProfile;
-    }
-
 
     // ---------------------------------------------------------------------------------------
     // YurNLator quick menu (ui/quickmenu): the Compose side menu reads and changes the session
@@ -1053,6 +787,5 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Pause / resume, picture-in-picture, back, focus, exit (GameLifecycle). */
     final GameLifecycle lifecycle = new GameLifecycle(this);
     final XServerSidebar sidebar = new XServerSidebar(this);
-
 
 }
