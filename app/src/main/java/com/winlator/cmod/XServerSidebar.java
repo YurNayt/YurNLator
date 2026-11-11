@@ -88,7 +88,7 @@ final class XServerSidebar {
             });
         }
 
-        a.setupSidebarInputControls();
+        setupInput();
 
         View btSubVibration = a.findViewById(R.id.BTSubVibration);
         if (btSubVibration != null) {
