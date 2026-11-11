@@ -13,7 +13,7 @@ object FileManagerLandscapeNavHost {
             WinZTheme {
                 LandscapeMainNavigation(
                     activity = activity,
-                    selected = 0,
+                    selected = activity.selectedDestination,
                     title = "File Manager"
                 )
             }

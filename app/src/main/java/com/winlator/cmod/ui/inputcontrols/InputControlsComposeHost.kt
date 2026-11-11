@@ -140,7 +140,7 @@ private fun InputControlsScreen(model: InputControlsModel, callbacks: InputContr
     }
 
     Column(Modifier.fillMaxSize()) {
-        if (landscape) LandscapeMainNavigation(activity, R.id.main_menu_input_controls, "Input Controls")
+        if (landscape) LandscapeMainNavigation(activity, activity?.selectedDestination ?: R.id.main_menu_settings, "Input Controls")
         if (landscape) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 10.dp),

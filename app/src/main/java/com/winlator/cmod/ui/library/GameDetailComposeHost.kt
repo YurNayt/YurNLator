@@ -150,9 +150,10 @@ private fun LandscapeDetail(title: String, subtitle: String, artwork: Bitmap?, f
                 color = Color.Black.copy(.42f),
                 border = BorderStroke(1.dp, Color.White.copy(.16f))
             ) {
+                // Scrolls when the buttons don't fit (large font / display size): the bottom rows were cut off.
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(
-                    Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 20.dp),
-                    verticalArrangement = Arrangement.Center
+                    Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 20.dp)
                 ) {
                     Row(verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f)) {
@@ -190,6 +191,7 @@ private fun LandscapeDetail(title: String, subtitle: String, artwork: Bitmap?, f
                         DetailAction(Icons.Outlined.Folder, "Game folder", Modifier.weight(1f), callbacks::onGameFolder)
                         DetailAction(Icons.Outlined.DeleteOutline, "Remove", Modifier.weight(1f), callbacks::onRemove, true)
                     }
+                }
                 }
             }
             Spacer(Modifier.weight(.75f))
@@ -243,7 +245,7 @@ private fun DetailAction(icon: ImageVector, label: String, modifier: Modifier, o
         Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null)
             Spacer(Modifier.size(10.dp))
-            Text(label, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(label, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

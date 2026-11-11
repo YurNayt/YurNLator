@@ -86,6 +86,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean syncingBottomNavigation;
     private boolean orientationLocked;
     private String orientationMode = ORIENTATION_MODE_AUTO;
+    /** The tab shown (Library / Containers / Settings / Benchmark). */
+    private int currentTop;
+    /** Input Controls and File Manager open from a tab (Settings, the Library's "Add"): that tab, else 0. */
+    private int subScreenParent;
 
     private void createNotificationChannel() {
         String name = "YurNLator";
@@ -277,8 +281,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 return;
             }
         }
+        // Input Controls / File Manager: back to the tab they were opened from.
+        if (!editInputControls && subScreenParent != 0) {
+            navigateToMainDestination(subScreenParent);
+            return;
+        }
+        // Through the tab switch, so the bottom bar / top bar show Containers too.
         if (!editInputControls)
-            show(new ContainersFragment(), true);
+            navigateToMainDestination(R.id.main_menu_containers);
         else
             super.onBackPressed();
     }
@@ -381,7 +391,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         setDetailMode(false);
-        selectBottomDestination(item.getItemId());
+        int id = item.getItemId();
+        boolean subScreen = id == R.id.main_menu_input_controls || id == R.id.main_menu_file_manager;
+        if (subScreen) {
+            // Opened from a tab: that tab stays the selected one (Settings when nothing else).
+            if (!editInputControls) subScreenParent = currentTop != 0 ? currentTop : R.id.main_menu_settings;
+        } else if (id != R.id.main_menu_about) {
+            currentTop = id;
+            subScreenParent = 0;
+        }
+        selectBottomDestination(subScreen && subScreenParent != 0 ? subScreenParent : id);
         FragmentManager fragmentManager = getSupportFragmentManager();
         if (fragmentManager.getBackStackEntryCount() > 0) {
             fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
@@ -433,6 +452,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             bottomNavigation.setSelectedItemId(bottomId);
             syncingBottomNavigation = false;
         }
+    }
+
+    /** The tab to show as selected (for a sub-screen: the tab it was opened from). */
+    public int getSelectedDestination() {
+        return subScreenParent != 0 ? subScreenParent : currentTop;
     }
 
     /** The bundle finder's tab (hidden developer option), rightmost in the bottom bar. */
