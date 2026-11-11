@@ -454,6 +454,37 @@ public class WinlatorHUD extends View {
         ticksSinceSnapshot++;
     }
 
+    // ---- Benchmark of a game (bundle finder): the game's frames over a measuring window ----
+    private final Object benchLock = new Object();
+    private volatile boolean benchMeasuring;
+    private double benchFrames;
+    private long benchStartNs;
+    private volatile float lastGameFps;
+
+    /** The game's frame rate at the last reading (0 before the game renders). */
+    public float gameFps() { return lastGameFps; }
+
+    /** Starts measuring: frames and frame times from now on. */
+    public void benchStart() {
+        synchronized (benchLock) {
+            frameTimes.reset();
+            benchFrames = 0;
+            benchStartNs = System.nanoTime();
+            benchMeasuring = true;
+        }
+    }
+
+    /** {average FPS, 1% low, 0.1% low, frames, seconds} since [benchStart]; [stop] ends the measuring. */
+    public double[] benchResult(boolean stop) {
+        synchronized (benchLock) {
+            double secs = benchStartNs == 0 ? 0 : (System.nanoTime() - benchStartNs) / 1e9;
+            if (stop) benchMeasuring = false;
+            com.winlator.cmod.widget.banner.FpsCounter.FrametimeLows l = frameTimes.getFrametimeLows();
+            double avg = secs > 0 ? benchFrames / secs : 0;
+            return new double[]{avg, l.sampleCount >= 50 ? l.low1Fps : 0, l.sampleCount >= 500 ? l.low01Fps : 0, benchFrames, secs};
+        }
+    }
+
     /** Frame times for the 1% / 0.1% lows (Bannerlator's counter). */
     private final com.winlator.cmod.widget.banner.FpsCounter frameTimes = new com.winlator.cmod.widget.banner.FpsCounter();
     private volatile int ticksSinceSnapshot = 0;
@@ -931,7 +962,9 @@ public class WinlatorHUD extends View {
             }
         }
         lastFpsNs = now;
-        if ((showMask & SHOW_LOWS) != 0) updateLows(snapFps, dt / 1_000_000f);
+        if ((showMask & SHOW_LOWS) != 0 || benchMeasuring) updateLows(snapFps, dt / 1_000_000f);
+        if (benchMeasuring) synchronized (benchLock) { benchFrames += snapFps * dt / 1_000_000_000.0; }
+        lastGameFps = snapFps;
         if (banner != null) {
             banner.feedRate(snapFps, dt / 1_000_000f);
             banner.setPresentedFps(presentedFps);

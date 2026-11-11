@@ -185,6 +185,33 @@ data class RunResult(
     }
 }
 
+/**
+ * A game as the benchmark (instead of YurnBench): its shortcut, extra launch arguments (its
+ * built-in benchmark, e.g. "-benchmark"), seconds of warm-up after it starts rendering and of
+ * measuring. Our HUD's counter measures it, so any game works.
+ */
+data class BenchGame(val shortcutPath: String, val name: String, val args: String, val warmup: Int, val measure: Int) {
+    fun toJson(): JSONObject = JSONObject().put("path", shortcutPath).put("name", name).put("args", args)
+        .put("warmup", warmup).put("measure", measure)
+
+    companion object {
+        fun from(o: JSONObject?) = o?.optString("path")?.takeIf { it.isNotEmpty() }?.let {
+            BenchGame(it, o.optString("name"), o.optString("args"), o.optInt("warmup", 15), o.optInt("measure", 45))
+        }
+
+        /**
+         * Arguments that start a game's own benchmark by itself (no taps in its menu), by the .exe:
+         * Tomb Raider (2013) "-benchmark" (as its Feral port runs it; it quits when done),
+         * Counter-Strike: Source a timedemo of a demo you recorded ("record bench" in its console).
+         */
+        fun presetArgs(exe: String): String = when (exe.lowercase()) {
+            "tombraider.exe" -> "-benchmark"
+            "hl2.exe" -> "+timedemoquit bench"
+            else -> ""
+        }
+    }
+}
+
 data class BenchState(
     val containerId: Int,
     val combos: List<Combo>,
@@ -201,10 +228,13 @@ data class BenchState(
     val baseCpu: Int = -1,
     /** Vulkan wrapper for the whole series (like Proton): "" = the container's. */
     val wrapper: String = "",
+    /** A game instead of YurnBench; null = YurnBench. */
+    val game: BenchGame? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().put("containerId", containerId).put("next", next).put("running", running)
         .put("awaiting", awaiting).put("tempBefore", tempBefore.toDouble()).put("long", long)
         .put("baseBattery", baseBattery.toDouble()).put("baseCpu", baseCpu).put("wrapper", wrapper)
+        .put("game", game?.toJson())
         .put("combos", JSONArray().apply { combos.forEach { put(it.toJson()) } })
         .put("results", JSONArray().apply { results.forEach { put(it.toJson()) } })
 
@@ -217,6 +247,7 @@ data class BenchState(
                 o.optBoolean("running"), o.optBoolean("awaiting"), (0 until r.length()).map { RunResult.from(r.getJSONObject(it)) },
                 o.optDouble("tempBefore", 0.0).toFloat(), o.optBoolean("long"),
                 o.optDouble("baseBattery", 0.0).toFloat(), o.optInt("baseCpu", -1), o.optString("wrapper"),
+                BenchGame.from(o.optJSONObject("game")),
             )
         }
     }
@@ -257,6 +288,8 @@ data class Conflict(
 object Bench {
     private const val TAG = "BundleFinder"
     const val EXTRA_BENCH = "yurn_bench"
+    const val EXTRA_GAME_WARMUP = "yurn_bench_warmup"
+    const val EXTRA_GAME_MEASURE = "yurn_bench_measure"
     private const val BENCH_DIR = "yurnbench"
 
     fun dir(context: Context) = File(context.filesDir, "bench").apply { mkdirs() }
@@ -363,6 +396,78 @@ object Bench {
         return shortcut
     }
 
+    /**
+     * The run's shortcut for a game: the game's own .desktop with the bundle's driver / wrapper /
+     * DXVK / emulator over its settings, the benchmark arguments after its own, and our HUD on
+     * (it measures the frames). Written as text: Shortcut.putExtra("hudMode") would change the
+     * container's HUD too.
+     */
+    private fun prepareGame(context: Context, container: Container, combo: Combo, game: BenchGame, wrapper: String): File {
+        val src = File(game.shortcutPath)
+        val entry = ArrayList<String>()
+        val extras = LinkedHashMap<String, String>()
+        var section = ""
+        src.readLines().forEach { raw ->
+            val line = raw.trim()
+            if (line.startsWith("[")) { section = line; return@forEach }
+            if (line.isEmpty()) return@forEach
+            if (section == "[Extra Data]") {
+                val i = line.indexOf('=')
+                if (i > 0) extras[line.substring(0, i)] = line.substring(i + 1)
+            } else entry += line
+        }
+        val gdc = extras["graphicsDriverConfig"]?.takeIf { it.isNotBlank() } ?: container.getGraphicsDriverConfig()
+        val dxc = extras["dxwrapperConfig"]?.takeIf { it.isNotBlank() } ?: container.getDXWrapperConfig()
+        extras["graphicsDriverConfig"] = writeConfig(gdc, "version", combo.driverId, ';').let {
+            if (wrapper.isNotEmpty()) writeConfig(it, "wrapper", wrapper, ';') else it
+        }
+        extras["dxwrapper"] = (extras["dxwrapper"] ?: container.getDXWrapper()).takeIf { it.contains("dxvk") } ?: "dxvk+vkd3d"
+        extras["dxwrapperConfig"] = writeConfig(dxc, "version", combo.dxvk, ',').let {
+            if (combo.dx12) writeConfig(it, "vkd3dVersion", combo.vkd3d, ',') else it
+        }
+        extras["emulator"] = combo.emulator
+        if (combo.emulator == "FEXCore") extras["fexcoreVersion"] = combo.emulatorVersion else extras["box64Version"] = combo.emulatorVersion
+        extras["execArgs"] = listOf(extras["execArgs"].orEmpty(), game.args).filter { it.isNotBlank() }.joinToString(" ")
+        extras["hudMode"] = "2"
+        val shortcut = File(dir(context), "run.desktop")
+        FileUtils.writeString(shortcut, buildString {
+            append("[Desktop Entry]\n")
+            entry.forEach { append(it).append('\n') }
+            append("\n[Extra Data]\n")
+            extras.forEach { (k, v) -> append("$k=$v\n") }
+        })
+        return shortcut
+    }
+
+    /** Makes [combo] the game's own settings (its shortcut). */
+    fun applyToGame(game: BenchGame, combo: Combo): Boolean = runCatching {
+        val f = File(game.shortcutPath)
+        val lines = f.readLines().toMutableList()
+        fun get(key: String) = lines.firstOrNull { it.startsWith("$key=") }?.substringAfter('=')
+        fun set(key: String, value: String) {
+            val i = lines.indexOfFirst { it.startsWith("$key=") }
+            if (i >= 0) lines[i] = "$key=$value"
+            else {
+                if (lines.none { it.trim() == "[Extra Data]" }) { lines += ""; lines += "[Extra Data]" }
+                lines += "$key=$value"
+            }
+        }
+        get("graphicsDriverConfig")?.let { gdc ->
+            set("graphicsDriverConfig", writeConfig(gdc, "version", combo.driverId, ';').let {
+                if (combo.wrapper.isNotEmpty()) writeConfig(it, "wrapper", combo.wrapper, ';') else it
+            })
+        }
+        get("dxwrapperConfig")?.let { dxc ->
+            set("dxwrapperConfig", writeConfig(dxc, "version", combo.dxvk, ',').let {
+                if (combo.dx12) writeConfig(it, "vkd3dVersion", combo.vkd3d, ',') else it
+            })
+        }
+        set("emulator", combo.emulator)
+        set(if (combo.emulator == "FEXCore") "fexcoreVersion" else "box64Version", combo.emulatorVersion)
+        f.writeText(lines.joinToString("\n", postfix = "\n"))
+        true
+    }.getOrDefault(false)
+
     /** Starts the series' next run; false when there is none (the series is then marked finished). */
     fun launchNext(activity: Activity): Boolean {
         val s = load(activity) ?: return false
@@ -381,7 +486,8 @@ object Bench {
                 0.0, 0.0, Phase(0.0, 0.0, 0), Phase(0.0, 0.0, 0), 0.0, 0f, 0f)))
             return launchNext(activity)
         }
-        val shortcut = try { prepare(activity, container, combo, s.long, combo.wrapper.ifEmpty { s.wrapper },
+        val shortcut = try { if (s.game != null) prepareGame(activity, container, combo, s.game, combo.wrapper.ifEmpty { s.wrapper }) else
+            prepare(activity, container, combo, s.long, combo.wrapper.ifEmpty { s.wrapper },
             // Heat soak before measuring: long on the first run (the phone is cold), short on the rest.
             if (s.results.isEmpty()) 45 else 15) } catch (e: Exception) {
             Log.e(TAG, "prepare", e)
@@ -395,8 +501,14 @@ object Bench {
         activity.startActivity(Intent(activity, XServerDisplayActivity::class.java)
             .putExtra("container_id", container.id)
             .putExtra("shortcut_path", shortcut.path)
-            .putExtra("shortcut_name", "YurnBench")
-            .putExtra(EXTRA_BENCH, true))
+            .putExtra("shortcut_name", if (s.game != null) "Benchmark · ${s.game.name}" else "YurnBench")
+            .putExtra(EXTRA_BENCH, true).apply {
+                if (s.game != null) {
+                    // A confirmation series measures twice as long, like YurnBench's long phases.
+                    putExtra(EXTRA_GAME_WARMUP, s.game.warmup)
+                    putExtra(EXTRA_GAME_MEASURE, if (s.long) s.game.measure * 2 else s.game.measure)
+                }
+            })
         return true
     }
 
@@ -407,6 +519,13 @@ object Bench {
         val container = ContainerManager(context).getContainerById(s.containerId)
         val combo = s.combos.getOrNull(s.next) ?: return false
         val outcome = runCatching { JSONObject(outcomeFile(context).readText()) }.getOrNull()
+        if (s.game != null) {
+            val run = gameRun(context, s, combo, outcome)
+            logRun(context, run, container?.getWineVersion().orEmpty(), container?.getName().orEmpty(), s.long)
+            val next = s.copy(results = s.results + run, next = s.next + 1, awaiting = false)
+            save(context, next)
+            return next.running && next.next < next.combos.size
+        }
         val result = container?.let { runCatching { JSONObject(File(benchFolder(it), "result.json").readText()) }.getOrNull() }
         val status = when {
             result != null && result.optBoolean("done") -> "ok"
@@ -434,6 +553,38 @@ object Bench {
         val next = s.copy(results = s.results + run, next = s.next + 1, awaiting = false)
         save(context, next)
         return next.running && next.next < next.combos.size
+    }
+
+    /**
+     * A game run's result: the frames measured by the HUD as the CPU+GPU phase (a game loads both).
+     * A game that ended by itself during the window (its benchmark quit) counts when 10 s or more
+     * were measured. Not recorded as a conflict: a game's failure says nothing about YurnBench runs.
+     */
+    private fun gameRun(context: Context, s: BenchState, combo: Combo, outcome: JSONObject?): RunResult {
+        val g = outcome?.optJSONObject("game")
+        val measured = g?.optDouble("measured", 0.0) ?: 0.0
+        val st = outcome?.optString("status").orEmpty()
+        val status = when {
+            st == "done" -> "ok"
+            st == "partial" && measured >= 10 -> "ok"
+            st == "partial" -> "crash"
+            st.isNotEmpty() -> st
+            else -> "crash"
+        }
+        val detail = when {
+            st == "partial" && measured >= 10 -> "the game ended after ${measured.toInt()} s of measuring"
+            st == "partial" -> "the game ended after ${measured.toInt()} s of measuring (under 10 s)"
+            outcome != null -> outcome.optString("detail")
+            else -> "the session ended without a result"
+        }
+        val mix = Phase(g?.optDouble("avg", 0.0) ?: 0.0, g?.optDouble("low1", 0.0) ?: 0.0, g?.optInt("frames") ?: 0)
+        return RunResult(combo, status, detail, "", 0.0, 0.0, Phase(0.0, 0.0, 0), mix,
+            outcome?.optDouble("seconds", 0.0) ?: 0.0, s.tempBefore, temperature(context),
+            (outcome?.optJSONObject("telemetry") ?: JSONObject()).also { t ->
+                outcome?.optJSONObject("root")?.let { t.put("root", it) }
+                g?.optDouble("low01", 0.0)?.let { t.put("game_low01", it) }
+                t.put("game", true)
+            }, "game")
     }
 
     /** CPU temperature in °C, or -1 when the system doesn't show it. */
