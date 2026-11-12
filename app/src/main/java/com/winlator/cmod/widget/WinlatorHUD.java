@@ -43,6 +43,15 @@ public class WinlatorHUD extends View {
     private static final String KEY_VERT = "hud_vertical";
     public static final String KEY_DUAL_CELL = "hud_dual_cell_correction";
 
+    /** Power ×2 for two-cell batteries (YurNLator, Bannerlator and benchmark power readings). */
+    public static boolean dualCell(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_DUAL_CELL, false);
+    }
+
+    public static void setDualCell(Context context, boolean on) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_DUAL_CELL, on).apply();
+    }
+
     public static final int SHOW_FPS = 1;
     public static final int SHOW_GPU_USAGE = 1 << 1;
     public static final int SHOW_CPU_USAGE = 1 << 2;

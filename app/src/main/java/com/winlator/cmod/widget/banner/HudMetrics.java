@@ -819,6 +819,9 @@ public class HudMetrics {
             Long uw = readLongFromChannels(POWER_CHANNELS);   // µW
             if (uw != null && uw != 0L) watts = (float) (Math.abs(uw) / 1_000_000.0);
         }
+        // Two-cell batteries: many report one cell's voltage (or current), so the power reads
+        // half of the real one. The HUD setting "two-cell battery" doubles it.
+        if (watts > 0f && com.winlator.cmod.widget.WinlatorHUD.dualCell(context)) watts *= 2f;
 
         String runtimeText;
         if (charging) {

@@ -1152,6 +1152,11 @@ public class FileManagerFragment extends Fragment {
     }
 
     private String getSmartDisplayName(File file) {
+        // The game's own name from the exe's version info ("hl2.exe" -> "Half-Life 2").
+        if (file.getName().toLowerCase(Locale.ENGLISH).endsWith(".exe")) {
+            String product = com.winlator.cmod.core.ExeVersionInfo.gameName(file);
+            if (product != null) return product;
+        }
         String filename = cleanGameName(file.getName());
         String lowerName = filename.toLowerCase(Locale.ENGLISH);
         List<String> genericNames = Arrays.asList(

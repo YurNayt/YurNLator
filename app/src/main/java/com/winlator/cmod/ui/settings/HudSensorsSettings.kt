@@ -106,6 +106,17 @@ fun HudSensorsCard() {
             if (status.isNotEmpty()) {
                 Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f))
+            var dual by remember { mutableStateOf(com.winlator.cmod.widget.WinlatorHUD.dualCell(context)) }
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(uiStr(R.string.l_hud_dual_cell), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                    Text(uiStr(R.string.l_hud_dual_cell_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                androidx.compose.material3.Switch(checked = dual, onCheckedChange = {
+                    dual = it; com.winlator.cmod.widget.WinlatorHUD.setDualCell(context, it)
+                })
+            }
         }
     }
 }

@@ -451,6 +451,15 @@ private fun HudSection(bridge: QuickMenuBridge, opened: Int) {
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        if (mode == 2 || mode == 4) {
+            val ctx = LocalContext.current
+            var dual by remember(opened) { mutableStateOf(com.winlator.cmod.widget.WinlatorHUD.dualCell(ctx)) }
+            Card {
+                SwitchRow(uiStr(R.string.l_hud_dual_cell), uiStr(R.string.l_hud_dual_cell_hint), checked = dual) {
+                    dual = it; com.winlator.cmod.widget.WinlatorHUD.setDualCell(ctx, it)
+                }
+            }
+        }
     }
 }
 

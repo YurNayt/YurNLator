@@ -62,7 +62,7 @@ public class GameDetailFragment extends Fragment {
             return new FrameLayout(requireContext());
         }
 
-        ((AppCompatActivity) requireActivity()).getSupportActionBar().setTitle(shortcut.name);
+        ((AppCompatActivity) requireActivity()).getSupportActionBar().setTitle(com.winlator.cmod.core.ExeVersionInfo.displayName(shortcut.name, shortcut.path));
         String baseName = FileUtils.getBasename(shortcut.file.getPath());
         File banner = new File(Environment.getExternalStorageDirectory(),
                 "YurNLator/banners/" + baseName + ".png");
@@ -73,7 +73,7 @@ public class GameDetailFragment extends Fragment {
 
         View content = GameDetailComposeHost.create(
                 requireContext(),
-                shortcut.name,
+                com.winlator.cmod.core.ExeVersionInfo.displayName(shortcut.name, shortcut.path),
                 withPlaytime(buildEnvironmentSubtitle()),
                 artworkPath,
                 fallback,

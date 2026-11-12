@@ -932,4 +932,25 @@
     <string name="l_lbl_mediatek_dimensity_exynos_older_unisoc_kirin">MediaTek Dimensity, Exynos (старые), Unisoc, Kirin. Vulkan-обёртка с настройками под Mali.</string>
     <string name="l_lbl_xclipse_powervr_and_other_gpus_safe">Xclipse, PowerVR и другие GPU. Безопасные настройки через системный драйвер Vulkan.</string>
     <string name="l_wc_1_s_cancelled">%1$s: отменено</string>
+    <string name="l_upd_title">Обновление</string>
+    <string name="l_upd_installed">Установлена: %1$s · %2$s</string>
+    <string name="l_upd_stable">Основные версии</string>
+    <string name="l_upd_dev">Тестовые сборки</string>
+    <string name="l_upd_stable_hint">Опубликованные версии (v0.1.0, v0.2.0…). Скачивается тот же вариант, что установлен, и приложение обновляется поверх.</string>
+    <string name="l_upd_dev_hint">Каждая сборка с GitHub (dev), самая новая. Может быть нестабильной.</string>
+    <string name="l_upd_checking">Проверка…</string>
+    <string name="l_upd_up_to_date">У вас последняя версия.</string>
+    <string name="l_upd_check_again">Проверить снова</string>
+    <string name="l_upd_no_release">Основная версия ещё не выпущена. Доступны тестовые сборки.</string>
+    <string name="l_upd_failed">Не удалось проверить: %1$s</string>
+    <string name="l_upd_available">Новая версия: %1$s</string>
+    <string name="l_upd_download_install">Скачать и установить</string>
+    <string name="l_upd_downloading">Скачивание обновления…</string>
+    <string name="l_upd_download_failed">Загрузка прервана или не удалась.</string>
+    <string name="l_upd_ready">Скачано. Установите:</string>
+    <string name="l_upd_need_permission">Android попросит разрешить YurNLator устанавливать приложения (один раз).</string>
+    <string name="l_upd_allow">Разрешить</string>
+    <string name="l_upd_install">Установить</string>
+    <string name="l_hud_dual_cell">Двухъячеечный аккумулятор</string>
+    <string name="l_hud_dual_cell_hint">Потребление ×2: для телефонов с двумя ячейками, где HUD показывает половину реального потребления.</string>
 </resources>

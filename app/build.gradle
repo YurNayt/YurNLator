@@ -214,6 +214,8 @@ android {
     buildFeatures {
         prefab = true
         compose = true
+        // BuildConfig.FLAVOR: the updater downloads the same variant (standard, antutu...).
+        buildConfig = true
     }
 
 }

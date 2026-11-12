@@ -932,4 +932,25 @@
     <string name="l_lbl_mediatek_dimensity_exynos_older_unisoc_kirin">MediaTek Dimensity, Exynos (older), Unisoc, Kirin. Vulkan wrapper with Mali-friendly defaults.</string>
     <string name="l_lbl_xclipse_powervr_and_other_gpus_safe">Xclipse, PowerVR and other GPUs. Safe defaults through the system Vulkan driver.</string>
     <string name="l_wc_1_s_cancelled">%1$s: cancelled</string>
+    <string name="l_upd_title">Update</string>
+    <string name="l_upd_installed">Installed: %1$s · %2$s</string>
+    <string name="l_upd_stable">Main releases</string>
+    <string name="l_upd_dev">Test builds</string>
+    <string name="l_upd_stable_hint">Published releases (v0.1.0, v0.2.0…). The same variant as installed is downloaded, so it updates in place.</string>
+    <string name="l_upd_dev_hint">Every build from GitHub (dev), newest first. May be unstable.</string>
+    <string name="l_upd_checking">Checking…</string>
+    <string name="l_upd_up_to_date">You have the latest version.</string>
+    <string name="l_upd_check_again">Check again</string>
+    <string name="l_upd_no_release">No main release has been published yet. Test builds are available.</string>
+    <string name="l_upd_failed">Could not check: %1$s</string>
+    <string name="l_upd_available">New version: %1$s</string>
+    <string name="l_upd_download_install">Download and install</string>
+    <string name="l_upd_downloading">Downloading the update…</string>
+    <string name="l_upd_download_failed">The download stopped or failed.</string>
+    <string name="l_upd_ready">Downloaded. Install it:</string>
+    <string name="l_upd_need_permission">Android asks to allow YurNLator to install apps (once).</string>
+    <string name="l_upd_allow">Allow</string>
+    <string name="l_upd_install">Install</string>
+    <string name="l_hud_dual_cell">Two-cell battery</string>
+    <string name="l_hud_dual_cell_hint">Power ×2: for phones whose battery has two cells and the HUD shows half the real power.</string>
 </resources>

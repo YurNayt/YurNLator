@@ -492,7 +492,7 @@ public class ShortcutsFragment extends Fragment {
             items.add(new LibraryItem(
                     shortcut.file.getPath(),
                     shortcut.file.getPath(),
-                    shortcut.name,
+                    com.winlator.cmod.core.ExeVersionInfo.displayName(shortcut.name, shortcut.path),
                     shortcut.container != null ? shortcut.container.getName() : "",
                     cover.exists() && artworkChecked(cover) ? cover.getPath() : null,
                     banner.exists() && artworkChecked(banner) ? banner.getPath() : null,
