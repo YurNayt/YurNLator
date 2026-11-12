@@ -912,4 +912,24 @@
     <string name="l_hint_wayland">Wayland: Turnip (Adreno) or PanVK (Mali)</string>
     <string name="l_hint_freedreno">Freedreno: Adreno only</string>
     <string name="l_hint_vk_driver">Turnip: Adreno only · Mali: System or PanVK</string>
+    <string name="l_cb_1_s_versions">+%1$s versions</string>
+    <string name="l_lbl_white">White</string>
+    <string name="l_lbl_black">Black</string>
+    <string name="l_lbl_amoled">AMOLED</string>
+    <string name="l_lbl_blue">Blue</string>
+    <string name="l_lbl_red">Red</string>
+    <string name="l_lbl_purple">Purple</string>
+    <string name="l_lbl_green">Green</string>
+    <string name="l_lbl_bright_surfaces_with_dark_text">Bright surfaces with dark text</string>
+    <string name="l_lbl_balanced_dark_theme_default">Balanced dark theme · Default</string>
+    <string name="l_lbl_pure_black_background_for_oled_displays">Pure black background for OLED displays</string>
+    <string name="l_lbl_dark_interface_with_cool_blue_accents">Dark interface with cool blue accents</string>
+    <string name="l_lbl_dark_interface_with_warm_red_accents">Dark interface with warm red accents</string>
+    <string name="l_lbl_dark_interface_with_rich_purple_accents">Dark interface with rich purple accents</string>
+    <string name="l_lbl_dark_interface_with_soft_green_accents">Dark interface with soft green accents</string>
+    <string name="l_lbl_universal">Universal</string>
+    <string name="l_lbl_snapdragon_devices_turnip_and_adreno_tuned">Snapdragon devices. Turnip and Adreno-tuned drivers, standard DXVK / VKD3D.</string>
+    <string name="l_lbl_mediatek_dimensity_exynos_older_unisoc_kirin">MediaTek Dimensity, Exynos (older), Unisoc, Kirin. Vulkan wrapper with Mali-friendly defaults.</string>
+    <string name="l_lbl_xclipse_powervr_and_other_gpus_safe">Xclipse, PowerVR and other GPUs. Safe defaults through the system Vulkan driver.</string>
+    <string name="l_wc_1_s_cancelled">%1$s: cancelled</string>
 </resources>

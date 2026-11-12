@@ -46,7 +46,8 @@ enum class WinlatorThemeType(
     AMOLED("amoled", "AMOLED", "Pure black background for OLED displays"),
     BLUE("blue", "Blue", "Dark interface with cool blue accents"),
     RED("red", "Red", "Dark interface with warm red accents"),
-    PURPLE("purple", "Purple", "Dark interface with rich purple accents");
+    PURPLE("purple", "Purple", "Dark interface with rich purple accents"),
+    GREEN("green", "Green", "Dark interface with soft green accents");
 
     companion object {
         fun fromId(id: String?): WinlatorThemeType = values().firstOrNull { it.id == id } ?: BLACK
@@ -160,6 +161,18 @@ private val PurpleColors = darkColorScheme(
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005)
 )
 
+private val GreenColors = darkColorScheme(
+    primary = Color(0xFF9DC9A8), onPrimary = Color(0xFF0B2414),
+    primaryContainer = Color(0xFF234430), onPrimaryContainer = Color(0xFFD3EBD9),
+    secondary = Color(0xFFB4CCB9), onSecondary = Color(0xFF15241A),
+    secondaryContainer = Color(0xFF1F3125), onSecondaryContainer = Color(0xFFD0E6D5),
+    background = Color(0xFF060B08), onBackground = Color(0xFFF0F5F1),
+    surface = Color(0xFF0D1510), onSurface = Color(0xFFF0F5F1),
+    surfaceVariant = Color(0xFF15201A), onSurfaceVariant = Color(0xFFAEC2B3),
+    outline = Color(0xFF4A6352), outlineVariant = Color(0xFF26362C),
+    error = Color(0xFFFFB4AB), onError = Color(0xFF690005)
+)
+
 internal fun winlatorColorScheme(theme: WinlatorThemeType): ColorScheme = when (theme) {
     WinlatorThemeType.WHITE -> WhiteColors
     WinlatorThemeType.BLACK -> BlackColors
@@ -167,6 +180,7 @@ internal fun winlatorColorScheme(theme: WinlatorThemeType): ColorScheme = when (
     WinlatorThemeType.BLUE -> BlueColors
     WinlatorThemeType.RED -> RedColors
     WinlatorThemeType.PURPLE -> PurpleColors
+    WinlatorThemeType.GREEN -> GreenColors
 }
 
 private val WinlatorTypography = Typography(

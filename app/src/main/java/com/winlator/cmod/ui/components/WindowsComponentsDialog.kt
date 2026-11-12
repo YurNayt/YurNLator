@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.components
 
+import com.winlator.cmod.core.DownloadTracker
 import com.winlator.cmod.ui.uiStr
 import com.winlator.cmod.R
 import android.content.Context
@@ -208,10 +209,23 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
         for (name in names) {
             val c = byName[name] ?: continue
             val j = Job(name).also { job = it }
-            val error = withContext(Dispatchers.IO) {
-                runCatching {
-                    ComponentInstaller.install(context, container, c, { f -> j.progress = f }) { s -> j.stage = s }
-                }.getOrElse { it.message ?: it.javaClass.simpleName }
+            val key = "wincomp:$name"
+            DownloadTracker.begin(key)
+            com.winlator.cmod.components.ComponentDownload.cancelled = false
+            com.winlator.cmod.components.ComponentDownload.trackKey = key
+            val error = try {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        ComponentInstaller.install(context, container, c, { f -> j.progress = f }) { s -> j.stage = s }
+                    }.getOrElse { it.message ?: it.javaClass.simpleName }
+                }
+            } finally {
+                com.winlator.cmod.components.ComponentDownload.trackKey = null
+                DownloadTracker.finish(key)
+            }
+            if (com.winlator.cmod.components.ComponentDownload.cancelled) {
+                out += uiStr(R.string.l_wc_1_s_cancelled, DependencyDetector.labelOf(name))
+                break
             }
             if (error == null) {
                 ComponentInstallRecords.add(context, container.id, name)
@@ -245,7 +259,11 @@ private fun ComponentsScreen(container: Container, exe: File?, recs: List<Depend
                 Text(uiStr(R.string.l_wc_installing_1_s, DependencyDetector.labelOf(j.name)), fontWeight = FontWeight.SemiBold)
                 if (j.stage.isNotBlank()) Text(j.stage, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.size(6.dp))
-                LinearProgressIndicator(progress = { j.progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+                val key = "wincomp:${j.name}"
+                val dl = DownloadTracker.states[key]
+                // Downloading: bar with pause / resume / cancel; then the install steps' progress.
+                if (dl != null && !dl.installing) DownloadProgress(key)
+                else LinearProgressIndicator(progress = { j.progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
             }
         }
 

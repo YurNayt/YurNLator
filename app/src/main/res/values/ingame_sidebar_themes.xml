@@ -101,4 +101,21 @@
         <item name="colorControlNormal">#CCC2DC</item>
         <item name="colorControlActivated">#D0BCFF</item>
     </style>
+
+    <style name="IngameSidebarTheme_Green">
+        <item name="ingameSidebarBackground">#060B08</item>
+        <item name="ingameSidebarSurface">#0D1510</item>
+        <item name="ingameSidebarSurfaceVariant">#15201A</item>
+        <item name="ingameSidebarOnSurface">#F0F5F1</item>
+        <item name="ingameSidebarOnSurfaceVariant">#AEC2B3</item>
+        <item name="ingameSidebarPrimary">#9DC9A8</item>
+        <item name="ingameSidebarPrimaryContainer">#234430</item>
+        <item name="ingameSidebarOutline">#4A6352</item>
+        <item name="android:textColorPrimary">#F0F5F1</item>
+        <item name="android:textColorSecondary">#AEC2B3</item>
+        <item name="android:colorAccent">#9DC9A8</item>
+        <item name="colorAccent">#9DC9A8</item>
+        <item name="colorControlNormal">#AEC2B3</item>
+        <item name="colorControlActivated">#9DC9A8</item>
+    </style>
 </resources>

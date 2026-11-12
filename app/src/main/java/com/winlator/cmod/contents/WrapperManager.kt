@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
 import androidx.compose.runtime.mutableIntStateOf
+import com.winlator.cmod.core.DownloadTracker
 import com.winlator.cmod.core.FileUtils
 import com.winlator.cmod.core.LocalInstalls
 import com.winlator.cmod.core.RemoteFetch
@@ -137,42 +138,44 @@ object WrapperManager {
         if (targets.isEmpty()) null
         else targets.joinToString(" / ") { it.replaceFirstChar { c -> c.uppercase() } } + " only"
 
-    /** Downloads, checks size and MD5, installs. Returns an error message or null. */
+    /** DownloadTracker key of a wrapper download (progress bar with pause / cancel). */
+    @JvmStatic
+    fun downloadKey(id: String) = "wrapper:$id"
+
+    /** Returned by [download] when the user cancelled: nothing to report. */
+    const val CANCELLED = ""
+
+    /**
+     * Downloads (with progress, pause / resume and cancel through DownloadTracker), checks size
+     * and MD5, installs. Returns an error message, [CANCELLED], or null on success.
+     */
     fun download(context: Context, entry: CatalogEntry, progress: (Int) -> Unit = {}): String? {
-        val tmp = File(context.cacheDir, "wrapper-${System.nanoTime()}.tzst")
+        val tmp = File(context.cacheDir, "wrapper-${entry.id.hashCode().toUInt().toString(16)}.tzst")
+        val key = downloadKey(entry.id)
+        DownloadTracker.begin(key)
         try {
-            val http = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build()
-            http.newCall(Request.Builder().url(entry.url).build()).execute().use { response ->
-                if (!response.isSuccessful) return "Download failed (${response.code})"
-                val body = response.body ?: return "Download failed"
-                val total = body.contentLength().takeIf { it > 0 } ?: entry.size
-                val md = MessageDigest.getInstance("MD5")
-                var done = 0L
-                body.byteStream().use { input ->
-                    tmp.outputStream().use { out ->
-                        val buf = ByteArray(64 * 1024)
-                        while (true) {
-                            val n = input.read(buf)
-                            if (n < 0) break
-                            out.write(buf, 0, n)
-                            md.update(buf, 0, n)
-                            done += n
-                            if (total > 0) progress((done * 100 / total).toInt().coerceIn(0, 100))
-                        }
-                    }
-                }
-                if (entry.size > 0 && done != entry.size) return "Downloaded file has the wrong size"
-                val hex = md.digest().joinToString("") { "%02X".format(it) }
-                if (entry.md5.length == 32 && hex != entry.md5) return "Checksum mismatch, the file is damaged"
+            if (!DownloadTracker.download(key, entry.url, tmp, expectedSize = entry.size)) return "Download failed"
+            DownloadTracker.installing(key)
+            progress(100)
+            if (entry.size > 0 && tmp.length() != entry.size) return "Downloaded file has the wrong size"
+            val md = MessageDigest.getInstance("MD5")
+            tmp.inputStream().use { input ->
+                val buf = ByteArray(64 * 1024)
+                while (true) { val n = input.read(buf); if (n < 0) break; md.update(buf, 0, n) }
             }
+            val hex = md.digest().joinToString("") { "%02X".format(it) }
+            if (entry.md5.length == 32 && hex != entry.md5) return "Checksum mismatch, the file is damaged"
             if (!looksLikeZstd(tmp)) return "Not a .tzst wrapper archive"
             install(context, entry.id, tmp, entry.title, entry.author, entry.targets, fromFile = false)
             return null
+        } catch (e: DownloadTracker.CancelledException) {
+            return CANCELLED
         } catch (e: Exception) {
             Log.w(TAG, "Download failed", e)
             return "Download failed: ${e.message ?: "network error"}"
         } finally {
             tmp.delete()
+            DownloadTracker.finish(key)
         }
     }
 

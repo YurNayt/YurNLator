@@ -574,7 +574,7 @@ private fun ItemCard(
                         addAll(item.details)
                         if (fromFile) add(uiStr(R.string.l_cb_from_your_files))
                         if (item.inUse) add(uiStr(R.string.l_ob_in_use))
-                        else if (item.installed && isEmpty()) add("Installed")
+                        else if (item.installed && isEmpty()) add(uiStr(R.string.l_wc_installed))
                         if (showAuthor && !item.installed) item.author?.let { add(it) }
                     }.joinToString(" · ")
                     val status = when {

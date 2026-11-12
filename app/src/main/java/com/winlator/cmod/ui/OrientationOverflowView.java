@@ -180,6 +180,13 @@ public final class OrientationOverflowView extends AppCompatImageButton {
                 primary = Color.rgb(208, 188, 255);
                 outline = Color.rgb(73, 65, 81);
                 break;
+            case "green":
+                surface = Color.rgb(13, 21, 16);
+                onSurface = Color.rgb(240, 245, 241);
+                onSurfaceVariant = Color.rgb(174, 194, 179);
+                primary = Color.rgb(157, 201, 168);
+                outline = Color.rgb(38, 54, 44);
+                break;
             default:
                 surface = Color.rgb(16, 17, 22);
                 onSurface = Color.rgb(245, 245, 247);

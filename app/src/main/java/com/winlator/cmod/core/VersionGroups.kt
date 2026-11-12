@@ -1,5 +1,7 @@
 package com.winlator.cmod.core
 
+import com.winlator.cmod.ui.uiStr
+import com.winlator.cmod.R
 import com.winlator.cmod.contents.ContentCatalogs
 import java.util.Locale
 
@@ -188,5 +190,5 @@ object VersionGroups {
 
     /** "+3 versions" / "+1 version". */
     @JvmStatic
-    fun moreLabel(count: Int): String = if (count == 1) "+1 version" else "+$count versions"
+    fun moreLabel(count: Int): String = uiStr(R.string.l_cb_1_s_versions, count)
 }

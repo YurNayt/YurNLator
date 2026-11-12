@@ -117,7 +117,8 @@ fun rememberWrapperItems(onInstalled: (String) -> Unit = {}): WrapperItems {
                 }
                 busy = null
                 progress = -1
-                if (error != null) Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                if (error == WrapperManager.CANCELLED) Unit
+                else if (error != null) Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                 else onInstalled(entry.id)
             }
         },

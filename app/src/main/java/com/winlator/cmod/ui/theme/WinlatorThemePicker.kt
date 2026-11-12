@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.theme
 
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.uiStr
 import com.winlator.cmod.R
 import androidx.compose.foundation.BorderStroke
@@ -85,9 +86,9 @@ private fun ThemeChoiceRow(
             ThemePreview(preview)
             Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f)) {
-                Text(theme.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(L10nDict.t(theme.displayName), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    theme.description,
+                    L10nDict.t(theme.description),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -155,7 +156,7 @@ fun WinlatorThemePreferenceCard(modifier: Modifier = Modifier) {
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
                 Text(uiStr(R.string.l_lbl_theme), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-                Text(current.displayName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(L10nDict.t(current.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -225,5 +226,9 @@ internal fun winlatorThemePreview(theme: WinlatorThemeType): ThemePreviewColors 
     WinlatorThemeType.PURPLE -> ThemePreviewColors(
         background = Color(0xFF0E0A13), surface = Color(0xFF241C2D),
         accent = Color(0xFFD0BCFF), outline = Color(0xFF675A78)
+    )
+    WinlatorThemeType.GREEN -> ThemePreviewColors(
+        background = Color(0xFF060B08), surface = Color(0xFF15201A),
+        accent = Color(0xFF9DC9A8), outline = Color(0xFF4A6352)
     )
 }

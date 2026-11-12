@@ -890,26 +890,29 @@ private fun ShortcutCategoryV2(
                 SettingToggle("Disable Present Wait", s.disablePresentWait) { s.disablePresentWait = it; s.graphics("disablePresentWait", if (it) "1" else "0") }
                 SettingsDivider()
                 SettingChoice("Resource Type", s.resourceType, listOf("auto", "dmabuf", "ahb", "opaque")) { s.resourceType = it; s.graphics("resourceType", it) }
-                SettingsDivider()
-                SettingChoice("BCN Emulation", s.bcn, listOf("none", "partial", "full", "auto")) { s.bcn = it; s.graphics("bcnEmulation", it) }
-                SettingsDivider()
-                SettingChoice("BCN Emulation Type", s.bcnType, listOf("software", "compute")) { s.bcnType = it; s.graphics("bcnEmulationType", it) }
-                if (s.bcnType == "compute") {
+                // BCn emulation is for Mali and other GPUs without BCn; Adreno reads BCn itself.
+                if (com.winlator.cmod.core.GpuProfileManager.current(context) != com.winlator.cmod.core.GpuProfile.ADRENO) {
                     SettingsDivider()
-                    val forcedLegacy = com.winlator.cmod.core.MaliCompat.forcesLegacyBcn(context, readConfig(s.graphicsConfig, "wrapper", ';'))
-                    SettingChoice("BCn layer (Winlator Mali)", if (forcedLegacy) "legacy" else s.bcnVersion, listOf("current", "legacy")) { s.bcnVersion = it; s.graphics("bcnVersion", it) }
-                    if (forcedLegacy) Text(uiStr(R.string.l_ed_legacy_is_used_with_this_wrapper),
-                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
-                    if (forcedLegacy || s.bcnVersion == "legacy") {
+                    SettingChoice("BCN Emulation", s.bcn, listOf("none", "partial", "full", "auto")) { s.bcn = it; s.graphics("bcnEmulation", it) }
+                    SettingsDivider()
+                    SettingChoice("BCN Emulation Type", s.bcnType, listOf("software", "compute")) { s.bcnType = it; s.graphics("bcnEmulationType", it) }
+                    if (s.bcnType == "compute") {
                         SettingsDivider()
-                        SettingChoice("BCn transcode to", s.bcnTranscode, listOf("astc", "etc2", "etc1")) { s.bcnTranscode = it; s.graphics("bcnTranscode", it) }
-                        SettingsDivider()
-                        SettingChoice("BCn quality", s.bcnQuality, listOf("auto", "fast", "balanced", "high")) { s.bcnQuality = it; s.graphics("bcnQuality", it) }
+                        val forcedLegacy = com.winlator.cmod.core.MaliCompat.forcesLegacyBcn(context, readConfig(s.graphicsConfig, "wrapper", ';'))
+                        SettingChoice("BCn layer (Winlator Mali)", if (forcedLegacy) "legacy" else s.bcnVersion, listOf("current", "legacy")) { s.bcnVersion = it; s.graphics("bcnVersion", it) }
+                        if (forcedLegacy) Text(uiStr(R.string.l_ed_legacy_is_used_with_this_wrapper),
+                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
+                        if (forcedLegacy || s.bcnVersion == "legacy") {
+                            SettingsDivider()
+                            SettingChoice("BCn transcode to", s.bcnTranscode, listOf("astc", "etc2", "etc1")) { s.bcnTranscode = it; s.graphics("bcnTranscode", it) }
+                            SettingsDivider()
+                            SettingChoice("BCn quality", s.bcnQuality, listOf("auto", "fast", "balanced", "high")) { s.bcnQuality = it; s.graphics("bcnQuality", it) }
+                        }
                     }
+                    SettingsDivider()
+                    SettingToggle("BCN Emulation Cache", s.bcnCache) { s.bcnCache = it; s.graphics("bcnEmulationCache", if (it) "1" else "0") }
                 }
-                SettingsDivider()
-                SettingToggle("BCN Emulation Cache", s.bcnCache) { s.bcnCache = it; s.graphics("bcnEmulationCache", if (it) "1" else "0") }
             }
         }
 

@@ -912,4 +912,24 @@
     <string name="l_hint_wayland">Wayland: Turnip (Adreno) или PanVK (Mali)</string>
     <string name="l_hint_freedreno">Freedreno: только Adreno</string>
     <string name="l_hint_vk_driver">Turnip: только Adreno · Mali: System или PanVK</string>
+    <string name="l_cb_1_s_versions">+ ещё версий: %1$s</string>
+    <string name="l_lbl_white">Светлая</string>
+    <string name="l_lbl_black">Чёрная</string>
+    <string name="l_lbl_amoled">AMOLED</string>
+    <string name="l_lbl_blue">Синяя</string>
+    <string name="l_lbl_red">Красная</string>
+    <string name="l_lbl_purple">Фиолетовая</string>
+    <string name="l_lbl_green">Зелёная</string>
+    <string name="l_lbl_bright_surfaces_with_dark_text">Светлые поверхности и тёмный текст</string>
+    <string name="l_lbl_balanced_dark_theme_default">Сбалансированная тёмная тема · по умолчанию</string>
+    <string name="l_lbl_pure_black_background_for_oled_displays">Чисто чёрный фон для OLED-экранов</string>
+    <string name="l_lbl_dark_interface_with_cool_blue_accents">Тёмный интерфейс с холодными синими акцентами</string>
+    <string name="l_lbl_dark_interface_with_warm_red_accents">Тёмный интерфейс с тёплыми красными акцентами</string>
+    <string name="l_lbl_dark_interface_with_rich_purple_accents">Тёмный интерфейс с насыщенными фиолетовыми акцентами</string>
+    <string name="l_lbl_dark_interface_with_soft_green_accents">Тёмный интерфейс с мягкими зелёными акцентами</string>
+    <string name="l_lbl_universal">Универсальный</string>
+    <string name="l_lbl_snapdragon_devices_turnip_and_adreno_tuned">Устройства на Snapdragon. Turnip и драйверы под Adreno, стандартные DXVK / VKD3D.</string>
+    <string name="l_lbl_mediatek_dimensity_exynos_older_unisoc_kirin">MediaTek Dimensity, Exynos (старые), Unisoc, Kirin. Vulkan-обёртка с настройками под Mali.</string>
+    <string name="l_lbl_xclipse_powervr_and_other_gpus_safe">Xclipse, PowerVR и другие GPU. Безопасные настройки через системный драйвер Vulkan.</string>
+    <string name="l_wc_1_s_cancelled">%1$s: отменено</string>
 </resources>

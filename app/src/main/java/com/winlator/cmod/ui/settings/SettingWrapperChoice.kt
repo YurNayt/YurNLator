@@ -127,7 +127,8 @@ internal fun SettingWrapperChoice(selected: String, onSelected: (String) -> Unit
                     },
                     onLocalPackage = { wrappers.importFile() },
                     busyIds = wrappers.busyIds,
-                    busyLabel = "Downloading",
+                    downloadKey = { WrapperManager.downloadKey(WrapperItems.wrapperId(it)) },
+                    busyLabel = uiStr(R.string.l_ob_downloading),
                     busyProgress = wrappers.progress
                 )
             }

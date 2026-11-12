@@ -7,6 +7,8 @@ import com.winlator.cmod.ui.components.BrowserItem
 import com.winlator.cmod.ui.components.ComponentBrowser
 import com.winlator.cmod.ui.components.componentTypeTitle
 import com.winlator.cmod.ui.components.rememberWrapperItems
+import com.winlator.cmod.ui.components.WrapperItems
+import com.winlator.cmod.contents.WrapperManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -205,6 +207,7 @@ internal fun OnboardingComponentsScreen(
                 }
             },
             busyIds = setOfNotNull(installing) + wrappers.busyIds,
+            downloadKey = { if (wrappers.owns(it)) WrapperManager.downloadKey(WrapperItems.wrapperId(it)) else "cmp:" + it.id },
             busyLabel = if (wrapperBusy) uiStr(R.string.l_ob_downloading) else installingLabel,
             busyProgress = if (wrapperBusy) wrappers.progress else installingProgress,
             typeHeader = { type ->
@@ -536,7 +539,12 @@ private fun ComponentCard(
                     OutlinedButton(onClick = { cb.onInstall(item.id) }, enabled = !locked) { Text(uiStr(R.string.l_lbl_download)) }
                 } else Icon(Icons.Outlined.Check, null)
             }
-            if (busy) {
+            val trackKey = "cmp:" + item.id
+            if (busy && com.winlator.cmod.core.DownloadTracker.states[trackKey] != null) {
+                // Downloading: bar with pause / resume / cancel.
+                Spacer(Modifier.height(9.dp))
+                com.winlator.cmod.ui.components.DownloadProgress(trackKey)
+            } else if (busy) {
                 Spacer(Modifier.height(9.dp))
                 if (installingProgress >= 0) {
                     LinearProgressIndicator(

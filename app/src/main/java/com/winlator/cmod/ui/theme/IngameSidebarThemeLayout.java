@@ -60,6 +60,7 @@ public class IngameSidebarThemeLayout extends FrameLayout {
         else if ("blue".equals(theme)) overlay = R.style.IngameSidebarTheme_Blue;
         else if ("red".equals(theme)) overlay = R.style.IngameSidebarTheme_Red;
         else if ("purple".equals(theme)) overlay = R.style.IngameSidebarTheme_Purple;
+        else if ("green".equals(theme)) overlay = R.style.IngameSidebarTheme_Green;
         else overlay = R.style.IngameSidebarTheme_Black;
         context.getTheme().applyStyle(overlay, true);
     }

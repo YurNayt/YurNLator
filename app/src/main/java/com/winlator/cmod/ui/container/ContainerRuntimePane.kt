@@ -222,9 +222,12 @@ internal fun ContainerRuntimePane(
                 SettingsDivider(); SettingToggle("Sync Frame", syncFrame) { syncFrame = it; saveGraphics("syncFrame", if (it) "1" else "0") }
                 SettingsDivider(); SettingToggle("Disable Present Wait", disablePresentWait) { disablePresentWait = it; saveGraphics("disablePresentWait", if (it) "1" else "0") }
                 SettingsDivider(); SettingChoice("Resource Type", resourceType, listOf("auto", "dmabuf", "ahb", "opaque")) { resourceType = it; saveGraphics("resourceType", it) }
-                SettingsDivider(); SettingChoice("BCN Emulation", bcnEmulation, listOf("none", "partial", "full", "auto")) { bcnEmulation = it; saveGraphics("bcnEmulation", it) }
-                SettingsDivider(); SettingChoice("BCN Emulation Type", bcnType, listOf("software", "compute")) { bcnType = it; saveGraphics("bcnEmulationType", it) }
-                SettingsDivider(); SettingToggle("BCN Emulation Cache", bcnCache) { bcnCache = it; saveGraphics("bcnEmulationCache", if (it) "1" else "0") }
+                // BCn emulation is for Mali and other GPUs without BCn; Adreno reads BCn itself.
+                if (com.winlator.cmod.core.GpuProfileManager.current(context) != com.winlator.cmod.core.GpuProfile.ADRENO) {
+                    SettingsDivider(); SettingChoice("BCN Emulation", bcnEmulation, listOf("none", "partial", "full", "auto")) { bcnEmulation = it; saveGraphics("bcnEmulation", it) }
+                    SettingsDivider(); SettingChoice("BCN Emulation Type", bcnType, listOf("software", "compute")) { bcnType = it; saveGraphics("bcnEmulationType", it) }
+                    SettingsDivider(); SettingToggle("BCN Emulation Cache", bcnCache) { bcnCache = it; saveGraphics("bcnEmulationCache", if (it) "1" else "0") }
+                }
                 SettingsDivider(); SettingText("GPU Name", gpuName) { gpuName = it; saveGraphics("gpuName", it) }
                 SettingsDivider(); SettingText("Blacklisted Extensions", blacklistedExtensions, 2) { blacklistedExtensions = it; saveGraphics("blacklistedExtensions", it.replace(" ", "")) }
             }

@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.gpu
 
+import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.uiStr
 import com.winlator.cmod.R
 import androidx.compose.foundation.BorderStroke
@@ -98,10 +99,10 @@ fun GpuProfileOptions(
         AlertDialog(
             onDismissRequest = { pendingMismatch = null },
             icon = { Icon(Icons.Outlined.WarningAmber, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(uiStr(R.string.l_gpu_use_the_1_s_profile, profile.title)) },
+            title = { Text(uiStr(R.string.l_gpu_use_the_1_s_profile, L10nDict.t(profile.title))) },
             text = {
                 Text(
-                    uiStr(R.string.l_gpu_your_device_has_1_s_2, detected.vendor.displayName, detected.renderer, profile.title)
+                    uiStr(R.string.l_gpu_your_device_has_1_s_2, detected.vendor.displayName, detected.renderer, L10nDict.t(profile.title))
                 )
             },
             confirmButton = {
@@ -133,7 +134,7 @@ private fun ProfileOption(profile: GpuProfile, selected: Boolean, recommended: B
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(profile.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(L10nDict.t(profile.title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     if (recommended) {
                         Spacer(Modifier.width(8.dp))
                         Text(
@@ -147,7 +148,7 @@ private fun ProfileOption(profile: GpuProfile, selected: Boolean, recommended: B
                     }
                 }
                 Text(
-                    profile.summary,
+                    L10nDict.t(profile.summary),
                     modifier = Modifier.padding(top = 2.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant
@@ -184,7 +185,7 @@ fun GpuProfilePreferenceCard(modifier: Modifier = Modifier) {
             Column(Modifier.weight(1f)) {
                 Text(uiStr(R.string.l_gpu_gpu_profile), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 Text(
-                    "${current.title} · ${detected.renderer}",
+                    "${L10nDict.t(current.title)} · ${detected.renderer}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

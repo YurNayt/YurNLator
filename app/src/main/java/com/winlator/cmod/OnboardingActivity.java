@@ -1,5 +1,7 @@
 package com.winlator.cmod;
 
+import com.winlator.cmod.ui.UiStrings;
+import com.winlator.cmod.core.DownloadTracker;
 import com.winlator.cmod.core.RemoteFetch;
 import com.winlator.cmod.contents.ContentCatalogs;
 import com.winlator.cmod.core.LocalInstalls;
@@ -499,17 +501,24 @@ public class OnboardingActivity extends AppCompatActivity {
         composeController.setInstallBusy(id, true);
         composeController.updateInstallProgress("Preparing " + item.name, 0);
         io.execute(() -> {
-            File archive = new File(getCacheDir(), "winz-component-" + System.nanoTime());
+            // Progress bar with pause / resume / cancel in the list (DownloadTracker, resumable).
+            String key = "cmp:" + id;
+            File archive = new File(getCacheDir(), "winz-component-" + Integer.toHexString(item.url.hashCode()));
+            DownloadTracker.begin(key);
             try {
-                if (!download(item.url, archive, item.name)) throw new Exception("Download failed");
+                if (!DownloadTracker.download(key, item.url, archive, true)) throw new Exception("Download failed");
+                DownloadTracker.installing(key);
                 installContentArchive(Uri.fromFile(archive), item.name, 72, () -> {
                     rebuildCatalog();
                     runOnUiThread(() -> finishInstall(id, null));
                 }, error -> runOnUiThread(() -> finishInstall(id, error)));
+            } catch (DownloadTracker.CancelledException cancelled) {
+                runOnUiThread(() -> finishInstall(id, null));
             } catch (Exception error) {
-                runOnUiThread(() -> finishInstall(id, "Unable to install " + item.name + "."));
+                runOnUiThread(() -> finishInstall(id, UiStrings.get(R.string.l_ed_unable_to_install_1_s, item.name)));
             } finally {
                 archive.delete();
+                DownloadTracker.finish(key);
             }
         });
     }
@@ -522,29 +531,29 @@ public class OnboardingActivity extends AppCompatActivity {
         composeController.setInstallBusy(id, true);
         composeController.updateInstallProgress("Preparing " + item.name, 0);
         io.execute(() -> {
-            File archive = new File(getCacheDir(), packageInfo.identifier + "-" + System.nanoTime());
+            String key = "cmp:" + id;
+            File archive = new File(getCacheDir(), packageInfo.identifier + ".pkg");
             boolean installed = false;
+            boolean cancelled = false;
+            DownloadTracker.begin(key);
             try {
-                boolean downloaded = ProtonPackageManager.downloadPackage(
-                        packageInfo,
-                        archive,
-                        progress -> postInstallProgress(
-                                "Downloading " + item.name,
-                                Math.min(70, progress * 70 / 100)
-                        )
-                );
+                boolean downloaded = ProtonPackageManager.downloadPackage(packageInfo, archive, key);
                 if (downloaded) {
-                    postInstallProgress("Installing " + item.name, 72);
+                    DownloadTracker.installing(key);
+                    postInstallProgress(UiStrings.get(R.string.l_dl_installing), 72);
                     installed = ProtonPackageManager.installPackage(this, packageInfo.identifier, archive);
                 }
+            } catch (DownloadTracker.CancelledException e) {
+                cancelled = true;
             } finally {
                 archive.delete();
+                DownloadTracker.finish(key);
             }
             if (installed) rebuildCatalog();
-            final boolean success = installed;
+            final boolean success = installed || cancelled;
             runOnUiThread(() -> finishInstall(
                     id,
-                    success ? null : "Unable to install " + item.name + "."
+                    success ? null : UiStrings.get(R.string.l_ed_unable_to_install_1_s, item.name)
             ));
         });
     }
@@ -787,13 +796,13 @@ public class OnboardingActivity extends AppCompatActivity {
         composeController.setInstallBusy(componentId, true);
         composeController.updateInstallProgress("Installing " + driver.name, -1);
         io.execute(() -> {
-            String installed = RemoteDriverCatalog.install(this, driver.url);
+            String installed = RemoteDriverCatalog.install(this, driver.url, "cmp:" + componentId);
             runOnUiThread(() -> {
                 installBusy = false;
                 composeController.setInstallBusy(null, false);
                 syncComposeCatalog();
                 if (installed == null || installed.isEmpty()) {
-                    Toast.makeText(this, "Unable to install " + driver.name + ".", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, UiStrings.get(R.string.l_ed_unable_to_install_1_s, driver.name), Toast.LENGTH_LONG).show();
                 }
             });
         });
