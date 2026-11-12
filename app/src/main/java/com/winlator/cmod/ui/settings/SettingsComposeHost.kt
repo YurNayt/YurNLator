@@ -321,10 +321,6 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             item("imagefs-title") { SectionTitle(stringResource(R.string.imagefs)) }
             item("imagefs") { NavigationRow(Icons.Outlined.Refresh, stringResource(R.string.reinstall_imagefs), null, callbacks::onReinstallImageFs) }
 
-            item("about-title") { SectionTitle(uiStr(R.string.l_set_about)) }
-            item("about") {
-                NavigationRow(Icons.Outlined.Info, uiStr(R.string.l_set_about_2), null) { activity?.showAboutDialog() }
-            }
             if (devOptions) {
                 item("dev-title") { SectionTitle(uiStr(R.string.l_set_developer)) }
                 item("dev-drivers") {
@@ -347,36 +343,11 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
                     }
                 }
             }
-            // Plain centered version text, no row or ripple: tapping it five times unlocks the developer
-            // options (like Android's build number) without looking like something to press.
-            item("version") {
-                androidx.compose.foundation.layout.Box(
-                    Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp),
-                    contentAlignment = androidx.compose.ui.Alignment.Center,
-                ) {
-                    Text(
-                        "YurNLator " + appVersion.ifBlank { "—" },
-                        modifier = Modifier.clickable(
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                            indication = null,
-                        ) {
-                            if (devOptions) {
-                                Toast.makeText(context, uiStr(R.string.l_set_developer_options_are_already_on), Toast.LENGTH_SHORT).show()
-                            } else {
-                                versionTaps++
-                                val left = DeveloperOptions.TAPS - versionTaps
-                                if (left <= 0) {
-                                    DeveloperOptions.setEnabled(context, true); devOptions = true
-                                    Toast.makeText(context, uiStr(R.string.l_set_developer_options_are_on), Toast.LENGTH_SHORT).show()
-                                } else if (left <= 2) {
-                                    Toast.makeText(context, uiStr(R.string.l_set_1_d_more, left), Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
+            // About is last; its version line unlocks the developer options (tap it five times).
+            item("about-title") { SectionTitle(uiStr(R.string.l_set_about)) }
+            item("about") {
+                NavigationRow(Icons.Outlined.Info, uiStr(R.string.l_set_about_2), null) {
+                    activity?.showAboutDialog { devOptions = DeveloperOptions.enabled(context); activity?.updateBenchTab() }
                 }
             }
         }

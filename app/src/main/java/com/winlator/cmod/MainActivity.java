@@ -25,6 +25,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ProgressBar;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -524,6 +525,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     public void showAboutDialog() {
+        showAboutDialog(null);
+    }
+
+    /** onDevOptionsChanged: run when tapping the version five times switched the developer options on. */
+    public void showAboutDialog(Runnable onDevOptionsChanged) {
         ContentDialog dialog = new ContentDialog(this, R.layout.about_dialog);
         dialog.findViewById(R.id.LLBottomBar).setVisibility(View.GONE);
 
@@ -537,13 +543,34 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             final PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
 
             TextView tvWebpage = dialog.findViewById(R.id.TVWebpage);
-            tvWebpage.setText(Html.fromHtml("<a href=\"https://www.winlator.org\">winlator.org</a>", Html.FROM_HTML_MODE_LEGACY));
+            tvWebpage.setText(Html.fromHtml("<a href=\"https://github.com/YurNayt/YurNLator\">github.com/YurNayt/YurNLator</a>", Html.FROM_HTML_MODE_LEGACY));
             tvWebpage.setMovementMethod(LinkMovementMethod.getInstance());
 
-            ((TextView) dialog.findViewById(R.id.TVAppVersion)).setText(getString(R.string.version) + " " + pInfo.versionName);
+            TextView tvVersion = dialog.findViewById(R.id.TVAppVersion);
+            tvVersion.setText(getString(R.string.version) + " " + pInfo.versionName);
+            // Like Android's build number: five taps on the version unlock the developer options.
+            final int[] taps = {0};
+            tvVersion.setOnClickListener(v -> {
+                if (com.winlator.cmod.ui.settings.DeveloperOptions.INSTANCE.enabled(this)) {
+                    Toast.makeText(this, UiStrings.get(R.string.l_set_developer_options_are_already_on), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                int left = com.winlator.cmod.ui.settings.DeveloperOptions.TAPS - ++taps[0];
+                if (left <= 0) {
+                    com.winlator.cmod.ui.settings.DeveloperOptions.INSTANCE.setEnabled(this, true);
+                    Toast.makeText(this, UiStrings.get(R.string.l_set_developer_options_are_on), Toast.LENGTH_SHORT).show();
+                    if (onDevOptionsChanged != null) onDevOptionsChanged.run();
+                } else if (left <= 2) {
+                    Toast.makeText(this, UiStrings.get(R.string.l_set_1_d_more, left), Toast.LENGTH_SHORT).show();
+                }
+            });
 
             String creditsAndThirdPartyAppsHTML = String.join("<br />",
+                    "Winlator by brunodev85 (<a href=\"https://github.com/brunodev85/winlator\">github.com/brunodev85/winlator</a>)",
+                    "Winlator CMOD by coffincolors (<a href=\"https://github.com/coffincolors/winlator\">github.com/coffincolors/winlator</a>)",
                     "Winlator Ludashi by StevenMX, pipetto-crypto (<a href=\"https://github.com/StevenMXZ/Winlator-Ludashi\">Fork</a>, <a href=\"https://github.com/Pipetto-crypto/winlator\">Fork</a>)",
+                    "Bannerlator by The412Banner (<a href=\"https://github.com/The412Banner/bannerlator\">github.com/The412Banner/bannerlator</a>)",
+                    "GameNative (<a href=\"https://github.com/utkarshdalal/GameNative\">github.com/utkarshdalal/GameNative</a>)",
                     "Big Picture Mode Music by",
                     "Dale Melvin Blevens III (Fumer)",
                     "---",

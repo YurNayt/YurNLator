@@ -905,4 +905,11 @@
     <string name="l_xs_this_proton_has_no_wayland_driver">В этом Proton нет драйвера Wayland: используйте слой Bannerlator, например Proton-11.0-2-arm64ec (v16) или GE-Proton-11.0-9 (v16). Запуск на X11.</string>
     <string name="l_xs_wayland_on_adreno_needs_a_turnip">Для Wayland на Adreno нужен драйвер Turnip в «Драйвер Vulkan» (System не умеет передавать кадры).</string>
     <string name="l_xs_frame_generation_wayland_not_running_1">Генерация кадров (Wayland) не работает: %1$s</string>
+    <string name="l_hint_non_adreno">Mali и другие GPU, кроме Adreno</string>
+    <string name="l_hint_mali">Только Mali</string>
+    <string name="l_hint_turnip">Только Adreno с Turnip</string>
+    <string name="l_hint_ssbs">Snapdragon 8 Elite (ядра Oryon) · arm64ec</string>
+    <string name="l_hint_wayland">Wayland: Turnip (Adreno) или PanVK (Mali)</string>
+    <string name="l_hint_freedreno">Freedreno: только Adreno</string>
+    <string name="l_hint_vk_driver">Turnip: только Adreno · Mali: System или PanVK</string>
 </resources>

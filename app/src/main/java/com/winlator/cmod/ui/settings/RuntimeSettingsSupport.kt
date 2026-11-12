@@ -567,6 +567,7 @@ internal fun SettingChoice(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        SettingHint(label)
                     }
                     GlossaryHelpIcon(label)
                     Icon(Icons.Outlined.KeyboardArrowDown, null)
@@ -807,6 +808,7 @@ internal fun SettingDriverChoice(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    SettingHint(label)
                 }
                 GlossaryHelpIcon(label)
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
@@ -857,7 +859,10 @@ internal fun SettingToggle(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(L10nDict.t(label), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Column(Modifier.weight(1f)) {
+            Text(L10nDict.t(label), style = MaterialTheme.typography.bodyLarge)
+            SettingHint(label)
+        }
         GlossaryHelpIcon(label)
         Switch(checked = checked, onCheckedChange = onChanged, enabled = enabled)
     }

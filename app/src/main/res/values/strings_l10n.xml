@@ -905,4 +905,11 @@
     <string name="l_xs_this_proton_has_no_wayland_driver">This Proton has no Wayland driver: use a Bannerlator layer, e.g. Proton-11.0-2-arm64ec (v16) or GE-Proton-11.0-9 (v16). Starting on X11.</string>
     <string name="l_xs_wayland_on_adreno_needs_a_turnip">Wayland on Adreno needs a Turnip driver in Driver Version (System can\'t share frames).</string>
     <string name="l_xs_frame_generation_wayland_not_running_1">Frame generation (Wayland) not running: %1$s</string>
+    <string name="l_hint_non_adreno">Mali and other non-Adreno GPUs</string>
+    <string name="l_hint_mali">Mali only</string>
+    <string name="l_hint_turnip">Adreno with Turnip only</string>
+    <string name="l_hint_ssbs">Snapdragon 8 Elite (Oryon cores) · arm64ec</string>
+    <string name="l_hint_wayland">Wayland: Turnip (Adreno) or PanVK (Mali)</string>
+    <string name="l_hint_freedreno">Freedreno: Adreno only</string>
+    <string name="l_hint_vk_driver">Turnip: Adreno only · Mali: System or PanVK</string>
 </resources>

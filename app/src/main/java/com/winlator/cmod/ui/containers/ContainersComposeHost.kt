@@ -289,9 +289,9 @@ private fun ContainerCard(
                     IconButton(onClick = { callbacks.onDuplicate(container.id) }) { Icon(Icons.Outlined.ContentCopy, uiStr(R.string.l_ctr_duplicate)) }
                     IconButton(onClick = { callbacks.onRemove(container.id) }) { Icon(Icons.Outlined.DeleteOutline, uiStr(R.string.l_ctr_remove)) }
                 } else {
-                    ContainerAction(Icons.Outlined.Edit, uiStr(R.string.l_set_edit)) { callbacks.onEdit(container.id) }
-                    ContainerAction(Icons.Outlined.ContentCopy, uiStr(R.string.l_ctr_duplicate)) { callbacks.onDuplicate(container.id) }
-                    ContainerAction(Icons.Outlined.DeleteOutline, uiStr(R.string.l_ctr_remove)) { callbacks.onRemove(container.id) }
+                    ContainerAction(Icons.Outlined.Edit, uiStr(R.string.l_set_edit), Modifier.weight(1f)) { callbacks.onEdit(container.id) }
+                    ContainerAction(Icons.Outlined.ContentCopy, uiStr(R.string.l_ctr_duplicate), Modifier.weight(1f)) { callbacks.onDuplicate(container.id) }
+                    ContainerAction(Icons.Outlined.DeleteOutline, uiStr(R.string.l_ctr_remove), Modifier.weight(1f)) { callbacks.onRemove(container.id) }
                 }
                 IconButton(onClick = { callbacks.onInfo(container.id) }) {
                     Icon(Icons.Outlined.Info, uiStr(R.string.l_ctr_container_info))
@@ -305,21 +305,26 @@ private fun ContainerCard(
 private fun ContainerAction(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    // Weighted, so a long label (Russian) shrinks with "…" instead of pushing the info button out.
     Surface(
         onClick = onClick,
+        modifier = modifier,
         shape = RoundedCornerShape(9.dp),
         color = androidx.compose.ui.graphics.Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(icon, null, modifier = Modifier.size(19.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.width(5.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
     }
 }
