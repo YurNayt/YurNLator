@@ -953,4 +953,6 @@
     <string name="l_upd_install">Установить</string>
     <string name="l_hud_dual_cell">Двухъячеечный аккумулятор</string>
     <string name="l_hud_dual_cell_hint">Потребление ×2: для телефонов с двумя ячейками, где HUD показывает половину реального потребления.</string>
+    <string name="l_rd_blocked">%1$s дважды уронил экранный рендерер: экран теперь рисует системный драйвер, игра по-прежнему работает на %1$s.</string>
+    <string name="l_upd_dev_variants">Тестовые сборки есть только в обычном варианте и варианте AnTuTu.</string>
 </resources>

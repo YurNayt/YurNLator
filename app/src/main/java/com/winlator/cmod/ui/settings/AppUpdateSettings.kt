@@ -129,6 +129,8 @@ private fun AppUpdateSheet(onDismiss: () -> Unit) {
             }
             Text(uiStr(if (dev) R.string.l_upd_dev_hint else R.string.l_upd_stable_hint),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (dev) Text(uiStr(R.string.l_upd_dev_variants), style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
 
             when (val s = state) {
                 UiState.Idle, UiState.Checking -> Row(verticalAlignment = Alignment.CenterVertically) {

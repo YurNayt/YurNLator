@@ -953,4 +953,6 @@
     <string name="l_upd_install">Install</string>
     <string name="l_hud_dual_cell">Two-cell battery</string>
     <string name="l_hud_dual_cell_hint">Power ×2: for phones whose battery has two cells and the HUD shows half the real power.</string>
+    <string name="l_rd_blocked">%1$s crashed the screen renderer twice: the screen uses the system driver now, the game still runs on %1$s.</string>
+    <string name="l_upd_dev_variants">Test builds exist for the standard and AnTuTu variants only.</string>
 </resources>

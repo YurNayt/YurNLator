@@ -92,7 +92,8 @@ object AppUpdater {
         val re = if (flavor == "standard") Regex("""YurNLator-dev-(\d+)-[0-9a-f]+\.apk""")
                  else Regex("""YurNLator-dev-(\d+)-[0-9a-f]+-${Regex.escape(flavor)}\.apk""")
         val best = assets(release).mapNotNull { a -> re.matchEntire(a.optString("name"))?.let { it.groupValues[1].toLong() to a } }
-            .maxByOrNull { it.first } ?: return Check.Failed("no $flavor APK")
+            .maxByOrNull { it.first } ?: return Check.Failed(
+                if (flavor != "standard" && flavor != "antutu") "test builds: standard and AnTuTu only" else "no $flavor APK")
         // A build's versionCode is its CI run number, the number in the APK name.
         if (best.first <= installedBuild(context)) return Check.UpToDate
         return Check.Available(update(best.second, "dev ${best.first}", release.optString("body")))

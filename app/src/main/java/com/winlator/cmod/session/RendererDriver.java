@@ -35,7 +35,7 @@ public final class RendererDriver {
         }
         if (custom(id) && RendererDriverGuard.blocked(activity, id)) {
             Log.w(TAG, "Renderer driver " + id + " crashed the app before: system driver");
-            Toast.makeText(activity, id + " crashed the screen renderer last time: it uses the system driver now (the game keeps " + id + ")", Toast.LENGTH_LONG).show();
+            Toast.makeText(activity, com.winlator.cmod.ui.UiStrings.get(com.winlator.cmod.R.string.l_rd_blocked, id), Toast.LENGTH_LONG).show();
             id = null;
         }
         if (!custom(id)) return;
