@@ -84,6 +84,85 @@ public class FEXCorePresetManager {
             envVars.put("FEX_DYNAMICL1CACHEINCREASECOUNTHEURISTIC", "250");
             envVars.put("FEX_DYNAMICL1CACHEDECREASECOUNTHEURISTIC", "50");
         }
+        // From Bannerlator (The412Banner) / DroidDeck, GPL-3.0. "Extreme-wn" is their Extreme.
+        else if (id.equals(FEXCorePreset.PERFORMANCE_TSO)) {
+            // Performance, but with the main TSO emulation on (only FEX_TSOENABLED) for the many
+            // games that need store ordering while keeping the heavier vector/halfbarrier/memcpy
+            // TSO off — matches the community "Performance + TSO" preset (issue #20).
+            envVars.put("FEX_TSOENABLED", "1");
+            envVars.put("FEX_VECTORTSOENABLED", "0");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
+            envVars.put("FEX_X87REDUCEDPRECISION", "1");
+            envVars.put("FEX_MULTIBLOCK", "1");
+        }
+        else if (id.equals(FEXCorePreset.EXTREME_WN) || id.equals(FEXCorePreset.EXTREME_TSO)) {
+            // Derived from WinNative (WinNative-Emu/WinNative, FEXCorePresetManager) — hence the
+            // "-wn" suffix on the displayed name. Same base as PERFORMANCE/PERFORMANCE_TSO plus
+            // five JIT/cache knobs: self-modifying-code checks off, FEX's L2 block cache off, and
+            // a dynamically-sized L1 block cache with its grow/shrink heuristics.
+            // FEX_SMCCHECKS=none is the risky one: anything that writes its own code at runtime
+            // (JIT/.NET/some launchers and DRM) can misbehave, which is why this sits above
+            // PERFORMANCE rather than replacing it. EXTREME_TSO keeps store ordering on for the
+            // many titles that need it.
+            envVars.put("FEX_TSOENABLED", id.equals(FEXCorePreset.EXTREME_TSO) ? "1" : "0");
+            envVars.put("FEX_VECTORTSOENABLED", "0");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
+            envVars.put("FEX_X87REDUCEDPRECISION", "1");
+            envVars.put("FEX_MULTIBLOCK", "1");
+            envVars.put("FEX_SMCCHECKS", "none");
+            envVars.put("FEX_DISABLEL2CACHE", "1");
+            envVars.put("FEX_DYNAMICL1CACHE", "1");
+            envVars.put("FEX_DYNAMICL1CACHEINCREASECOUNTHEURISTIC", "250");
+            envVars.put("FEX_DYNAMICL1CACHEDECREASECOUNTHEURISTIC", "50");
+        }
+        else if (id.equals(FEXCorePreset.EXTREME_GN)) {
+            // Derived from GameNative (utkarshdalal/GameNative, FEXCorePresetManager) — hence "-gn".
+            // A much lighter "extreme" than the WinNative pair: PERFORMANCE's base plus only the
+            // TSC scaling and volatile-metadata hints, leaving the SMC checks and the block caches
+            // at FEX's defaults. Safer on JIT-heavy titles than EXTREME-wn, so it is worth trying
+            // first when a game misbehaves under the WinNative tiers.
+            envVars.put("FEX_TSOENABLED", "0");
+            envVars.put("FEX_VECTORTSOENABLED", "0");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
+            envVars.put("FEX_X87REDUCEDPRECISION", "1");
+            envVars.put("FEX_MULTIBLOCK", "1");
+            envVars.put("FEX_SMALLTSCSCALE", "1");
+            envVars.put("FEX_VOLATILEMETADATA", "1");
+        }
+        else if (id.equals(FEXCorePreset.DENUVO)) {
+            envVars.put("FEX_TSOENABLED", "0");
+            envVars.put("FEX_VECTORTSOENABLED", "0");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
+            envVars.put("FEX_X87REDUCEDPRECISION", "1");
+            envVars.put("FEX_MULTIBLOCK", "1");
+            envVars.put("FEX_SMCCHECKS", "full");
+            envVars.put("FEX_HIDEHYPERVISORBIT", "1");
+        }
+        else if (id.equals(FEXCorePreset.PERFORMANCE_X87_FULL)) {
+            // From WinlatorMali (GunaCharanTeja): PERFORMANCE with full x87 precision, for games
+            // whose physics or math break under reduced precision. Its id keeps WinlatorMali's
+            // "PERFORMANCE_X87_OFF" (reduced precision off) so configs from there match.
+            envVars.put("FEX_TSOENABLED", "0");
+            envVars.put("FEX_VECTORTSOENABLED", "0");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "0");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "0");
+            envVars.put("FEX_X87REDUCEDPRECISION", "0");
+            envVars.put("FEX_MULTIBLOCK", "1");
+        }
+        else if (id.equals(FEXCorePreset.UNREAL_ENGINE_3)) {
+            // From WinlatorMali (GunaCharanTeja), tested there on X-Men Origins: Wolverine: every
+            // TSO option on, reduced x87 precision, multiblock off.
+            envVars.put("FEX_TSOENABLED", "1");
+            envVars.put("FEX_VECTORTSOENABLED", "1");
+            envVars.put("FEX_MEMCPYSETTSOENABLED", "1");
+            envVars.put("FEX_HALFBARRIERTSOENABLED", "1");
+            envVars.put("FEX_X87REDUCEDPRECISION", "1");
+            envVars.put("FEX_MULTIBLOCK", "0");
+        }
         else if (id.startsWith(FEXCorePreset.CUSTOM)) {
             for (String[] preset : customPresetsIterator(context)) {
                 if (preset[0].equals(id)) {
@@ -102,7 +181,14 @@ public class FEXCorePresetManager {
         presets.add(new FEXCorePreset(FEXCorePreset.COMPATIBILITY, context.getString(R.string.compatibility)));
         presets.add(new FEXCorePreset(FEXCorePreset.INTERMEDIATE, context.getString(R.string.intermediate)));
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE, context.getString(R.string.performance)));
+        presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE_TSO, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_performance_tso)));
+        presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE_X87_FULL, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_performance_x87)));
         presets.add(new FEXCorePreset(FEXCorePreset.EXTREME, "Extreme"));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_WN, "Extreme-wn"));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_TSO, "Extreme (TSO)-wn"));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_GN, "Extreme-gn"));
+        presets.add(new FEXCorePreset(FEXCorePreset.DENUVO, "Denuvo"));
+        presets.add(new FEXCorePreset(FEXCorePreset.UNREAL_ENGINE_3, "Unreal Engine 3"));
         for (String[] preset : customPresetsIterator(context)) presets.add(new FEXCorePreset(preset[0], preset[1]));
         return presets;
     }

@@ -99,6 +99,146 @@ public abstract class Box64PresetManager {
 
             }
         }
+        // From Bannerlator (The412Banner), GPL-3.0.
+        else if (id.equals(Box64Preset.PERFORMANCE_MALI)) {
+            envVars.put(ucPrefix+"_DYNAREC_SAFEFLAGS", "0");
+            envVars.put(ucPrefix+"_DYNAREC_FASTNAN", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTROUND", "0");
+            envVars.put(ucPrefix+"_DYNAREC_X87DOUBLE", "0");
+            envVars.put(ucPrefix+"_DYNAREC_BIGBLOCK", "3");
+            envVars.put(ucPrefix+"_DYNAREC_STRONGMEM", "0");
+            envVars.put(ucPrefix+"_DYNAREC_FORWARD", "512");
+            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "1");
+            envVars.put(ucPrefix+"_DYNAREC_WAIT", "1");
+            if (ucPrefix.equals("BOX64")) {
+                envVars.put("BOX64_AVX", "0");
+                envVars.put("BOX64_UNITYPLAYER", "0");
+                envVars.put("BOX64_MMAP32", "1");
+                envVars.put("BOX64_DYNAREC_WEAKBARRIER", "1");
+                envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "0");
+
+            }
+        }
+        else if (id.equals(Box64Preset.EXTREME)) {
+            envVars.put(ucPrefix+"_DYNAREC_SAFEFLAGS", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTNAN", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTROUND", "1");
+            envVars.put(ucPrefix+"_DYNAREC_X87DOUBLE", "0");
+            envVars.put(ucPrefix+"_DYNAREC_BIGBLOCK", "3");
+            envVars.put(ucPrefix+"_DYNAREC_STRONGMEM", "0");
+            envVars.put(ucPrefix+"_DYNAREC_FORWARD", "512");
+            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "1");
+            envVars.put(ucPrefix+"_DYNAREC_WAIT", "1");
+            if (ucPrefix.equals("BOX64")) {
+                envVars.put("BOX64_AVX", "0");
+                envVars.put("BOX64_UNITYPLAYER", "0");
+                envVars.put("BOX64_MMAP32", "1");
+                envVars.put("BOX64_DYNAREC_WEAKBARRIER", "1");
+                envVars.put("BOX64_DYNAREC_DIRTY", "1");
+                envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "0");
+
+            }
+        }
+        else if (id.equals(Box64Preset.EXTREME_2)) {
+            // The community "Extreme" box64 preset, 32 variables — kept as a SECOND tier so the
+            // original Extreme above stays byte-identical for anyone already running it.
+            // Versus Extreme: FASTROUND 1->2, FORWARD 512->1024, WEAKBARRIER 1->2, DIRTY 1->0,
+            // NATIVEFLAGS 0->1, plus the dynarec/CPU-feature knobs below that Extreme leaves at
+            // box64's defaults.
+            // NATIVEFLAGS=1 is the main speed lever. WEAKBARRIER=2 is the risky one — weaker
+            // memory barriers are faster but can corrupt multi-threaded state, and it fails as
+            // random instability rather than an obvious break, so Extreme remains the fallback.
+            envVars.put(ucPrefix+"_DYNAREC_SAFEFLAGS", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTNAN", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTROUND", "2");
+            envVars.put(ucPrefix+"_DYNAREC_X87DOUBLE", "0");
+            envVars.put(ucPrefix+"_DYNAREC_BIGBLOCK", "3");
+            envVars.put(ucPrefix+"_DYNAREC_STRONGMEM", "0");
+            envVars.put(ucPrefix+"_DYNAREC_FORWARD", "1024");
+            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "1");
+            envVars.put(ucPrefix+"_DYNAREC_WAIT", "1");
+            if (ucPrefix.equals("BOX64")) {
+                // BOX64-only: box86 either lacks these or names them differently, so they stay
+                // guarded exactly as Extreme does.
+                envVars.put("BOX64_DYNAREC", "1");
+                envVars.put("BOX64_DYNAREC_SEP", "1");
+                envVars.put("BOX64_DYNAREC_WEAKBARRIER", "2");
+                envVars.put("BOX64_DYNAREC_ALIGNED_ATOMICS", "0");
+                envVars.put("BOX64_DYNAREC_DF", "1");
+                envVars.put("BOX64_DYNAREC_DIRTY", "0");
+                envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "1");
+                envVars.put("BOX64_DYNAREC_PAUSE", "0");
+                envVars.put("BOX64_DYNAREC_NOARCH", "0");
+                envVars.put("BOX64_DYNAREC_VOLATILE_METADATA", "1");
+                envVars.put("BOX64_DYNACACHE", "0");
+                envVars.put("BOX64_AVX", "0");
+                envVars.put("BOX64_AES", "1");
+                envVars.put("BOX64_PCLMULQDQ", "1");
+                envVars.put("BOX64_SHAEXT", "1");
+                envVars.put("BOX64_SSE42", "1");
+                envVars.put("BOX64_SSE_FLUSHTO0", "0");
+                envVars.put("BOX64_X87_NO80BITS", "0");
+                envVars.put("BOX64_CPUTYPE", "0");
+                envVars.put("BOX64_MAXCPU", "0");
+                envVars.put("BOX64_UNITYPLAYER", "0");
+                envVars.put("BOX64_UNITY", "0");
+                envVars.put("BOX64_MMAP32", "1");
+            }
+        }
+        else if (id.equals(Box64Preset.UNITY)) {
+            envVars.put(ucPrefix+"_DYNAREC_SAFEFLAGS", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTNAN", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTROUND", "1");
+            envVars.put(ucPrefix+"_DYNAREC_X87DOUBLE", "0");
+            envVars.put(ucPrefix+"_DYNAREC_BIGBLOCK", "3");
+            envVars.put(ucPrefix+"_DYNAREC_STRONGMEM", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FORWARD", "512");
+            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "1");
+            envVars.put(ucPrefix+"_DYNAREC_WAIT", "0");
+            if (ucPrefix.equals("BOX64")) {
+                envVars.put("BOX64_AVX", "2");
+                envVars.put("BOX64_UNITYPLAYER", "0");
+                envVars.put("BOX64_MMAP32", "0");
+                envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "0");
+
+            }
+        }
+        else if (id.equals(Box64Preset.UNITY_MONO_BLEEDING_EDGE)) {
+            envVars.put(ucPrefix+"_DYNAREC_SAFEFLAGS", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTNAN", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FASTROUND", "1");
+            envVars.put(ucPrefix+"_DYNAREC_X87DOUBLE", "0");
+            envVars.put(ucPrefix+"_DYNAREC_BIGBLOCK", "0");
+            envVars.put(ucPrefix+"_DYNAREC_STRONGMEM", "1");
+            envVars.put(ucPrefix+"_DYNAREC_FORWARD", "512");
+            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "1");
+            envVars.put(ucPrefix+"_DYNAREC_WAIT", "0");
+            if (ucPrefix.equals("BOX64")) {
+                envVars.put("BOX64_AVX", "0");
+                envVars.put("BOX64_UNITYPLAYER", "0");
+                envVars.put("BOX64_MMAP32", "0");
+                envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "0");
+
+            }
+        }
+        else if (id.equals(Box64Preset.DENUVO)) {
+            envVars.put(ucPrefix+"_DYNAREC_SAFEFLAGS", "2");
+            envVars.put(ucPrefix+"_DYNAREC_FASTNAN", "0");
+            envVars.put(ucPrefix+"_DYNAREC_FASTROUND", "0");
+            envVars.put(ucPrefix+"_DYNAREC_X87DOUBLE", "1");
+            envVars.put(ucPrefix+"_DYNAREC_BIGBLOCK", "0");
+            envVars.put(ucPrefix+"_DYNAREC_STRONGMEM", "3");
+            envVars.put(ucPrefix+"_DYNAREC_FORWARD", "512");
+            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "0");
+            envVars.put(ucPrefix+"_DYNAREC_WAIT", "0");
+            if (ucPrefix.equals("BOX64")) {
+                envVars.put("BOX64_AVX", "0");
+                envVars.put("BOX64_UNITYPLAYER", "1");
+                envVars.put("BOX64_MMAP32", "0");
+                envVars.put("BOX64_DYNAREC_NATIVEFLAGS", "0");
+
+            }
+        }
         else if (id.startsWith(Box64Preset.CUSTOM)) {
             for (String[] preset : customPresetsIterator(prefix, context)) {
                 if (preset[0].equals(id)) {
@@ -117,6 +257,12 @@ public abstract class Box64PresetManager {
         presets.add(new Box64Preset(Box64Preset.COMPATIBILITY, context.getString(R.string.compatibility)));
         presets.add(new Box64Preset(Box64Preset.INTERMEDIATE, context.getString(R.string.intermediate)));
         presets.add(new Box64Preset(Box64Preset.PERFORMANCE, context.getString(R.string.performance)));
+        presets.add(new Box64Preset(Box64Preset.PERFORMANCE_MALI, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_performance_mali)));
+        presets.add(new Box64Preset(Box64Preset.EXTREME, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_extreme)));
+        presets.add(new Box64Preset(Box64Preset.EXTREME_2, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_extreme_2)));
+        presets.add(new Box64Preset(Box64Preset.UNITY, "Unity"));
+        presets.add(new Box64Preset(Box64Preset.UNITY_MONO_BLEEDING_EDGE, "Unity (Mono bleeding edge)"));
+        presets.add(new Box64Preset(Box64Preset.DENUVO, "Denuvo"));
         for (String[] preset : customPresetsIterator(prefix, context)) presets.add(new Box64Preset(preset[0], preset[1]));
         return presets;
     }

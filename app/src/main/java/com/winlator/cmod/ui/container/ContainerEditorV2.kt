@@ -436,6 +436,26 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         }
     }
 
+    // New container templates: "setup" = a container for installing games from setup / repacks.
+    var template by remember { mutableStateOf("normal") }
+    fun applySetupTemplate() {
+        template = "setup"
+        if (state.name.isBlank() || state.name.startsWith("Container-")) state.name = uiStr(R.string.l_tpl_setup_name)
+        // Proton 9.0 x86_64 (installed one first; otherwise it is downloaded now).
+        val proton9 = Regex("(?i)proton[^0-9]*9(\\.0)?\\b.*(x86_64|x64)")
+        val candidates = runtimeOptions.filter { proton9.containsMatchIn(it.label) || proton9.containsMatchIn(it.id) }
+            .filterNot { it.label.contains("arm64ec", true) }
+        val pick = candidates.firstOrNull { it.installed } ?: candidates.firstOrNull()
+        if (pick != null) { if (pick.installed) state.runtime = pick.id else installWine(pick) }
+        // Box64 0.3.9 with the Compatibility translation preset.
+        state.emulator = "Box64"
+        state.boxPreset = com.winlator.cmod.box64.Box64Preset.COMPATIBILITY
+        state.fexPreset = com.winlator.cmod.fexcore.FEXCorePreset.COMPATIBILITY
+        val box = SETUP_BOX64
+        if (catalog?.box?.installed?.any { it.equals(box, true) } == true) state.boxVersion = box
+        else installRuntime("Box64", box) { state.boxVersion = it }
+    }
+
     fun installDriver(option: DriverOption) {
         val key = "driver:${option.remoteUrl ?: option.id}"
         if (key in installing) return
@@ -704,6 +724,9 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                     contentPadding = PaddingValues(bottom = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    if (editing == null && category == "General") item("template") {
+                        ContainerTemplateCard(template, onNormal = { template = "normal" }, onSetup = ::applySetupTemplate)
+                    }
                     item(category) {
                         ContainerCategoryV2(
                             category, state, runtimeChoices, arm64, screenEntries, graphicsEntries,
@@ -727,6 +750,9 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                     contentPadding = PaddingValues(bottom = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    if (editing == null && category == "General") item("template") {
+                        ContainerTemplateCard(template, onNormal = { template = "normal" }, onSetup = ::applySetupTemplate)
+                    }
                     item(category) {
                         ContainerCategoryV2(
                             category, state, runtimeChoices, arm64, screenEntries, graphicsEntries,
@@ -1293,4 +1319,27 @@ private fun containerDesktopThemeValueV2(theme: String, background: String, wall
         "$themeId,$backgroundId,#0277bd,$wallpaperStamp"
     else
         "$themeId,$backgroundId,#0277bd"
+}
+
+private const val SETUP_BOX64 = "0.3.9"
+
+/** New container: a normal one, or one for installing games from setup files / repacks. */
+@Composable
+private fun ContainerTemplateCard(selected: String, onNormal: () -> Unit, onSetup: () -> Unit) {
+    SettingsCard {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(uiStr(R.string.l_tpl_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.FilterChip(selected = selected == "normal", onClick = onNormal,
+                    label = { Text(uiStr(R.string.l_tpl_normal)) })
+                androidx.compose.material3.FilterChip(selected = selected == "setup", onClick = onSetup,
+                    label = { Text(uiStr(R.string.l_tpl_setup)) })
+            }
+            if (selected == "setup") {
+                Text(uiStr(R.string.l_tpl_setup_summary, SETUP_BOX64), style = MaterialTheme.typography.bodySmall)
+                Text(uiStr(R.string.l_tpl_setup_warning), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
 }

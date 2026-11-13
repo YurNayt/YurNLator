@@ -13,14 +13,14 @@ import java.io.File
 
 /**
  * App updates from the GitHub releases of YurNLator. Stable: the latest published release
- * (v1.0.0, v1.1.0…); test builds: the rolling "dev" release of YurNLator_test_buid. The APK of the same variant as
+ * (v1.0.0, v1.1.0…); test builds: the rolling "dev" release of YurNLator_test_build. The APK of the same variant as
  * the installed one is downloaded (standard, antutu…: each is its own app), with pause /
  * resume / cancel through [DownloadTracker], and handed to Android's package installer.
  */
 object AppUpdater {
     const val REPO = "YurNayt/YurNLator"
     /** Test builds: their own public repository, so REPO's releases page shows main versions only. */
-    const val DEV_REPO = "YurNayt/YurNLator_test_buid"
+    const val DEV_REPO = "YurNayt/YurNLator_test_build"
     const val DOWNLOAD_KEY = "app-update"
     private const val PREF_DEV = "yurn_update_dev_builds"
 

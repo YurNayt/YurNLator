@@ -955,4 +955,17 @@
     <string name="l_hud_dual_cell_hint">Потребление ×2: для телефонов с двумя ячейками, где HUD показывает половину реального потребления.</string>
     <string name="l_rd_blocked">%1$s дважды уронил экранный рендерер: экран теперь рисует системный драйвер, игра по-прежнему работает на %1$s.</string>
     <string name="l_upd_dev_variants">Тестовые сборки есть только в обычном варианте и варианте AnTuTu.</string>
+    <string name="l_pst_performance_mali">Производительность (Mali)</string>
+    <string name="l_pst_extreme">Экстрим</string>
+    <string name="l_pst_extreme_2">Экстрим 2</string>
+    <string name="l_pst_performance_tso">Производительность (TSO)</string>
+    <string name="l_pst_performance_x87">Производительность (полный x87)</string>
+    <string name="l_tpl_title">Тип контейнера</string>
+    <string name="l_tpl_normal">Обычный</string>
+    <string name="l_tpl_setup">Для установки игр (setup / репаки)</string>
+    <string name="l_tpl_setup_name">Установка игр</string>
+    <string name="l_tpl_setup_summary">Proton 9.0 x86_64 · параметры трансляции: Совместимость · транслятор CPU: Box64 %1$s (скачается, если его нет).</string>
+    <string name="l_tpl_setup_warning">Эти настройки не универсальны для каждого setup: некоторым установщикам нужен другой Proton, пресет или версия Box64. Установите игру здесь, а играйте в обычном контейнере.</string>
+    <string name="l_thm_accent">Цвет акцента</string>
+    <string name="l_thm_accent_hint">Кнопки, переключатели и выделение. «A» — родной цвет темы.</string>
 </resources>

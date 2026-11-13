@@ -8,6 +8,13 @@ public class FEXCorePreset {
     public static final String INTERMEDIATE = "INTERMEDIATE";
     public static final String PERFORMANCE = "PERFORMANCE";
     public static final String EXTREME = "EXTREME";
+    public static final String PERFORMANCE_TSO = "PERFORMANCE_TSO";
+    public static final String EXTREME_WN = "EXTREME_WN";
+    public static final String EXTREME_TSO = "EXTREME_TSO";
+    public static final String EXTREME_GN = "EXTREME_GN";
+    public static final String DENUVO = "DENUVO";
+    public static final String PERFORMANCE_X87_FULL = "PERFORMANCE_X87_OFF";
+    public static final String UNREAL_ENGINE_3 = "UNREAL_ENGINE_3";
     public static final String CUSTOM = "CUSTOM";
     public final String id;
     public final String name;

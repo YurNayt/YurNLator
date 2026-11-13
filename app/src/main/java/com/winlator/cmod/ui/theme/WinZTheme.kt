@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -56,13 +57,17 @@ enum class WinlatorThemeType(
 
 object WinlatorThemeManager {
     private const val PREF_KEY = "winlator_ui_theme"
+    private const val PREF_ACCENT = "winlator_ui_accent"
     private val currentState = mutableStateOf(WinlatorThemeType.BLACK)
+    /** Accent colour (ARGB) over the theme, 0 = the theme's own. */
+    private val accentState = androidx.compose.runtime.mutableIntStateOf(0)
     private var initialized = false
 
     private fun ensureInitialized(context: Context) {
         if (initialized) return
         val prefs = PreferenceManager.getDefaultSharedPreferences(context.applicationContext)
         currentState.value = WinlatorThemeType.fromId(prefs.getString(PREF_KEY, WinlatorThemeType.BLACK.id))
+        accentState.intValue = prefs.getInt(PREF_ACCENT, 0)
         initialized = true
     }
 
@@ -76,6 +81,17 @@ object WinlatorThemeManager {
     fun currentTheme(context: Context): WinlatorThemeType {
         ensureInitialized(context)
         return currentState.value
+    }
+
+    /** The accent colour; read in composition, so changing it recolours the UI at once. */
+    val accent: Int get() = accentState.intValue
+
+    fun accent(context: Context): Int { ensureInitialized(context); return accentState.intValue }
+
+    fun setAccent(context: Context, argb: Int) {
+        ensureInitialized(context)
+        PreferenceManager.getDefaultSharedPreferences(context.applicationContext).edit().putInt(PREF_ACCENT, argb).apply()
+        accentState.intValue = argb
     }
 
     fun setTheme(context: Context, theme: WinlatorThemeType) {
@@ -173,7 +189,32 @@ private val GreenColors = darkColorScheme(
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005)
 )
 
-internal fun winlatorColorScheme(theme: WinlatorThemeType): ColorScheme = when (theme) {
+/** The theme's colours with the chosen accent colour (Settings > Appearance > palette). */
+internal fun winlatorColorScheme(theme: WinlatorThemeType): ColorScheme =
+    baseColorScheme(theme).withAccent(WinlatorThemeManager.accent, theme == WinlatorThemeType.WHITE)
+
+/** Accent swatches of the palette (dark-theme shades; a light theme gets them darker). */
+val WINLATOR_ACCENTS: List<Int> = listOf(
+    0xFF82B8FF, 0xFF7FD3F5, 0xFF6FD6C4, 0xFF9DC9A8, 0xFFB5D46A, 0xFFF2D06B,
+    0xFFFFB074, 0xFFFF8A8F, 0xFFF48FB1, 0xFFD0BCFF, 0xFFB9B4F5, 0xFFF4F4F6
+).map { it.toInt() }
+
+internal fun accentFor(argb: Int, light: Boolean): Color =
+    if (light) androidx.compose.ui.graphics.lerp(Color(argb), Color.Black, 0.45f) else Color(argb)
+
+private fun ColorScheme.withAccent(argb: Int, light: Boolean): ColorScheme {
+    if (argb == 0) return this
+    val a = accentFor(argb, light)
+    val onA = if (a.luminance() > 0.45f) Color(0xFF111215) else Color.White
+    val container = androidx.compose.ui.graphics.lerp(a, if (light) Color.White else Color.Black, 0.6f)
+    return copy(
+        primary = a, onPrimary = onA,
+        primaryContainer = container, onPrimaryContainer = if (light) Color(0xFF15161A) else Color(0xFFF2F3F5),
+        secondary = androidx.compose.ui.graphics.lerp(secondary, a, 0.35f)
+    )
+}
+
+private fun baseColorScheme(theme: WinlatorThemeType): ColorScheme = when (theme) {
     WinlatorThemeType.WHITE -> WhiteColors
     WinlatorThemeType.BLACK -> BlackColors
     WinlatorThemeType.AMOLED -> AmoledColors

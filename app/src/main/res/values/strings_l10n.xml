@@ -955,4 +955,17 @@
     <string name="l_hud_dual_cell_hint">Power ×2: for phones whose battery has two cells and the HUD shows half the real power.</string>
     <string name="l_rd_blocked">%1$s crashed the screen renderer twice: the screen uses the system driver now, the game still runs on %1$s.</string>
     <string name="l_upd_dev_variants">Test builds exist for the standard and AnTuTu variants only.</string>
+    <string name="l_pst_performance_mali">Performance (Mali)</string>
+    <string name="l_pst_extreme">Extreme</string>
+    <string name="l_pst_extreme_2">Extreme 2</string>
+    <string name="l_pst_performance_tso">Performance (TSO)</string>
+    <string name="l_pst_performance_x87">Performance (full x87)</string>
+    <string name="l_tpl_title">Container type</string>
+    <string name="l_tpl_normal">Normal</string>
+    <string name="l_tpl_setup">For game setups (repacks)</string>
+    <string name="l_tpl_setup_name">Game setup</string>
+    <string name="l_tpl_setup_summary">Proton 9.0 x86_64 · translation preset: Compatibility · CPU translator: Box64 %1$s (downloaded if missing).</string>
+    <string name="l_tpl_setup_warning">These settings are not universal: some setups need another Proton, preset or Box64 version. Install the game here, then play it in your normal container.</string>
+    <string name="l_thm_accent">Accent colour</string>
+    <string name="l_thm_accent_hint">Buttons, switches and highlights. \"A\" keeps the theme\'s own colour.</string>
 </resources>

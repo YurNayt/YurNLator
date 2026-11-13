@@ -38,6 +38,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -190,6 +193,8 @@ fun WinlatorThemePreferenceCard(modifier: Modifier = Modifier) {
                     selected = current,
                     onSelected = { WinlatorThemeManager.setTheme(context, it) }
                 )
+                Spacer(Modifier.size(16.dp))
+                AccentPalette(current)
             }
         }
     }
@@ -231,4 +236,34 @@ internal fun winlatorThemePreview(theme: WinlatorThemeType): ThemePreviewColors 
         background = Color(0xFF060B08), surface = Color(0xFF15201A),
         accent = Color(0xFF9DC9A8), outline = Color(0xFF4A6352)
     )
+}
+
+/** Accent colour palette: the theme's own colour or one of the swatches. */
+@Composable
+private fun AccentPalette(theme: WinlatorThemeType) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val selected = WinlatorThemeManager.accent
+    val light = theme == WinlatorThemeType.WHITE
+    Text(uiStr(R.string.l_thm_accent), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Text(uiStr(R.string.l_thm_accent_hint), style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
+    val swatches = listOf(0) + WINLATOR_ACCENTS
+    swatches.chunked(7).forEach { row ->
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            row.forEach { argb ->
+                val color = if (argb == 0) winlatorThemePreview(theme).accent else accentFor(argb, light)
+                val isOn = selected == argb
+                Box(
+                    Modifier.size(38.dp)
+                        .background(color, CircleShape)
+                        .then(if (isOn) Modifier.border(BorderStroke(3.dp, MaterialTheme.colorScheme.onBackground), CircleShape) else Modifier)
+                        .clickable { WinlatorThemeManager.setAccent(context, argb) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (argb == 0) Text("A", fontWeight = FontWeight.Bold, color = if (color.luminance() > 0.45f) Color.Black else Color.White)
+                    else if (isOn) Icon(Icons.Outlined.Check, null, tint = if (color.luminance() > 0.45f) Color.Black else Color.White, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+    }
 }
