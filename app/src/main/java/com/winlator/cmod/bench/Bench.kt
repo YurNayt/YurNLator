@@ -119,6 +119,8 @@ data class RunResult(
     fun gpuMhz(name: String): Double = ph(name)?.optDouble("gpu_mhz", -1.0) ?: -1.0
     fun cpuMhz(name: String): Double = ph(name)?.optDouble("cpu_mhz", -1.0) ?: -1.0
     fun gpuBusy(name: String): Double = ph(name)?.optDouble("gpu_busy", -1.0) ?: -1.0
+    /** The CPU clock by cycles (root): hardware cycles / busy core time, MHz; -1 when not measured. */
+    fun hwMhz(name: String): Double = ph(name)?.optDouble("hw_mhz", -1.0) ?: -1.0
     val maxCpuTemp: Int get() = listOf("cpu", "gpu", "mix").maxOf { ph(it)?.optInt("cpu_temp", -1) ?: -1 }
 
     /**
@@ -672,7 +674,7 @@ object Bench {
             else -> "crash"
         }
         val detail = when {
-            st == "partial" && measured >= 10 -> "measured ${measured.toInt()} s, until the game ended"
+            st == "partial" && measured >= 10 -> "measured ${measured.toInt()} s, ${g?.optInt("frames") ?: 0} frames, until the game ended"
             st == "partial" -> "the game ended after ${measured.toInt()} s of measuring (under 10 s)"
             outcome != null -> outcome.optString("detail")
             else -> "the session ended without a result"

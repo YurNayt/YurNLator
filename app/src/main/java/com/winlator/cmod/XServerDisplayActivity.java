@@ -134,6 +134,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     WinHandler winHandler;
     /** Performance controls of this game (session/PerfSession). */
     com.winlator.cmod.session.PerfSession perf;
+    /** Ends the session when the game's programs are gone (session/GameExitWatcher). */
+    private com.winlator.cmod.session.GameExitWatcher gameExitWatcher;
     TaskManagerSidebar taskManagerSidebar;
     WineRequestHandler wineRequestHandler;
     float globalCursorSpeed = 1.0f;
@@ -552,6 +554,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (gameExitWatcher != null) gameExitWatcher.stop();
         lifecycle.destroy();
         super.onDestroy();
     }
@@ -624,6 +627,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         environment.startEnvironmentComponents();
         if (perf != null) perf.start();
+
+        // The game closed (task manager, its own exit): end the session instead of leaving Wine's
+        // desktop running. Not for a YurnBench run: its watchdog reads the results and ends it.
+        boolean yurnBench = getIntent().getBooleanExtra(com.winlator.cmod.bench.Bench.EXTRA_BENCH, false)
+                && getIntent().getIntExtra(com.winlator.cmod.bench.Bench.EXTRA_GAME_MEASURE, 0) == 0;
+        if (shortcut != null && !yurnBench) {
+            gameExitWatcher = new com.winlator.cmod.session.GameExitWatcher(
+                    com.winlator.cmod.session.GameExitWatcher.exeOf(shortcut.path), () -> runOnUiThread(this::exit));
+            gameExitWatcher.start();
+        }
 
         winHandler.start();
 

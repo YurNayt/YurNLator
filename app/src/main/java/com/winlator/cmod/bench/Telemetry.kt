@@ -28,6 +28,7 @@ class Telemetry(private val root: RootShell? = null) {
         var busyMcycles = 0.0      // procCpu × the mean core clock: cycles actually spent, estimated
         var hwCycles = 0.0         // root: hardware counters (simpleperf), whole system
         var hwInstructions = 0.0
+        var busyCoreS = 0.0        // root: core-seconds the CPUs weren't idle (/proc/stat), all cores
 
         fun toJson(): JSONObject = JSONObject().apply {
             put("samples", samples)
@@ -46,6 +47,10 @@ class Telemetry(private val root: RootShell? = null) {
                 put("busy_mcycles", busyMcycles)
             }
             if (hwCycles > 0) { put("hw_mcycles", hwCycles / 1e6); put("hw_minstr", hwInstructions / 1e6); put("ipc", hwInstructions / hwCycles) }
+            // The clock the cores really ran at: cycles counted by the hardware over the time they
+            // were busy (an idle core counts no cycles). Lower than the reported clock when the
+            // hardware throttles below what cpufreq shows.
+            if (hwCycles > 0 && busyCoreS > 0.5) { put("hw_mhz", hwCycles / busyCoreS / 1e6); put("busy_core_s", busyCoreS) }
         }
     }
 
@@ -58,6 +63,8 @@ class Telemetry(private val root: RootShell? = null) {
     private val rootBusy: String? = if (busyPath == null) firstRoot(GPU_BUSY) else null
     private val gpuMaxMhz: Double = first(GPU_MAX)?.let { mhz(it) } ?: firstRoot(GPU_MAX)?.let { p -> root?.read(listOf(p))?.firstOrNull()?.let(::mhzOf) } ?: -1.0
     private val procTime = ProcTime()
+    private var lastBusy = -1L
+    private val clkTck: Double = runCatching { android.system.Os.sysconf(android.system.OsConstants._SC_CLK_TCK).toDouble() }.getOrDefault(100.0).takeIf { it > 0 } ?: 100.0
     private var last = 0L
 
     /** Where root mode got its readings from (for the result card). */
@@ -113,6 +120,15 @@ class Telemetry(private val root: RootShell? = null) {
         if (b != null) { p.busySamples++; p.gpuBusy += b }
         val t = CPUStatus.getCpuTempC()
         if (t > p.maxCpuTemp) p.maxCpuTemp = t
+        // Busy time of all cores (root: apps can't read /proc/stat): "cpu  user nice system idle iowait irq softirq steal".
+        root?.read(listOf("/proc/stat"))?.firstOrNull()?.let { line ->
+            val f = line.trim().split(Regex("\\s+")).drop(1).mapNotNull { it.toLongOrNull() }
+            if (f.size >= 5) {
+                val busy = f.take(8).sum() - f[3] - f[4]
+                if (lastBusy in 0..busy) p.busyCoreS += (busy - lastBusy) / clkTck
+                lastBusy = busy
+            }
+        }
     }
 
     fun toJson(): JSONObject = JSONObject().apply {

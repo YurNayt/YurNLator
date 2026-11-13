@@ -994,4 +994,5 @@
     <string name="l_frq_bench_all">Все</string>
     <string name="l_frq_v_ceiling">ЦПУ ≤ %1$s ГГц</string>
     <string name="l_frq_bench_need_root">Для подбора частот нужен root у этого приложения (каждый вариант APK, обычный или AnTuTu, получает root отдельно).</string>
+    <string name="l_bench_cpu_by_cycles">ЦПУ %1$s ГГц по циклам (cpufreq показывает %2$s ГГц)</string>
 </resources>

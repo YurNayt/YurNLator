@@ -994,4 +994,5 @@
     <string name="l_frq_bench_all">All</string>
     <string name="l_frq_v_ceiling">CPU ≤ %1$s GHz</string>
     <string name="l_frq_bench_need_root">The clock search needs root for this app (each APK variant, standard or AnTuTu, is granted root separately).</string>
+    <string name="l_bench_cpu_by_cycles">CPU %1$s GHz by cycles (cpufreq shows %2$s GHz)</string>
 </resources>

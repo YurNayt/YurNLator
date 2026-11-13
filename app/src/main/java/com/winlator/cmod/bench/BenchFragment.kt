@@ -612,7 +612,10 @@ private fun clocks(r: RunResult): String {
     else r.gpuBusy(gp).takeIf { it >= 0 }?.let { parts += "GPU busy ${it.toInt()}%" }
     val c = r.cpuMhz(cp)
     val cRatio = if (game) r.mixCpuRatio else r.cpuMtRatio
-    if (c > 0) parts += "CPU ${String.format("%.2f", c / 1000)} GHz" + (cRatio?.let { " (${(it * 100).toInt()}%)" } ?: "")
+    val hw = r.hwMhz(cp)
+    if (hw > 0) parts += uiStr(R.string.l_bench_cpu_by_cycles, String.format("%.2f", hw / 1000),
+        if (c > 0) String.format("%.2f", c / 1000) else "—")
+    else if (c > 0) parts += "CPU ${String.format("%.2f", c / 1000)} GHz" + (cRatio?.let { " (${(it * 100).toInt()}%)" } ?: "")
     return if (parts.isEmpty()) uiStr(R.string.l_bench_clocks_not_readable_on_this_phone) else parts.joinToString(" · ")
 }
 
