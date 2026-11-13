@@ -252,7 +252,7 @@ private fun ColorScheme.withTint(argb: Int, light: Boolean, amoled: Boolean): Co
 /** Accent swatches of the palette (dark-theme shades; a light theme gets them darker). */
 val WINLATOR_ACCENTS: List<Int> = listOf(
     0xFF82B8FF, 0xFF7FD3F5, 0xFF6FD6C4, 0xFF9DC9A8, 0xFFB5D46A, 0xFFF2D06B,
-    0xFFFFB074, 0xFFFF8A8F, 0xFFF48FB1, 0xFFD0BCFF, 0xFFB9B4F5, 0xFFF4F4F6
+    0xFFFFB074, 0xFFFF7A1A, 0xFFFF8A8F, 0xFFF48FB1, 0xFFD0BCFF, 0xFFB9B4F5, 0xFFF4F4F6
 ).map { it.toInt() }
 
 internal fun accentFor(argb: Int, light: Boolean): Color =
