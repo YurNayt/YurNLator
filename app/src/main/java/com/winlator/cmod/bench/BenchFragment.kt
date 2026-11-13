@@ -40,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -175,10 +176,17 @@ private fun BenchScreen(
     val wrappers = remember { mutableStateListOf<String>() }  // "" = the container's
     // Clock search (root): the chosen variants' codes; none = no search.
     val freqs = remember { mutableStateListOf<String>() }
-    val freqOptions by androidx.compose.runtime.produceState<List<Pair<String, String>>>(emptyList()) {
+    // Each APK variant (standard, AnTuTu…) is its own app with its own root grant: the clock
+    // search needs the root shell of this one. Precise measurements on = root wanted here, so the
+    // shell is opened (a remembered grant answers without a prompt); else a button asks for it.
+    var rootTick by remember { mutableStateOf(0) }
+    val rootState by com.winlator.cmod.perf.RootManager.state.collectAsState()
+    val freqOptions by androidx.compose.runtime.produceState<List<Pair<String, String>>>(emptyList(), rootTick) {
         value = withContext(Dispatchers.IO) {
             runCatching {
                 if (!com.winlator.cmod.perf.RootManager.isGranted) runCatching { com.winlator.cmod.perf.RootManager.probe() }
+                if (!com.winlator.cmod.perf.RootManager.isGranted && RootMode.enabled(context))
+                    runCatching { com.winlator.cmod.perf.RootManager.ensureGrantedBlocking() }
                 if (!com.winlator.cmod.perf.RootManager.isGranted) emptyList()
                 else Bench.freqVariants(com.winlator.cmod.perf.FreqTuner.clusters(), com.winlator.cmod.perf.FreqTuner.gpu())
             }.getOrDefault(emptyList())
@@ -289,7 +297,7 @@ private fun BenchScreen(
                         scope.launch {
                             val ok = withContext(Dispatchers.IO) { RootMode.available() }
                             checking = false
-                            if (ok) { rootOn = true; RootMode.setEnabled(context, true) }
+                            if (ok) { rootOn = true; RootMode.setEnabled(context, true); rootTick++ }
                             else Toast.makeText(context, uiStr(R.string.l_bench_no_root_access_or_it_was), Toast.LENGTH_LONG).show()
                         }
                     })
@@ -380,6 +388,16 @@ private fun BenchScreen(
                         FilterChip(selected = w.id in wrappers, onClick = { if (w.id in wrappers) wrappers.remove(w.id) else wrappers.add(w.id) },
                             label = { Text(w.name + (w.author?.let { " · $it" } ?: "")) })
                     }
+                }
+            }
+        }
+        if (freqOptions.size <= 1 && rootState != com.winlator.cmod.perf.RootManager.RootState.UNAVAILABLE &&
+            rootState != com.winlator.cmod.perf.RootManager.RootState.GRANTED) item {
+            val scope = rememberCoroutineScope()
+            Section(uiStr(R.string.l_frq_bench_title, 0)) {
+                Text(uiStr(R.string.l_frq_bench_need_root), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = { scope.launch { com.winlator.cmod.perf.RootManager.requestGrant(); rootTick++ } }) {
+                    Text(uiStr(R.string.l_qm_grant_root))
                 }
             }
         }
