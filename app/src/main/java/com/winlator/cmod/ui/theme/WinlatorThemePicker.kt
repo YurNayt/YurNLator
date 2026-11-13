@@ -194,6 +194,8 @@ fun WinlatorThemePreferenceCard(modifier: Modifier = Modifier) {
                     onSelected = { WinlatorThemeManager.setTheme(context, it) }
                 )
                 Spacer(Modifier.size(16.dp))
+                TintPalette(current)
+                Spacer(Modifier.size(8.dp))
                 AccentPalette(current)
             }
         }
@@ -238,30 +240,66 @@ internal fun winlatorThemePreview(theme: WinlatorThemeType): ThemePreviewColors 
     )
 }
 
-/** Accent colour palette: the theme's own colour or one of the swatches. */
+/** Interface colour: tints backgrounds, cards and outlines of the whole app. */
+@Composable
+private fun TintPalette(theme: WinlatorThemeType) {
+    val context = LocalContext.current
+    Text(uiStr(R.string.l_thm_tint), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Text(uiStr(R.string.l_thm_tint_hint), style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
+    Swatches(
+        values = listOf(0) + WINLATOR_TINTS,
+        selected = WinlatorThemeManager.tint,
+        colorOf = { if (it == 0) winlatorThemePreview(theme).surface else Color(it) },
+        onPick = { WinlatorThemeManager.setTint(context, it) }
+    )
+}
+
+/** Accent colour palette: the interface / theme colour or one of the swatches. */
 @Composable
 private fun AccentPalette(theme: WinlatorThemeType) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val selected = WinlatorThemeManager.accent
+    val context = LocalContext.current
     val light = theme == WinlatorThemeType.WHITE
+    val tint = WinlatorThemeManager.tint
     Text(uiStr(R.string.l_thm_accent), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     Text(uiStr(R.string.l_thm_accent_hint), style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
-    val swatches = listOf(0) + WINLATOR_ACCENTS
-    swatches.chunked(7).forEach { row ->
+    Swatches(
+        values = listOf(0) + WINLATOR_ACCENTS,
+        selected = WinlatorThemeManager.accent,
+        colorOf = {
+            when {
+                it != 0 -> accentFor(it, light)
+                tint != 0 -> accentFor(tint, light)
+                else -> winlatorThemePreview(theme).accent
+            }
+        },
+        onPick = { WinlatorThemeManager.setAccent(context, it) }
+    )
+}
+
+/** Round colour swatches, 7 per row; 0 is the "A" (automatic) swatch. */
+@Composable
+private fun Swatches(values: List<Int>, selected: Int, colorOf: (Int) -> Color, onPick: (Int) -> Unit) {
+    values.chunked(7).forEach { row ->
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             row.forEach { argb ->
-                val color = if (argb == 0) winlatorThemePreview(theme).accent else accentFor(argb, light)
+                val color = colorOf(argb)
                 val isOn = selected == argb
+                val ink = if (color.luminance() > 0.45f) Color.Black else Color.White
                 Box(
                     Modifier.size(38.dp)
                         .background(color, CircleShape)
-                        .then(if (isOn) Modifier.border(BorderStroke(3.dp, MaterialTheme.colorScheme.onBackground), CircleShape) else Modifier)
-                        .clickable { WinlatorThemeManager.setAccent(context, argb) },
+                        .border(
+                            if (isOn) BorderStroke(3.dp, MaterialTheme.colorScheme.onBackground)
+                            else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            CircleShape
+                        )
+                        .clickable { onPick(argb) },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (argb == 0) Text("A", fontWeight = FontWeight.Bold, color = if (color.luminance() > 0.45f) Color.Black else Color.White)
-                    else if (isOn) Icon(Icons.Outlined.Check, null, tint = if (color.luminance() > 0.45f) Color.Black else Color.White, modifier = Modifier.size(18.dp))
+                    if (argb == 0) Text("A", fontWeight = FontWeight.Bold, color = ink)
+                    else if (isOn) Icon(Icons.Outlined.Check, null, tint = ink, modifier = Modifier.size(18.dp))
                 }
             }
         }

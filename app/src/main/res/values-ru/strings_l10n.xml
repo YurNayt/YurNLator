@@ -967,5 +967,7 @@
     <string name="l_tpl_setup_summary">Proton 9.0 x86_64 · параметры трансляции: Совместимость · транслятор CPU: Box64 %1$s (скачается, если его нет).</string>
     <string name="l_tpl_setup_warning">Эти настройки не универсальны для каждого setup: некоторым установщикам нужен другой Proton, пресет или версия Box64. Установите игру здесь, а играйте в обычном контейнере.</string>
     <string name="l_thm_accent">Цвет акцента</string>
-    <string name="l_thm_accent_hint">Кнопки, переключатели и выделение. «A» — родной цвет темы.</string>
+    <string name="l_thm_accent_hint">Кнопки, переключатели и выделение. «A» — по цвету оформления.</string>
+    <string name="l_thm_tint">Цвет оформления</string>
+    <string name="l_thm_tint_hint">Фон, карточки, панели и контуры всего приложения в выбранном цвете. «A» — тема как есть.</string>
 </resources>

@@ -58,9 +58,12 @@ enum class WinlatorThemeType(
 object WinlatorThemeManager {
     private const val PREF_KEY = "winlator_ui_theme"
     private const val PREF_ACCENT = "winlator_ui_accent"
+    private const val PREF_TINT = "winlator_ui_tint"
     private val currentState = mutableStateOf(WinlatorThemeType.BLACK)
     /** Accent colour (ARGB) over the theme, 0 = the theme's own. */
     private val accentState = androidx.compose.runtime.mutableIntStateOf(0)
+    /** Colour the whole interface is tinted with (ARGB), 0 = the theme's own. */
+    private val tintState = androidx.compose.runtime.mutableIntStateOf(0)
     private var initialized = false
 
     private fun ensureInitialized(context: Context) {
@@ -68,6 +71,7 @@ object WinlatorThemeManager {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context.applicationContext)
         currentState.value = WinlatorThemeType.fromId(prefs.getString(PREF_KEY, WinlatorThemeType.BLACK.id))
         accentState.intValue = prefs.getInt(PREF_ACCENT, 0)
+        tintState.intValue = prefs.getInt(PREF_TINT, 0)
         initialized = true
     }
 
@@ -92,6 +96,15 @@ object WinlatorThemeManager {
         ensureInitialized(context)
         PreferenceManager.getDefaultSharedPreferences(context.applicationContext).edit().putInt(PREF_ACCENT, argb).apply()
         accentState.intValue = argb
+    }
+
+    /** The interface colour; read in composition like [accent]. */
+    val tint: Int get() = tintState.intValue
+
+    fun setTint(context: Context, argb: Int) {
+        ensureInitialized(context)
+        PreferenceManager.getDefaultSharedPreferences(context.applicationContext).edit().putInt(PREF_TINT, argb).apply()
+        tintState.intValue = argb
     }
 
     fun setTheme(context: Context, theme: WinlatorThemeType) {
@@ -189,9 +202,52 @@ private val GreenColors = darkColorScheme(
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005)
 )
 
-/** The theme's colours with the chosen accent colour (Settings > Appearance > palette). */
-internal fun winlatorColorScheme(theme: WinlatorThemeType): ColorScheme =
-    baseColorScheme(theme).withAccent(WinlatorThemeManager.accent, theme == WinlatorThemeType.WHITE)
+/**
+ * The theme's colours, tinted with the interface colour and then given the accent colour
+ * (Settings > Appearance). With no accent of its own, the interface colour is the accent too.
+ */
+internal fun winlatorColorScheme(theme: WinlatorThemeType): ColorScheme {
+    val light = theme == WinlatorThemeType.WHITE
+    val tint = WinlatorThemeManager.tint
+    val accent = WinlatorThemeManager.accent.takeIf { it != 0 } ?: tint
+    return baseColorScheme(theme).withTint(tint, light, theme == WinlatorThemeType.AMOLED).withAccent(accent, light)
+}
+
+/** Interface colour swatches (the accent swatches without the neutral white). */
+val WINLATOR_TINTS: List<Int> get() = WINLATOR_ACCENTS.dropLast(1)
+
+/**
+ * Backgrounds, cards, outlines and secondary text take on the interface colour; text stays
+ * readable since only a small share of the colour is mixed into each tone.
+ */
+private fun ColorScheme.withTint(argb: Int, light: Boolean, amoled: Boolean): ColorScheme {
+    if (argb == 0) return this
+    val c = Color(argb)
+    fun mix(base: Color, k: Float) = androidx.compose.ui.graphics.lerp(base, c, k)
+    val s = if (light) 0.75f else 1f
+    return copy(
+        background = if (amoled) background else mix(background, 0.07f * s),
+        surface = mix(surface, (if (amoled) 0.05f else 0.10f) * s),
+        surfaceVariant = mix(surfaceVariant, 0.14f * s),
+        surfaceContainerLowest = mix(background, 0.05f * s),
+        surfaceContainerLow = mix(surface, 0.08f * s),
+        surfaceContainer = mix(surface, 0.11f * s),
+        surfaceContainerHigh = mix(surfaceVariant, 0.13f * s),
+        surfaceContainerHighest = mix(surfaceVariant, 0.17f * s),
+        surfaceBright = mix(surfaceVariant, 0.18f * s),
+        surfaceDim = mix(background, 0.06f * s),
+        inverseSurface = mix(inverseSurface, 0.10f),
+        secondaryContainer = mix(secondaryContainer, 0.20f * s),
+        onSecondaryContainer = mix(onSecondaryContainer, 0.15f),
+        tertiary = mix(tertiary, 0.5f),
+        tertiaryContainer = mix(tertiaryContainer, 0.25f * s),
+        onBackground = mix(onBackground, 0.05f),
+        onSurface = mix(onSurface, 0.05f),
+        onSurfaceVariant = mix(onSurfaceVariant, 0.28f),
+        outline = mix(outline, 0.32f),
+        outlineVariant = mix(outlineVariant, 0.22f * s)
+    )
+}
 
 /** Accent swatches of the palette (dark-theme shades; a light theme gets them darker). */
 val WINLATOR_ACCENTS: List<Int> = listOf(

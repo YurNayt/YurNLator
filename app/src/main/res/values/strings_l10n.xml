@@ -967,5 +967,7 @@
     <string name="l_tpl_setup_summary">Proton 9.0 x86_64 · translation preset: Compatibility · CPU translator: Box64 %1$s (downloaded if missing).</string>
     <string name="l_tpl_setup_warning">These settings are not universal: some setups need another Proton, preset or Box64 version. Install the game here, then play it in your normal container.</string>
     <string name="l_thm_accent">Accent colour</string>
-    <string name="l_thm_accent_hint">Buttons, switches and highlights. \"A\" keeps the theme\'s own colour.</string>
+    <string name="l_thm_accent_hint">Buttons, switches and highlights. \"A\" follows the interface colour.</string>
+    <string name="l_thm_tint">Interface colour</string>
+    <string name="l_thm_tint_hint">Tints backgrounds, cards and outlines of the whole app. \"A\" keeps the theme as it is.</string>
 </resources>

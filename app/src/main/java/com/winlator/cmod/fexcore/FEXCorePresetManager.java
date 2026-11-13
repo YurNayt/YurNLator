@@ -183,10 +183,10 @@ public class FEXCorePresetManager {
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE, context.getString(R.string.performance)));
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE_TSO, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_performance_tso)));
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE_X87_FULL, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_performance_x87)));
-        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME, "Extreme"));
-        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_WN, "Extreme-wn"));
-        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_TSO, "Extreme (TSO)-wn"));
-        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_GN, "Extreme-gn"));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_extreme)));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_WN, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_extreme) + "-wn"));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_TSO, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_extreme) + " (TSO)-wn"));
+        presets.add(new FEXCorePreset(FEXCorePreset.EXTREME_GN, com.winlator.cmod.ui.UiStrings.get(R.string.l_pst_extreme) + "-gn"));
         presets.add(new FEXCorePreset(FEXCorePreset.DENUVO, "Denuvo"));
         presets.add(new FEXCorePreset(FEXCorePreset.UNREAL_ENGINE_3, "Unreal Engine 3"));
         for (String[] preset : customPresetsIterator(context)) presets.add(new FEXCorePreset(preset[0], preset[1]));
