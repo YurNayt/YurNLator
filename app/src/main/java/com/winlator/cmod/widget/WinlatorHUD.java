@@ -468,6 +468,8 @@ public class WinlatorHUD extends View {
     private volatile boolean benchMeasuring;
     private double benchFrames;
     private long benchStartNs;
+    /** Seconds of the measuring the game was rendering (loading screens and result screens left out). */
+    private double benchActiveSecs;
     private volatile float lastGameFps;
 
     /** The game's frame rate at the last reading (0 before the game renders). */
@@ -478,15 +480,21 @@ public class WinlatorHUD extends View {
         synchronized (benchLock) {
             frameTimes.reset();
             benchFrames = 0;
+            benchActiveSecs = 0;
             benchStartNs = System.nanoTime();
             benchMeasuring = true;
         }
     }
 
-    /** {average FPS, 1% low, 0.1% low, frames, seconds} since [benchStart]; [stop] ends the measuring. */
+    /**
+     * {average FPS, 1% low, 0.1% low, frames, seconds rendering} since [benchStart]; [stop] ends the
+     * measuring. The average is over the time the game rendered (5 FPS and more): a built-in benchmark
+     * loads its scene and shows a result screen inside the window, and counting those seconds gave an
+     * average below the 1% low.
+     */
     public double[] benchResult(boolean stop) {
         synchronized (benchLock) {
-            double secs = benchStartNs == 0 ? 0 : (System.nanoTime() - benchStartNs) / 1e9;
+            double secs = benchActiveSecs;
             if (stop) benchMeasuring = false;
             com.winlator.cmod.widget.banner.FpsCounter.FrametimeLows l = frameTimes.getFrametimeLows();
             double avg = secs > 0 ? benchFrames / secs : 0;
@@ -972,7 +980,10 @@ public class WinlatorHUD extends View {
         }
         lastFpsNs = now;
         if ((showMask & SHOW_LOWS) != 0 || benchMeasuring) updateLows(snapFps, dt / 1_000_000f);
-        if (benchMeasuring) synchronized (benchLock) { benchFrames += snapFps * dt / 1_000_000_000.0; }
+        if (benchMeasuring && snapFps >= 5f) synchronized (benchLock) {
+            benchFrames += snapFps * dt / 1_000_000_000.0;
+            benchActiveSecs += dt / 1_000_000_000.0;
+        }
         lastGameFps = snapFps;
         if (banner != null) {
             banner.feedRate(snapFps, dt / 1_000_000f);

@@ -493,9 +493,10 @@ object Bench {
     }
 
     /**
-     * Clock variants for a search: no limits, the GPU ceiling at about 85 % and 70 %, a floor for
-     * the faster CPU clusters at about 75 % (the budget goes to the CPU), and the floor with each
-     * GPU ceiling. Code -> label.
+     * Clock variants for a search: no limits, the GPU ceiling at about 85 % and 70 %, a ceiling for
+     * the faster CPU clusters at about 80 % (alone and with the higher GPU ceiling), a floor for
+     * them at about 75 % (the budget goes to the CPU), and the floor with each GPU ceiling.
+     * Code -> label.
      */
     fun freqVariants(clusters: List<com.winlator.cmod.perf.FreqTuner.Cluster>, gpu: com.winlator.cmod.perf.FreqTuner.Gpu?): List<Pair<String, String>> {
         fun near(steps: List<Int>, share: Double) = steps.minByOrNull { kotlin.math.abs(it - steps.last() * share) } ?: steps.last()
@@ -509,6 +510,18 @@ object Bench {
         val floorCpu = floors.mapValues { com.winlator.cmod.perf.FreqTuner.Range(min = it.value) }
         for (cap in gpuCaps) out += com.winlator.cmod.perf.FreqTuner.Profile(gpu = com.winlator.cmod.perf.FreqTuner.Range(max = cap)).encode() to
             uiStr(R.string.l_frq_v_gpu, cap)
+        // A CPU ceiling (~80 % on the faster clusters): less heat, so thermal-engine leaves the GPU
+        // higher (on a hot phone the GPU drops to its thermal floor whatever the CPU floor).
+        val caps = fast.associate { it.policy to near(it.steps, 0.80) }
+        val capLabel = uiStr(R.string.l_frq_v_ceiling, String.format(java.util.Locale.US, "%.1f", (caps.values.maxOrNull() ?: 0) / 1_000_000.0))
+        val capCpu = caps.mapValues { com.winlator.cmod.perf.FreqTuner.Range(max = it.value) }
+        if (caps.isNotEmpty()) {
+            out += com.winlator.cmod.perf.FreqTuner.Profile(cpu = capCpu).encode() to capLabel
+            gpuCaps.firstOrNull()?.let { cap ->
+                out += com.winlator.cmod.perf.FreqTuner.Profile(capCpu, com.winlator.cmod.perf.FreqTuner.Range(max = cap)).encode() to
+                    "$capLabel · " + uiStr(R.string.l_frq_v_gpu, cap)
+            }
+        }
         if (floors.isNotEmpty()) {
             out += com.winlator.cmod.perf.FreqTuner.Profile(cpu = floorCpu).encode() to floorLabel
             for (cap in gpuCaps) out += com.winlator.cmod.perf.FreqTuner.Profile(floorCpu, com.winlator.cmod.perf.FreqTuner.Range(max = cap)).encode() to

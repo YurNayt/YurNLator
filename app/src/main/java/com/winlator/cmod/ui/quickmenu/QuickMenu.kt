@@ -1068,7 +1068,7 @@ private fun FreqEditorCard(perf: com.winlator.cmod.session.PerfSession, opened: 
                 range = profile.gpu,
                 format = { uiStr(R.string.l_frq_mhz, it) },
                 now = live?.gpuCurMhz?.takeIf { it > 0 },
-                effectiveMax = null,
+                effectiveMax = live?.gpuMaxMhz?.takeIf { it > 0 },
             ) { r ->
                 profile = profile.copy(gpu = r)
                 perf.setFreqProfile(profile)
@@ -1121,7 +1121,9 @@ private fun FreqRangeRow(
         )
         val parts = buildList {
             if (now != null) add(uiStr(R.string.l_frq_now, format(now)))
-            if (effectiveMax != null && effectiveMax < steps[hi] - 1000) add(uiStr(R.string.l_frq_capped, format(effectiveMax)))
+            // Below the chosen ceiling by more than rounding (1 MHz for the CPU's kHz, 1 MHz for the GPU).
+            val slack = if (steps.last() > 100_000) 1000 else 1
+            if (effectiveMax != null && effectiveMax < steps[hi] - slack) add(uiStr(R.string.l_frq_capped, format(effectiveMax)))
         }
         if (parts.isNotEmpty()) Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall,
             color = if (parts.size > 1) scheme.primary else scheme.onSurfaceVariant)

@@ -166,6 +166,8 @@ object FreqTuner {
         /** Effective highest clock per policy (kHz): below the set one = held down by heat / another limiter. */
         val cpuMax: Map<Int, Int>,
         val gpuCurMhz: Int,
+        /** Highest GPU clock the system allows now (thermal-engine's cap included), 0 = unknown. */
+        val gpuMaxMhz: Int = 0,
     )
 
     fun live(): Live {
@@ -174,7 +176,22 @@ object FreqTuner {
         val max = cl.associate { it.policy to (read(it.maxNode)?.toIntOrNull() ?: 0) }
         val g = gpu()
         val gpuHz = g?.curHzNode?.let { read(it)?.toLongOrNull() } ?: 0L
-        return Live(cur, max, (if (gpuHz > 100_000) gpuHz / 1_000_000 else gpuHz).toInt())
+        return Live(cur, max, (if (gpuHz > 100_000) gpuHz / 1_000_000 else gpuHz).toInt(), gpuAllowedMhz(g))
+    }
+
+    /**
+     * The GPU's effective ceiling: devfreq's max_freq reads back the lowest of every limit (ours,
+     * thermal-engine's), and KGSL's thermal_pwrlevel is the step the thermal limit allows (0 = top).
+     */
+    private fun gpuAllowedMhz(g: Gpu?): Int {
+        if (g == null) return 0
+        val caps = ArrayList<Int>()
+        g.maxHzNode?.let { read(it)?.toLongOrNull() }?.let { if (it > 0) caps += (it / 1_000_000).toInt() }
+        read("$KGSL/thermal_pwrlevel")?.toIntOrNull()?.let { lvl ->
+            val desc = g.steps.sortedDescending()
+            desc.getOrNull(lvl)?.let { caps += it }
+        }
+        return caps.minOrNull() ?: 0
     }
 
     // ---- applying ---------------------------------------------------------------------------------

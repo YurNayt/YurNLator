@@ -992,4 +992,5 @@
     <string name="l_frq_bench_hint">Each bundle runs once per chosen clock variant: a lower GPU ceiling, a floor for the big CPU cores, both. Best with a game: the winner\'s limits are applied to the game with the bundle and can be fine-tuned in the in-game menu › Performance.</string>
     <string name="l_frq_bench_off">Don\'t search</string>
     <string name="l_frq_bench_all">All</string>
+    <string name="l_frq_v_ceiling">CPU ≤ %1$s GHz</string>
 </resources>
