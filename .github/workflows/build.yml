@@ -176,13 +176,13 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Test build release (YurNayt/YurNLator-dev)
+      - name: Test build release (YurNayt/YurNLator_test_buid)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           # Test builds live in their own public repository, so the releases page of this one
-          # shows only the main versions. The token can write to YurNLator-dev only.
+          # shows only the main versions. The token can write to YurNLator_test_buid only.
           GH_TOKEN: ${{ secrets.DEV_RELEASES_TOKEN }}
-          GH_REPO: YurNayt/YurNLator-dev
+          GH_REPO: YurNayt/YurNLator_test_buid
           MAIN_TOKEN: ${{ github.token }}
         run: |
           if [ -z "$GH_TOKEN" ]; then echo "::error::DEV_RELEASES_TOKEN is not set"; exit 1; fi
