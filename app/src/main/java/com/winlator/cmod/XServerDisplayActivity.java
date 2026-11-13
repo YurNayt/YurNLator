@@ -634,7 +634,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 && getIntent().getIntExtra(com.winlator.cmod.bench.Bench.EXTRA_GAME_MEASURE, 0) == 0;
         if (shortcut != null && !yurnBench) {
             gameExitWatcher = new com.winlator.cmod.session.GameExitWatcher(
-                    com.winlator.cmod.session.GameExitWatcher.exeOf(shortcut.path), () -> runOnUiThread(this::exit));
+                    com.winlator.cmod.session.GameExitWatcher.exeOf(shortcut.path), () -> { runOnUiThread(this::exit); return kotlin.Unit.INSTANCE; });
             gameExitWatcher.start();
         }
 
