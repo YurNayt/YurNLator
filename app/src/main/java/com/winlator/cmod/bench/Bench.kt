@@ -10,6 +10,8 @@ import com.winlator.cmod.XServerDisplayActivity
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.ContainerManager
 import com.winlator.cmod.core.FileUtils
+import com.winlator.cmod.R
+import com.winlator.cmod.ui.uiStr
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -41,26 +43,34 @@ data class Combo(
     /** Vulkan wrapper id ("" = the container's) and its name for the label. */
     val wrapper: String = "",
     val wrapperLabel: String = "",
+    /**
+     * Clock limits of the run ([com.winlator.cmod.perf.FreqTuner.Profile.encode]); "" = not part of a
+     * clock search (the game keeps its own), [FREQ_SYSTEM] = no limits.
+     */
+    val freq: String = "",
+    val freqLabel: String = "",
 ) {
     val dx12: Boolean get() = api == API12
     /** DXVK for DX11 runs, VKD3D for DX12 runs: the translation layer the run compares. */
     val layer: String get() = if (dx12) "VKD3D $vkd3d" else "DXVK $dxvk"
     val label: String get() = "$driverLabel · " + (if (wrapperLabel.isNotEmpty()) "$wrapperLabel · " else "") +
-        "$layer · ${if (emulator == "FEXCore") "FEX" else "Box64"} $emulatorVersion"
+        "$layer · ${if (emulator == "FEXCore") "FEX" else "Box64"} $emulatorVersion" +
+        (if (freqLabel.isNotEmpty()) " · $freqLabel" else "")
     /** Same bundle (for averaging repeated runs). */
     val key: String get() = listOf(api, driverId, if (dx12) vkd3d else dxvk, emulator, emulatorVersion).joinToString("|") +
-        (if (wrapper.isNotEmpty()) "|w=$wrapper" else "")
+        (if (wrapper.isNotEmpty()) "|w=$wrapper" else "") + (if (freq.isNotEmpty()) "|f=$freq" else "")
 
     fun toJson(): JSONObject = JSONObject().put("driver", driverId).put("driverLabel", driverLabel).put("dxvk", dxvk)
         .put("emulator", emulator).put("emulatorVersion", emulatorVersion).put("api", api).put("vkd3d", vkd3d)
-        .put("wrapper", wrapper).put("wrapperLabel", wrapperLabel)
+        .put("wrapper", wrapper).put("wrapperLabel", wrapperLabel).put("freq", freq).put("freqLabel", freqLabel)
 
     companion object {
         const val API11 = "d3d11"
         const val API12 = "d3d12"
+        const val FREQ_SYSTEM = "-"
         fun from(o: JSONObject) = Combo(o.optString("driver"), o.optString("driverLabel"), o.optString("dxvk"),
             o.optString("emulator"), o.optString("emulatorVersion"), o.optString("api").ifEmpty { API11 }, o.optString("vkd3d"),
-            o.optString("wrapper"), o.optString("wrapperLabel"))
+            o.optString("wrapper"), o.optString("wrapperLabel"), o.optString("freq"), o.optString("freqLabel"))
     }
 }
 
@@ -415,6 +425,7 @@ object Bench {
             "emulator" to combo.emulator,
             if (combo.emulator == "FEXCore") "fexcoreVersion" to combo.emulatorVersion else "box64Version" to combo.emulatorVersion,
         )
+        putFreq(extras, combo)
         // The guest sees the active container's home as /home/xuser.
         val guestExe = "/home/xuser/.wine/drive_c/$BENCH_DIR/yurnbench.exe"
         val text = buildString {
@@ -459,6 +470,7 @@ object Bench {
         if (combo.emulator == "FEXCore") extras["fexcoreVersion"] = combo.emulatorVersion else extras["box64Version"] = combo.emulatorVersion
         extras["execArgs"] = listOf(extras["execArgs"].orEmpty(), game.args).filter { it.isNotBlank() }.joinToString(" ")
         extras["hudMode"] = "2"
+        putFreq(extras, combo)
         val shortcut = File(dir(context), "run.desktop")
         FileUtils.writeString(shortcut, buildString {
             append("[Desktop Entry]\n")
@@ -467,6 +479,42 @@ object Bench {
             extras.forEach { (k, v) -> append("$k=$v\n") }
         })
         return shortcut
+    }
+
+    /**
+     * A clock-search run: its limits as the shortcut's (PerfSession applies them), and the
+     * "CPU / GPU at max clock" switches off for it (they pin the same nodes to the top).
+     */
+    private fun putFreq(extras: MutableMap<String, String>, combo: Combo) {
+        if (combo.freq.isEmpty()) return
+        extras[com.winlator.cmod.session.PerfSession.FREQ_PROFILE] = if (combo.freq == Combo.FREQ_SYSTEM) "" else combo.freq
+        extras[com.winlator.cmod.perf.PerfRootApplier.KEY_CPU_FREQ_LOCK] = "0"
+        extras[com.winlator.cmod.perf.PerfRootApplier.KEY_GPU_CLOCK_LOCK] = "0"
+    }
+
+    /**
+     * Clock variants for a search: no limits, the GPU ceiling at about 85 % and 70 %, a floor for
+     * the faster CPU clusters at about 75 % (the budget goes to the CPU), and the floor with each
+     * GPU ceiling. Code -> label.
+     */
+    fun freqVariants(clusters: List<com.winlator.cmod.perf.FreqTuner.Cluster>, gpu: com.winlator.cmod.perf.FreqTuner.Gpu?): List<Pair<String, String>> {
+        fun near(steps: List<Int>, share: Double) = steps.minByOrNull { kotlin.math.abs(it - steps.last() * share) } ?: steps.last()
+        val out = ArrayList<Pair<String, String>>()
+        out += Combo.FREQ_SYSTEM to uiStr(R.string.l_frq_v_system)
+        val gpuCaps = gpu?.let { g -> listOf(0.85, 0.70).map { near(g.steps, it) }.distinct().filter { it < g.steps.last() } }.orEmpty()
+        // The slowest cluster (efficiency cores) keeps its own range.
+        val fast = if (clusters.size > 1) clusters.drop(1) else clusters
+        val floors = fast.associate { it.policy to near(it.steps, 0.75) }
+        val floorLabel = uiStr(R.string.l_frq_v_floor, String.format(java.util.Locale.US, "%.1f", (floors.values.minOrNull() ?: 0) / 1_000_000.0))
+        val floorCpu = floors.mapValues { com.winlator.cmod.perf.FreqTuner.Range(min = it.value) }
+        for (cap in gpuCaps) out += com.winlator.cmod.perf.FreqTuner.Profile(gpu = com.winlator.cmod.perf.FreqTuner.Range(max = cap)).encode() to
+            uiStr(R.string.l_frq_v_gpu, cap)
+        if (floors.isNotEmpty()) {
+            out += com.winlator.cmod.perf.FreqTuner.Profile(cpu = floorCpu).encode() to floorLabel
+            for (cap in gpuCaps) out += com.winlator.cmod.perf.FreqTuner.Profile(floorCpu, com.winlator.cmod.perf.FreqTuner.Range(max = cap)).encode() to
+                "$floorLabel · " + uiStr(R.string.l_frq_v_gpu, cap)
+        }
+        return out
     }
 
     /** Makes [combo] the game's own settings (its shortcut). */
@@ -494,6 +542,14 @@ object Bench {
         }
         set("emulator", combo.emulator)
         set(if (combo.emulator == "FEXCore") "fexcoreVersion" else "box64Version", combo.emulatorVersion)
+        if (combo.freq.isNotEmpty()) {
+            set(com.winlator.cmod.session.PerfSession.FREQ_PROFILE, if (combo.freq == Combo.FREQ_SYSTEM) "" else combo.freq)
+            if (combo.freq != Combo.FREQ_SYSTEM) {
+                // The limits replace "CPU / GPU at max clock" for this game (those pin the floor to the top).
+                set(com.winlator.cmod.perf.PerfRootApplier.KEY_CPU_FREQ_LOCK, "0")
+                set(com.winlator.cmod.perf.PerfRootApplier.KEY_GPU_CLOCK_LOCK, "0")
+            }
+        }
         f.writeText(lines.joinToString("\n", postfix = "\n"))
         true
     }.getOrDefault(false)

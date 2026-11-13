@@ -173,6 +173,17 @@ private fun BenchScreen(
     var dx11 by remember { mutableStateOf(true) }
     var dx12 by remember { mutableStateOf(false) }
     val wrappers = remember { mutableStateListOf<String>() }  // "" = the container's
+    // Clock search (root): the chosen variants' codes; none = no search.
+    val freqs = remember { mutableStateListOf<String>() }
+    val freqOptions by androidx.compose.runtime.produceState<List<Pair<String, String>>>(emptyList()) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                if (!com.winlator.cmod.perf.RootManager.isGranted) runCatching { com.winlator.cmod.perf.RootManager.probe() }
+                if (!com.winlator.cmod.perf.RootManager.isGranted) emptyList()
+                else Bench.freqVariants(com.winlator.cmod.perf.FreqTuner.clusters(), com.winlator.cmod.perf.FreqTuner.gpu())
+            }.getOrDefault(emptyList())
+        }
+    }
     var conflicts by remember { mutableStateOf(Bench.conflicts(context)) }
     var gameMode by remember { mutableStateOf(false) }
     var gamePath by remember { mutableStateOf("") }
@@ -372,6 +383,21 @@ private fun BenchScreen(
                 }
             }
         }
+        if (freqOptions.size > 1) item {
+            Section(uiStr(R.string.l_frq_bench_title, freqs.size)) {
+                Text(uiStr(R.string.l_frq_bench_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = freqs.isEmpty(), onClick = { freqs.clear() }, label = { Text(uiStr(R.string.l_frq_bench_off)) })
+                    FilterChip(selected = freqs.size == freqOptions.size, onClick = {
+                        freqs.clear(); freqs.addAll(freqOptions.map { it.first })
+                    }, label = { Text(uiStr(R.string.l_frq_bench_all)) })
+                    freqOptions.forEach { (code, label) ->
+                        FilterChip(selected = code in freqs, onClick = { if (code in freqs) freqs.remove(code) else freqs.add(code) },
+                            label = { Text(label) })
+                    }
+                }
+            }
+        }
         val ch = choices
         if (container != null && ch == null) item { CircularProgressIndicator(Modifier.size(24.dp)) }
         if (ch != null) {
@@ -431,7 +457,10 @@ private fun BenchScreen(
                 } else emptyList()) + (if (dx12) drivers.flatMap { d ->
                     vkd3ds.flatMap { v -> emus.map { e -> Combo(d, label(d), currentDxvk.ifEmpty { dxvks.firstOrNull().orEmpty() }, e.first, e.second, Combo.API12, v) } }
                 } else emptyList())
-                val combos = ws.flatMap { w -> base.map { it.copy(wrapper = w, wrapperLabel = if (w.isEmpty()) "" else wrapperNames[w] ?: w) } }
+                val withWrappers = ws.flatMap { w -> base.map { it.copy(wrapper = w, wrapperLabel = if (w.isEmpty()) "" else wrapperNames[w] ?: w) } }
+                val freqLabels = freqOptions.toMap()
+                val combos = if (freqs.isEmpty()) withWrappers
+                    else withWrappers.flatMap { c -> freqOptions.map { it.first }.filter { it in freqs }.map { f -> c.copy(freq = f, freqLabel = freqLabels[f].orEmpty()) } }
                 val proton = container?.getWineVersion().orEmpty()
                 val known = combos.count { Bench.conflictFor(conflicts, proton, it) != null }
                 val game = if (gameMode && gamePath.isNotEmpty()) BenchGame(gamePath, gameName, gameArgs.trim(),

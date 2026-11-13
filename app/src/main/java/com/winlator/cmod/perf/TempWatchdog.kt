@@ -157,6 +157,8 @@ object TempWatchdog {
                             over++
                             if (over >= TRIP_COUNT) {
                                 Log.w(TAG, "temp ${temp}°C >= ${_ceilingC.value}°C — force-reverting perf state")
+                                // The clock limits' guard would put them back a second later.
+                                runCatching { FreqTuner.stopGuard() }
                                 try { PerfRevertRegistry.revertAll() } catch (t: Throwable) {
                                     Log.w(TAG, "watchdog revert failed", t)
                                 }

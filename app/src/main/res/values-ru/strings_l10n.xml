@@ -974,4 +974,22 @@
     <string name="l_thm_brightness">Яркость</string>
     <string name="l_thm_wheel_ok">Применить</string>
     <string name="l_thm_wheel_cancel">Отмена</string>
+    <string name="l_frq_title">Частоты ЦПУ / ГПУ</string>
+    <string name="l_frq_hint">Свои пределы частот для этой игры. Потолок ГПУ пониже и нижняя граница больших ядер ЦПУ повыше отдают ЦПУ больше общего бюджета питания: меньше фризов при том же FPS. Применяется сразу, держится всю игру и возвращается при выходе.</string>
+    <string name="l_frq_cpu">ЦПУ %1$s</string>
+    <string name="l_frq_gpu">ГПУ</string>
+    <string name="l_frq_now">сейчас %1$s</string>
+    <string name="l_frq_capped">система пускает до %1$s (нагрев или другой ограничитель)</string>
+    <string name="l_frq_system">решает система</string>
+    <string name="l_frq_reset">Сбросить частоты</string>
+    <string name="l_frq_ghz">%1$s ГГц</string>
+    <string name="l_frq_mhz">%1$d МГц</string>
+    <string name="l_frq_none">На этом устройстве не нашлось списка частот.</string>
+    <string name="l_frq_v_system">Без ограничений</string>
+    <string name="l_frq_v_gpu">ГПУ ≤ %1$d МГц</string>
+    <string name="l_frq_v_floor">ЦПУ ≥ %1$s ГГц</string>
+    <string name="l_frq_bench_title">Частоты ЦПУ / ГПУ, root (%1$d)</string>
+    <string name="l_frq_bench_hint">Каждая связка прогоняется с каждым выбранным вариантом частот: потолок ГПУ ниже, нижняя граница больших ядер ЦПУ, оба сразу. Лучше всего с игрой: пределы победителя применяются к игре вместе со связкой, а донастроить их можно в игре: меню › Производительность.</string>
+    <string name="l_frq_bench_off">Не подбирать</string>
+    <string name="l_frq_bench_all">Все</string>
 </resources>

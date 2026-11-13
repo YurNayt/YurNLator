@@ -569,6 +569,8 @@ private fun PerformanceSection(bridge: QuickMenuBridge, opened: Int) {
             Text(uiStr(R.string.l_qm_everything_changed_here_is_put_back), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
+        if (granted) FreqEditorCard(perf, opened)
+
         Card {
             val wdOn by com.winlator.cmod.perf.TempWatchdog.enabled.collectAsState()
             val mode by com.winlator.cmod.perf.TempWatchdog.mode.collectAsState()
@@ -1018,3 +1020,110 @@ private fun NewTaskDialog(bridge: QuickMenuBridge, onDone: () -> Unit) {
 
 /** Dialogs and menus of the quick menu: its near-black panel colour, not Material's grey-blue. */
 private val QM_DIALOG_BG = Color(0xFF16181C)
+
+// ---------- Own CPU / GPU clocks (root) ----------
+
+/** Per-cluster CPU and GPU clock ranges for this game, applied live and kept by [com.winlator.cmod.perf.FreqTuner]. */
+@Composable
+private fun FreqEditorCard(perf: com.winlator.cmod.session.PerfSession, opened: Int) {
+    val info by androidx.compose.runtime.produceState<Pair<List<com.winlator.cmod.perf.FreqTuner.Cluster>, com.winlator.cmod.perf.FreqTuner.Gpu?>?>(null) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            com.winlator.cmod.perf.FreqTuner.clusters() to com.winlator.cmod.perf.FreqTuner.gpu()
+        }
+    }
+    var profile by remember(opened) { mutableStateOf(perf.freqProfile()) }
+    var live by remember { mutableStateOf<com.winlator.cmod.perf.FreqTuner.Live?>(null) }
+    androidx.compose.runtime.LaunchedEffect(opened) {
+        while (true) {
+            live = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { com.winlator.cmod.perf.FreqTuner.live() }.getOrNull() }
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+    Card {
+        Label(uiStr(R.string.l_frq_title))
+        Text(uiStr(R.string.l_frq_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val (clusters, gpu) = info ?: return@Card
+        if (clusters.isEmpty() && gpu == null) {
+            Text(uiStr(R.string.l_frq_none), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            return@Card
+        }
+        fun ghz(khz: Int) = uiStr(R.string.l_frq_ghz, String.format(java.util.Locale.US, "%.2f", khz / 1_000_000.0))
+        for (c in clusters) {
+            FreqRangeRow(
+                title = uiStr(R.string.l_frq_cpu, c.cpuLabel),
+                steps = c.steps,
+                range = profile.cpu[c.policy] ?: com.winlator.cmod.perf.FreqTuner.Range(),
+                format = ::ghz,
+                now = live?.cpuCur?.get(c.policy)?.takeIf { it > 0 },
+                effectiveMax = live?.cpuMax?.get(c.policy)?.takeIf { it > 0 },
+            ) { r ->
+                profile = profile.copy(cpu = profile.cpu + (c.policy to r))
+                perf.setFreqProfile(profile)
+            }
+        }
+        if (gpu != null) {
+            FreqRangeRow(
+                title = uiStr(R.string.l_frq_gpu),
+                steps = gpu.steps,
+                range = profile.gpu,
+                format = { uiStr(R.string.l_frq_mhz, it) },
+                now = live?.gpuCurMhz?.takeIf { it > 0 },
+                effectiveMax = null,
+            ) { r ->
+                profile = profile.copy(gpu = r)
+                perf.setFreqProfile(profile)
+            }
+        }
+        if (!profile.isEmpty) TextButton(onClick = {
+            profile = com.winlator.cmod.perf.FreqTuner.Profile()
+            perf.setFreqProfile(profile)
+        }) { Text(uiStr(R.string.l_frq_reset)) }
+    }
+}
+
+/**
+ * Lowest / highest clock on a range slider over the real steps. The full range means "the system
+ * decides" (stored as 0, nothing written).
+ */
+@Composable
+private fun FreqRangeRow(
+    title: String,
+    steps: List<Int>,
+    range: com.winlator.cmod.perf.FreqTuner.Range,
+    format: (Int) -> String,
+    now: Int?,
+    effectiveMax: Int?,
+    onChange: (com.winlator.cmod.perf.FreqTuner.Range) -> Unit,
+) {
+    val last = steps.size - 1
+    fun idx(v: Int, fallback: Int) = if (v <= 0) fallback else steps.indices.minByOrNull { kotlin.math.abs(steps[it] - v) } ?: fallback
+    var sel by remember(range, steps) { mutableStateOf(idx(range.min, 0).toFloat()..idx(range.max, last).toFloat()) }
+    val lo = sel.start.roundToInt().coerceIn(0, last)
+    val hi = sel.endInclusive.roundToInt().coerceIn(lo, last)
+    val scheme = MaterialTheme.colorScheme
+    Column {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+            Text(if (lo == 0 && hi == last) uiStr(R.string.l_frq_system) else "${format(steps[lo])} – ${format(steps[hi])}",
+                style = MaterialTheme.typography.labelLarge, color = if (lo == 0 && hi == last) scheme.onSurfaceVariant else scheme.primary)
+        }
+        androidx.compose.material3.RangeSlider(
+            value = sel,
+            onValueChange = { sel = it },
+            valueRange = 0f..last.toFloat(),
+            steps = (steps.size - 2).coerceAtLeast(0),
+            onValueChangeFinished = {
+                onChange(com.winlator.cmod.perf.FreqTuner.Range(
+                    min = if (lo == 0) 0 else steps[lo],
+                    max = if (hi == last) 0 else steps[hi],
+                ))
+            }
+        )
+        val parts = buildList {
+            if (now != null) add(uiStr(R.string.l_frq_now, format(now)))
+            if (effectiveMax != null && effectiveMax < steps[hi] - 1000) add(uiStr(R.string.l_frq_capped, format(effectiveMax)))
+        }
+        if (parts.isNotEmpty()) Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall,
+            color = if (parts.size > 1) scheme.primary else scheme.onSurfaceVariant)
+    }
+}

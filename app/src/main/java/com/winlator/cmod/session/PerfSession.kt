@@ -8,6 +8,7 @@ import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.Shortcut
 import com.winlator.cmod.core.ProcessHelper
 import com.winlator.cmod.perf.CpuTopology
+import com.winlator.cmod.perf.FreqTuner
 import com.winlator.cmod.perf.GameModeSignal
 import com.winlator.cmod.perf.PerfGpuTurbo
 import com.winlator.cmod.perf.PerfPriority
@@ -72,6 +73,33 @@ class PerfSession(
             applyLive(key, PerformanceSettings.globalDefault(key))
         }
         shortcut?.saveData()
+        if (!freqProfile().isEmpty) setFreqProfile(FreqTuner.Profile())
+    }
+
+    // ---- own CPU / GPU clocks (root) ------------------------------------------------------------
+
+    /** This game's own frequency limits (saved with the shortcut; for this session only without one). */
+    fun freqProfile(): FreqTuner.Profile =
+        if (shortcut != null) FreqTuner.Profile.decode(shortcut.getExtra(FREQ_PROFILE, "")) else sessionFreq
+
+    private var sessionFreq = FreqTuner.Profile()
+
+    fun setFreqProfile(p: FreqTuner.Profile) {
+        if (shortcut != null) {
+            shortcut.putExtra(FREQ_PROFILE, p.encode().ifEmpty { null })
+            shortcut.saveData()
+        } else sessionFreq = p
+        if (!started) return
+        val effective = PerfRootApplier.ROOT_KEYS.associateWith { value(it) }
+        io.execute {
+            runCatching {
+                // The switches ("CPU at max clock", "GPU at max clock") share these nodes: put the
+                // tuner's back, let the switches set theirs again, then the limits go on top.
+                FreqTuner.clear()
+                PerfRootApplier.applyEffective(effective)
+                if (!p.isEmpty) FreqTuner.apply(p)
+            }
+        }
     }
 
     // ---- profiles --------------------------------------------------------------------------------
@@ -123,6 +151,8 @@ class PerfSession(
             // A remembered root grant comes back without a prompt (the root manager answers it).
             if (!RootManager.isGranted) runCatching { RootManager.probe() }
             runCatching { PerfRootApplier.applyEffective(effective) }
+            val freq = freqProfile()
+            if (!freq.isEmpty && RootManager.isGranted) runCatching { FreqTuner.apply(freq) }
         }
         TempWatchdog.start(activity)
         if (value(PRIORITY)) ui.postDelayed({ io.execute { PerfPriority.boost(GuestProgramLauncherComponent.getPid()) } }, 5000)
@@ -137,6 +167,7 @@ class PerfSession(
         ui.removeCallbacksAndMessages(null)
         TempWatchdog.stop()
         runCatching { PerfPriority.restore() }
+        runCatching { FreqTuner.stopGuard() }
         runCatching { PerfRevertRegistry.revertAll() }
         runCatching { PerfGpuTurbo.revert() }
         runCatching { GalaxyPerfManager.stop() }
@@ -186,6 +217,8 @@ class PerfSession(
         const val SUSTAINED = "sustainedPerfMode"
         const val PRIORITY = "perfPriorityBoost"
         const val BIG_CORES = "preferBigCores"
+        /** Shortcut extra: [FreqTuner.Profile.encode]. */
+        const val FREQ_PROFILE = "freqProfile"
         val KEYS = listOf(SUSTAINED, PRIORITY, BIG_CORES) + PerfRootApplier.ROOT_KEYS
 
         const val PROFILE_STOCK = "stock"

@@ -974,4 +974,22 @@
     <string name="l_thm_brightness">Brightness</string>
     <string name="l_thm_wheel_ok">Apply</string>
     <string name="l_thm_wheel_cancel">Cancel</string>
+    <string name="l_frq_title">CPU / GPU clocks</string>
+    <string name="l_frq_hint">Your own clock limits for this game. A lower GPU ceiling and a higher floor for the big CPU cores give the CPU more of the shared power budget: fewer stutters at the same FPS. Applied at once, held for the whole game and put back when it closes.</string>
+    <string name="l_frq_cpu">CPU %1$s</string>
+    <string name="l_frq_gpu">GPU</string>
+    <string name="l_frq_now">now %1$s</string>
+    <string name="l_frq_capped">the system allows up to %1$s (heat or another limiter)</string>
+    <string name="l_frq_system">the system decides</string>
+    <string name="l_frq_reset">Reset clocks</string>
+    <string name="l_frq_ghz">%1$s GHz</string>
+    <string name="l_frq_mhz">%1$d MHz</string>
+    <string name="l_frq_none">No clock steps found on this device.</string>
+    <string name="l_frq_v_system">No limits</string>
+    <string name="l_frq_v_gpu">GPU ≤ %1$d MHz</string>
+    <string name="l_frq_v_floor">CPU ≥ %1$s GHz</string>
+    <string name="l_frq_bench_title">CPU / GPU clocks, root (%1$d)</string>
+    <string name="l_frq_bench_hint">Each bundle runs once per chosen clock variant: a lower GPU ceiling, a floor for the big CPU cores, both. Best with a game: the winner\'s limits are applied to the game with the bundle and can be fine-tuned in the in-game menu › Performance.</string>
+    <string name="l_frq_bench_off">Don\'t search</string>
+    <string name="l_frq_bench_all">All</string>
 </resources>
