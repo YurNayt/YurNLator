@@ -176,9 +176,16 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Rolling dev pre-release (latest build from main)
+      - name: Test build release (YurNayt/YurNLator-dev)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          # Test builds live in their own public repository, so the releases page of this one
+          # shows only the main versions. The token can write to YurNLator-dev only.
+          GH_TOKEN: ${{ secrets.DEV_RELEASES_TOKEN }}
+          GH_REPO: YurNayt/YurNLator-dev
+          MAIN_TOKEN: ${{ github.token }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then echo "::error::DEV_RELEASES_TOKEN is not set"; exit 1; fi
           SHORT="${GITHUB_SHA::7}"
           # Unique file name per build: a download that started before this push keeps
           # its own file, and a browser can't resume one build with bytes of another.
@@ -188,13 +195,17 @@ jobs:
             V="${f##*-}"; V="${V%.apk}"
             if [[ "$V" == "standard" ]]; then mv "$f" "dist/$NAME"; else mv "$f" "dist/${NAME%.apk}-$V.apk"; fi
           done
-          NOTES="Latest automatic build from main, build ${GITHUB_RUN_NUMBER} (commit $SHORT). For testing; may be unstable. The -antutu APK installs as a separate app named like AnTuTu, so phones that boost benchmarks (MediaTek, Unisoc) run it at full clocks. The newest APK is the one with the highest build number; the previous one is kept so running downloads finish."
+          TITLE="Test build ${GITHUB_RUN_NUMBER} ($SHORT)"
+          NOTES="Automatic test build of YurNLator from main, build ${GITHUB_RUN_NUMBER}, commit https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}. May be unstable. Main versions: https://github.com/${GITHUB_REPOSITORY}/releases
+
+          Variants: standard (YurNLator-dev-N-sha.apk) and AnTuTu (-antutu.apk, installs as a separate app named like AnTuTu, so phones that boost benchmarks run it at full clocks). The newest APK is the one with the highest build number; the previous one is kept so running downloads finish.
+
+          Тестовая сборка YurNLator, может быть нестабильной. Варианты: обычный и AnTuTu."
           if gh release view dev >/dev/null 2>&1; then
             gh release upload dev dist/*.apk --clobber
-            gh release edit dev --title "Dev build ${GITHUB_RUN_NUMBER} ($SHORT)" --notes "$NOTES" --prerelease
+            gh release edit dev --title "$TITLE" --notes "$NOTES" --latest
           else
-            gh release create dev dist/*.apk --prerelease --target "$GITHUB_SHA" \
-              --title "Dev build ${GITHUB_RUN_NUMBER} ($SHORT)" --notes "$NOTES"
+            gh release create dev dist/*.apk --title "$TITLE" --notes "$NOTES" --latest
           fi
           # Keep this build and the one before it (all their variants); delete older APKs.
           KEEP=$(gh release view dev --json assets -q '.assets[].name' | grep '\.apk$' \
@@ -203,6 +214,8 @@ jobs:
             N=$(echo "$old" | cut -d- -f3)
             [[ " $KEEP " == *" $N "* ]] || gh release delete-asset dev "$old" -y || true
           done
+          # The old rolling "dev" pre-release of this repository is no longer used.
+          GH_TOKEN="$MAIN_TOKEN" gh release delete dev -R "$GITHUB_REPOSITORY" --cleanup-tag -y 2>/dev/null || true
 
       - name: Versioned release
         if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')

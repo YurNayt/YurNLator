@@ -13,12 +13,14 @@ import java.io.File
 
 /**
  * App updates from the GitHub releases of YurNLator. Stable: the latest published release
- * (v0.1.0, v0.2.0…); test builds: the rolling "dev" release. The APK of the same variant as
+ * (v1.0.0, v1.1.0…); test builds: the rolling "dev" release of YurNLator-dev. The APK of the same variant as
  * the installed one is downloaded (standard, antutu…: each is its own app), with pause /
  * resume / cancel through [DownloadTracker], and handed to Android's package installer.
  */
 object AppUpdater {
     const val REPO = "YurNayt/YurNLator"
+    /** Test builds: their own public repository, so REPO's releases page shows main versions only. */
+    const val DEV_REPO = "YurNayt/YurNLator-dev"
     const val DOWNLOAD_KEY = "app-update"
     private const val PREF_DEV = "yurn_update_dev_builds"
 
@@ -85,7 +87,7 @@ object AppUpdater {
     }
 
     private fun checkDev(context: Context): Check {
-        val (code, body) = get("https://api.github.com/repos/$REPO/releases/tags/dev")
+        val (code, body) = get("https://api.github.com/repos/$DEV_REPO/releases/tags/dev")
         if (code !in 200..299) return Check.Failed("HTTP $code")
         val release = JSONObject(body)
         // YurNLator-dev-230-abc1234.apk (standard) / YurNLator-dev-230-abc1234-antutu.apk
