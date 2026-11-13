@@ -970,4 +970,8 @@
     <string name="l_thm_accent_hint">Кнопки, переключатели и выделение. «A» — по цвету оформления.</string>
     <string name="l_thm_tint">Цвет оформления</string>
     <string name="l_thm_tint_hint">Фон, карточки, панели и контуры всего приложения в выбранном цвете. «A» — тема как есть.</string>
+    <string name="l_thm_wheel">Любой цвет</string>
+    <string name="l_thm_brightness">Яркость</string>
+    <string name="l_thm_wheel_ok">Применить</string>
+    <string name="l_thm_wheel_cancel">Отмена</string>
 </resources>

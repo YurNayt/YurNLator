@@ -970,4 +970,8 @@
     <string name="l_thm_accent_hint">Buttons, switches and highlights. \"A\" follows the interface colour.</string>
     <string name="l_thm_tint">Interface colour</string>
     <string name="l_thm_tint_hint">Tints backgrounds, cards and outlines of the whole app. \"A\" keeps the theme as it is.</string>
+    <string name="l_thm_wheel">Any colour</string>
+    <string name="l_thm_brightness">Brightness</string>
+    <string name="l_thm_wheel_ok">Apply</string>
+    <string name="l_thm_wheel_cancel">Cancel</string>
 </resources>

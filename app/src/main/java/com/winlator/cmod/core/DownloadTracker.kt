@@ -110,7 +110,8 @@ object DownloadTracker {
         while (true) {
             waitIfPaused(key)
             val have = if (file.isFile) file.length() else 0L
-            if (size > 0 && have >= size) return true
+            if (size > 0 && have > size) { file.delete(); continue } // broken partial file: start over
+            if (size > 0 && have == size) return true
             val req = Request.Builder().url(url).apply { if (have > 0) header("Range", "bytes=$have-") }.build()
             try {
                 client.newCall(req).execute().use { response ->
@@ -127,6 +128,7 @@ object DownloadTracker {
                     if (size <= 0) size = body.contentLength().let { if (it > 0) it + start else 0 }
                     val total = if (overallTotal > 0) overallTotal else size
                     var done = start
+                    attempts = 0 // the server answered: count failures again from here
                     body.byteStream().use { input ->
                         FileOutputStream(file, append).use { out ->
                             val buf = ByteArray(64 * 1024)

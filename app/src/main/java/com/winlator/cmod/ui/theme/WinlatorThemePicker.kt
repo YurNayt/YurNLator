@@ -251,7 +251,8 @@ private fun TintPalette(theme: WinlatorThemeType) {
         values = listOf(0) + WINLATOR_TINTS,
         selected = WinlatorThemeManager.tint,
         colorOf = { if (it == 0) winlatorThemePreview(theme).surface else Color(it) },
-        onPick = { WinlatorThemeManager.setTint(context, it) }
+        onPick = { WinlatorThemeManager.setTint(context, it) },
+        wheelTitle = uiStr(R.string.l_thm_tint)
     )
 }
 
@@ -274,34 +275,50 @@ private fun AccentPalette(theme: WinlatorThemeType) {
                 else -> winlatorThemePreview(theme).accent
             }
         },
-        onPick = { WinlatorThemeManager.setAccent(context, it) }
+        onPick = { WinlatorThemeManager.setAccent(context, it) },
+        wheelTitle = uiStr(R.string.l_thm_accent)
     )
 }
 
-/** Round colour swatches, 7 per row; 0 is the "A" (automatic) swatch. */
+/**
+ * Round colour swatches, 7 per row; 0 is the "A" (automatic) swatch. A colour picked on the
+ * wheel shows as its own swatch; the rainbow swatch at the end opens the wheel.
+ */
 @Composable
-private fun Swatches(values: List<Int>, selected: Int, colorOf: (Int) -> Color, onPick: (Int) -> Unit) {
-    values.chunked(7).forEach { row ->
+private fun Swatches(
+    values: List<Int>, selected: Int, colorOf: (Int) -> Color, onPick: (Int) -> Unit,
+    wheelTitle: String = uiStr(R.string.l_thm_wheel)
+) {
+    var wheel by remember { mutableStateOf(false) }
+    val custom = selected != 0 && selected !in values
+    val items: List<Int?> = values + (if (custom) listOf(selected) else emptyList()) + listOf(null)
+    val ring = MaterialTheme.colorScheme.onBackground
+    val idle = MaterialTheme.colorScheme.outlineVariant
+    items.chunked(7).forEach { row ->
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             row.forEach { argb ->
-                val color = colorOf(argb)
+                if (argb == null) {
+                    Box(Modifier.size(38.dp).swatchFrame(false, ring, idle).clickable { wheel = true },
+                        contentAlignment = Alignment.Center) {
+                        RainbowSwatch(Modifier.size(36.dp))
+                    }
+                } else {
+                val color = if (argb == selected && custom) Color(argb) else colorOf(argb)
                 val isOn = selected == argb
                 val ink = if (color.luminance() > 0.45f) Color.Black else Color.White
                 Box(
                     Modifier.size(38.dp)
                         .background(color, CircleShape)
-                        .border(
-                            if (isOn) BorderStroke(3.dp, MaterialTheme.colorScheme.onBackground)
-                            else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                            CircleShape
-                        )
+                        .swatchFrame(isOn, ring, idle)
                         .clickable { onPick(argb) },
                     contentAlignment = Alignment.Center
                 ) {
                     if (argb == 0) Text("A", fontWeight = FontWeight.Bold, color = ink)
                     else if (isOn) Icon(Icons.Outlined.Check, null, tint = ink, modifier = Modifier.size(18.dp))
                 }
+                }
             }
         }
     }
+    if (wheel) ColorWheelDialog(wheelTitle, selected, onDismiss = { wheel = false }, onPick = onPick)
 }

@@ -58,12 +58,14 @@ fun DownloadProgress(key: String?, modifier: Modifier = Modifier) {
                 )
             }
             if (!s.installing) {
-                Spacer(Modifier.width(4.dp))
-                IconButton(onClick = { if (s.paused) DownloadTracker.resume(key) else DownloadTracker.pause(key) }, modifier = Modifier.size(36.dp)) {
+                // Room between the bar and the buttons, and between the buttons, so they aren't hit by mistake.
+                Spacer(Modifier.width(18.dp))
+                IconButton(onClick = { if (s.paused) DownloadTracker.resume(key) else DownloadTracker.pause(key) }, modifier = Modifier.size(40.dp)) {
                     Icon(if (s.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
                         if (s.paused) uiStr(R.string.l_qm_resume) else uiStr(R.string.l_qm_pause), tint = scheme.primary)
                 }
-                IconButton(onClick = { DownloadTracker.cancel(key) }, modifier = Modifier.size(36.dp)) {
+                Spacer(Modifier.width(12.dp))
+                IconButton(onClick = { DownloadTracker.cancel(key) }, modifier = Modifier.size(40.dp)) {
                     Icon(Icons.Outlined.Close, "Cancel", tint = scheme.onSurfaceVariant)
                 }
             }

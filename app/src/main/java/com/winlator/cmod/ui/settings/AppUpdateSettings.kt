@@ -108,7 +108,15 @@ private fun AppUpdateSheet(onDismiss: () -> Unit) {
         state = UiState.Checking
         scope.launch { state = UiState.Result(withContext(Dispatchers.IO) { AppUpdater.check(context) }) }
     }
-    LaunchedEffect(dev) { check() }
+    fun finished(apk: File?) {
+        state = if (apk != null) UiState.Ready(apk) else UiState.DownloadFailed
+        if (apk != null && AppUpdater.canInstall(context)) AppUpdater.install(context, apk)
+    }
+    LaunchedEffect(dev) {
+        // Reopened while the update is downloading: show that download, don't start another.
+        val running = AppUpdater.runningDownload()
+        if (running != null) { state = UiState.Downloading; finished(running.await()) } else check()
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
         KeepDialogFullscreen()
@@ -165,11 +173,7 @@ private fun AppUpdateSheet(onDismiss: () -> Unit) {
                         }
                         Button(onClick = {
                             state = UiState.Downloading
-                            scope.launch {
-                                val apk = withContext(Dispatchers.IO) { AppUpdater.download(context, u) }
-                                state = if (apk != null) UiState.Ready(apk) else UiState.DownloadFailed
-                                if (apk != null && AppUpdater.canInstall(context)) AppUpdater.install(context, apk)
-                            }
+                            scope.launch { finished(AppUpdater.startDownload(context, u).await()) }
                         }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_upd_download_install)) }
                     }
                 }

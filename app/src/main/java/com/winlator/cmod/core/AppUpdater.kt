@@ -9,6 +9,7 @@ import androidx.core.content.FileProvider
 import androidx.preference.PreferenceManager
 import com.winlator.cmod.BuildConfig
 import org.json.JSONObject
+import kotlinx.coroutines.async
 import java.io.File
 
 /**
@@ -30,7 +31,9 @@ object AppUpdater {
         val url: String,
         val size: Long,
         val notes: String,
-        val fileName: String
+        val fileName: String,
+        /** "sha256:…" of the APK as GitHub reports it (empty on old releases). */
+        val digest: String = ""
     )
 
     sealed class Check {
@@ -111,24 +114,58 @@ object AppUpdater {
         url = asset.optString("browser_download_url"),
         size = asset.optLong("size"),
         notes = notes.trim(),
-        fileName = asset.optString("name")
+        fileName = asset.optString("name"),
+        digest = asset.optString("digest")
     )
 
     private fun dir(context: Context) = File(context.cacheDir, "updates").apply { mkdirs() }
 
-    /** The downloaded APK, or null on failure / cancel. Blocking. */
-    fun download(context: Context, update: Update): File? {
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    @Volatile private var running: kotlinx.coroutines.Deferred<File?>? = null
+
+    /**
+     * Starts the download, or joins the one already running: there is only ever one, so
+     * reopening the sheet or pressing the button again never writes the same file twice.
+     * It runs outside the screen, so closing the sheet or switching the screen off doesn't stop it.
+     */
+    @Synchronized
+    fun startDownload(context: Context, update: Update): kotlinx.coroutines.Deferred<File?> {
+        running?.takeIf { it.isActive }?.let { return it }
+        val app = context.applicationContext
+        return scope.async { download(app, update) }.also { running = it }
+    }
+
+    /** The download still in progress (the sheet was closed and opened again), or null. */
+    fun runningDownload(): kotlinx.coroutines.Deferred<File?>? = running?.takeIf { it.isActive }
+
+    /** The downloaded, checked APK, or null on failure / cancel. Blocking. */
+    private fun download(context: Context, update: Update): File? {
         val file = File(dir(context), update.fileName)
         DownloadTracker.begin(DOWNLOAD_KEY)
         return try {
             dir(context).listFiles()?.filter { it.name != file.name }?.forEach { it.delete() }
-            if (DownloadTracker.download(DOWNLOAD_KEY, update.url, file, true, expectedSize = update.size)
-                && (update.size <= 0 || file.length() == update.size)) file else null
+            // A partial file longer than the APK is broken: start that one over.
+            if (update.size > 0 && file.length() > update.size) file.delete()
+            val ok = DownloadTracker.download(DOWNLOAD_KEY, update.url, file, true, expectedSize = update.size)
+            if (ok && (update.size <= 0 || file.length() == update.size) && digestMatches(file, update.digest)) file
+            else { file.delete(); null }
         } catch (e: DownloadTracker.CancelledException) {
             file.delete(); null
         } finally {
             DownloadTracker.finish(DOWNLOAD_KEY)
         }
+    }
+
+    private fun digestMatches(file: File, digest: String): Boolean {
+        if (!digest.startsWith("sha256:", ignoreCase = true)) return true
+        DownloadTracker.installing(DOWNLOAD_KEY)
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buf = ByteArray(256 * 1024)
+            while (true) { val n = input.read(buf); if (n < 0) break; md.update(buf, 0, n) }
+        }
+        val hex = md.digest().joinToString("") { "%02x".format(it) }
+        return hex.equals(digest.substringAfter(':'), ignoreCase = true)
     }
 
     /** Android 8+: the user allows this app to install apps once. */
