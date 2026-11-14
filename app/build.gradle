@@ -131,7 +131,9 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
-        freeCompilerArgs += ['-opt-in=androidx.compose.material3.ExperimentalMaterial3Api']
+        freeCompilerArgs += ['-opt-in=androidx.compose.material3.ExperimentalMaterial3Api',
+                             // JavaSteam is built with Kotlin 2.2; our compiler is 2.0.
+                             '-Xskip-metadata-version-check']
     }
 
     // Release signing: a stable key from CI secrets (YURN_KEYSTORE_*), so every new
@@ -220,8 +222,20 @@ android {
 
 }
 
+// JavaSteam's okhttp-coroutines is replaced by store/steam/compat/ExecuteAsyncKt.kt (as in
+// Bannerlator): the real one needs a newer coroutines runtime and would also clash with the shim.
+configurations.all {
+    exclude group: 'com.squareup.okhttp3', module: 'okhttp-coroutines'
+}
+
 dependencies {
     implementation platform('androidx.compose:compose-bom:2025.08.00')
+    // Steam store (sign-in, library, downloads): GameNative's JavaSteam fork, vendored under vendor/maven.
+    implementation 'io.github.joshuatam:javasteam:1.8.0.1-26-20260801.180149-1'
+    implementation 'io.github.joshuatam:javasteam-depotdownloader:1.8.0.1-26-20260801.180149-1'
+    implementation 'com.google.protobuf:protobuf-java:4.31.1'
+    // QR code of the Steam sign-in.
+    implementation 'com.google.zxing:core:3.5.3'
     implementation 'androidx.activity:activity-compose:1.10.1'
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-tooling-preview'

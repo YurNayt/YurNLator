@@ -18,6 +18,13 @@ dependencyResolutionManagement {
         mavenCentral()
         // topjohnwu libsu (root shell of the performance controls, ported from Bannerlator) is jitpack-only.
         maven { url 'https://jitpack.io' }
+        // JavaSteam (GameNative's fork, io.github.joshuatam) for the Steam store: sign-in, library and
+        // depot downloads. Vendored in-repo like Bannerlator does (the snapshot server may purge it);
+        // its own dependencies (ktor, okhttp, protobuf…) come from Maven Central.
+        maven {
+            url = uri("${rootDir}/vendor/maven")
+            content { includeGroup 'io.github.joshuatam' }
+        }
     }
 }
 

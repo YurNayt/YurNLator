@@ -54,6 +54,11 @@
             android:foregroundServiceType="specialUse"
             android:exported="false" />
 
+        <service
+            android:name="com.winlator.cmod.store.steam.SteamDownloadService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false" />
+
         <activity
             android:name="com.winlator.cmod.OnboardingActivity"
             android:theme="@style/AppThemeFullscreen.Dark"

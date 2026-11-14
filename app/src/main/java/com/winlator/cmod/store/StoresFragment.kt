@@ -162,17 +162,15 @@ private fun StoreScreen(store: Store, onBack: () -> Unit) {
         value = withContext(Dispatchers.IO) { if (store == Store.STEAM) SteamCatalog.search(submitted) else EpicCatalog.search(submitted) }
     }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null) }
-                Text(store.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = tab == 0, onClick = { tab = 0 }, label = { Text(uiStr(R.string.l_st_shop)) })
-                FilterChip(selected = tab == 1, onClick = { tab = 1 }, label = { Text(uiStr(R.string.l_st_library)) })
-            }
+    if (tab == 1 && store == Store.STEAM) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) { StoreHeader(store, tab, { tab = it }, onBack) }
+            com.winlator.cmod.store.steam.SteamLibraryScreen(Modifier.weight(1f))
         }
+        return
+    }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { StoreHeader(store, tab, { tab = it }, onBack) }
         if (tab == 1) {
             item {
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f)) {
@@ -219,6 +217,20 @@ private fun StoreScreen(store: Store, onBack: () -> Unit) {
         }
     }
     open?.let { GameSheet(it) { open = null } }
+}
+
+@Composable
+private fun StoreHeader(store: Store, tab: Int, onTab: (Int) -> Unit, onBack: () -> Unit) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null) }
+            Text(store.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = tab == 0, onClick = { onTab(0) }, label = { Text(uiStr(R.string.l_st_shop)) })
+            FilterChip(selected = tab == 1, onClick = { onTab(1) }, label = { Text(uiStr(R.string.l_st_library)) })
+        }
+    }
 }
 
 @Composable
@@ -285,13 +297,13 @@ private fun GameSheet(item: StoreItem, onDismiss: () -> Unit) {
             Button(onClick = {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_st_open_page, item.store.title)) }
-            Text(uiStr(R.string.l_st_install_soon), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(uiStr(if (item.store == Store.STEAM) R.string.l_sts_install_from_library else R.string.l_st_install_soon), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 /** Pictures of the stores, cached in memory (a few dozen headers). */
-private object ImageCache {
+internal object ImageCache {
     val memory = object : LruCache<String, Bitmap>(24 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
@@ -312,7 +324,7 @@ private object ImageCache {
 }
 
 @Composable
-private fun RemoteImage(url: String?, modifier: Modifier) {
+internal fun RemoteImage(url: String?, modifier: Modifier) {
     val bitmap by produceState<Bitmap?>(url?.let { ImageCache.memory.get(it) }, url) {
         if (url != null && value == null) value = withContext(Dispatchers.IO) { ImageCache.load(url) }
     }
