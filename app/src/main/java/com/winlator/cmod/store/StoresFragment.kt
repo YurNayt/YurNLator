@@ -300,11 +300,12 @@ private fun GameSheet(item: StoreItem, onDismiss: () -> Unit) {
  * in files/store_icons so they show offline too. Until then the store's first letter.
  */
 private object StoreIcons {
+    // Sharp copies of the stores' logos (Wikimedia renders them as PNG at any size); the site icon as a fallback.
     private val urls = mapOf(
-        Store.STEAM to listOf("https://store.steampowered.com/apple-touch-icon.png",
-            "https://www.google.com/s2/favicons?domain=store.steampowered.com&sz=128"),
-        Store.EPIC to listOf("https://store.epicgames.com/apple-touch-icon.png",
-            "https://www.google.com/s2/favicons?domain=epicgames.com&sz=128"),
+        Store.STEAM to listOf("https://commons.wikimedia.org/wiki/Special:FilePath/Steam_icon_logo.svg?width=256",
+            "https://www.google.com/s2/favicons?domain=store.steampowered.com&sz=256"),
+        Store.EPIC to listOf("https://commons.wikimedia.org/wiki/Special:FilePath/Epic_Games_logo.svg?width=256",
+            "https://www.google.com/s2/favicons?domain=store.epicgames.com&sz=256"),
     )
     private val memory = HashMap<Store, Bitmap>()
 
@@ -312,17 +313,18 @@ private object StoreIcons {
 
     fun load(context: android.content.Context, store: Store): Bitmap? {
         cached(store)?.let { return it }
-        val file = java.io.File(context.filesDir, "store_icons/${store.name}.png")
+        val file = java.io.File(context.filesDir, "store_icons2/${store.name}.png")
         var bmp = if (file.isFile) BitmapFactory.decodeFile(file.path) else null
         if (bmp == null) {
             var best: Pair<ByteArray, Bitmap>? = null
             for (u in urls[store].orEmpty()) {
                 val bytes = runCatching {
-                    StoreNet.client.newCall(Request.Builder().url(u).build()).execute().use { r -> if (r.isSuccessful) r.body?.bytes() else null }
+                    StoreNet.client.newCall(Request.Builder().url(u).header("User-Agent", "YurNLator/1.0 (Android; github.com/YurNayt/YurNLator)").build())
+                        .execute().use { r -> if (r.isSuccessful) r.body?.bytes() else null }
                 }.getOrNull() ?: continue
                 val b = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: continue
                 if (best == null || b.width > best.second.width) best = bytes to b
-                if (b.width >= 96) break
+                if (b.width >= 128) break
             }
             best?.let { (bytes, b) ->
                 runCatching { file.parentFile?.mkdirs(); file.writeBytes(bytes) }
@@ -343,7 +345,9 @@ private fun StoreIcon(store: Store, size: androidx.compose.ui.unit.Dp, accent: C
     val shape = RoundedCornerShape(size * 0.26f)
     val b = bitmap
     if (b != null) {
-        Image(b.asImageBitmap(), store.title, Modifier.size(size).clip(shape), contentScale = ContentScale.Crop)
+        Box(Modifier.size(size).background(Color.White.copy(alpha = .92f), shape), contentAlignment = Alignment.Center) {
+            Image(b.asImageBitmap(), store.title, Modifier.size(size * 0.8f), contentScale = ContentScale.Fit)
+        }
     } else {
         Box(Modifier.size(size).background(accent.copy(alpha = .16f), shape), contentAlignment = Alignment.Center) {
             Text(store.title.take(1), color = accent, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)

@@ -426,7 +426,7 @@ private fun GoldbergRow(inst: SteamInstaller.Installed) {
     // null = still checking; first = uses Steam's API, second = emulator applied
     var state by remember(inst.appId) { mutableStateOf<Pair<Boolean, Boolean>?>(null) }
     var busy by remember { mutableStateOf<Float?>(null) }
-    LaunchedEffect(inst.appId) { state = withContext(Dispatchers.IO) { Goldberg.usesSteam(inst) to Goldberg.applied(inst) } }
+    LaunchedEffect(inst.appId) { state = withContext(Dispatchers.IO) { runCatching { Goldberg.state(inst) }.getOrDefault(false to false) } }
     Surface(shape = LocalStoreStyle.current?.cardShape ?: RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .6f), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -441,7 +441,7 @@ private fun GoldbergRow(inst: SteamInstaller.Installed) {
                             else { Goldberg.restore(inst); true }
                         }
                         if (!ok) toast(context, uiStr(R.string.l_sts_goldberg_failed))
-                        state = withContext(Dispatchers.IO) { Goldberg.usesSteam(inst) to Goldberg.applied(inst) }
+                        state = withContext(Dispatchers.IO) { runCatching { Goldberg.state(inst) }.getOrDefault(false to false) }
                         busy = null
                     }
                 })

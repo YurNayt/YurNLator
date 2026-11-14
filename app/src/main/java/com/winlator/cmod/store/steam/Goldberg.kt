@@ -99,21 +99,36 @@ object Goldberg {
         }
     }
 
-    private fun targets(gameDir: File): List<Target> {
+    /** steam_api dlls found per game folder (a big game on shared storage takes a while to walk). */
+    private val found = java.util.concurrent.ConcurrentHashMap<String, List<Target>>()
+
+    private val SKIP_DIRS = setOf("_commonredist", "redist", "redistributables", "directx", "vcredist", "dotnet", "support",
+        "steam_settings", "__installer", "installers", "movies", "videos", "localization")
+
+    private fun targets(gameDir: File): List<Target> = found.getOrPut(gameDir.absolutePath) {
         val out = ArrayList<Target>()
-        fun walk(d: File) {
+        fun walk(d: File, depth: Int) {
             d.listFiles()?.forEach { f ->
                 if (Files.isSymbolicLink(f.toPath())) return@forEach
-                if (f.isDirectory) walk(f)
-                else {
+                if (f.isDirectory) {
+                    if (depth < 6 && f.name.lowercase(Locale.ROOT) !in SKIP_DIRS) walk(f, depth + 1)
+                } else {
                     val n = f.name.lowercase(Locale.ROOT)
                     if (n == "steam_api.dll" || n == "steam_api64.dll") out += Target(f, peX64(f) ?: (n == "steam_api64.dll"))
                 }
             }
         }
-        walk(gameDir)
-        return out
+        walk(gameDir, 0)
+        out
     }
+
+    /** (uses Steam's API, emulator applied) with one walk of the folder. */
+    fun state(inst: SteamInstaller.Installed): Pair<Boolean, Boolean> {
+        val ts = targets(File(inst.dir))
+        return ts.isNotEmpty() to ts.any { it.bak.isFile }
+    }
+
+    fun forget(dir: String) { found.remove(File(dir).absolutePath) }
 
     /** True for a 64-bit PE, false for 32-bit, null when it isn't a PE. */
     private fun peX64(f: File): Boolean? = runCatching {

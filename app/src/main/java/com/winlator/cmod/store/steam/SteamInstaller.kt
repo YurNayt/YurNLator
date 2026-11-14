@@ -181,6 +181,7 @@ object SteamInstaller {
                 saveRegistry(context)
                 // Games that need a running Steam start with the emulator (switchable in the game's card).
                 runCatching {
+                    Goldberg.forget(dir.absolutePath)
                     val inst = _installed.value[app.id]
                     if (inst != null && Goldberg.usesSteam(inst) && Goldberg.ensure(context)) Goldberg.apply(context, inst)
                 }.onFailure { Log.w(TAG, "goldberg", it) }
@@ -363,6 +364,7 @@ object SteamInstaller {
         if (!dir.canonicalPath.startsWith(root().canonicalPath + File.separator)) return // only ever inside Games/Steam
         shortcutsOf(context, dir.absolutePath).forEach { it.delete() }
         deleteTree(dir)
+        Goldberg.forget(dir.absolutePath)
         _installed.value = _installed.value - appId
         _jobs.value = _jobs.value - appId
         saveRegistry(context)
