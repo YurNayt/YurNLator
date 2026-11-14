@@ -1080,8 +1080,12 @@
     <string name="l_sts_folder">Папка: %1$s</string>
     <string name="l_sts_free_space">свободно: %1$s</string>
     <string name="l_sts_no_space">Недостаточно свободного места</string>
-    <string name="l_sts_drm_note">Игры, которым нужен запущенный Steam, пока могут не запускаться: эмулятор Steam (Goldberg) будет следующим шагом.</string>
     <string name="l_sts_cancel_dl">Отменить загрузку</string>
     <string name="l_sts_no_containers">Сначала создайте контейнер</string>
     <string name="l_sts_install_from_library">Свои игры устанавливаются на вкладке «Библиотека».</string>
+    <string name="l_sts_goldberg">Эмулятор Steam (Goldberg)</string>
+    <string name="l_sts_goldberg_hint">Позволяет игре, которой нужен Steam, запускаться без него (включается после установки). Онлайн-игры к своим серверам всё равно не подключатся. Если игра сломалась — выключите.</string>
+    <string name="l_sts_goldberg_none">Игра не использует Steam API, эмулятор ей не нужен.</string>
+    <string name="l_sts_goldberg_dl">Скачиваю эмулятор… %1$d%%</string>
+    <string name="l_sts_goldberg_failed">Не удалось переключить эмулятор</string>
 </resources>

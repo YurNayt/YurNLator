@@ -1080,8 +1080,12 @@
     <string name="l_sts_folder">Folder: %1$s</string>
     <string name="l_sts_free_space">free: %1$s</string>
     <string name="l_sts_no_space">Not enough free space</string>
-    <string name="l_sts_drm_note">Games that need Steam running may not start yet: a Steam emulator (Goldberg) comes next.</string>
     <string name="l_sts_cancel_dl">Cancel download</string>
     <string name="l_sts_no_containers">Create a container first</string>
     <string name="l_sts_install_from_library">Games you own are installed from the Library tab.</string>
+    <string name="l_sts_goldberg">Steam emulator (Goldberg)</string>
+    <string name="l_sts_goldberg_hint">Lets a game that needs Steam start without it (turned on after installing). Online-only games still won\'t reach their servers. If the game breaks, turn it off.</string>
+    <string name="l_sts_goldberg_none">This game doesn\'t use Steam\'s API, so the emulator isn\'t needed.</string>
+    <string name="l_sts_goldberg_dl">Downloading the emulator… %1$d%%</string>
+    <string name="l_sts_goldberg_failed">Couldn\'t switch the emulator</string>
 </resources>

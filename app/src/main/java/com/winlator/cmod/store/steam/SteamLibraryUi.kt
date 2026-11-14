@@ -47,7 +47,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -339,7 +341,7 @@ private fun GameSheet(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstalle
                         else pickContainer = true
                     }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_add_to_library)) }
                     OutlinedButton(onClick = { askRemove = true }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_uninstall)) }
-                    Text(uiStr(R.string.l_sts_drm_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    GoldbergRow(inst)
                 }
                 else -> {
                     if (job != null) JobLine(job)
@@ -407,6 +409,44 @@ private fun GameSheet(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstalle
         },
         dismissButton = { TextButton(onClick = { askRemove = false }) { Text(uiStr(R.string.l_sts_cancel)) } },
     )
+}
+
+/** The Steam emulator switch of an installed game. */
+@Composable
+private fun GoldbergRow(inst: SteamInstaller.Installed) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // null = still checking; first = uses Steam's API, second = emulator applied
+    var state by remember(inst.appId) { mutableStateOf<Pair<Boolean, Boolean>?>(null) }
+    var busy by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(inst.appId) { state = withContext(Dispatchers.IO) { Goldberg.usesSteam(inst) to Goldberg.applied(inst) } }
+    Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(uiStr(R.string.l_sts_goldberg), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                val st = state
+                if (st == null || busy != null) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                else if (st.first) Switch(checked = st.second, onCheckedChange = { on ->
+                    busy = 0f
+                    scope.launch {
+                        val ok = withContext(Dispatchers.IO) {
+                            if (on) Goldberg.ensure(context) { p -> busy = p } && Goldberg.apply(context, inst) == Goldberg.Result.APPLIED
+                            else { Goldberg.restore(inst); true }
+                        }
+                        if (!ok) toast(context, uiStr(R.string.l_sts_goldberg_failed))
+                        state = withContext(Dispatchers.IO) { Goldberg.usesSteam(inst) to Goldberg.applied(inst) }
+                        busy = null
+                    }
+                })
+            }
+            val b = busy
+            Text(when {
+                b != null && b > 0f -> uiStr(R.string.l_sts_goldberg_dl, (b * 100).toInt())
+                state?.first == false -> uiStr(R.string.l_sts_goldberg_none)
+                else -> uiStr(R.string.l_sts_goldberg_hint)
+            }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 private fun toast(context: Context, text: String) = Toast.makeText(context, text, Toast.LENGTH_LONG).show()

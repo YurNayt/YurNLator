@@ -250,8 +250,8 @@ object SteamSession {
                 val session: QrAuthSession = SteamAuthentication(client!!).beginAuthSessionViaQR(details()).get()
                 _auth.value = Auth.Qr(session.challengeUrl)
                 session.challengeUrlChanged = object : IChallengeUrlChanged {
-                    override fun onChanged(qrAuthSession: QrAuthSession) {
-                        if (!authCancelled) _auth.value = Auth.Qr(qrAuthSession.challengeUrl)
+                    override fun onChanged(qrAuthSession: QrAuthSession?) {
+                        if (!authCancelled && qrAuthSession != null) _auth.value = Auth.Qr(qrAuthSession.challengeUrl)
                     }
                 }
                 finish(session.pollingWaitForResult().get(), "")

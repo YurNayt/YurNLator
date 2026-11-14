@@ -204,6 +204,11 @@ object SteamInstaller {
                 if (exe.isNotEmpty()) runCatching { File(File(dir, exe).parentFile, "steam_appid.txt").takeIf { !it.exists() }?.writeText(app.id.toString()) }
                 _installed.value = _installed.value + (app.id to Installed(app.id, app.name, dir.absolutePath, exe, args))
                 saveRegistry(context)
+                // Games that need a running Steam start with the emulator (switchable in the game's card).
+                runCatching {
+                    val inst = _installed.value[app.id]
+                    if (inst != null && Goldberg.usesSteam(inst) && Goldberg.ensure(context)) Goldberg.apply(context, inst)
+                }.onFailure { Log.w(TAG, "goldberg", it) }
                 setJob(j.copy(phase = Phase.DONE, done = maxOf(j.done, j.total), speed = 0))
             }
         }
