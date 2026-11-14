@@ -217,13 +217,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         perf.prepareLaunch();
 
         resolveWine(lc);
-        // A Proton built for Android's libc (bionic: Bannerlator's GE / CachyOS / DroidDeck layers)
-        // crashed the container: say so and stay out of the session.
-        if (com.winlator.cmod.core.WineBuild.isBionic(wineInfo.path)) {
-            Toast.makeText(this, UiStrings.get(R.string.l_xs_bionic_wine), Toast.LENGTH_LONG).show();
-            finish();
-            return;
-        }
         setupLogCallbacks(enableLogs, lc);
         applyLaunchConfig(lc);
         boolean removeLoadingBarWhenBootingGames = PreferenceManager.getDefaultSharedPreferences(this)

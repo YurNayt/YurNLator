@@ -176,9 +176,6 @@ internal suspend fun loadWineRuntimeOptions(context: Context, allowNetwork: Bool
     ).forEach { type ->
         manager.getProfiles(type).orEmpty().forEach { profile ->
             val id = ContentsManager.getEntryName(profile)
-            // An installed bionic build (Bannerlator's GE / CachyOS / DroidDeck Proton) can't start here.
-            if (profile.remoteUrl == null &&
-                com.winlator.cmod.core.WineBuild.isBionic(ContentsManager.getInstallDir(context, profile).path)) return@forEach
             out[id] = WineRuntimeOption(
                 id = id,
                 label = profile.verName,

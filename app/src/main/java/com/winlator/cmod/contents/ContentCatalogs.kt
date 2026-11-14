@@ -94,10 +94,8 @@ object ContentCatalogs {
                 val name = o.optString("verName").trim()
                 val type = o.optString("type")
                 if (url.isBlank() || name.isBlank()) null
-                // Bionic builds (Android's libc) don't run on YurNLator's glibc: all of Bannerlator's
-                // Wine / Proton (GE-Proton, Proton-CachyOS, DroidDeck-Proton, its Proton 10 / 11
-                // layers) and its "-Bionic" Box64. Windows-side components (DXVK, VKD3D, FEX) stay.
-                else if (com.winlator.cmod.core.WineBuild.isBionicEntry(url, name)) null
+                // Bannerlator's Wine / Proton layers (GE-Proton, Proton-CachyOS, DroidDeck-Proton, its
+                // Proton 10 / 11) crash in YurNLator's containers for now: kept out until they run.
                 else if (source.name == "Bannerlator" && (type.equals("Wine", true) || type.equals("Proton", true))) null
                 else Entry(type, name, o.optString("verCode", "0").toIntOrNull() ?: 0, url, source.name)
             }
