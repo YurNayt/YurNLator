@@ -116,7 +116,7 @@ jobs:
           YURN_VERSION_CODE: ${{ github.run_number }}
           # A tag or a release run is named after the release (v1.0.0); main builds are test builds of
           # the next version (newer than the last release for the in-app updater).
-          YURN_VERSION_NAME: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release != '' && github.event.inputs.release) || format('1.0.1-dev.{0}', github.run_number) }}
+          YURN_VERSION_NAME: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release != '' && github.event.inputs.release) || format('1.0.3-dev.{0}', github.run_number) }}
           YURN_KEYSTORE_PASSWORD: ${{ secrets.YURN_KEYSTORE_PASSWORD }}
           YURN_KEY_ALIAS: ${{ secrets.YURN_KEY_ALIAS }}
           YURN_KEY_PASSWORD: ${{ secrets.YURN_KEY_PASSWORD }}
