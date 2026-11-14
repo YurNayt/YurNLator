@@ -228,7 +228,29 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                 Log.e("GuestProgramLauncherComponent", "Unable to apply FEXCore version " + fexcoreVersion);
             }
         }
+        // The FEX unixlib slot (usr/lib/wine/aarch64-unix) is shared by every container, and Proton
+        // builds with a FEX-unixlib loader (Bannerlator's GE / CachyOS / DroidDeck layers) load
+        // whatever .so is there. A 2611 .so left from another container next to a DLL-only FEX
+        // paired two FEX builds and crashed: keep the slot to this launch's FEX (as Bannerlator does).
+        boolean wantsUnixlibs = bundledUnixlibs || hasUnixlib(fexcoreProfile);
+        if (!wantsUnixlibs) {
+            for (String name : new String[]{"libarm64ecfex.so", "libwow64fex.so"}) {
+                File stale = new File(unixlibDir, name);
+                if (stale.exists() && stale.delete())
+                    Log.i("GuestProgramLauncherComponent", "removed FEX unixlib of another version: " + name);
+            }
+        }
         if (containerDataChanged) container.saveData();
+    }
+
+    /** Whether an installed FEXCore package brings its own unixlib (.so) besides the DLLs. */
+    private static boolean hasUnixlib(ContentProfile profile) {
+        if (profile == null || profile.fileList == null) return false;
+        for (ContentProfile.ContentFile f : profile.fileList) {
+            String t = f.target != null ? f.target : f.source;
+            if (t != null && t.endsWith(".so") && t.contains("fex")) return true;
+        }
+        return false;
     }
 
     public GuestProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile, Shortcut shortcut) {

@@ -178,7 +178,7 @@ internal suspend fun loadWineRuntimeOptions(context: Context, allowNetwork: Bool
             val id = ContentsManager.getEntryName(profile)
             out[id] = WineRuntimeOption(
                 id = id,
-                label = profile.verName,
+                label = profile.catalogName ?: profile.verName,
                 type = type.toString(),
                 version = profile.verName,
                 installed = profile.remoteUrl == null
@@ -411,10 +411,12 @@ private suspend fun installRuntimeComponentTracked(
             }
 
             override fun onSucceed(extracted: ContentProfile) {
+                // A Wine / Proton package takes the catalog's name (GE-Proton vs Proton of one version).
+                ContentsManager.adoptCatalogName(context, extracted, profile.verName, profile.verCode)
                 manager.finishInstallContent(extracted, object : ContentsManager.OnInstallFinishedCallback {
                     override fun onFailed(reason: ContentsManager.InstallFailedReason, error: Exception?) {
                         continuation.resume(
-                            if (reason == ContentsManager.InstallFailedReason.ERROR_EXIST) profile.verName else null
+                            if (reason == ContentsManager.InstallFailedReason.ERROR_EXIST) extracted.verName else null
                         )
                     }
 

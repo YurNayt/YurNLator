@@ -171,7 +171,8 @@ public class ContentsManager {
                     if (remote.type == type) {
                         boolean exists = false;
                         for (ContentProfile profile : profiles) {
-                            if (profile.verName.equals(remote.verName) && profile.verCode == remote.verCode) {
+                            if ((profile.verName.equals(remote.verName) || remote.verName.equals(profile.catalogName))
+                                    && profile.verCode == remote.verCode) {
                                 exists = true;
                                 break;
                             }
@@ -293,6 +294,8 @@ public class ContentsManager {
                 profile.winePrefixPack = wineJSONObject.getString(ContentProfile.MARK_WINE_PREFIX_PACK);
             }
             profile.type = ContentProfile.ContentType.getTypeByName(typeName);
+            String catalogName = profileJSONObject.optString(MARK_CATALOG_NAME, "");
+            if (!catalogName.isEmpty()) profile.catalogName = catalogName;
             profile.verName = verName;
             profile.verCode = verCode;
             profile.desc = desc;
@@ -414,6 +417,38 @@ public class ContentsManager {
             FileUtils.delete(getInstallDir(context, profile));
             profilesMap.get(profile.type).remove(profile);
             syncContents();
+        }
+    }
+
+    private static final String MARK_CATALOG_NAME = "catalogName";
+
+    /**
+     * A Wine / Proton package names itself by its version only ("11.0-9-arm64ec") while the catalog
+     * lists it as "GE-Proton-11.0-9-arm64ec (v16)": the download then never matched its entry (offered
+     * again after installing), and GE-Proton and Proton of the same version shared one folder. The
+     * extracted package (still in the tmp folder) takes the catalog's name: folder-safe as its version
+     * name, as listed in "catalogName". Call between extraContentFile and finishInstallContent.
+     */
+    public static void adoptCatalogName(Context context, ContentProfile extracted, String catalogName, int catalogCode) {
+        if (extracted == null || catalogName == null || catalogName.isEmpty()) return;
+        if (extracted.type != ContentProfile.ContentType.CONTENT_TYPE_WINE
+                && extracted.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON) return;
+        if (catalogName.equals(extracted.verName)) return;
+        String safe = catalogName.replaceAll("\\s*\\((v\\d+)\\)", "-$1")
+                .replaceAll("[^A-Za-z0-9._-]+", "-").replaceAll("^-+|-+$", "");
+        if (safe.isEmpty()) return;
+        File profileFile = new File(getTmpDir(context), PROFILE_NAME);
+        try {
+            JSONObject json = new JSONObject(FileUtils.readString(profileFile));
+            json.put(ContentProfile.MARK_VERSION_NAME, safe);
+            if (catalogCode > 0) json.put(ContentProfile.MARK_VERSION_CODE, catalogCode);
+            json.put(MARK_CATALOG_NAME, catalogName);
+            if (!FileUtils.writeString(profileFile, json.toString(2))) return;
+            extracted.verName = safe;
+            if (catalogCode > 0) extracted.verCode = catalogCode;
+            extracted.catalogName = catalogName;
+        } catch (Exception e) {
+            Log.w("ContentsManager", "catalog name not applied: " + e.getMessage());
         }
     }
 
