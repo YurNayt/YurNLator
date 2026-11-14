@@ -1109,12 +1109,16 @@
     <string name="l_ste_uninstall_q">Delete %1$s? The game\'s files and its shortcuts will be removed.</string>
     <string name="l_sts_launch_sync">Steam at launch</string>
     <string name="l_sts_launch_sync_hint">Cloud saves before and after the game, achievements in the game and to the profile. Off: the game starts as is, offline.</string>
-    <string name="l_ste_launch_sign_in">Epic sign-in at launch</string>
-    <string name="l_ste_launch_sign_in_hint">Gives the game a one-time Epic sign-in code (needed by games with Epic online features or protection). Off: the game starts without it.</string>
+    <string name="l_ste_launch_sign_in">Epic sign-in and cloud saves at launch</string>
+    <string name="l_ste_launch_sign_in_hint">Gives the game a one-time Epic sign-in code (needed by games with Epic online features or protection) and syncs its Epic cloud saves before and after playing. Off: the game starts without either.</string>
     <string name="l_qm_gamepad_api">Gamepad API</string>
     <string name="l_qm_pad_auto">Auto: XInput. If the game doesn\'t see the gamepad, pick XInput + DirectInput.</string>
     <string name="l_qm_pad_auto_unity">Auto: a Unity game, so DirectInput is added.</string>
     <string name="l_qm_pad_now">Now: %1$s. If the game doesn\'t notice the change, restart it.</string>
     <string name="l_hint_pad_api">Auto: XInput, plus DirectInput for Unity games. Gamepad not seen: XInput + DirectInput. Doubled presses: XInput.</string>
     <string name="l_lbl_as_container">As container</string>
+    <string name="l_ste_cloud_down">Epic cloud: save files downloaded: %1$d</string>
+    <string name="l_ste_cloud_up">Epic cloud: save files uploaded: %1$d</string>
+    <string name="l_ste_cloud_none">The game doesn\'t use Epic cloud saves</string>
+    <string name="l_ste_cloud_folder">Epic cloud saves: %1$s</string>
 </resources>

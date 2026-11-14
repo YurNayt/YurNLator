@@ -261,6 +261,13 @@ private fun GameSheet(g: EpicGame, onDismiss: () -> Unit) {
                     StoreSecondaryButton(onClick = { askRemove = true }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_uninstall)) }
                     com.winlator.cmod.store.StoreLaunchSwitch(com.winlator.cmod.store.StoreLaunchPrefs.epic(g.appName),
                         uiStr(R.string.l_ste_launch_sign_in), uiStr(R.string.l_ste_launch_sign_in_hint))
+                    val cloud by androidx.compose.runtime.produceState<String?>(null, g.appName) {
+                        value = withContext(Dispatchers.IO) { EpicSync.cloudFolder(context, g.appName) }
+                    }
+                    cloud?.let { f ->
+                        Text(if (f.isEmpty()) uiStr(R.string.l_ste_cloud_none) else uiStr(R.string.l_ste_cloud_folder, f),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 else -> {
                     if (job != null) JobLine(job)

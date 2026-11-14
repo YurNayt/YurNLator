@@ -248,6 +248,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // A game from the Steam library: its newer cloud saves and its achievements, before it starts.
                 try { com.winlator.cmod.store.epic.EpicLaunch.beforeLaunch(this, shortcut); }
                 catch (Throwable t) { android.util.Log.w("EpicLaunch", "before launch", t); }
+                try { com.winlator.cmod.store.epic.EpicSync.beforeLaunch(this, container, shortcut); }
+                catch (Throwable t) { android.util.Log.w("EpicSync", "before launch", t); }
                 try { com.winlator.cmod.store.steam.SteamSync.beforeLaunch(this, container, shortcut); }
                 catch (Throwable t) { android.util.Log.w("SteamSync", "before launch", t); }
                 try {
