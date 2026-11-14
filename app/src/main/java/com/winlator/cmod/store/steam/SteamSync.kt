@@ -377,7 +377,7 @@ object SteamSync {
             // Some apps take stats only while "in game": say so for the moment of the write.
             val apps = SteamSession.apps
             runCatching {
-                apps?.notifyGamesPlayed(listOf(GamePlayedInfo(gameId = p.appId.toLong())), `in`.dragonbra.javasteam.enums.EOSType.Windows10)
+                apps?.notifyGamesPlayed(listOf(GamePlayedInfo(gameId = p.appId.toLong(), processId = 0, ownerId = SteamSession.steamId.and(0xFFFFFFFFL).toInt(), gameBuildId = 0)), `in`.dragonbra.javasteam.enums.EOSType.Windows10)
                 Thread.sleep(1500)
                 ok = us.storeUserStats(p.appId, list, self, self, cb.crcStats, false).toFuture().get(JOB_S, TimeUnit.SECONDS).result == EResult.OK
             }
