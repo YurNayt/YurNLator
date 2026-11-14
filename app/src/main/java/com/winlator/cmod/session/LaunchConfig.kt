@@ -30,6 +30,8 @@ data class LaunchConfig(
      * the DirectInput pad is shown too, unless the shortcut says unityDInput=0.
      */
     val isUnityGame: Boolean,
+    /** GamepadApi mode: "auto", "xinput" or "both". */
+    val padApi: String,
     val cpuList: String,
     /** The shortcut sets its own CPU list: 32-bit processes use it too. */
     val cpuListFromShortcut: Boolean,
@@ -99,6 +101,7 @@ data class LaunchConfig(
                 inputType = own("inputType")?.toIntOrNull() ?: container.getInputType(),
                 exclusiveXInput = own("exclusiveXInput")?.let { it == "1" } ?: container.isExclusiveXInput(),
                 isUnityGame = shortcut?.getExtra("unityDInput") != "0" && isUnity(shortcut?.path),
+                padApi = GamepadApi.mode(container, shortcut),
                 xinputDisabled = s("disableXinput", "false").let { it == "1" || it.equals("true", ignoreCase = true) },
                 cpuList = cpus,
                 cpuListFromShortcut = shortcut != null,

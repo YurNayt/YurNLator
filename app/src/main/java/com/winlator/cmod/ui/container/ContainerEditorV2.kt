@@ -236,6 +236,13 @@ private class ContainerEditorStateV2(
     var exclusive by mutableStateOf(editing?.isExclusiveXInput ?: true)
     var xinput by mutableStateOf(editing?.let { (it.inputType and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0 } ?: true)
     var dinput by mutableStateOf(editing?.let { (it.inputType and WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()) != 0 } ?: false)
+    /** GamepadApi container choice: "" auto, "xinput", "both" (sets the old switches above). */
+    var padApi by mutableStateOf(editing?.let { com.winlator.cmod.session.GamepadApi.containerChoice(it) } ?: "")
+    fun choosePadApi(v: String) {
+        padApi = v
+        val both = v == com.winlator.cmod.session.GamepadApi.BOTH
+        exclusive = !both; xinput = true; dinput = both
+    }
     var syncCpu by mutableStateOf(editing?.isSyncCpuTopology ?: false)
     /** Force SSBS (arm64ec Proton): on unless turned off. */
     var forceSsbs by mutableStateOf(editing?.getExtra("forceSsbs", "1") != "0")
@@ -328,7 +335,7 @@ private class ContainerEditorStateV2(
         fullscreen, desktopTheme, desktopBackground, wallpaperStamp, mouseWarp,
         renderer, rendererPresentMode, rendererDriver, filterMode, surfaceFormat, trueDisplayX, displayBackend,
         displayXPerformanceMode, displayXPresentAtRefreshRate, graphicsDriver, graphicsConfig,
-        wrapper, wrapperConfig, emulator, fexVersion, boxVersion, fexPreset, boxPreset, exclusive, xinput, dinput,
+        wrapper, wrapperConfig, emulator, fexVersion, boxVersion, fexPreset, boxPreset, exclusive, xinput, dinput, padApi,
         syncCpu, forceSsbs, mangoPreload, startup, openGlDefaultInitialized, autoMesaGlVersionOverride, envVars,
         cpu64.joinToString(), cpu32.joinToString(), components.entries.sortedBy { it.key }.joinToString()
     ).joinToString("|")
@@ -517,6 +524,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         if (state.xinput) inputType = inputType or WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()
         if (state.dinput) inputType = inputType or WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()
         container.setInputType(inputType)
+        container.putExtra(com.winlator.cmod.session.GamepadApi.KEY, state.padApi.ifEmpty { null })
         container.setStartupSelection(state.startup.toByte())
         container.setBox64Version(state.boxVersion)
         container.setBox64Preset(state.boxPreset)
@@ -599,6 +607,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                     .put("oboeApi", state.oboeApi)
                     .put("oboeAdaptive", if (state.oboeAdaptive) "1" else "0")
                     .put("oboeExclusive", if (state.oboeExclusive) "1" else "0")
+                    .apply { if (state.padApi.isNotEmpty()) put(com.winlator.cmod.session.GamepadApi.KEY, state.padApi) }
                     .put("openGlDefaultInitialized", if (state.openGlDefaultInitialized) "1" else "0")
                     .put("autoMesaGlVersionOverride", if (state.autoMesaGlVersionOverride) "1" else "0"))
             }
@@ -1163,20 +1172,7 @@ private fun ContainerCategoryV2(
 
         "Input" -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingsCard {
-                SettingToggle("Exclusive Input", s.exclusive) { enabled ->
-                    s.exclusive = enabled
-                    if (!enabled) {
-                        s.xinput = true; s.dinput = true
-                    } else if (s.xinput && s.dinput) s.dinput = false
-                }
-                SettingsDivider()
-                SettingToggle("Enable XInput", s.xinput, s.exclusive) {
-                    s.xinput = it; if (s.exclusive && it && s.dinput) s.dinput = false
-                }
-                SettingsDivider()
-                SettingToggle("Enable DInput", s.dinput, s.exclusive) {
-                    s.dinput = it; if (s.exclusive && it && s.xinput) s.xinput = false
-                }
+                SettingMappedChoice("Gamepad API", s.padApi, linkedMapOf("" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput")) { s.choosePadApi(it) }
             }
             SettingsCard {
                 SettingToggle("Sync CPU Topology", s.syncCpu) { s.syncCpu = it }

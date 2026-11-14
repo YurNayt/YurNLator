@@ -25,6 +25,7 @@ internal object SettingHints {
         "Display backend" to R.string.l_hint_wayland,
         "Graphics Driver" to R.string.l_hint_freedreno,
         "Driver Version" to R.string.l_hint_vk_driver,
+        "Gamepad API" to R.string.l_hint_pad_api,
     )
 
     /** Shown with their English name when the app is in another language. */

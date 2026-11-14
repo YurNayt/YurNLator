@@ -654,6 +654,11 @@ public class WinHandler {
         }
     }
 
+    /** Unplugs every pad; each comes back with its next input, so the game finds it anew. */
+    public void reconnectGamepads() {
+        for (Integer deviceId : new java.util.ArrayList<>(deviceToSlot.keySet())) releaseSlot(deviceId);
+    }
+
     public void setXInputDisabled(boolean disabled) {
         this.xinputDisabled = disabled;
         this.xinputDisabledInitialized = true;

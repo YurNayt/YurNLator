@@ -1111,4 +1111,10 @@
     <string name="l_sts_launch_sync_hint">Облачные сохранения до и после игры, достижения в игре и в профиль. Выключено: игра запускается как есть, без связи со Steam.</string>
     <string name="l_ste_launch_sign_in">Вход Epic при запуске</string>
     <string name="l_ste_launch_sign_in_hint">Передаёт игре одноразовый код входа Epic (нужен играм с онлайн-функциями или защитой Epic). Выключено: игра запускается без него.</string>
+    <string name="l_qm_gamepad_api">API геймпада</string>
+    <string name="l_qm_pad_auto">Авто: XInput. Если игра не видит геймпад — выберите XInput + DirectInput.</string>
+    <string name="l_qm_pad_auto_unity">Авто: игра на Unity, поэтому добавлен DirectInput.</string>
+    <string name="l_qm_pad_now">Сейчас: %1$s. Если игра не заметила смену — перезапустите её.</string>
+    <string name="l_hint_pad_api">Авто: XInput, для Unity-игр ещё DirectInput. Геймпад не виден — XInput + DirectInput. Нажатия двоятся — XInput.</string>
+    <string name="l_lbl_as_container">Как в контейнере</string>
 </resources>

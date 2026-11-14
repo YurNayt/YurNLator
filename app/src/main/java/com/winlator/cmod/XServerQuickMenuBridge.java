@@ -498,6 +498,30 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
     }
 
     @Override public void showKeyboard() { AppUtils.showKeyboard(a); }
+
+    // Gamepad API (XInput / DirectInput), see GamepadApi.
+    private Boolean padDinput;
+
+    @Override public String gamepadApi() {
+        return a.container != null ? com.winlator.cmod.session.GamepadApi.mode(a.container, a.shortcut) : "auto";
+    }
+
+    @Override public boolean gamepadUnity() { return a.launchConfig != null && a.launchConfig.isUnityGame(); }
+
+    @Override public boolean gamepadDinput() {
+        if (padDinput == null) padDinput = a.launchConfig != null && com.winlator.cmod.session.GamepadApi.dinputShown(a.launchConfig);
+        return padDinput;
+    }
+
+    @Override public void setGamepadApi(String mode) {
+        if (a.container == null) return;
+        com.winlator.cmod.session.GamepadApi.save(a.container, a.shortcut, mode);
+        boolean show = com.winlator.cmod.session.GamepadApi.dinputShownFor(mode, a.container, gamepadUnity());
+        if (show != gamepadDinput()) {
+            padDinput = show;
+            com.winlator.cmod.session.GamepadApi.applyLive(a.container, a.winHandler, show);
+        }
+    }
     @Override public void vibrationSettings() { a.showVibrationDialog(); }
 
     /** "DXVK 3.1.1-1-gplasync-arm64ec + VKD3D 3.1-arm64ec": names and full versions, not just "DXVK+VKD3D". */

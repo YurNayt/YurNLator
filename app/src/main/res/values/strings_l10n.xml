@@ -1111,4 +1111,10 @@
     <string name="l_sts_launch_sync_hint">Cloud saves before and after the game, achievements in the game and to the profile. Off: the game starts as is, offline.</string>
     <string name="l_ste_launch_sign_in">Epic sign-in at launch</string>
     <string name="l_ste_launch_sign_in_hint">Gives the game a one-time Epic sign-in code (needed by games with Epic online features or protection). Off: the game starts without it.</string>
+    <string name="l_qm_gamepad_api">Gamepad API</string>
+    <string name="l_qm_pad_auto">Auto: XInput. If the game doesn\'t see the gamepad, pick XInput + DirectInput.</string>
+    <string name="l_qm_pad_auto_unity">Auto: a Unity game, so DirectInput is added.</string>
+    <string name="l_qm_pad_now">Now: %1$s. If the game doesn\'t notice the change, restart it.</string>
+    <string name="l_hint_pad_api">Auto: XInput, plus DirectInput for Unity games. Gamepad not seen: XInput + DirectInput. Doubled presses: XInput.</string>
+    <string name="l_lbl_as_container">As container</string>
 </resources>

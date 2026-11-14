@@ -99,14 +99,9 @@ public final class PrefixSetup {
         WineStartMenuCreator.create(context, container);
         WineUtils.createDosdevicesSymlinks(container);
 
-        int inputType = launch.getInputType();
-        boolean dinput = (inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT;
-        if (!dinput && launch.isUnityGame()) {
-            // Unity looks for gamepads through DirectInput; with the pad hidden there it sees none.
-            Log.i("PrefixSetup", "Unity game: DirectInput gamepads shown");
-            dinput = true;
-        }
-        WineUtils.setJoystickRegistryKeys(container, dinput, launch.getExclusiveXInput());
+        boolean dinput = GamepadApi.dinputShown(launch);
+        Log.i("PrefixSetup", "Gamepad API " + launch.getPadApi() + (launch.isUnityGame() ? " (Unity)" : "") + ": DirectInput " + (dinput ? "shown" : "hidden"));
+        WineUtils.setJoystickRegistryKeys(container, dinput, true);
 
         String startup = launch.getStartupSelection();
         if (!startup.equals(container.getExtra("startupSelection"))) {

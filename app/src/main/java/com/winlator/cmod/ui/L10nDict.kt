@@ -15,6 +15,7 @@ object L10nDict {
         "Renderer" to R.string.l_qm_renderer,
         "Off" to R.string.l_qm_off,
         "None" to R.string.l_qm_none,
+        "Auto" to R.string.l_qm_auto,
         "Components" to R.string.l_set_components,
         "Save" to R.string.l_set_save,
         "All" to R.string.l_lib_all,
@@ -204,6 +205,8 @@ object L10nDict {
         "Snapdragon devices. Turnip and Adreno-tuned drivers, standard DXVK / VKD3D." to R.string.l_lbl_snapdragon_devices_turnip_and_adreno_tuned,
         "MediaTek Dimensity, Exynos (older), Unisoc, Kirin. Vulkan wrapper with Mali-friendly defaults." to R.string.l_lbl_mediatek_dimensity_exynos_older_unisoc_kirin,
         "Xclipse, PowerVR and other GPUs. Safe defaults through the system Vulkan driver." to R.string.l_lbl_xclipse_powervr_and_other_gpus_safe,
+        "Gamepad API" to R.string.l_qm_gamepad_api,
+        "As container" to R.string.l_lbl_as_container,
     )
 
     /** [en] in the app language (unchanged when there is no translation). */

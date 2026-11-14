@@ -16,6 +16,7 @@ import com.winlator.cmod.container.ContainerManager
 import com.winlator.cmod.ui.settings.CpuSelectorRow
 import com.winlator.cmod.ui.settings.EnvironmentVariablesEditor
 import com.winlator.cmod.ui.settings.SettingChoice
+import com.winlator.cmod.ui.settings.SettingMappedChoice
 import com.winlator.cmod.ui.settings.SettingToggle
 import com.winlator.cmod.ui.settings.SettingsCard
 import com.winlator.cmod.ui.settings.SettingsDivider
@@ -45,6 +46,7 @@ internal fun ContainerAdvancedPane(containerId: Int) {
     var exclusive by remember { mutableStateOf(container.isExclusiveXInput()) }
     var xinput by remember { mutableStateOf((container.getInputType() and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0) }
     var dinput by remember { mutableStateOf((container.getInputType() and WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()) != 0) }
+    var padApi by remember { mutableStateOf(com.winlator.cmod.session.GamepadApi.containerChoice(container)) }
     var syncCpu by remember { mutableStateOf(container.isSyncCpuTopology()) }
     val cpuCount = remember { Runtime.getRuntime().availableProcessors().coerceAtLeast(1) }
     val cpu64 = remember {
@@ -108,27 +110,10 @@ internal fun ContainerAdvancedPane(containerId: Int) {
                     container.saveData()
                 }
                 SettingsDivider()
-                SettingToggle("Exclusive Input", exclusive) { enabled ->
-                    exclusive = enabled
-                    if (!enabled) {
-                        xinput = true
-                        dinput = true
-                    } else if (xinput && dinput) {
-                        dinput = false
-                    }
-                    saveInput()
-                }
-                SettingsDivider()
-                SettingToggle("Enable XInput", xinput, exclusive) { enabled ->
-                    xinput = enabled
-                    if (exclusive && enabled && dinput) dinput = false
-                    saveInput()
-                }
-                SettingsDivider()
-                SettingToggle("Enable DInput", dinput, exclusive) { enabled ->
-                    dinput = enabled
-                    if (exclusive && enabled && xinput) xinput = false
-                    saveInput()
+                SettingMappedChoice("Gamepad API", padApi, linkedMapOf("" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput")) { v ->
+                    padApi = v
+                    com.winlator.cmod.session.GamepadApi.saveContainer(container, v)
+                    container.saveData()
                 }
             }
 

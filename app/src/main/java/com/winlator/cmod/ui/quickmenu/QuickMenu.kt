@@ -766,11 +766,33 @@ private fun ControlsSection(bridge: QuickMenuBridge, opened: Int) {
             String.format(java.util.Locale.US, "%.1f×", mouseSpeed), step = 0.1f / 4.9f,
             onChange = { f -> mouseSpeed = 0.1f + f * 4.9f; bridge.setMouseSpeed(mouseSpeed) }
         )
+        GamepadApiCard(bridge, opened)
         GyroCard(bridge, opened)
         Card {
             ActionRow(Icons.Outlined.Keyboard, uiStr(R.string.l_qm_show_keyboard)) { bridge.showKeyboard(); bridge.close() }
             ActionRow(Icons.Outlined.Vibration, uiStr(R.string.l_qm_gamepad_vibration)) { bridge.vibrationSettings() }
         }
+    }
+}
+
+@Composable
+private fun GamepadApiCard(bridge: QuickMenuBridge, opened: Int) {
+    var mode by remember(opened) { mutableStateOf(bridge.gamepadApi()) }
+    var dinput by remember(opened) { mutableStateOf(bridge.gamepadDinput()) }
+    val unity = remember(opened) { bridge.gamepadUnity() }
+    Card {
+        Text(uiStr(R.string.l_qm_gamepad_api), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+        Chips(listOf("auto" to uiStr(R.string.l_qm_auto), "xinput" to "XInput", "both" to "XInput + DirectInput"), mode) {
+            mode = it
+            bridge.setGamepadApi(it)
+            dinput = bridge.gamepadDinput()
+        }
+        val now = if (dinput) "XInput + DirectInput" else "XInput"
+        Text(
+            (if (mode == "auto") uiStr(if (unity) R.string.l_qm_pad_auto_unity else R.string.l_qm_pad_auto) + "\n" else "") +
+                uiStr(R.string.l_qm_pad_now, now),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

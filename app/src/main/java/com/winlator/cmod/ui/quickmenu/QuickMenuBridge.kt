@@ -125,6 +125,13 @@ interface QuickMenuBridge {
     fun gyro(): QmGyro
     fun setGyro(gyro: QmGyro)
     fun showKeyboard()
+    /** GamepadApi mode of this game: "auto", "xinput" or "both". */
+    fun gamepadApi(): String = "auto"
+    /** The DirectInput pad is shown in the running game. */
+    fun gamepadDinput(): Boolean = false
+    /** The game is built on Unity (auto mode adds DirectInput). */
+    fun gamepadUnity(): Boolean = false
+    fun setGamepadApi(mode: String) {}
     fun vibrationSettings()
 
     // Tasks

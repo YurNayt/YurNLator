@@ -40,7 +40,8 @@ public final class GuestLaunch {
         try { ver = " " + context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName; } catch (Exception ignored) {}
         log.accept("[YurNLator" + ver + "] launch: " + guestExecutable);
         if (shortcut != null) log.accept("[YurNLator] shortcut path: " + shortcut.path);
-        if (lc.isUnityGame()) log.accept("[YurNLator] Unity game: gamepad shown to DirectInput too");
+        log.accept("[YurNLator] gamepad: " + lc.getPadApi() + (lc.isUnityGame() ? ", Unity game" : "")
+                + " -> XInput" + (GamepadApi.dinputShown(lc) ? " + DirectInput" : " only"));
 
         ArrayList<String> bindingPaths = new ArrayList<>();
         for (String[] drive : container.drivesIterator()) bindingPaths.add(drive[1]);

@@ -239,6 +239,11 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     var exclusive by mutableStateOf(shortcut.getExtra("exclusiveXInput").let { if (it.isBlank()) container.isExclusiveXInput() else it == "1" })
     var xinput by mutableStateOf((inputType and WinHandler.FLAG_INPUT_TYPE_XINPUT.toInt()) != 0)
     var dinput by mutableStateOf((inputType and WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()) != 0)
+    var padApi by mutableStateOf(shortcut.getExtra(com.winlator.cmod.session.GamepadApi.KEY))
+    fun choosePadApi(v: String) {
+        padApi = v
+        com.winlator.cmod.session.GamepadApi.save(container, shortcut, v)
+    }
     var disableXInput by mutableStateOf(shortcut.getExtra("disableXinput", "0") == "1")
     var relativeMouse by mutableStateOf(shortcut.getExtra("enableRelativeMouse", "0") == "1")
     var disableMouse by mutableStateOf(shortcut.getExtra("disableMouse", "0") == "1")
@@ -1016,15 +1021,7 @@ private fun ShortcutCategoryV2(
             SettingsCard {
                 SettingMappedChoice("Controls Profile", s.controlsProfile, profiles) { s.controlsProfile = it; s.extra("controlsProfile", it.takeUnless { id -> id == "0" }) }
                 SettingsDivider()
-                SettingToggle("Exclusive Input", s.exclusive) {
-                    s.exclusive = it
-                    if (!it) { s.xinput = true; s.dinput = true } else if (s.xinput && s.dinput) s.dinput = false
-                    s.saveInput()
-                }
-                SettingsDivider()
-                SettingToggle("Enable XInput", s.xinput, s.exclusive) { s.xinput = it; if (s.exclusive && it && s.dinput) s.dinput = false; s.saveInput() }
-                SettingsDivider()
-                SettingToggle("Enable DInput", s.dinput, s.exclusive) { s.dinput = it; if (s.exclusive && it && s.xinput) s.xinput = false; s.saveInput() }
+                SettingMappedChoice("Gamepad API", s.padApi, linkedMapOf("" to "As container", "auto" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput")) { s.choosePadApi(it) }
                 SettingsDivider()
                 SettingToggle("Disable XInput", s.disableXInput) { s.disableXInput = it; s.extra("disableXinput", if (it) "1" else null) }
                 SettingsDivider()
