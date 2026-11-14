@@ -904,7 +904,7 @@ private fun ShortcutCategoryV2(
                     if (s.bcnType == "compute") {
                         SettingsDivider()
                         val forcedLegacy = com.winlator.cmod.core.MaliCompat.forcesLegacyBcn(context, readConfig(s.graphicsConfig, "wrapper", ';'))
-                        SettingChoice("BCn layer (Winlator Mali)", if (forcedLegacy) "legacy" else s.bcnVersion, listOf("current", "legacy")) { s.bcnVersion = it; s.graphics("bcnVersion", it) }
+                        SettingChoice("BCn layer (Winlator Mali)", if (forcedLegacy) "legacy" else s.bcnVersion, listOf("current", "legacy", "xclipse", "july13", "gseries")) { s.bcnVersion = it; s.graphics("bcnVersion", it) }
                         if (forcedLegacy) Text(uiStr(R.string.l_ed_legacy_is_used_with_this_wrapper),
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))

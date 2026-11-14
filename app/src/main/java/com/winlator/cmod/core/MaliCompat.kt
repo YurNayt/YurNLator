@@ -101,7 +101,7 @@ object MaliCompat {
     @JvmStatic
     fun forcesLegacyBcn(context: Context, wrapperId: String?): Boolean =
         context.packageName != "com.yurnayt.yurnlator" && wrapperId != null &&
-            com.winlator.cmod.contents.WrapperManager.isBundled(wrapperId) &&
+            wrapperId.startsWith("mali-wrapper") &&
             !wrapperId.startsWith("mali-wrapper-gamenative")
 
     /** Short reason shown on hidden-type notices. */

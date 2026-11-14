@@ -38,4 +38,4 @@ builds every variant and publishes a release. Locally: `./gradlew assembleStanda
 
 ## Credits
 BrunoSX (Winlator), Pipetto-crypto (Winlator Bionic), StevenMXZ (Winlator Ludashi),
-GunaCharanTeja (Winlator Mali), The412Banner (Bannerlator; win-fg frame generation, MIT — app/src/main/assets/win-fg/LICENSE.txt, adapts AMD FidelityFX FSR3 optical flow, MIT), ptitSeb (Box64), FEX-Emu, Mesa, DXVK, VKD3D-Proton.
+GunaCharanTeja (Winlator Mali), avavo (WinXclipse, GPL-3.0: Wrapper-Default, Kirimu, Ludashi 2.4 and Ref4ik v6 wrappers, Xclipse / July 13 BCn layer builds; wrappers by Leegao, Kirimu, REF4IK, BCn layer by Leegao / Fcharan), The412Banner (Bannerlator; win-fg frame generation, MIT — app/src/main/assets/win-fg/LICENSE.txt, adapts AMD FidelityFX FSR3 optical flow, MIT), ptitSeb (Box64), FEX-Emu, Mesa, DXVK, VKD3D-Proton.

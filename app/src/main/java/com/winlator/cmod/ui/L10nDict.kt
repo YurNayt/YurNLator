@@ -207,6 +207,11 @@ object L10nDict {
         "Xclipse, PowerVR and other GPUs. Safe defaults through the system Vulkan driver." to R.string.l_lbl_xclipse_powervr_and_other_gpus_safe,
         "Gamepad API" to R.string.l_qm_gamepad_api,
         "As container" to R.string.l_lbl_as_container,
+        "current" to R.string.l_lbl_current,
+        "legacy" to R.string.l_lbl_legacy,
+        "xclipse" to R.string.l_lbl_xclipse,
+        "july13" to R.string.l_lbl_july13,
+        "gseries" to R.string.l_lbl_gseries,
     )
 
     /** [en] in the app language (unchanged when there is no translation). */

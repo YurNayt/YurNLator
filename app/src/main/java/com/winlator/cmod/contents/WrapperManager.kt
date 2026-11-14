@@ -68,7 +68,20 @@ object WrapperManager {
         "mali-wrapper-gamenative" to ("wrapper-mali-gamenative.tzst" to "Wrapper (GameNative)"),
         // Newer GameNative build from testers: NieR: Automata on Dimensity 8400 with DXVK 2.4.1 gplasync.
         "mali-wrapper-gamenative-2" to ("wrapper-mali-gamenative-2.tzst" to "Wrapper (GameNative 2, DXVK 2.x)"),
+        // From WinXclipse 0.9.6 (avavo, GPL-3.0), its universal / Exynos set.
+        "wx-wrapper-default" to ("wrapper-wx-default.tzst" to "Wrapper-Default (WinXclipse)"),
+        "wx-kirimu" to ("wrapper-wx-kirimu.tzst" to "Kirimu (own BCn)"),
+        "wx-ludashi-2-4" to ("wrapper-wx-ld24.tzst" to "Ludashi 2.4"),
+        "wx-ref4ik-v6" to ("wrapper-wx-ref4ik-v6.tzst" to "Ref4ik v6 (own BCn)"),
     )
+
+    /** Wrappers that decode BCn textures themselves: the shared BCn layer stays off with them. */
+    @JvmStatic
+    fun hasOwnBcn(id: String?) = id == "wx-kirimu" || id == "wx-ref4ik-v6"
+
+    /** The BCn layer build a wrapper is paired with by default ("current" otherwise). */
+    @JvmStatic
+    fun pairedBcn(id: String?) = if (id == "wx-wrapper-default") "july13" else "current"
 
     @JvmStatic
     fun isBundled(id: String?) = id != null && id in BUNDLED
@@ -77,7 +90,7 @@ object WrapperManager {
     fun installed(context: Context): List<Installed> {
         val list = arrayListOf(Installed(BUILTIN_ID, "Built-in wrapper", "Ludashi", emptyList(), false))
         if (com.winlator.cmod.core.GpuProfileManager.current(context) != com.winlator.cmod.core.GpuProfile.ADRENO) {
-            BUNDLED.forEach { (id, v) -> list += Installed(id, v.second, "Winlator Mali", listOf("Mali"), false) }
+            BUNDLED.forEach { (id, v) -> list += Installed(id, v.second, if (id.startsWith("wx-")) "WinXclipse" else "Winlator Mali", listOf("Mali"), false) }
         }
         dir(context).listFiles { f -> f.name.endsWith(".tzst") }?.sortedBy { it.name }?.forEach { f ->
             val id = f.name.removeSuffix(".tzst")

@@ -1121,4 +1121,9 @@
     <string name="l_ste_cloud_up">Облако Epic: отправлено файлов сохранений: %1$d</string>
     <string name="l_ste_cloud_none">Игра не использует облачные сохранения Epic</string>
     <string name="l_ste_cloud_folder">Облачные сохранения Epic: %1$s</string>
+    <string name="l_lbl_current">Текущий</string>
+    <string name="l_lbl_legacy">Legacy (сентябрьский)</string>
+    <string name="l_lbl_xclipse">Xclipse (RDNA2, WinXclipse)</string>
+    <string name="l_lbl_july13">July 13 (пара Wrapper-Default)</string>
+    <string name="l_lbl_gseries">Mali G (тестовый, WinMali)</string>
 </resources>

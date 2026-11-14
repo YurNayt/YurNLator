@@ -1121,4 +1121,9 @@
     <string name="l_ste_cloud_up">Epic cloud: save files uploaded: %1$d</string>
     <string name="l_ste_cloud_none">The game doesn\'t use Epic cloud saves</string>
     <string name="l_ste_cloud_folder">Epic cloud saves: %1$s</string>
+    <string name="l_lbl_current">current</string>
+    <string name="l_lbl_legacy">legacy</string>
+    <string name="l_lbl_xclipse">xclipse</string>
+    <string name="l_lbl_july13">july13</string>
+    <string name="l_lbl_gseries">gseries</string>
 </resources>

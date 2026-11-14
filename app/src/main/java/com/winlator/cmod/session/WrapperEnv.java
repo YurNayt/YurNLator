@@ -25,6 +25,8 @@ public final class WrapperEnv {
         public boolean bcnLayer;
         /** ...in its legacy (September) build. */
         public boolean bcnLegacy;
+        /** Which build: current, legacy, xclipse, july13 or gseries. */
+        public String bcnBuild = "current";
     }
 
     public static Result apply(Context context, Map<String, String> graphicsDriverConfig, KeyValueSet dxwrapperConfig,
@@ -84,20 +86,26 @@ public final class WrapperEnv {
         // BCn texture layer from Winlator Mali 1.2.1 (leegao's bcn_layer, modified by WinMali-Dev):
         // Mali / non-Adreno GPUs have no BC1-BC7 in hardware, the layer transcodes them (ASTC /
         // ETC2). Adreno decodes BCn natively, so the layer is never loaded there.
+        String wrapperId = graphicsDriverConfig.get("wrapper");
+        // Kirimu / Ref4ik decode BCn themselves; the shared layer on top would do it twice.
         boolean bcnLayer = !"none".equals(bcnEmulation) && "compute".equals(bcnEmulationType)
-                && GPUInformation.getVendorID(null, null) != 0x5143;
+                && GPUInformation.getVendorID(null, null) != 0x5143
+                && !com.winlator.cmod.contents.WrapperManager.hasOwnBcn(wrapperId);
         if (bcnLayer) {
-            boolean legacy = "legacy".equals(graphicsDriverConfig.get("bcnVersion"));
+            String build = graphicsDriverConfig.get("bcnVersion");
+            if (build == null || build.isEmpty() || "current".equals(build)) build = com.winlator.cmod.contents.WrapperManager.pairedBcn(wrapperId);
+            boolean legacy = "legacy".equals(build);
             // Benchmark-named builds (antutu…): the Mali driver answers differently there and the
             // Winlator Mali wrappers fail to create the device when the current layer asks for
             // ASTC HDR (winevulkan assert). The legacy layer doesn't ask for it.
-            String wrapperId = graphicsDriverConfig.get("wrapper");
             if (!legacy && MaliCompat.forcesLegacyBcn(context, wrapperId)) {
                 Log.d("BCn", "Spoofed package + Winlator Mali wrapper " + wrapperId + ": legacy BCn layer");
                 legacy = true;
+                build = "legacy";
             }
             result.bcnLayer = true;
             result.bcnLegacy = legacy;
+            result.bcnBuild = build;
             envVars.put("ENABLE_BCN_COMPUTE", "1");
             if (legacy) {
                 // September build: one target format at a quality preset.

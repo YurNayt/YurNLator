@@ -58,7 +58,7 @@ public final class GraphicsSetup {
         if (waylandMode) Log.i(TAG, "wayland: " + WaylandSupport.applyGameDriver(activity, envVars, driverId, winePath));
 
         WrapperEnv.Result wenv = WrapperEnv.apply(activity, graphicsDriverConfig, dxwrapperConfig, envVars, driverId, rgbaSurface);
-        if (wenv.bcnLayer) GraphicsDriverFiles.installBcnLayer(activity, rootDir, wenv.bcnLegacy);
+        if (wenv.bcnLayer) GraphicsDriverFiles.installBcnLayer(activity, rootDir, wenv.bcnBuild);
 
         if (vkbasaltConfig != null && !vkbasaltConfig.isEmpty()) {
             envVars.put("ENABLE_VKBASALT", "1");

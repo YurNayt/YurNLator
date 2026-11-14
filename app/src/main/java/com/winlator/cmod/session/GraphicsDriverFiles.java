@@ -61,8 +61,15 @@ public final class GraphicsDriverFiles {
     }
 
     /** The chosen BCn layer build (only when it changed since last time). */
-    public static void installBcnLayer(Context context, File rootDir, boolean legacy) {
-        String asset = legacy ? "graphics_driver/leegao_bcn_legacy.tzst" : "graphics_driver/leegao_bcn.tzst";
+    public static void installBcnLayer(Context context, File rootDir, String build) {
+        String asset;
+        switch (build == null ? "" : build) {
+            case "legacy": asset = "graphics_driver/leegao_bcn_legacy.tzst"; break;
+            case "xclipse": asset = "graphics_driver/leegao_bcn_xclipse.tzst"; break;   // WinXclipse: Xclipse 920 (RDNA2 wave64)
+            case "july13": asset = "graphics_driver/leegao_bcn_july13.tzst"; break;     // WinXclipse: pair of Wrapper-Default
+            case "gseries": asset = "graphics_driver/leegao_bcn_transcode.tzst"; break; // WinMali-Dev: Mali G-series test build
+            default: asset = "graphics_driver/leegao_bcn.tzst";
+        }
         File marker = new File(rootDir, "usr/lib/.yurn-bcn-layer");
         String want = asset + ":" + FileUtils.getSize(context, asset);
         String have = marker.isFile() ? FileUtils.readString(marker).trim() : "";
