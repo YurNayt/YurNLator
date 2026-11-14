@@ -330,7 +330,7 @@ public class OnboardingActivity extends AppCompatActivity {
                 item.type = typeName;
                 item.name = profile.verName;
                 item.versionCode = profile.verCode;
-                item.url = profile.remoteUrl;
+                item.url = profile.remoteUrl != null ? profile.remoteUrl : contentsManager.remoteUrlFor(profile);
                 item.installed = isInstalled(profile);
                 item.entryName = item.installed ? installedEntryName(type, profile) : "";
                 String key = typeName + ":" + profile.verCode + ":" + profile.verName;
@@ -354,6 +354,8 @@ public class OnboardingActivity extends AppCompatActivity {
                     item.versionCode = profile.verCode;
                     item.installed = true;
                     item.entryName = ContentsManager.getEntryName(profile);
+                    // Where it was downloaded from: it stays under that source's tab.
+                    item.url = contentsManager.remoteUrlFor(profile);
                     rebuilt.add(item);
                 }
             }
@@ -440,8 +442,10 @@ public class OnboardingActivity extends AppCompatActivity {
                         runtime,
                         inUse,
                         false,
-                        item.installed ? null : (item.packageInfo != null ? "Proton releases"
-                                : (ContentCatalogs.sourceOf(item.url) != null ? ContentCatalogs.sourceOf(item.url) : "Winlator Contents"))
+                        // Installed items keep their source too (they vanished from the source's tab).
+                        item.packageInfo != null ? "Proton releases"
+                                : item.url == null ? null
+                                : (ContentCatalogs.sourceOf(item.url) != null ? ContentCatalogs.sourceOf(item.url) : "Winlator Contents")
                 ));
             }
         }

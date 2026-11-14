@@ -423,6 +423,24 @@ public class ContentsManager {
     private static final String MARK_CATALOG_NAME = "catalogName";
 
     /**
+     * The download link of the catalog entry an installed package came from (same type, its name or
+     * its catalog name), or null (installed from a file, or the catalog no longer lists it). Lets an
+     * installed package stay under its source ("Bannerlator", …) instead of only under "Installed".
+     */
+    public String remoteUrlFor(ContentProfile installed) {
+        if (installed == null || remoteProfiles == null) return null;
+        String fallback = null;
+        for (ContentProfile remote : remoteProfiles) {
+            if (remote.type != installed.type || remote.verName == null) continue;
+            boolean nameMatch = remote.verName.equals(installed.verName) || remote.verName.equals(installed.catalogName);
+            if (!nameMatch) continue;
+            if (remote.verCode == installed.verCode) return remote.remoteUrl;
+            if (fallback == null) fallback = remote.remoteUrl;
+        }
+        return fallback;
+    }
+
+    /**
      * A Wine / Proton package names itself by its version only ("11.0-9-arm64ec") while the catalog
      * lists it as "GE-Proton-11.0-9-arm64ec (v16)": the download then never matched its entry (offered
      * again after installing), and GE-Proton and Proton of the same version shared one folder. The
