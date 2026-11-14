@@ -1107,4 +1107,8 @@
     <string name="l_sts_ach_less">Свернуть</string>
     <string name="l_sts_ach_all">Показать все (%1$d)</string>
     <string name="l_ste_uninstall_q">Удалить %1$s? Будут удалены файлы игры и её ярлыки.</string>
+    <string name="l_sts_launch_sync">Steam при запуске</string>
+    <string name="l_sts_launch_sync_hint">Облачные сохранения до и после игры, достижения в игре и в профиль. Выключено: игра запускается как есть, без связи со Steam.</string>
+    <string name="l_ste_launch_sign_in">Вход Epic при запуске</string>
+    <string name="l_ste_launch_sign_in_hint">Передаёт игре одноразовый код входа Epic (нужен играм с онлайн-функциями или защитой Epic). Выключено: игра запускается без него.</string>
 </resources>

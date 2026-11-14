@@ -259,6 +259,8 @@ private fun GameSheet(g: EpicGame, onDismiss: () -> Unit) {
                         else pickContainer = true
                     }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_add_to_library)) }
                     StoreSecondaryButton(onClick = { askRemove = true }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_uninstall)) }
+                    com.winlator.cmod.store.StoreLaunchSwitch(com.winlator.cmod.store.StoreLaunchPrefs.epic(g.appName),
+                        uiStr(R.string.l_ste_launch_sign_in), uiStr(R.string.l_ste_launch_sign_in_hint))
                 }
                 else -> {
                     if (job != null) JobLine(job)

@@ -1107,4 +1107,8 @@
     <string name="l_sts_ach_less">Show less</string>
     <string name="l_sts_ach_all">Show all (%1$d)</string>
     <string name="l_ste_uninstall_q">Delete %1$s? The game\'s files and its shortcuts will be removed.</string>
+    <string name="l_sts_launch_sync">Steam at launch</string>
+    <string name="l_sts_launch_sync_hint">Cloud saves before and after the game, achievements in the game and to the profile. Off: the game starts as is, offline.</string>
+    <string name="l_ste_launch_sign_in">Epic sign-in at launch</string>
+    <string name="l_ste_launch_sign_in_hint">Gives the game a one-time Epic sign-in code (needed by games with Epic online features or protection). Off: the game starts without it.</string>
 </resources>

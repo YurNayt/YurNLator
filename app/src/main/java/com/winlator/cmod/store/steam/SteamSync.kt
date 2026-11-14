@@ -200,6 +200,7 @@ object SteamSync {
     fun beforeLaunch(context: Context, container: Container?, shortcut: Shortcut?) {
         val appId = appIdOf(shortcut)
         if (appId <= 0 || container == null) return
+        if (!com.winlator.cmod.store.StoreLaunchPrefs.enabled(context, com.winlator.cmod.store.StoreLaunchPrefs.steam(appId))) return
         val inst = installed(context, appId) ?: return
         if (!SteamSession.signedIn(context) || !SteamSession.awaitOnline(context, 15_000L)) {
             Log.i(TAG, "$appId: Steam offline, starting with the local saves")
@@ -277,6 +278,7 @@ object SteamSync {
     fun afterExitAsync(context: Context, container: Container?, shortcut: Shortcut?) {
         val appId = appIdOf(shortcut)
         if (appId <= 0 || container == null) return
+        if (!com.winlator.cmod.store.StoreLaunchPrefs.enabled(context, com.winlator.cmod.store.StoreLaunchPrefs.steam(appId))) return
         val app = context.applicationContext
         Thread({
             val inst = installed(app, appId) ?: return@Thread

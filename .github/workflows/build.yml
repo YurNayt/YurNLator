@@ -36,7 +36,7 @@ jobs:
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             IN="${{ github.event.inputs.variant }}"
             if [[ "$IN" == "all" || -z "$IN" ]]; then V="$ALL"; else V="[\"$IN\"]"; fi
-          elif [[ "${{ github.event_name }}" == "push" ]]; then V='["standard","antutu"]'
+          elif [[ "${{ github.event_name }}" == "push" ]]; then V='["standard","ludashi2"]'
           else V='["standard"]'; fi
           echo "variants=$V" >> "$GITHUB_OUTPUT"
 
@@ -198,18 +198,18 @@ jobs:
           TITLE="Test build ${GITHUB_RUN_NUMBER} ($SHORT)"
           NOTES="Automatic test build of YurNLator from main, build ${GITHUB_RUN_NUMBER}, commit https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}. May be unstable. Main versions: https://github.com/${GITHUB_REPOSITORY}/releases
 
-          Variants: standard (YurNLator-dev-N-sha.apk) and AnTuTu (-antutu.apk, installs as a separate app named like AnTuTu, so phones that boost benchmarks run it at full clocks). The newest APK is the one with the highest build number; the previous one is kept so running downloads finish.
+          Variants: standard (YurNLator-dev-N-sha.apk) and Ludashi 2 (-ludashi2.apk, installs as a separate app named like a benchmark, so phones that boost benchmarks run it at full clocks). The newest APK is the one with the highest build number; the three before it are kept.
 
-          Тестовая сборка YurNLator, может быть нестабильной. Варианты: обычный и AnTuTu."
+          Тестовая сборка YurNLator, может быть нестабильной. Варианты: обычный и Ludashi 2."
           if gh release view dev >/dev/null 2>&1; then
             gh release upload dev dist/*.apk --clobber
             gh release edit dev --title "$TITLE" --notes "$NOTES" --latest
           else
             gh release create dev dist/*.apk --title "$TITLE" --notes "$NOTES" --latest
           fi
-          # Keep this build and the one before it (all their variants); delete older APKs.
+          # Keep this build and the three before it (all their variants); delete older APKs.
           KEEP=$(gh release view dev --json assets -q '.assets[].name' | grep '\.apk$' \
-            | cut -d- -f3 | sort -n -r -u | head -n 2 | tr '\n' ' ')
+            | cut -d- -f3 | sort -n -r -u | head -n 4 | tr '\n' ' ')
           gh release view dev --json assets -q '.assets[].name' | grep '\.apk$' | while read -r old; do
             N=$(echo "$old" | cut -d- -f3)
             [[ " $KEEP " == *" $N "* ]] || gh release delete-asset dev "$old" -y || true

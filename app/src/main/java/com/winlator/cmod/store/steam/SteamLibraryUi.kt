@@ -358,6 +358,10 @@ private fun GameSheet(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstalle
                     }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_add_to_library)) }
                     StoreSecondaryButton(onClick = { askRemove = true }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_uninstall)) }
                     GoldbergRow(inst)
+                    com.winlator.cmod.store.StoreLaunchSwitch(com.winlator.cmod.store.StoreLaunchPrefs.steam(a.id),
+                        uiStr(R.string.l_sts_launch_sync), uiStr(R.string.l_sts_launch_sync_hint)) { on ->
+                        if (!on) Thread { Goldberg.settingsDirs(inst).forEach { java.io.File(it, "achievements.json").delete() } }.start()
+                    }
                 }
                 else -> {
                     if (job != null) JobLine(job)

@@ -21,6 +21,7 @@ object EpicLaunch {
     fun beforeLaunch(context: Context, shortcut: Shortcut?) {
         val app = shortcut?.getExtra("epicApp", "").orEmpty()
         if (app.isEmpty()) return
+        if (!com.winlator.cmod.store.StoreLaunchPrefs.enabled(context, com.winlator.cmod.store.StoreLaunchPrefs.epic(app))) return
         runCatching {
             val token = EpicAccount.token(context) ?: return
             val code = StoreNet.client.newCall(Request.Builder().url(EXCHANGE).header("Authorization", "Bearer $token")
