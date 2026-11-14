@@ -97,7 +97,7 @@ class PerfSession(
                 // tuner's back, let the switches set theirs again, then the limits go on top.
                 FreqTuner.clear()
                 PerfRootApplier.applyEffective(effective)
-                if (!p.isEmpty) FreqTuner.apply(p)
+                if (com.winlator.cmod.BuildConfig.DEV_FEATURES && !p.isEmpty) FreqTuner.apply(p)
             }
         }
     }
@@ -152,7 +152,7 @@ class PerfSession(
             if (!RootManager.isGranted) runCatching { RootManager.probe() }
             runCatching { PerfRootApplier.applyEffective(effective) }
             val freq = freqProfile()
-            if (!freq.isEmpty && RootManager.isGranted) runCatching { FreqTuner.apply(freq) }
+            if (com.winlator.cmod.BuildConfig.DEV_FEATURES && !freq.isEmpty && RootManager.isGranted) runCatching { FreqTuner.apply(freq) }
         }
         TempWatchdog.start(activity)
         if (value(PRIORITY)) ui.postDelayed({ io.execute { PerfPriority.boost(GuestProgramLauncherComponent.getPid()) } }, 5000)

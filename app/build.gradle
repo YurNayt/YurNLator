@@ -106,6 +106,9 @@ android {
         // installs it as an update and the in-app version shows which build it is.
         versionCode((System.getenv("YURN_VERSION_CODE") ?: "1") as int)
         versionName(System.getenv("YURN_VERSION_NAME") ?: "0.1.0")
+        // Test builds (x.y.z-dev.N) and local ones carry features not released yet (root clock editor).
+        def yurnVersion = System.getenv("YURN_VERSION_NAME") ?: "0.1.0"
+        buildConfigField "boolean", "DEV_FEATURES", (yurnVersion.contains("-dev") || yurnVersion == "0.1.0") ? "true" : "false"
 
         // External native build from Winlator
         externalNativeBuild {

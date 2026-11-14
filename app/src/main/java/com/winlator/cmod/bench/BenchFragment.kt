@@ -187,7 +187,7 @@ private fun BenchScreen(
                 if (!com.winlator.cmod.perf.RootManager.isGranted) runCatching { com.winlator.cmod.perf.RootManager.probe() }
                 if (!com.winlator.cmod.perf.RootManager.isGranted && RootMode.enabled(context))
                     runCatching { com.winlator.cmod.perf.RootManager.ensureGrantedBlocking() }
-                if (!com.winlator.cmod.perf.RootManager.isGranted) emptyList()
+                if (!com.winlator.cmod.BuildConfig.DEV_FEATURES || !com.winlator.cmod.perf.RootManager.isGranted) emptyList()
                 else Bench.freqVariants(com.winlator.cmod.perf.FreqTuner.clusters(), com.winlator.cmod.perf.FreqTuner.gpu())
             }.getOrDefault(emptyList())
         }

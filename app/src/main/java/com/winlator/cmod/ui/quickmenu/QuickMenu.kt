@@ -569,7 +569,7 @@ private fun PerformanceSection(bridge: QuickMenuBridge, opened: Int) {
             Text(uiStr(R.string.l_qm_everything_changed_here_is_put_back), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        if (granted) FreqEditorCard(perf, opened)
+        if (granted && com.winlator.cmod.BuildConfig.DEV_FEATURES) FreqEditorCard(perf, opened)
 
         Card {
             val wdOn by com.winlator.cmod.perf.TempWatchdog.enabled.collectAsState()
