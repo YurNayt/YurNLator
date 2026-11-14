@@ -1012,7 +1012,7 @@
     <string name="l_sv_restored">Restored files: %1$d</string>
     <string name="l_sv_restore_failed">Could not restore the saves.</string>
     <string name="l_st_stores">Stores</string>
-    <string name="l_st_pick_hint">Find games and see your library. Signing in, installing and removing games come in the next updates.</string>
+    <string name="l_st_pick_hint">Store showcase with genres, search, and your library: sign-in, installing games into a container and removing them.</string>
     <string name="l_st_steam_desc">Store, search and your library</string>
     <string name="l_st_epic_desc">Store, free games of the week and your library</string>
     <string name="l_st_specials">Specials</string>
@@ -1129,4 +1129,10 @@
     <string name="l_hint_game_lang">Sets it at each launch in the Steam emulator\'s config next to the game, the Steam registry key and, for Unreal games, -culture</string>
     <string name="l_lbl_game_language">Game language</string>
     <string name="l_lbl_don_t_change">Don\'t change</string>
+    <string name="l_st_coming_soon">Coming soon</string>
+    <string name="l_st_most_played">Most played</string>
+    <string name="l_st_sort_popular">Popular</string>
+    <string name="l_st_more">Show more</string>
+    <string name="l_st_owned">In your library</string>
+    <string name="l_st_buy_hint">You buy on the store\'s page (wallet balance or card); the game then shows up in the Library tab, where it installs.</string>
 </resources>

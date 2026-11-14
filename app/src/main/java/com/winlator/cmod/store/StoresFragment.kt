@@ -50,11 +50,13 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -141,6 +143,8 @@ private fun sectionTitle(key: String) = when (key) {
     "new_releases" -> uiStr(R.string.l_st_new_releases)
     "free_now" -> uiStr(R.string.l_st_free_now)
     "free_to_play" -> uiStr(R.string.l_st_free_to_play)
+    "coming_soon" -> uiStr(R.string.l_st_coming_soon)
+    "most_played" -> uiStr(R.string.l_st_most_played)
     else -> key
 }
 
@@ -155,6 +159,30 @@ private fun StoreScreen(store: Store, onBack: () -> Unit) {
     val featured by produceState<List<Pair<String, List<StoreItem>>>?>(null, store) {
         value = withContext(Dispatchers.IO) { if (store == Store.STEAM) SteamCatalog.featured() else EpicCatalog.featured() }
     }
+    // Categories: a genre picked from the chips, listed page by page.
+    var catId by rememberSaveable(store) { mutableStateOf<String?>(null) }
+    var catName by rememberSaveable(store) { mutableStateOf("") }
+    var sort by rememberSaveable(store) { mutableStateOf(CategorySort.POPULAR) }
+    val cats by produceState<List<StoreCategory>>(emptyList(), store) {
+        value = withContext(Dispatchers.IO) { if (store == Store.STEAM) SteamCatalog.categories() else EpicCatalog.categories() }
+    }
+    val catItems = remember(store, catId, sort) { mutableStateListOf<StoreItem>() }
+    var catPage by remember(store, catId, sort) { mutableStateOf(0) }
+    var catLoading by remember(store, catId, sort) { mutableStateOf(false) }
+    var catEnd by remember(store, catId, sort) { mutableStateOf(false) }
+    LaunchedEffect(store, catId, sort, catPage) {
+        val id = catId ?: return@LaunchedEffect
+        catLoading = true
+        val size = if (store == Store.STEAM) 25 else 30
+        val got = withContext(Dispatchers.IO) {
+            if (store == Store.STEAM) SteamCatalog.browse(id, sort, catPage * size) else EpicCatalog.browse(id, sort, catPage * size)
+        }
+        val fresh = got.filter { g -> catItems.none { it.id == g.id } }
+        catItems.addAll(fresh)
+        if (fresh.isEmpty()) catEnd = true
+        catLoading = false
+    }
+    BackHandler(enabled = catId != null && tab == 0) { catId = null }
     val results by produceState<List<StoreItem>?>(emptyList(), store, submitted) {
         if (submitted.isBlank()) { value = emptyList(); return@produceState }
         value = null
@@ -187,6 +215,38 @@ private fun StoreScreen(store: Store, onBack: () -> Unit) {
                 r == null -> item { CircularProgressIndicator(Modifier.size(28.dp)) }
                 r.isEmpty() -> item { Text(uiStr(R.string.l_st_nothing_found), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 else -> items(r, key = { it.store.name + it.id }) { ResultRow(it) { open = it } }
+            }
+        } else {
+            if (cats.isNotEmpty()) item(key = "cats") {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(cats, key = { it.id }) { c ->
+                        FilterChip(selected = catId == c.id, onClick = {
+                            if (catId == c.id) catId = null else { catId = c.id; catName = c.name; sort = CategorySort.POPULAR }
+                        }, label = { Text(c.name) })
+                    }
+                }
+            }
+        }
+        if (submitted.isNotBlank()) Unit
+        else if (catId != null) {
+            item(key = "cat-head") {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(catName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(CategorySort.POPULAR to uiStr(R.string.l_st_sort_popular), CategorySort.SPECIALS to uiStr(R.string.l_st_specials),
+                            CategorySort.NEW to uiStr(R.string.l_st_new_releases)).forEach { (s, label) ->
+                            FilterChip(selected = sort == s, onClick = { sort = s }, label = { Text(label) })
+                        }
+                    }
+                }
+            }
+            items(catItems.toList(), key = { "c:" + it.id }) { ResultRow(it) { open = it } }
+            item(key = "cat-more") {
+                when {
+                    catLoading -> CircularProgressIndicator(Modifier.size(28.dp))
+                    catItems.isEmpty() -> Text(uiStr(R.string.l_st_nothing_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    !catEnd -> TextButton(onClick = { catPage++ }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_st_more)) }
+                }
             }
         } else {
             val f = featured
@@ -276,7 +336,14 @@ private fun GameSheet(item: StoreItem, onDismiss: () -> Unit) {
             RemoteImage(details?.header ?: item.image, Modifier.fillMaxWidth().aspectRatio(460f / 215f).clip(RoundedCornerShape(14.dp)))
             Text(item.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             PriceLine(item)
+            val owned = item.store == Store.STEAM &&
+                com.winlator.cmod.store.steam.SteamLibrary.apps.value?.any { it.id.toString() == item.id } == true
+            if (owned) Text(uiStr(R.string.l_st_owned), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            if (details == null && item.description.isNotBlank()) Text(item.description, style = MaterialTheme.typography.bodyMedium)
             details?.let { d ->
+                if (d.screenshots.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(d.screenshots) { url -> RemoteImage(url, Modifier.width(220.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp))) }
+                }
                 if (d.description.isNotBlank()) Text(d.description, style = MaterialTheme.typography.bodyMedium)
                 val meta = listOfNotNull(
                     d.developer.takeIf { it.isNotBlank() }?.let { uiStr(R.string.l_st_developer, it) },
@@ -290,7 +357,7 @@ private fun GameSheet(item: StoreItem, onDismiss: () -> Unit) {
             StoreButton(onClick = {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_st_open_page, item.store.title)) }
-            Text(uiStr(if (item.store == Store.STEAM) R.string.l_sts_install_from_library else R.string.l_st_install_soon), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(uiStr(R.string.l_st_buy_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
