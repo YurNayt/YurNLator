@@ -102,7 +102,8 @@ fun KeepLandscapeChromeHidden(activity: MainActivity?, restoreChromeOnPortrait: 
             ) {
                 toolbar?.visibility = View.VISIBLE
                 bottomNavigation?.visibility = View.VISIBLE
-                drawer?.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+                // The side menu stays closed: every item of it is in the bottom bar / Settings.
+                drawer?.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
             }
         }
     }

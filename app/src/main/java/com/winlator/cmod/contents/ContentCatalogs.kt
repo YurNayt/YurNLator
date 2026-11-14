@@ -92,8 +92,14 @@ object ContentCatalogs {
                 val o = arr.optJSONObject(i) ?: return@mapNotNull null
                 val url = o.optString("remoteUrl")
                 val name = o.optString("verName").trim()
+                val type = o.optString("type")
                 if (url.isBlank() || name.isBlank()) null
-                else Entry(o.optString("type"), name, o.optString("verCode", "0").toIntOrNull() ?: 0, url, source.name)
+                // Bionic builds (Android's libc) don't run on YurNLator's glibc: all of Bannerlator's
+                // Wine / Proton (GE-Proton, Proton-CachyOS, DroidDeck-Proton, its Proton 10 / 11
+                // layers) and its "-Bionic" Box64. Windows-side components (DXVK, VKD3D, FEX) stay.
+                else if (com.winlator.cmod.core.WineBuild.isBionicEntry(url, name)) null
+                else if (source.name == "Bannerlator" && (type.equals("Wine", true) || type.equals("Proton", true))) null
+                else Entry(type, name, o.optString("verCode", "0").toIntOrNull() ?: 0, url, source.name)
             }
         }.getOrDefault(emptyList())
         // The FEX nightly repo keeps only its last few releases while its catalog still lists
