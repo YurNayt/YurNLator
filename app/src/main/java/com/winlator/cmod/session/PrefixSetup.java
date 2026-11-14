@@ -101,6 +101,11 @@ public final class PrefixSetup {
 
         int inputType = launch.getInputType();
         boolean dinput = (inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT;
+        if (!dinput && launch.isUnityGame()) {
+            // Unity looks for gamepads through DirectInput; with the pad hidden there it sees none.
+            Log.i("PrefixSetup", "Unity game: DirectInput gamepads shown");
+            dinput = true;
+        }
         WineUtils.setJoystickRegistryKeys(container, dinput, launch.getExclusiveXInput());
 
         String startup = launch.getStartupSelection();

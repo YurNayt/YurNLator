@@ -24,6 +24,12 @@ data class LaunchConfig(
     val inputType: Int,
     val exclusiveXInput: Boolean,
     val xinputDisabled: Boolean,
+    /**
+     * The game is built on Unity. Unity finds gamepads through DirectInput, and Wine hides the
+     * XInput pad from DirectInput, so with "XInput only" such games see no gamepad at all. For them
+     * the DirectInput pad is shown too, unless the shortcut says unityDInput=0.
+     */
+    val isUnityGame: Boolean,
     val cpuList: String,
     /** The shortcut sets its own CPU list: 32-bit processes use it too. */
     val cpuListFromShortcut: Boolean,
@@ -51,6 +57,16 @@ data class LaunchConfig(
 
     companion object {
         @JvmStatic
+        /** UnityPlayer.dll or a "<exe>_Data" folder next to the game's exe. */
+        @JvmStatic
+        fun isUnity(exePath: String?): Boolean = runCatching {
+            if (exePath.isNullOrBlank()) return false
+            val exe = java.io.File(exePath)
+            val dir = exe.parentFile ?: return false
+            java.io.File(dir, "UnityPlayer.dll").isFile ||
+                java.io.File(dir, exe.nameWithoutExtension + "_Data").isDirectory
+        }.getOrDefault(false)
+
         fun resolve(container: Container, shortcut: Shortcut?): LaunchConfig {
             fun s(key: String, fallback: String): String = shortcut?.getExtra(key, fallback) ?: fallback
             /** Shortcut value only when set (empty = use the container). */
@@ -77,6 +93,7 @@ data class LaunchConfig(
                 lcAll = s("lc_all", container.getLC_ALL()),
                 inputType = own("inputType")?.toIntOrNull() ?: container.getInputType(),
                 exclusiveXInput = own("exclusiveXInput")?.let { it == "1" } ?: container.isExclusiveXInput(),
+                isUnityGame = shortcut?.getExtra("unityDInput") != "0" && isUnity(shortcut?.path),
                 xinputDisabled = s("disableXinput", "false").let { it == "1" || it.equals("true", ignoreCase = true) },
                 cpuList = cpus,
                 cpuListFromShortcut = shortcut != null,
