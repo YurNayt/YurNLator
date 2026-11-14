@@ -1126,4 +1126,7 @@
     <string name="l_lbl_xclipse">Xclipse (RDNA2, WinXclipse)</string>
     <string name="l_lbl_july13">July 13 (пара Wrapper-Default)</string>
     <string name="l_lbl_gseries">Mali G (тестовый, WinMali)</string>
+    <string name="l_hint_game_lang">Ставится при каждом запуске: в конфиге эмулятора Steam рядом с игрой, в ключе реестра Steam и, для игр на Unreal, через -culture</string>
+    <string name="l_lbl_game_language">Язык игры</string>
+    <string name="l_lbl_don_t_change">Не менять</string>
 </resources>

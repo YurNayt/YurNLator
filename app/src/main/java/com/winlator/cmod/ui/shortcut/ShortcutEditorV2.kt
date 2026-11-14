@@ -264,6 +264,7 @@ private class ShortcutEditorStateV2(val shortcut: Shortcut) {
     var sharpnessLevel by mutableStateOf(shortcut.getExtra("sharpnessLevel", "100"))
     var sharpnessDenoise by mutableStateOf(shortcut.getExtra("sharpnessDenoise", "100"))
     var lcAll by mutableStateOf(shortcut.getExtra("lc_all", container.getLC_ALL()))
+    var gameLang by mutableStateOf(shortcut.getExtra(com.winlator.cmod.session.GameLanguage.KEY))
     var midiSoundFont by mutableStateOf(shortcut.getExtra("midiSoundFont", container.getMIDISoundFont()))
     var execArgs by mutableStateOf(shortcut.getExtra("execArgs"))
     var autoMesaGlVersionOverride by mutableStateOf(
@@ -764,6 +765,11 @@ private fun ShortcutCategoryV2(
                 SettingChoice("Locale (LC_ALL)", locale, localeEntries) {
                     s.lcAll = normalizeLocaleValue(it)
                     s.extra("lc_all", s.lcAll.ifBlank { null })
+                }
+                SettingsDivider()
+                SettingMappedChoice("Game language",
+                    s.gameLang, linkedMapOf("" to "Don't change") + com.winlator.cmod.session.GameLanguage.LANGUAGES.mapValues { it.value.third }) {
+                    s.gameLang = it; s.extra(com.winlator.cmod.session.GameLanguage.KEY, it.ifEmpty { null })
                 }
                 SettingsDivider()
                 val sound = s.midiSoundFont.ifBlank { "Disabled" }

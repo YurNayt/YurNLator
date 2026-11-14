@@ -26,6 +26,7 @@ internal object SettingHints {
         "Graphics Driver" to R.string.l_hint_freedreno,
         "Driver Version" to R.string.l_hint_vk_driver,
         "Gamepad API" to R.string.l_hint_pad_api,
+        "Game language" to R.string.l_hint_game_lang,
     )
 
     /** Shown with their English name when the app is in another language. */

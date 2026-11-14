@@ -58,16 +58,20 @@ data class LaunchConfig(
     val wayland: Boolean get() = displayBackend == "wayland"
 
     companion object {
-        /** UnityPlayer.dll or a "<exe>_Data" folder next to the game's exe. */
+        /** The game's exe from shortcut.path (the Exec tail: "\"/storage/…/Game.exe\" args", or Z:\… for the root). */
         @JvmStatic
-        fun isUnity(exePath: String?): Boolean = runCatching {
-            // shortcut.path is the Exec tail: "\"/storage/…/Game.exe\" args", or Z:\… for the root.
+        fun exeFile(exePath: String?): java.io.File? {
             var p = exePath?.trim().orEmpty()
             if (p.startsWith("\"")) p = p.substring(1).substringBefore('"')
             else if (p.contains(".exe ", ignoreCase = true)) p = p.substring(0, p.indexOf(".exe ", ignoreCase = true) + 4)
             if (p.startsWith("Z:", ignoreCase = true)) p = p.substring(2).replace('\\', '/')
-            if (p.isBlank()) return false
-            val exe = java.io.File(p)
+            return if (p.startsWith("/")) java.io.File(p) else null
+        }
+
+        /** UnityPlayer.dll or a "<exe>_Data" folder next to the game's exe. */
+        @JvmStatic
+        fun isUnity(exePath: String?): Boolean = runCatching {
+            val exe = exeFile(exePath) ?: return false
             val dir = exe.parentFile ?: return false
             java.io.File(dir, "UnityPlayer.dll").isFile ||
                 java.io.File(dir, exe.nameWithoutExtension + "_Data").isDirectory
@@ -97,7 +101,7 @@ data class LaunchConfig(
                 dxwrapper = s("dxwrapper", container.getDXWrapper()),
                 dxwrapperConfig = s("dxwrapperConfig", container.getDXWrapperConfig()),
                 screenSize = s("screenSize", container.getScreenSize()),
-                lcAll = s("lc_all", container.getLC_ALL()),
+                lcAll = s("lc_all", container.getLC_ALL()).ifBlank { GameLanguage.locale(shortcut) },
                 inputType = own("inputType")?.toIntOrNull() ?: container.getInputType(),
                 exclusiveXInput = own("exclusiveXInput")?.let { it == "1" } ?: container.isExclusiveXInput(),
                 isUnityGame = shortcut?.getExtra("unityDInput") != "0" && isUnity(shortcut?.path),

@@ -1126,4 +1126,7 @@
     <string name="l_lbl_xclipse">xclipse</string>
     <string name="l_lbl_july13">july13</string>
     <string name="l_lbl_gseries">gseries</string>
+    <string name="l_hint_game_lang">Sets it at each launch in the Steam emulator\'s config next to the game, the Steam registry key and, for Unreal games, -culture</string>
+    <string name="l_lbl_game_language">Game language</string>
+    <string name="l_lbl_don_t_change">Don\'t change</string>
 </resources>

@@ -212,6 +212,8 @@ object L10nDict {
         "xclipse" to R.string.l_lbl_xclipse,
         "july13" to R.string.l_lbl_july13,
         "gseries" to R.string.l_lbl_gseries,
+        "Game language" to R.string.l_lbl_game_language,
+        "Don't change" to R.string.l_lbl_don_t_change,
     )
 
     /** [en] in the app language (unchanged when there is no translation). */
