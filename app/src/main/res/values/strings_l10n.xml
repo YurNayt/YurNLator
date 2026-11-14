@@ -996,4 +996,19 @@
     <string name="l_frq_bench_need_root">The clock search needs root for this app (each APK variant, standard or AnTuTu, is granted root separately).</string>
     <string name="l_bench_cpu_by_cycles">CPU %1$s GHz by cycles (cpufreq shows %2$s GHz)</string>
     <string name="l_xs_bionic_wine">This Wine / Proton is built for Android\'s libc (bionic, for Bannerlator) and can\'t run in YurNLator. Pick another one in the container settings.</string>
+    <string name="l_sv_title">Saves</string>
+    <string name="l_sv_r_session">after playing</string>
+    <string name="l_sv_r_proton">before a Proton switch</string>
+    <string name="l_sv_r_remove">before removing</string>
+    <string name="l_sv_r_restore">before a restore</string>
+    <string name="l_sv_r_manual">by hand</string>
+    <string name="l_sv_backup_now">Back up now</string>
+    <string name="l_sv_saved">Saves copied to %1$s</string>
+    <string name="l_sv_nothing">Nothing new to back up.</string>
+    <string name="l_sv_none">No backups yet. They are made after every game, before a Proton switch and before removing the container, in %1$s (drive D: in Windows).</string>
+    <string name="l_sv_restore_title">Restore saves?</string>
+    <string name="l_sv_restore_msg">The saves from %1$s go back into the container. The current ones are backed up first.</string>
+    <string name="l_sv_restore">Restore</string>
+    <string name="l_sv_restored">Restored files: %1$d</string>
+    <string name="l_sv_restore_failed">Could not restore the saves.</string>
 </resources>

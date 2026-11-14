@@ -136,6 +136,9 @@ final class GameLifecycle {
                 android.util.Log.w("GameLifecycle", "stopping the session", e);
             }
             com.winlator.cmod.session.WineShutdown.terminateAll(() -> {
+                // Wine is stopped, its files are written: copy the saves to Download/YurNLator/Saves.
+                if (a.container != null)
+                    com.winlator.cmod.core.SaveBackup.backupAsync(a.container, com.winlator.cmod.core.SaveBackup.Reason.SESSION);
                 a.preloaderDialog.closeOnUiThread();
                 a.runOnUiThread(a::finish);
             });

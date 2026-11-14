@@ -161,6 +161,56 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
             )
             .setPositiveButton(android.R.string.ok, null)
             .setNeutralButton("Repair Wine files") { _, _ -> repairWine(container) }
+            .setNegativeButton(uiStr(R.string.l_sv_title)) { _, _ -> showSaves(container) }
+            .show()
+    }
+
+    /** The container's save backups (Download/YurNLator/Saves): back up now, or restore one. */
+    private fun showSaves(container: com.winlator.cmod.container.Container) {
+        val ctx = context ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            val backups = withContext(Dispatchers.IO) { com.winlator.cmod.core.SaveBackup.list(container) }
+            val fmt = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm", java.util.Locale.getDefault())
+            fun reasonLabel(r: String) = when (r) {
+                "session" -> uiStr(R.string.l_sv_r_session)
+                "proton" -> uiStr(R.string.l_sv_r_proton)
+                "remove" -> uiStr(R.string.l_sv_r_remove)
+                "before-restore" -> uiStr(R.string.l_sv_r_restore)
+                else -> uiStr(R.string.l_sv_r_manual)
+            }
+            val labels = backups.map { b ->
+                "${fmt.format(b.date)} · ${reasonLabel(b.reason)} · ${String.format(java.util.Locale.US, "%.1f MB", b.size / 1048576.0)}"
+            }.toTypedArray()
+            val builder = AlertDialog.Builder(ctx)
+                .setTitle(uiStr(R.string.l_sv_title) + " · " + container.name)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(uiStr(R.string.l_sv_backup_now)) { _, _ ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val f = withContext(Dispatchers.IO) {
+                            com.winlator.cmod.core.SaveBackup.backup(container, com.winlator.cmod.core.SaveBackup.Reason.MANUAL)
+                        }
+                        Toast.makeText(ctx, if (f != null) uiStr(R.string.l_sv_saved, f.parentFile?.path.orEmpty())
+                            else uiStr(R.string.l_sv_nothing), Toast.LENGTH_LONG).show()
+                    }
+                }
+            if (backups.isEmpty()) builder.setMessage(uiStr(R.string.l_sv_none, com.winlator.cmod.core.SaveBackup.dirFor(container).path))
+            else builder.setItems(labels) { _, i -> confirmRestore(container, backups[i], labels[i]) }
+            builder.show()
+        }
+    }
+
+    private fun confirmRestore(container: com.winlator.cmod.container.Container, backup: com.winlator.cmod.core.SaveBackup.Backup, label: String) {
+        val ctx = context ?: return
+        AlertDialog.Builder(ctx)
+            .setTitle(uiStr(R.string.l_sv_restore_title))
+            .setMessage(uiStr(R.string.l_sv_restore_msg, label))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(uiStr(R.string.l_sv_restore)) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val n = withContext(Dispatchers.IO) { runCatching { com.winlator.cmod.core.SaveBackup.restore(container, backup) }.getOrDefault(-1) }
+                    Toast.makeText(ctx, if (n >= 0) uiStr(R.string.l_sv_restored, n) else uiStr(R.string.l_sv_restore_failed), Toast.LENGTH_LONG).show()
+                }
+            }
             .show()
     }
 

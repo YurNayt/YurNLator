@@ -221,6 +221,8 @@ public class ContainerManager {
 
 
     private void removeContainer(Container container) {
+        // Its saves stay in Download/YurNLator/Saves.
+        com.winlator.cmod.core.SaveBackup.backup(container, com.winlator.cmod.core.SaveBackup.Reason.REMOVE);
         if (FileUtils.delete(container.getRootDir())) {
             containers.remove(container);
             com.winlator.cmod.components.ComponentInstallRecords.reset(context, container.id);
@@ -330,6 +332,8 @@ public class ContainerManager {
     public boolean switchWineVersion(Container container, String newWineVersion, ContentsManager contentsManager) {
         WineInfo wineInfo = WineInfo.fromIdentifier(context, contentsManager, newWineVersion);
         if (wineInfo.path == null || wineInfo.path.isEmpty()) return false;
+        // The saves first, outside the container (Download/YurNLator/Saves).
+        com.winlator.cmod.core.SaveBackup.backup(container, com.winlator.cmod.core.SaveBackup.Reason.PROTON);
         File containerDir = container.getRootDir();
         File wineDir = new File(containerDir, ".wine");
         for (String reg : new String[]{"system.reg", "user.reg", "userdef.reg"}) {

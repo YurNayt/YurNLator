@@ -996,4 +996,19 @@
     <string name="l_frq_bench_need_root">Для подбора частот нужен root у этого приложения (каждый вариант APK, обычный или AnTuTu, получает root отдельно).</string>
     <string name="l_bench_cpu_by_cycles">ЦПУ %1$s ГГц по циклам (cpufreq показывает %2$s ГГц)</string>
     <string name="l_xs_bionic_wine">Этот Wine / Proton собран под bionic (для Bannerlator) и не запускается в YurNLator. Выберите другой в настройках контейнера.</string>
+    <string name="l_sv_title">Сохранения</string>
+    <string name="l_sv_r_session">после игры</string>
+    <string name="l_sv_r_proton">перед сменой Proton</string>
+    <string name="l_sv_r_remove">перед удалением</string>
+    <string name="l_sv_r_restore">перед восстановлением</string>
+    <string name="l_sv_r_manual">вручную</string>
+    <string name="l_sv_backup_now">Сохранить сейчас</string>
+    <string name="l_sv_saved">Сохранения скопированы в %1$s</string>
+    <string name="l_sv_nothing">Новых сохранений нет.</string>
+    <string name="l_sv_none">Копий пока нет. Они делаются после каждой игры, перед сменой Proton и перед удалением контейнера, в %1$s (в Windows это диск D:).</string>
+    <string name="l_sv_restore_title">Восстановить сохранения?</string>
+    <string name="l_sv_restore_msg">Сохранения из копии %1$s вернутся в контейнер. Текущие сначала сохранятся отдельной копией.</string>
+    <string name="l_sv_restore">Восстановить</string>
+    <string name="l_sv_restored">Восстановлено файлов: %1$d</string>
+    <string name="l_sv_restore_failed">Не удалось восстановить сохранения.</string>
 </resources>
