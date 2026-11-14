@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.Icon
@@ -146,6 +147,9 @@ fun LandscapeMainNavigation(
         Spacer(Modifier.weight(1f))
         if (actionIcon != null && onAction != null) {
             Destination(actionIcon, actionDescription, false, onAction)
+        }
+        Destination(Icons.Outlined.ShoppingBag, uiStr(R.string.l_st_stores), selected == R.id.main_menu_stores) {
+            activity?.navigateToMainDestination(R.id.main_menu_stores)
         }
         Destination(Icons.Outlined.Home, uiStr(R.string.l_lib_library), selected == R.id.main_menu_shortcuts) {
             activity?.navigateToMainDestination(R.id.main_menu_shortcuts)

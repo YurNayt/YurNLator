@@ -158,8 +158,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (syncingBottomNavigation) return true;
             int target;
             if (item.getItemId() == R.id.bottom_nav_library) target = R.id.main_menu_shortcuts;
+            else if (item.getItemId() == R.id.bottom_nav_stores) target = R.id.main_menu_stores;
             else if (item.getItemId() == R.id.bottom_nav_containers) target = R.id.main_menu_containers;
-            else if (item.getItemId() == R.id.bottom_nav_controls) target = R.id.main_menu_input_controls;
             else if (item.getItemId() == R.id.bottom_nav_settings) target = R.id.main_menu_settings;
             else if (item.getItemId() == R.id.bottom_nav_bench) target = R.id.main_menu_bench;
             else return false;
@@ -433,6 +433,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             case R.id.main_menu_bench:
                 show(new com.winlator.cmod.bench.BenchFragment(), false);
                 break;
+            case R.id.main_menu_stores:
+                show(new com.winlator.cmod.store.StoresFragment(), false);
+                break;
             case R.id.main_menu_about:
                 showAboutDialog();
                 break;
@@ -445,8 +448,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (bottomNavigation == null) return;
         int bottomId = 0;
         if (menuItemId == R.id.main_menu_shortcuts) bottomId = R.id.bottom_nav_library;
+        else if (menuItemId == R.id.main_menu_stores) bottomId = R.id.bottom_nav_stores;
         else if (menuItemId == R.id.main_menu_containers) bottomId = R.id.bottom_nav_containers;
-        else if (menuItemId == R.id.main_menu_input_controls) bottomId = R.id.bottom_nav_controls;
         else if (menuItemId == R.id.main_menu_settings) bottomId = R.id.bottom_nav_settings;
         else if (menuItemId == R.id.main_menu_bench) bottomId = R.id.bottom_nav_bench;
         if (bottomId != 0 && bottomNavigation.getSelectedItemId() != bottomId) {

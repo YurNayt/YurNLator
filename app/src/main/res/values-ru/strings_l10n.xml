@@ -1011,4 +1011,24 @@
     <string name="l_sv_restore">Восстановить</string>
     <string name="l_sv_restored">Восстановлено файлов: %1$d</string>
     <string name="l_sv_restore_failed">Не удалось восстановить сохранения.</string>
+    <string name="l_st_stores">Магазины</string>
+    <string name="l_st_pick_hint">Поиск игр и библиотека. Вход в аккаунт, установка и удаление игр появятся в следующих обновлениях.</string>
+    <string name="l_st_steam_desc">Магазин, поиск и твоя библиотека</string>
+    <string name="l_st_epic_desc">Магазин, бесплатные игры недели и твоя библиотека</string>
+    <string name="l_st_specials">Скидки</string>
+    <string name="l_st_top_sellers">Лидеры продаж</string>
+    <string name="l_st_new_releases">Новинки</string>
+    <string name="l_st_free_now">Бесплатно сейчас</string>
+    <string name="l_st_free">Бесплатно</string>
+    <string name="l_st_shop">Магазин</string>
+    <string name="l_st_library">Библиотека</string>
+    <string name="l_st_library_soon">Вход в %1$s, список твоих игр и их установка в контейнер или удаление появятся в следующем обновлении.</string>
+    <string name="l_st_search">Поиск в %1$s</string>
+    <string name="l_st_nothing_found">Ничего не найдено.</string>
+    <string name="l_st_offline">Не удалось загрузить магазин: нет соединения?</string>
+    <string name="l_st_developer">Разработчик: %1$s</string>
+    <string name="l_st_release">Выход: %1$s</string>
+    <string name="l_st_not_windows">Нет версии для Windows: в контейнере не запустится.</string>
+    <string name="l_st_open_page">Открыть в %1$s</string>
+    <string name="l_st_install_soon">Установка в контейнер появится вместе с библиотекой (следующее обновление).</string>
 </resources>

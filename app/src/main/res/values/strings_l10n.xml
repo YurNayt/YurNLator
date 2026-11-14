@@ -1011,4 +1011,24 @@
     <string name="l_sv_restore">Restore</string>
     <string name="l_sv_restored">Restored files: %1$d</string>
     <string name="l_sv_restore_failed">Could not restore the saves.</string>
+    <string name="l_st_stores">Stores</string>
+    <string name="l_st_pick_hint">Find games and see your library. Signing in, installing and removing games come in the next updates.</string>
+    <string name="l_st_steam_desc">Store, search and your library</string>
+    <string name="l_st_epic_desc">Store, free games of the week and your library</string>
+    <string name="l_st_specials">Specials</string>
+    <string name="l_st_top_sellers">Top sellers</string>
+    <string name="l_st_new_releases">New releases</string>
+    <string name="l_st_free_now">Free now</string>
+    <string name="l_st_free">Free</string>
+    <string name="l_st_shop">Store</string>
+    <string name="l_st_library">Library</string>
+    <string name="l_st_library_soon">Signing in to %1$s, your games and installing / removing them into a container come in the next update.</string>
+    <string name="l_st_search">Search %1$s</string>
+    <string name="l_st_nothing_found">Nothing found.</string>
+    <string name="l_st_offline">Couldn\'t load the store: no connection?</string>
+    <string name="l_st_developer">Developer: %1$s</string>
+    <string name="l_st_release">Released: %1$s</string>
+    <string name="l_st_not_windows">No Windows version: it won\'t run in a container.</string>
+    <string name="l_st_open_page">Open in %1$s</string>
+    <string name="l_st_install_soon">Installing into a container comes with the library (next update).</string>
 </resources>
