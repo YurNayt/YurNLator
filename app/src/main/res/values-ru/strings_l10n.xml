@@ -1140,4 +1140,6 @@
     <string name="l_rm_folder_too">Также удалить папку игры с устройства:\n%1$s</string>
     <string name="l_rm_removing">Удаляю игру…</string>
     <string name="l_rm_removed">Игра удалена с устройства</string>
+    <string name="l_ste_size">Размер: %1$s (загрузка %2$s)</string>
+    <string name="l_ste_no_space">Не хватает свободного места на устройстве</string>
 </resources>

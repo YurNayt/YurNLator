@@ -9,6 +9,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -139,7 +141,7 @@ internal fun LibraryRoot(
                     onGridViewChanged = cb::onGridViewChanged
                 )
                 Spacer(Modifier.height(7.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     libraryFilters(items).forEach { option ->
                         LibraryFilterChip(filterLabel(option), option == filter) { filterName = option.name }
                     }
@@ -163,7 +165,7 @@ internal fun LibraryRoot(
             )
             Spacer(Modifier.height(7.dp))
         }
-        Row(Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(vertical = 12.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             libraryFilters(items).forEach { option ->
                 LibraryFilterChip(filterLabel(option), option == filter) { filterName = option.name }
             }
@@ -323,7 +325,7 @@ private fun LibraryFilterChip(label: String, selected: Boolean, click: () -> Uni
         shape = RoundedCornerShape(10.dp),
         color = if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) { Text(label, Modifier.padding(horizontal = 15.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge) }
+    ) { Text(label, Modifier.padding(horizontal = 15.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false) }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

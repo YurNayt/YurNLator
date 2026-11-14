@@ -265,6 +265,12 @@
         <item name="android:layout_marginRight">2dp</item>
     </style>
 
+    <!-- Bottom bar labels: one small size whether selected or not (Material enlarges the selected one). -->
+    <style name="BottomNavLabel" parent="TextAppearance.AppCompat.Caption">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+
     <!-- Square tool buttons with rounded corners (log window). -->
     <style name="ListMenuButton.Square" parent="ListMenuButton">
         <item name="android:layout_width">40dp</item>

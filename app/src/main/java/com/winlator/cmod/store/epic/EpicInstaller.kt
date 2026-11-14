@@ -120,6 +120,53 @@ object EpicInstaller {
 
     private class Cdn(val base: String, val dir: String, val query: String)
 
+    /** The game's current build: its manifest and the servers its chunks come from. */
+    private fun latestBuild(token: String, g: EpicGame): Pair<EpicManifest, List<Cdn>> {
+        val api = get("$MANIFEST_API/${g.namespace}/catalogItem/${g.catalogItemId}/app/${g.appName}/label/Live", token)
+            ?: throw IllegalStateException("Epic: no build info")
+        val element = JSONObject(String(api)).getJSONArray("elements").getJSONObject(0)
+        val manifests = element.getJSONArray("manifests")
+        val cdns = ArrayList<Cdn>()
+        var manifestName = ""
+        for (i in 0 until manifests.length()) {
+            val m = manifests.getJSONObject(i)
+            val uri = m.optString("uri")
+            val at = uri.indexOf("/Builds")
+            if (at < 0 || !uri.startsWith("http") || uri.contains("cloudflare.epicgamescdn.com")) continue
+            val path = uri.substring(at).substringBefore('?')
+            manifestName = path.substringAfterLast('/')
+            val q = m.optJSONArray("queryParams")?.let { qp ->
+                (0 until qp.length()).map { qp.getJSONObject(it) }.filter { it.optString("name").isNotEmpty() }
+                    .joinToString("&") { it.optString("name") + "=" + it.optString("value") }
+            }.orEmpty()
+            cdns += Cdn(uri.substring(0, at), path.substringBeforeLast('/'), if (q.isEmpty()) "" else "?$q")
+        }
+        if (cdns.isEmpty()) throw IllegalStateException("Epic: no download servers")
+        val manifestBytes = cdns.firstNotNullOfOrNull { get(it.base + it.dir + "/" + manifestName + it.query, null) }
+            ?: throw IllegalStateException("Epic: manifest unavailable")
+        return EpicManifest.parse(manifestBytes) to cdns
+    }
+
+    /** (size on disk, download size) of the game's current build; cached a day. Blocking. */
+    fun sizes(context: Context, g: EpicGame): Pair<Long, Long>? {
+        val cache = File(context.filesDir, "epic/sizes.json")
+        val all = runCatching { JSONObject(cache.readText()) }.getOrDefault(JSONObject())
+        all.optJSONObject(g.appName)?.let { o ->
+            if (System.currentTimeMillis() - o.optLong("t") < 24L * 3600 * 1000) return o.optLong("disk") to o.optLong("dl")
+        }
+        return runCatching {
+            val token = EpicAccount.token(context) ?: return null
+            val (m, _) = latestBuild(token, g)
+            val disk = m.installSize
+            val dl = m.chunks.values.sumOf { it.fileSize }.takeIf { it > 0 } ?: disk
+            synchronized(this) {
+                all.put(g.appName, JSONObject().put("t", System.currentTimeMillis()).put("disk", disk).put("dl", dl))
+                cache.parentFile?.mkdirs(); cache.writeText(all.toString())
+            }
+            disk to dl
+        }.onFailure { Log.w(TAG, "${g.appName}: size", it) }.getOrNull()
+    }
+
     private fun run(context: Context, g: EpicGame) {
         val app = g.appName
         running += app
@@ -127,30 +174,7 @@ object EpicInstaller {
         show(app, j)
         try {
             val token = EpicAccount.token(context) ?: throw IllegalStateException("Epic: sign in again")
-            // Which build, and where its manifest lies.
-            val api = get("$MANIFEST_API/${g.namespace}/catalogItem/${g.catalogItemId}/app/${g.appName}/label/Live", token)
-                ?: throw IllegalStateException("Epic: no build info")
-            val element = JSONObject(String(api)).getJSONArray("elements").getJSONObject(0)
-            val manifests = element.getJSONArray("manifests")
-            val cdns = ArrayList<Cdn>()
-            var manifestName = ""
-            for (i in 0 until manifests.length()) {
-                val m = manifests.getJSONObject(i)
-                val uri = m.optString("uri")
-                val at = uri.indexOf("/Builds")
-                if (at < 0 || !uri.startsWith("http") || uri.contains("cloudflare.epicgamescdn.com")) continue
-                val path = uri.substring(at).substringBefore('?')
-                manifestName = path.substringAfterLast('/')
-                val q = m.optJSONArray("queryParams")?.let { qp ->
-                    (0 until qp.length()).map { qp.getJSONObject(it) }.filter { it.optString("name").isNotEmpty() }
-                        .joinToString("&") { it.optString("name") + "=" + it.optString("value") }
-                }.orEmpty()
-                cdns += Cdn(uri.substring(0, at), path.substringBeforeLast('/'), if (q.isEmpty()) "" else "?$q")
-            }
-            if (cdns.isEmpty()) throw IllegalStateException("Epic: no download servers")
-            val manifestBytes = cdns.firstNotNullOfOrNull { get(it.base + it.dir + "/" + manifestName + it.query, null) }
-                ?: throw IllegalStateException("Epic: manifest unavailable")
-            val manifest = EpicManifest.parse(manifestBytes)
+            val (manifest, cdns) = latestBuild(token, g)
             if (manifest.encrypted) throw IllegalStateException("Epic: this game's files are encrypted, not supported")
 
             val dir = dirFor(g).apply { mkdirs() }

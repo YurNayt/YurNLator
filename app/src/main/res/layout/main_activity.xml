@@ -46,6 +46,8 @@
             app:itemRippleColor="#22FFFFFF"
             app:itemTextColor="@color/ui_bottom_navigation_item"
             app:labelVisibilityMode="labeled"
+            app:itemTextAppearanceActive="@style/BottomNavLabel"
+            app:itemTextAppearanceInactive="@style/BottomNavLabel"
             app:menu="@menu/enhanced_bottom_navigation" />
     </LinearLayout>
 

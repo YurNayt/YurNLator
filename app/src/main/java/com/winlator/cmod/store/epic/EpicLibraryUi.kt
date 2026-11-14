@@ -271,6 +271,14 @@ private fun GameSheet(g: EpicGame, onDismiss: () -> Unit) {
                 }
                 else -> {
                     if (job != null) JobLine(job)
+                    val sizes by androidx.compose.runtime.produceState<Pair<Long, Long>?>(null, g.appName) {
+                        value = withContext(Dispatchers.IO) { EpicInstaller.sizes(context, g) }
+                    }
+                    sizes?.let { (disk, dl) ->
+                        Text(uiStr(R.string.l_ste_size, size(disk), size(dl)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                        if (free in 0 until disk) Text(uiStr(R.string.l_ste_no_space), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error)
+                    }
                     if (free >= 0) Text(uiStr(R.string.l_sts_free_space, size(free)), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     StoreButton(positive = true, onClick = { EpicInstaller.install(context, g) }, modifier = Modifier.fillMaxWidth()) {

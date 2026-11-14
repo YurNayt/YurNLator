@@ -1140,4 +1140,6 @@
     <string name="l_rm_folder_too">Also delete the game folder from the device:\n%1$s</string>
     <string name="l_rm_removing">Removing the game…</string>
     <string name="l_rm_removed">Game removed from the device</string>
+    <string name="l_ste_size">Size: %1$s (download %2$s)</string>
+    <string name="l_ste_no_space">Not enough free space on the device</string>
 </resources>
