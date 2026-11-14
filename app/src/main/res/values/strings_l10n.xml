@@ -1088,4 +1088,5 @@
     <string name="l_sts_goldberg_none">This game doesn\'t use Steam\'s API, so the emulator isn\'t needed.</string>
     <string name="l_sts_goldberg_dl">Downloading the emulator… %1$d%%</string>
     <string name="l_sts_goldberg_failed">Couldn\'t switch the emulator</string>
+    <string name="l_sts_reconnecting">Connection lost, continuing…</string>
 </resources>

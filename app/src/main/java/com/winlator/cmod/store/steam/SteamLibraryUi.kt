@@ -36,7 +36,6 @@ import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -45,7 +44,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -78,6 +76,9 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.winlator.cmod.R
 import com.winlator.cmod.core.StringUtils
 import com.winlator.cmod.store.RemoteImage
+import com.winlator.cmod.store.StoreButton
+import com.winlator.cmod.store.StoreSecondaryButton
+import com.winlator.cmod.store.LocalStoreStyle
 import com.winlator.cmod.store.StoreNet
 import com.winlator.cmod.ui.components.KeepDialogFullscreen
 import com.winlator.cmod.ui.uiStr
@@ -146,7 +147,7 @@ private fun SignIn(auth: SteamSession.Auth) {
                     Image(bmp.asImageBitmap(), null, Modifier.size(240.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(8.dp))
                 }
                 Text(uiStr(R.string.l_sts_qr_hint), style = MaterialTheme.typography.bodyMedium)
-                OutlinedButton(onClick = {
+                StoreSecondaryButton(onClick = {
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(auth.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                 }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_open_in_app)) }
                 TextButton(onClick = { SteamSession.cancelAuth() }) { Text(uiStr(R.string.l_sts_cancel)) }
@@ -157,7 +158,7 @@ private fun SignIn(auth: SteamSession.Auth) {
                 if (auth.wrong) Text(uiStr(R.string.l_sts_code_wrong), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(code, { code = it.uppercase() }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { SteamSession.submitCode(code); code = "" }, enabled = code.length >= 4) { Text(uiStr(R.string.l_sts_send)) }
+                    StoreButton(onClick = { SteamSession.submitCode(code); code = "" }, enabled = code.length >= 4) { Text(uiStr(R.string.l_sts_send)) }
                     TextButton(onClick = { SteamSession.cancelAuth() }) { Text(uiStr(R.string.l_sts_cancel)) }
                 }
             }
@@ -173,14 +174,14 @@ private fun SignIn(auth: SteamSession.Auth) {
                 if (auth is SteamSession.Auth.Failed) Text(uiStr(R.string.l_sts_failed, auth.message), color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall)
                 if (mode == 0) {
-                    Button(onClick = { SteamSession.startQr(context) }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_show_qr)) }
+                    StoreButton(onClick = { SteamSession.startQr(context) }, modifier = Modifier.fillMaxWidth(), positive = true) { Text(uiStr(R.string.l_sts_show_qr)) }
                 } else {
                     OutlinedTextField(user, { user = it.trim() }, label = { Text(uiStr(R.string.l_sts_account)) }, singleLine = true,
                         modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(pass, { pass = it }, label = { Text(uiStr(R.string.l_sts_password_field)) }, singleLine = true,
                         visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier.fillMaxWidth())
-                    Button(onClick = { SteamSession.startPassword(context, user, pass); pass = "" }, enabled = user.isNotBlank() && pass.isNotEmpty(),
+                    StoreButton(onClick = { SteamSession.startPassword(context, user, pass); pass = "" }, enabled = user.isNotBlank() && pass.isNotEmpty(), positive = true,
                         modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_sign_in)) }
                 }
             }
@@ -285,6 +286,11 @@ private fun JobLine(j: SteamInstaller.Job) {
                 if (j.total > 0) LinearProgressIndicator(progress = { j.fraction }, modifier = Modifier.fillMaxWidth())
                 Text(uiStr(R.string.l_sts_paused), style = MaterialTheme.typography.bodySmall)
             }
+            SteamInstaller.Phase.RECONNECTING -> {
+                if (j.total > 0) LinearProgressIndicator(progress = { j.fraction }, modifier = Modifier.fillMaxWidth())
+                else LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text(uiStr(R.string.l_sts_reconnecting), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             SteamInstaller.Phase.FAILED -> Text(uiStr(R.string.l_sts_failed_dl, j.error ?: ""), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
             SteamInstaller.Phase.DONE -> Text(uiStr(R.string.l_sts_installed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
@@ -294,9 +300,10 @@ private fun JobLine(j: SteamInstaller.Job) {
 
 @Composable
 private fun GameRow(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstaller.Installed?, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
+    val card = LocalStoreStyle.current?.cardShape ?: RoundedCornerShape(10.dp)
+    Row(Modifier.fillMaxWidth().clip(card).clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        RemoteImage(a.header, Modifier.width(128.dp).aspectRatio(460f / 215f).clip(RoundedCornerShape(10.dp)))
+        RemoteImage(a.header, Modifier.width(128.dp).aspectRatio(460f / 215f).clip(card))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(a.name, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
@@ -321,7 +328,7 @@ private fun GameSheet(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstalle
         KeepDialogFullscreen()
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            RemoteImage(a.header, Modifier.fillMaxWidth().aspectRatio(460f / 215f).clip(RoundedCornerShape(14.dp)))
+            RemoteImage(a.header, Modifier.fillMaxWidth().aspectRatio(460f / 215f).clip(LocalStoreStyle.current?.cardShape ?: RoundedCornerShape(14.dp)))
             Text(a.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             if (a.sizeBytes > 0) Text(size(a.sizeBytes) + if (free >= 0) "  ·  " + uiStr(R.string.l_sts_free_space, size(free)) else "",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -330,24 +337,24 @@ private fun GameSheet(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstalle
                 active -> {
                     JobLine(job!!)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { SteamInstaller.pause(a.id) }) { Text(uiStr(R.string.l_sts_pause)) }
-                        OutlinedButton(onClick = { SteamInstaller.cancel(context, a) }) { Text(uiStr(R.string.l_sts_cancel_dl)) }
+                        StoreButton(onClick = { SteamInstaller.pause(a.id) }) { Text(uiStr(R.string.l_sts_pause)) }
+                        StoreSecondaryButton(onClick = { SteamInstaller.cancel(context, a) }) { Text(uiStr(R.string.l_sts_cancel_dl)) }
                     }
                 }
                 inst != null -> {
                     Text(uiStr(R.string.l_sts_folder, inst.dir), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = {
+                    StoreButton(positive = true, onClick = {
                         if (SteamInstaller.containers(context).isEmpty()) toast(context, uiStr(R.string.l_sts_no_containers))
                         else pickContainer = true
                     }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_add_to_library)) }
-                    OutlinedButton(onClick = { askRemove = true }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_uninstall)) }
+                    StoreSecondaryButton(onClick = { askRemove = true }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_uninstall)) }
                     GoldbergRow(inst)
                 }
                 else -> {
                     if (job != null) JobLine(job)
                     val noSpace = a.sizeBytes > 0 && free in 0 until a.sizeBytes
                     if (noSpace) Text(uiStr(R.string.l_sts_no_space), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    Button(onClick = { SteamInstaller.install(context, a) }, modifier = Modifier.fillMaxWidth(), enabled = !noSpace) {
+                    StoreButton(onClick = { SteamInstaller.install(context, a) }, modifier = Modifier.fillMaxWidth(), enabled = !noSpace, positive = true) {
                         Text(when {
                             job != null && job.phase != SteamInstaller.Phase.DONE -> uiStr(R.string.l_sts_resume)
                             a.sizeBytes > 0 -> uiStr(R.string.l_sts_install_size, size(a.sizeBytes))
@@ -355,7 +362,7 @@ private fun GameSheet(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstalle
                         })
                     }
                     if (job != null && job.phase != SteamInstaller.Phase.DONE)
-                        OutlinedButton(onClick = { SteamInstaller.cancel(context, a) }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_cancel_dl)) }
+                        StoreSecondaryButton(onClick = { SteamInstaller.cancel(context, a) }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_cancel_dl)) }
                     Text(uiStr(R.string.l_sts_folder, File(SteamInstaller.root(), a.installDir).path), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -420,7 +427,7 @@ private fun GoldbergRow(inst: SteamInstaller.Installed) {
     var state by remember(inst.appId) { mutableStateOf<Pair<Boolean, Boolean>?>(null) }
     var busy by remember { mutableStateOf<Float?>(null) }
     LaunchedEffect(inst.appId) { state = withContext(Dispatchers.IO) { Goldberg.usesSteam(inst) to Goldberg.applied(inst) } }
-    Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f), modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = LocalStoreStyle.current?.cardShape ?: RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .6f), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(uiStr(R.string.l_sts_goldberg), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))

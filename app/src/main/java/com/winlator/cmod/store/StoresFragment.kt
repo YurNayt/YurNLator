@@ -71,6 +71,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.fragment.app.Fragment
 import com.winlator.cmod.R
 import com.winlator.cmod.ui.components.KeepDialogFullscreen
@@ -105,7 +106,7 @@ private fun StoresScreen() {
         val s = store?.let { runCatching { Store.valueOf(it) }.getOrNull() }
         if (s == null) StorePicker { store = it.name } else {
             BackHandler { store = null }
-            StoreScreen(s) { store = null }
+            StoreTheme(s) { StoreScreen(s) { store = null } }
         }
     }
 }
@@ -224,7 +225,9 @@ private fun StoreHeader(store: Store, tab: Int, onTab: (Int) -> Unit, onBack: ()
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null) }
-            Text(store.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(if (store == Store.STEAM) "STEAM" else store.title, style = MaterialTheme.typography.headlineSmall,
+                fontWeight = if (store == Store.STEAM) FontWeight.Black else FontWeight.Bold,
+                letterSpacing = if (store == Store.STEAM) 3.sp else 0.sp, color = styleOf(store).title)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = tab == 0, onClick = { onTab(0) }, label = { Text(uiStr(R.string.l_st_shop)) })
@@ -235,8 +238,9 @@ private fun StoreHeader(store: Store, tab: Int, onTab: (Int) -> Unit, onBack: ()
 
 @Composable
 private fun ShowcaseCard(item: StoreItem, onClick: () -> Unit) {
-    Column(Modifier.width(220.dp).clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick)) {
-        RemoteImage(item.image, Modifier.fillMaxWidth().aspectRatio(460f / 215f).clip(RoundedCornerShape(14.dp)))
+    val shape = LocalStoreStyle.current?.cardShape ?: RoundedCornerShape(14.dp)
+    Column(Modifier.width(220.dp).clip(shape).clickable(onClick = onClick)) {
+        RemoteImage(item.image, Modifier.fillMaxWidth().aspectRatio(460f / 215f).clip(shape))
         Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
         PriceLine(item)
@@ -247,7 +251,7 @@ private fun ShowcaseCard(item: StoreItem, onClick: () -> Unit) {
 private fun ResultRow(item: StoreItem, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        RemoteImage(item.image, Modifier.width(132.dp).aspectRatio(460f / 215f).clip(RoundedCornerShape(10.dp)))
+        RemoteImage(item.image, Modifier.width(132.dp).aspectRatio(460f / 215f).clip(LocalStoreStyle.current?.cardShape ?: RoundedCornerShape(10.dp)))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
@@ -294,7 +298,7 @@ private fun GameSheet(item: StoreItem, onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (!d.windows) Text(uiStr(R.string.l_st_not_windows), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-            Button(onClick = {
+            StoreButton(onClick = {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_st_open_page, item.store.title)) }
             Text(uiStr(if (item.store == Store.STEAM) R.string.l_sts_install_from_library else R.string.l_st_install_soon), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

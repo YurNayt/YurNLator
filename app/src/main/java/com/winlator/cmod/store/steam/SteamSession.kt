@@ -1,6 +1,8 @@
 package com.winlator.cmod.store.steam
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Build
 import android.util.Log
 import `in`.dragonbra.javasteam.enums.EOSType
@@ -76,6 +78,13 @@ object SteamSession {
     private val io = Executors.newSingleThreadExecutor { Thread(it, "SteamIO").apply { isDaemon = true } }
     @Volatile private var wanted = false
     @Volatile private var retryDelay = 5_000L
+    @Volatile private var reconnecting = false
+    @Volatile private var lastNetwork: Network? = null
+    @Volatile private var networkLost = false
+
+    /** Goes up each time the phone loses or switches its network (Wi-Fi <-> mobile): old connections are dead then. */
+    private val _networkChanges = MutableStateFlow(0)
+    val networkChanges: StateFlow<Int> = _networkChanges
     @Volatile private var pendingCode: CompletableFuture<String>? = null
     @Volatile private var authCancelled = false
 
@@ -126,6 +135,7 @@ object SteamSession {
                     try { m.runWaitCallbacks(1000L) } catch (t: Throwable) { Log.w(TAG, "callbacks", t) }
                 }
             }, "SteamCallbacks").apply { isDaemon = true; start() }
+            watchNetwork()
         }
         if (_status.value.state == State.OFFLINE) connect()
     }
@@ -147,10 +157,58 @@ object SteamSession {
         if (signedIn(app)) logOn()
     }
 
+    private fun watchNetwork() {
+        val cm = app.getSystemService(ConnectivityManager::class.java) ?: return
+        runCatching {
+            cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    val prev = lastNetwork
+                    lastNetwork = network
+                    if (networkLost || (prev != null && prev != network)) {
+                        networkLost = false
+                        Log.i(TAG, "network switched, reconnecting")
+                        _networkChanges.value = _networkChanges.value + 1
+                        reconnectNow()
+                    }
+                }
+
+                override fun onLost(network: Network) {
+                    if (network == lastNetwork) {
+                        networkLost = true
+                        _networkChanges.value = _networkChanges.value + 1
+                    }
+                }
+            })
+        }.onFailure { Log.w(TAG, "network callback", it) }
+    }
+
+    /** Drops the (dead) connection and makes a new one at once. */
+    private fun reconnectNow() {
+        if (!wanted) return
+        val c = client ?: return
+        when (_status.value.state) {
+            State.OFFLINE -> connect()
+            State.CONNECTING -> {}
+            else -> {
+                reconnecting = true
+                io.execute { runCatching { c.disconnect() } }
+            }
+        }
+    }
+
     private fun onDisconnected(cb: DisconnectedCallback) {
         val was = _status.value
         _status.value = Status(State.OFFLINE, was.error)
         _licenses.value = emptyList()
+        if (reconnecting) {
+            reconnecting = false
+            retryDelay = 5_000L
+            io.execute {
+                try { Thread.sleep(1_000L) } catch (_: InterruptedException) {}
+                if (wanted && _status.value.state == State.OFFLINE) connect()
+            }
+            return
+        }
         if (!cb.isUserInitiated && wanted) {
             val delay = retryDelay
             retryDelay = (retryDelay * 2).coerceAtMost(60_000L)

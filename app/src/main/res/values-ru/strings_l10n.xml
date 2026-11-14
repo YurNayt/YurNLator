@@ -1088,4 +1088,5 @@
     <string name="l_sts_goldberg_none">Игра не использует Steam API, эмулятор ей не нужен.</string>
     <string name="l_sts_goldberg_dl">Скачиваю эмулятор… %1$d%%</string>
     <string name="l_sts_goldberg_failed">Не удалось переключить эмулятор</string>
+    <string name="l_sts_reconnecting">Связь прервалась, продолжаю…</string>
 </resources>
