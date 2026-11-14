@@ -1031,4 +1031,5 @@
     <string name="l_st_not_windows">Нет версии для Windows: в контейнере не запустится.</string>
     <string name="l_st_open_page">Открыть в %1$s</string>
     <string name="l_st_install_soon">Установка в контейнер появится вместе с библиотекой (следующее обновление).</string>
+    <string name="l_st_free_to_play">Бесплатные игры</string>
 </resources>

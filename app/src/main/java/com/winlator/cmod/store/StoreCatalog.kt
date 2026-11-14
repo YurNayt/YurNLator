@@ -207,23 +207,58 @@ object EpicCatalog {
         }
     }
 
-    fun search(term: String): List<StoreItem> = cached("s:$term", 5 * 60_000L) {
-        val query = "query q(\$count:Int,\$country:String!,\$locale:String,\$keywords:String){Catalog{searchStore(" +
-            "category:\"games/edition/base\",count:\$count,country:\$country,locale:\$locale,keywords:\$keywords," +
-            "sortBy:\"relevancy\",sortDir:\"DESC\",allowCountries:\$country){elements{$FIELDS}}}}"
-        val vars = JSONObject().put("count", 30).put("country", country()).put("locale", locale()).put("keywords", term)
-        val body = StoreNet.postJson(GRAPHQL, JSONObject().put("query", query).put("variables", vars).toString())
-            ?: return@cached emptyList()
-        runCatching {
+    private fun nowIso(): String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+        .apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
+
+    /** One searchStore call of the store's GraphQL (base games only). */
+    private fun searchStore(
+        count: Int, keywords: String? = null, sortBy: String = "relevancy", sortDir: String = "DESC",
+        onSale: Boolean? = null, freeGame: Boolean? = null, releasedOnly: Boolean = false,
+    ): List<StoreItem> {
+        val args = StringBuilder("category:\"games/edition/base\",count:\$count,country:\$country,locale:\$locale," +
+            "sortBy:\$sortBy,sortDir:\$sortDir,allowCountries:\$country")
+        if (keywords != null) args.append(",keywords:\$keywords")
+        if (onSale != null) args.append(",onSale:$onSale")
+        if (freeGame != null) args.append(",freeGame:$freeGame")
+        if (releasedOnly) args.append(",releaseDate:\"[,${nowIso()}]\"")
+        val query = "query q(\$count:Int,\$country:String!,\$locale:String,\$sortBy:String,\$sortDir:String" +
+            (if (keywords != null) ",\$keywords:String" else "") +
+            "){Catalog{searchStore($args){elements{$FIELDS}}}}"
+        val vars = JSONObject().put("count", count).put("country", country()).put("locale", locale())
+            .put("sortBy", sortBy).put("sortDir", sortDir)
+        if (keywords != null) vars.put("keywords", keywords)
+        val body = StoreNet.postJson(GRAPHQL, JSONObject().put("query", query).put("variables", vars).toString()) ?: return emptyList()
+        return runCatching {
             parse(JSONObject(body).optJSONObject("data")?.optJSONObject("Catalog")?.optJSONObject("searchStore")?.optJSONArray("elements"))
         }.getOrDefault(emptyList())
     }
 
-    /** Showcase: free this week (static feed). */
+    fun search(term: String): List<StoreItem> = cached("s:$term", 5 * 60_000L) { searchStore(30, keywords = term) }
+
+    /**
+     * Showcase like Bannerlator's: free this week, on sale, new releases, free to play. The four
+     * requests run at once (one after another took several seconds on a slow connection).
+     */
     fun featured(): List<Pair<String, List<StoreItem>>> = cached("featured", 30 * 60_000L) {
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(4)
+        try {
+            val free = pool.submit<List<StoreItem>> { freeNow() }
+            val sale = pool.submit<List<StoreItem>> { searchStore(24, sortBy = "currentPrice", sortDir = "ASC", onSale = true).filter { it.discountPercent > 0 } }
+            val fresh = pool.submit<List<StoreItem>> { searchStore(24, sortBy = "releaseDate", sortDir = "DESC", releasedOnly = true) }
+            val f2p = pool.submit<List<StoreItem>> { searchStore(24, freeGame = true) }
+            fun get(f: java.util.concurrent.Future<List<StoreItem>>) = runCatching { f.get(40, TimeUnit.SECONDS) }.getOrDefault(emptyList())
+            listOf("free_now" to get(free), "specials" to get(sale), "new_releases" to get(fresh), "free_to_play" to get(f2p))
+                .filter { it.second.isNotEmpty() }
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+
+    /** Free this week (the static promotions feed). */
+    private fun freeNow(): List<StoreItem> {
         val body = StoreNet.get("$PROMOS?locale=${locale()}&country=${country()}&allowCountries=${country()}")
-            ?: return@cached emptyList()
-        runCatching {
+            ?: return emptyList()
+        return runCatching {
             val els = JSONObject(body).optJSONObject("data")?.optJSONObject("Catalog")?.optJSONObject("searchStore")?.optJSONArray("elements")
             val now = Date()
             val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
@@ -247,7 +282,7 @@ object EpicCatalog {
                 if (!activeFree(o)) continue
                 parse(JSONArray().put(o)).firstOrNull()?.let { free += it.copy(price = "Free") }
             }
-            if (free.isEmpty()) emptyList() else listOf("free_now" to free)
+            free.toList()
         }.getOrDefault(emptyList())
     }
 }

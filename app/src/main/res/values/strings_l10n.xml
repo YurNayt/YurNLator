@@ -1031,4 +1031,5 @@
     <string name="l_st_not_windows">No Windows version: it won\'t run in a container.</string>
     <string name="l_st_open_page">Open in %1$s</string>
     <string name="l_st_install_soon">Installing into a container comes with the library (next update).</string>
+    <string name="l_st_free_to_play">Free to play</string>
 </resources>

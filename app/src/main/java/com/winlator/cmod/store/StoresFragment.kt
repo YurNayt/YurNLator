@@ -141,6 +141,7 @@ private fun sectionTitle(key: String) = when (key) {
     "top_sellers" -> uiStr(R.string.l_st_top_sellers)
     "new_releases" -> uiStr(R.string.l_st_new_releases)
     "free_now" -> uiStr(R.string.l_st_free_now)
+    "free_to_play" -> uiStr(R.string.l_st_free_to_play)
     else -> key
 }
 
