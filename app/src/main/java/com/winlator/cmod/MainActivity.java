@@ -528,7 +528,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         showAboutDialog(null);
     }
 
-    /** onDevOptionsChanged: run when tapping the version five times switched the developer options on. */
+    /** onDevOptionsChanged: run when tapping the version (or the app icon) five times switched the developer options on. */
     public void showAboutDialog(Runnable onDevOptionsChanged) {
         ContentDialog dialog = new ContentDialog(this, R.layout.about_dialog);
         dialog.findViewById(R.id.LLBottomBar).setVisibility(View.GONE);
@@ -550,7 +550,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             tvVersion.setText(getString(R.string.version) + " " + pInfo.versionName);
             // Like Android's build number: five taps on the version unlock the developer options.
             final int[] taps = {0};
-            tvVersion.setOnClickListener(v -> {
+            View.OnClickListener devTap = v -> {
                 if (com.winlator.cmod.ui.settings.DeveloperOptions.INSTANCE.enabled(this)) {
                     Toast.makeText(this, UiStrings.get(R.string.l_set_developer_options_are_already_on), Toast.LENGTH_SHORT).show();
                     return;
@@ -563,7 +563,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 } else if (left <= 2) {
                     Toast.makeText(this, UiStrings.get(R.string.l_set_1_d_more, left), Toast.LENGTH_SHORT).show();
                 }
-            });
+            };
+            // The version and the app icon both count: the icon is a big target away from the link.
+            tvVersion.setOnClickListener(devTap);
+            dialog.findViewById(R.id.IVAppIcon).setOnClickListener(devTap);
 
             String creditsAndThirdPartyAppsHTML = String.join("<br />",
                     "Winlator by brunodev85 (<a href=\"https://github.com/brunodev85/winlator\">github.com/brunodev85/winlator</a>)",

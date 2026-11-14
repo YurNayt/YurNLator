@@ -554,12 +554,18 @@ private fun f(v: Double) = if (v >= 100) v.toInt().toString() else String.format
 /** "GPU 640 MHz (71% of max), busy 96% · CPU 2.4 GHz (88%)": clocks per phase from the telemetry. */
 private fun clocks(r: RunResult): String {
     val parts = ArrayList<String>()
-    val g = r.gpuMhz("gpu")
-    if (g > 0) parts += "GPU ${g.toInt()} MHz" + (r.gpuRatio?.let { " (${(it * 100).toInt()}%)" } ?: "") +
-        r.gpuBusy("gpu").takeIf { it >= 0 }?.let { ", busy ${it.toInt()}%" }.orEmpty()
-    else r.gpuBusy("gpu").takeIf { it >= 0 }?.let { parts += "GPU busy ${it.toInt()}%" }
-    val c = r.cpuMhz("cpu")
-    if (c > 0) parts += "CPU ${String.format("%.2f", c / 1000)} GHz" + (r.cpuMtRatio?.let { " (${(it * 100).toInt()}%)" } ?: "")
+    // A game run has one phase ("mix": CPU and GPU together); YurnBench has separate GPU / CPU phases.
+    val game = r.phase == "game"
+    val gp = if (game) "mix" else "gpu"
+    val cp = if (game) "mix" else "cpu"
+    val g = r.gpuMhz(gp)
+    val gRatio = if (game) r.mixGpuRatio else r.gpuRatio
+    if (g > 0) parts += "GPU ${g.toInt()} MHz" + (gRatio?.let { " (${(it * 100).toInt()}%)" } ?: "") +
+        r.gpuBusy(gp).takeIf { it >= 0 }?.let { ", busy ${it.toInt()}%" }.orEmpty()
+    else r.gpuBusy(gp).takeIf { it >= 0 }?.let { parts += "GPU busy ${it.toInt()}%" }
+    val c = r.cpuMhz(cp)
+    val cRatio = if (game) r.mixCpuRatio else r.cpuMtRatio
+    if (c > 0) parts += "CPU ${String.format("%.2f", c / 1000)} GHz" + (cRatio?.let { " (${(it * 100).toInt()}%)" } ?: "")
     return if (parts.isEmpty()) uiStr(R.string.l_bench_clocks_not_readable_on_this_phone) else parts.joinToString(" · ")
 }
 

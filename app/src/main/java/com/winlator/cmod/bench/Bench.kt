@@ -603,7 +603,7 @@ object Bench {
             else -> "crash"
         }
         val detail = when {
-            st == "partial" && measured >= 10 -> "measured ${measured.toInt()} s, until the game ended"
+            st == "partial" && measured >= 10 -> "measured ${measured.toInt()} s, ${g?.optInt("frames") ?: 0} frames, until the game ended"
             st == "partial" -> "the game ended after ${measured.toInt()} s of measuring (under 10 s)"
             outcome != null -> outcome.optString("detail")
             else -> "the session ended without a result"
