@@ -245,7 +245,15 @@ private fun Library(status: SteamSession.Status, onSignOut: () -> Unit) {
                 placeholder = { Text(uiStr(R.string.l_sts_filter)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) },
                 trailingIcon = { if (filter.isNotEmpty()) IconButton(onClick = { filter = "" }) { Icon(Icons.Outlined.Close, null) } })
             Spacer(Modifier.height(6.dp))
-            FilterChip(selected = onlyInstalled, onClick = { onlyInstalled = !onlyInstalled }, label = { Text(uiStr(R.string.l_sts_installed_only)) })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FilterChip(selected = onlyInstalled, onClick = { onlyInstalled = !onlyInstalled }, label = { Text(uiStr(R.string.l_sts_installed_only)) })
+                Spacer(Modifier.weight(1f))
+                var push by remember { mutableStateOf(SteamSync.pushAchievements(context)) }
+                Text(uiStr(R.string.l_sts_push_ach), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(8.dp))
+                Switch(checked = push, onCheckedChange = { push = it; SteamSync.setPushAchievements(context, it) })
+            }
+            Text(uiStr(R.string.l_sts_sync_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         when {
             apps == null && loading -> item { Row(verticalAlignment = Alignment.CenterVertically) {

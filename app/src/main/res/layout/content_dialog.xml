@@ -4,6 +4,7 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:orientation="vertical"
+    android:minWidth="300dp"
     android:padding="14dp"
     android:background="@drawable/ui_enhanced_card">
 
@@ -112,13 +113,15 @@
 
                 <Button
                     style="@style/ButtonNeutral"
-                    android:layout_weight="1"
+                    android:minWidth="96dp"
+                    android:layout_marginStart="8dp"
                     android:text="@string/cancel"
                     android:id="@+id/BTCancel" />
 
                 <Button
                     style="@style/ButtonNeutral"
-                    android:layout_weight="1"
+                    android:minWidth="96dp"
+                    android:layout_marginStart="8dp"
                     android:text="@string/ok"
                     android:id="@+id/BTConfirm" />
             </LinearLayout>

@@ -245,6 +245,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 com.winlator.cmod.session.MediaDecoder.applyRegistry(
                         new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg"), container, shortcut);
                 com.winlator.cmod.session.RefreshRate.applyWineModeEmulation(imageFs, wineInfo);
+                // A game from the Steam library: its newer cloud saves and its achievements, before it starts.
+                try { com.winlator.cmod.store.steam.SteamSync.beforeLaunch(this, container, shortcut); }
+                catch (Throwable t) { android.util.Log.w("SteamSync", "before launch", t); }
                 try {
                     setupXEnvironment();
                 } catch (PackageManager.NameNotFoundException e) {

@@ -130,6 +130,10 @@ object Goldberg {
 
     fun forget(dir: String) { found.remove(File(dir).absolutePath) }
 
+    /** The steam_settings folders Goldberg reads (one beside each steam_api dll of the game). */
+    fun settingsDirs(inst: SteamInstaller.Installed): List<File> =
+        targets(File(inst.dir)).filter { it.bak.isFile }.map { File(it.dir, "steam_settings") }.distinctBy { it.absolutePath }
+
     /** True for a 64-bit PE, false for 32-bit, null when it isn't a PE. */
     private fun peX64(f: File): Boolean? = runCatching {
         RandomAccessFile(f, "r").use { raf ->
@@ -170,7 +174,7 @@ object Goldberg {
         }
     }
 
-    private fun language(): String = when (Locale.getDefault().language) {
+    fun language(): String = when (Locale.getDefault().language) {
         "ru" -> "russian"; "uk" -> "ukrainian"; "de" -> "german"; "fr" -> "french"; "es" -> "spanish"
         "it" -> "italian"; "pl" -> "polish"; "pt" -> "brazilian"; "tr" -> "turkish"; "ja" -> "japanese"
         "ko" -> "koreana"; "zh" -> "schinese"; else -> "english"

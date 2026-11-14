@@ -1094,4 +1094,11 @@
     <string name="l_ste_sign_in">Войти через Epic Games</string>
     <string name="l_ste_failed">Не удалось войти в Epic, попробуйте ещё раз</string>
     <string name="l_ste_install_soon">Установка игр Epic появится в следующей версии.</string>
+    <string name="l_sts_cloud_down">Steam Cloud: скачано файлов сохранений: %1$d</string>
+    <string name="l_sts_cloud_up">Steam Cloud: отправлено файлов сохранений: %1$d</string>
+    <string name="l_sts_ach_sent">Steam: достижений добавлено в профиль: %1$d</string>
+    <string name="l_sts_push_ach">Достижения в Steam</string>
+    <string name="l_sts_sync_note">Облачные сохранения синхронизируются при запуске игры и после выхода из неё. Ваши достижения Steam видны в игре, новые уходят в профиль (переключатель выше).</string>
+    <string name="l_log_copy">Копировать лог</string>
+    <string name="l_log_copied">Скопировано строк: %1$d</string>
 </resources>

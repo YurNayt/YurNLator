@@ -31,7 +31,9 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
         setTitle(context.getString(R.string.logs));
         logView = findViewById(R.id.LogView);
         
-        logView.getLayoutParams().width = (int)UnitUtils.dpToPx(UnitUtils.pxToDp(AppUtils.getScreenWidth()) * 0.7f);
+        android.util.DisplayMetrics dm = context.getResources().getDisplayMetrics();
+        logView.getLayoutParams().width = (int)(dm.widthPixels * 0.86f);
+        logView.getLayoutParams().height = (int)(dm.heightPixels * (dm.widthPixels > dm.heightPixels ? 0.58f : 0.62f));
 
        // findViewById(R.id.BTCancel).setVisibility(View.GONE);
 
@@ -39,6 +41,14 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
         llBottomBarPanel.setVisibility(View.VISIBLE);
 
         View toolbarView = LayoutInflater.from(context).inflate(R.layout.debug_toolbar, llBottomBarPanel, false);
+        toolbarView.findViewById(R.id.BTCopy).setOnClickListener((v) -> {
+            String text = logView.getText(900_000);
+            android.content.ClipboardManager cm = (android.content.ClipboardManager)context.getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm != null && !text.isEmpty()) {
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("YurNLator log", text));
+                android.widget.Toast.makeText(context, com.winlator.cmod.ui.UiStrings.get(R.string.l_log_copied, logView.getLineCount()), android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
         toolbarView.findViewById(R.id.BTClear).setOnClickListener((v) -> logView.clear());
         toolbarView.findViewById(R.id.BTPause).setOnClickListener((v) -> {
             setPaused(!paused);

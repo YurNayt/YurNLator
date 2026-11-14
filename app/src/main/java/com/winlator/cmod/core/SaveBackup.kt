@@ -42,7 +42,7 @@ object SaveBackup {
     )
     private val SKIP_EXT = setOf("log", "dmp", "tmp", "dxvk-cache", "cache")
 
-    enum class Reason(val tag: String) { SESSION("session"), PROTON("proton"), MANUAL("manual"), REMOVE("remove"), RESTORE("before-restore") }
+    enum class Reason(val tag: String) { SESSION("session"), PROTON("proton"), MANUAL("manual"), REMOVE("remove"), RESTORE("before-restore"), CLOUD("before-steam-cloud") }
 
     data class Backup(val file: File, val date: Date, val reason: String) {
         val size: Long get() = file.length()

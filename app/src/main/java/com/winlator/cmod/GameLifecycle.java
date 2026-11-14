@@ -139,6 +139,9 @@ final class GameLifecycle {
                 // Wine is stopped, its files are written: copy the saves to Download/YurNLator/Saves.
                 if (a.container != null)
                     com.winlator.cmod.core.SaveBackup.backupAsync(a.container, com.winlator.cmod.core.SaveBackup.Reason.SESSION);
+                // A game from the Steam library: changed saves up to Steam Cloud, earned achievements to the profile.
+                try { com.winlator.cmod.store.steam.SteamSync.afterExitAsync(a, a.container, a.shortcut); }
+                catch (Throwable t) { android.util.Log.w("SteamSync", "after exit", t); }
                 a.preloaderDialog.closeOnUiThread();
                 a.runOnUiThread(a::finish);
             });

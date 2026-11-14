@@ -30,8 +30,14 @@ public class LogView extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final ArrayList<String> lines = new ArrayList<>();
     private static final int MAX_LINES = 5000;
-    private final float rowHeight = UnitUtils.dpToPx(30);
-    private final float defaultTextSize = UnitUtils.dpToPx(16);
+    private final float rowHeight = UnitUtils.dpToPx(22);
+    private final float defaultTextSize = UnitUtils.dpToPx(12.5f);
+    private final float padX = UnitUtils.dpToPx(8);
+    // The emulator's dark look: near-black rows, light text, the accent for the time, red / amber for
+    // errors / warnings.
+    private static final int BG = 0xFF0C0E13, BG_ALT = 0xFF12151B, TEXT = 0xFFE4E6EB, MUTED = 0xFF9699A3;
+    private static final int ERROR = 0xFFF26672, WARN = 0xFFE5B85C;
+    private int accent = 0;
     private final float minScrollThumbSize = UnitUtils.dpToPx(6);
     private final PointF lastPoint = new PointF();
     private final PointF scrollPosition = new PointF();
@@ -76,8 +82,9 @@ public class LogView extends View {
             paint.setStyle(Paint.Style.FILL);
 
             if (lines.isEmpty()) {
-                paint.setTextSize(UnitUtils.dpToPx(20));
-                paint.setColor(0xffbdbdbd);
+                canvas.drawColor(BG);
+                paint.setTextSize(UnitUtils.dpToPx(16));
+                paint.setColor(MUTED);
                 String text = getContext().getString(R.string.no_items_to_display);
                 float centerX = (width - paint.measureText(text)) * 0.5f;
                 float centerY = (height - paint.getFontSpacing()) * 0.5f - paint.ascent();
@@ -86,23 +93,44 @@ public class LogView extends View {
             }
 
             paint.setTextSize(defaultTextSize);
+            paint.setTypeface(android.graphics.Typeface.MONOSPACE);
             float textHeight = paint.getFontSpacing();
+            if (accent == 0) {
+                int a = 0;
+                try { a = com.winlator.cmod.ui.theme.WinlatorThemeManager.INSTANCE.accent(getContext()); } catch (Throwable ignored) {}
+                accent = a != 0 ? (a | 0xFF000000) : 0xFF7AB8FF;
+            }
+            canvas.drawColor(BG);
 
             float rowY = -scrollPosition.y;
-            
-            
+
             for (int i = 0, count = lines.size(); i < count; i++) {
                 if ((rowY + rowHeight) < 0 || rowY >= height) {
                     rowY += rowHeight;
                     continue;
                 }
 
-                paint.setColor((i % 2) != 0 ? 0xffe1f5fe : 0xffffffff);
-                canvas.drawRect(-scrollPosition.x, rowY, width, rowY + rowHeight, paint);
+                if ((i % 2) != 0) {
+                    paint.setColor(BG_ALT);
+                    canvas.drawRect(0, rowY, width, rowY + rowHeight, paint);
+                }
 
-                paint.setColor(0xff212121);
+                String line = lines.get(i);
                 float centerY = (rowY - paint.ascent()) + (rowHeight - textHeight) * 0.5f;
-                canvas.drawText(lines.get(i), -scrollPosition.x, centerY, paint);
+                float x = padX - scrollPosition.x;
+                int stamp = line.startsWith("[") ? line.indexOf("]  ") : -1;
+                if (stamp > 0) {
+                    String time = line.substring(0, stamp + 1);
+                    paint.setColor(accent);
+                    canvas.drawText(time, x, centerY, paint);
+                    x += paint.measureText(time + "  ");
+                    line = line.substring(stamp + 3);
+                }
+                String low = line.toLowerCase(java.util.Locale.ROOT);
+                if (low.contains("err:") || low.contains("error") || low.contains("fatal") || low.contains("crash")) paint.setColor(ERROR);
+                else if (low.contains("warn") || low.contains("fixme:")) paint.setColor(WARN);
+                else paint.setColor(TEXT);
+                canvas.drawText(line, x, centerY, paint);
                 rowY += rowHeight;
             }
              
@@ -116,7 +144,7 @@ public class LogView extends View {
         float scrollThumbWidth = getScrollThumbWidth();
         float scrollThumbHeight = getScrollThumbHeight();
 
-        paint.setColor(0x33000000);
+        paint.setColor(0x55FFFFFF);
         float radius = minScrollThumbSize * 0.5f;
 
         canvas.drawRoundRect(scrollThumbX, getHeight() - minScrollThumbSize, scrollThumbX + scrollThumbWidth, getHeight(), radius, radius, paint);
@@ -166,10 +194,28 @@ public class LogView extends View {
 
         float maxWidth = 0;
         paint.setTextSize(defaultTextSize);
+        paint.setTypeface(android.graphics.Typeface.MONOSPACE);
         for (int i = 0, count = lines.size(); i < count; i++) maxWidth = Math.max(paint.measureText(lines.get(i)), maxWidth);
-        scrollSize.x = Math.max(maxWidth, width);
+        scrollSize.x = Math.max(maxWidth + padX * 2, width);
         scrollSize.y = Math.max(rowHeight * lines.size(), height);
         scrollPosition.set(0, getScrollMaxTop());
+    }
+
+    /** The lines on screen as text (the newest [maxChars] at most), for copying. */
+    public String getText(int maxChars) {
+        synchronized (lock) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = lines.size() - 1; i >= 0; i--) {
+                String l = lines.get(i);
+                if (sb.length() + l.length() + 1 > maxChars) break;
+                sb.insert(0, l + "\n");
+            }
+            return sb.toString();
+        }
+    }
+
+    public int getLineCount() {
+        synchronized (lock) { return lines.size(); }
     }
 
     public void clear() {

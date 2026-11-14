@@ -6,6 +6,13 @@
 
     <ImageButton
         style="@style/ListMenuButton"
+        android:id="@+id/BTCopy"
+        android:src="@drawable/ui_ic_copy"
+        android:contentDescription="@string/l_log_copy"
+        android:layout_marginRight="8dp" />
+
+    <ImageButton
+        style="@style/ListMenuButton"
         android:id="@+id/BTClear"
         android:src="@drawable/icon_remove"
         android:layout_marginRight="8dp" />

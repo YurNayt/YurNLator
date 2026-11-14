@@ -120,6 +120,16 @@ object SteamLibrary {
         }
     }
 
+    /** One app's raw app info from Steam (blocking; null when offline). */
+    fun appInfo(appId: Int): KeyValue? = runCatching {
+        val sa = SteamSession.apps ?: return null
+        val token = runCatching {
+            sa.picsGetAccessTokens(listOf(appId), emptyList<Int>()).toFuture().get(30, TimeUnit.SECONDS).appTokens[appId]
+        }.getOrNull() ?: 0L
+        val rs = sa.picsGetProductInfo(listOf(PICSRequest(appId, token)), emptyList()).toFuture().get(30, TimeUnit.SECONDS)
+        rs.results.firstNotNullOfOrNull { it.apps[appId]?.keyValues }
+    }.getOrNull()
+
     private fun KeyValue.child(name: String): KeyValue = get(name)
     private fun KeyValue.str(name: String): String = get(name).value ?: ""
 
