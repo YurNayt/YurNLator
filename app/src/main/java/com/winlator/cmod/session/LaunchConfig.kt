@@ -56,7 +56,6 @@ data class LaunchConfig(
     val wayland: Boolean get() = displayBackend == "wayland"
 
     companion object {
-        @JvmStatic
         /** UnityPlayer.dll or a "<exe>_Data" folder next to the game's exe. */
         @JvmStatic
         fun isUnity(exePath: String?): Boolean = runCatching {
@@ -67,6 +66,7 @@ data class LaunchConfig(
                 java.io.File(dir, exe.nameWithoutExtension + "_Data").isDirectory
         }.getOrDefault(false)
 
+        @JvmStatic
         fun resolve(container: Container, shortcut: Shortcut?): LaunchConfig {
             fun s(key: String, fallback: String): String = shortcut?.getExtra(key, fallback) ?: fallback
             /** Shortcut value only when set (empty = use the container). */
