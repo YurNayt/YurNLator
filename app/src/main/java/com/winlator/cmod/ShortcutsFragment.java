@@ -498,7 +498,8 @@ public class ShortcutsFragment extends Fragment {
                     banner.exists() && artworkChecked(banner) ? banner.getPath() : null,
                     iconPath,
                     shortcut.icon,
-                    "1".equals(shortcut.getExtra("favorite", "0"))
+                    "1".equals(shortcut.getExtra("favorite", "0")),
+                    com.winlator.cmod.store.StoreOrigin.of(shortcut)
             ));
         }
         libraryController.setItems(items);
@@ -667,16 +668,9 @@ public class ShortcutsFragment extends Fragment {
             iconPickerLauncher.launch("image/*");
         }
         else if (LibraryComposeHost.ACTION_REMOVE.equals(action)) {
-            ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_shortcut, () -> {
-                boolean fileDeleted = shortcut.remove();
-
-                if (!fileDeleted) {
-                    Toast.makeText(context, UiStrings.get(R.string.l_sc_couldn_t_remove_the_shortcut_s), Toast.LENGTH_LONG).show();
-                } else {
-                    disableShortcutOnScreen(requireContext(), shortcut);
-                    loadShortcutsList();
-                    Toast.makeText(context, UiStrings.get(R.string.l_sc_shortcut_removed), Toast.LENGTH_SHORT).show();
-                }
+            com.winlator.cmod.store.ShortcutRemoval.ask(context, shortcut, () -> {
+                disableShortcutOnScreen(context, shortcut);
+                if (isAdded()) loadShortcutsList();
             });
         }
         else if (LibraryComposeHost.ACTION_CLONE.equals(action)) {

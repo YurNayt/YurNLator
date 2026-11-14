@@ -159,7 +159,10 @@ internal fun LandscapePagerCore(
                                 color = Color.Black.copy(.30f),
                                 border = BorderStroke(if (selected) 2.dp else 1.dp, Color.White.copy(if (selected) .88f else .20f))
                             ) {
-                                PagerImage(candidate.coverPath ?: candidate.bannerPath ?: candidate.iconPath, candidate.fallbackIcon, Modifier.fillMaxSize())
+                                Box {
+                                    PagerImage(candidate.coverPath ?: candidate.bannerPath ?: candidate.iconPath, candidate.fallbackIcon, Modifier.fillMaxSize())
+                                    com.winlator.cmod.store.StoreBadge(candidate.store, Modifier.align(Alignment.TopStart).padding(10.dp), 26.dp)
+                                }
                             }
                         }
                     }

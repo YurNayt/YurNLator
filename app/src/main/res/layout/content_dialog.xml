@@ -119,7 +119,7 @@
                     android:id="@+id/BTCancel" />
 
                 <Button
-                    style="@style/ButtonNeutral"
+                    style="@style/ButtonPositive"
                     android:minWidth="96dp"
                     android:layout_marginStart="8dp"
                     android:text="@string/ok"

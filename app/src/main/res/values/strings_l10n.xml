@@ -954,7 +954,7 @@
     <string name="l_hud_dual_cell">Two-cell battery</string>
     <string name="l_hud_dual_cell_hint">Power ×2: for phones whose battery has two cells and the HUD shows half the real power.</string>
     <string name="l_rd_blocked">%1$s crashed the screen renderer twice: the screen uses the system driver now, the game still runs on %1$s.</string>
-    <string name="l_upd_dev_variants">Test builds exist for the standard and AnTuTu variants only.</string>
+    <string name="l_upd_dev_variants">Test builds exist for the standard and Ludashi 2 variants only.</string>
     <string name="l_pst_performance_mali">Performance (Mali)</string>
     <string name="l_pst_extreme">Extreme</string>
     <string name="l_pst_extreme_2">Extreme 2</string>
@@ -993,7 +993,7 @@
     <string name="l_frq_bench_off">Don\'t search</string>
     <string name="l_frq_bench_all">All</string>
     <string name="l_frq_v_ceiling">CPU ≤ %1$s GHz</string>
-    <string name="l_frq_bench_need_root">The clock search needs root for this app (each APK variant, standard or AnTuTu, is granted root separately).</string>
+    <string name="l_frq_bench_need_root">The clock search needs root for this app (each APK variant, standard or Ludashi 2, is granted root separately).</string>
     <string name="l_bench_cpu_by_cycles">CPU %1$s GHz by cycles (cpufreq shows %2$s GHz)</string>
     <string name="l_xs_bionic_wine">This Wine / Proton is built for Android\'s libc (bionic, for Bannerlator) and can\'t run in YurNLator. Pick another one in the container settings.</string>
     <string name="l_sv_title">Saves</string>
@@ -1135,4 +1135,9 @@
     <string name="l_st_more">Show more</string>
     <string name="l_st_owned">In your library</string>
     <string name="l_st_buy_hint">You buy on the store\'s page (wallet balance or card); the game then shows up in the Library tab, where it installs.</string>
+    <string name="l_rm_question">Remove “%1$s” from the library?</string>
+    <string name="l_rm_store_too">Also uninstall the game from the device (%1$s, %2$s)</string>
+    <string name="l_rm_folder_too">Also delete the game folder from the device:\n%1$s</string>
+    <string name="l_rm_removing">Removing the game…</string>
+    <string name="l_rm_removed">Game removed from the device</string>
 </resources>

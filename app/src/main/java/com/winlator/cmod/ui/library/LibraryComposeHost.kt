@@ -26,7 +26,9 @@ data class LibraryItem(
     val bannerPath: String?,
     val iconPath: String?,
     val fallbackIcon: Bitmap?,
-    val favorite: Boolean
+    val favorite: Boolean,
+    /** "steam", "epic" or "" (StoreOrigin). */
+    val store: String = ""
 )
 
 @Stable
@@ -130,4 +132,4 @@ object LibraryComposeHost {
     }
 }
 
-internal enum class LibraryFilter { All, Favorites, Recent }
+internal enum class LibraryFilter { All, Favorites, Recent, Steam, Epic }

@@ -104,6 +104,8 @@ internal fun LibraryRoot(
             LibraryFilter.All -> items
             LibraryFilter.Favorites -> items.filter { it.favorite }
             LibraryFilter.Recent -> items.asReversed()
+            LibraryFilter.Steam -> items.filter { it.store == "steam" }
+            LibraryFilter.Epic -> items.filter { it.store == "epic" }
         }
         if (query.isBlank()) source else source.filter { it.name.contains(query, true) }
     }
@@ -138,8 +140,8 @@ internal fun LibraryRoot(
                 )
                 Spacer(Modifier.height(7.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    LibraryFilter.values().forEach { option ->
-                        LibraryFilterChip(option.name, option == filter) { filterName = option.name }
+                    libraryFilters(items).forEach { option ->
+                        LibraryFilterChip(filterLabel(option), option == filter) { filterName = option.name }
                     }
                 }
             },
@@ -162,8 +164,8 @@ internal fun LibraryRoot(
             Spacer(Modifier.height(7.dp))
         }
         Row(Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LibraryFilter.values().forEach { option ->
-                LibraryFilterChip(option.name, option == filter) { filterName = option.name }
+            libraryFilters(items).forEach { option ->
+                LibraryFilterChip(filterLabel(option), option == filter) { filterName = option.name }
             }
         }
         if (visible.isEmpty()) {
@@ -297,6 +299,23 @@ private fun LibraryTopIcon(icon: ImageVector, selected: Boolean, click: () -> Un
     ) { Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Icon(icon, null, modifier = Modifier.size(23.dp)) } }
 }
 
+/** All / Favorites / Recent, and a chip for each store that has games here. */
+private fun libraryFilters(items: List<LibraryItem>): List<LibraryFilter> = LibraryFilter.values().filter { f ->
+    when (f) {
+        LibraryFilter.Steam -> items.any { it.store == "steam" }
+        LibraryFilter.Epic -> items.any { it.store == "epic" }
+        else -> true
+    }
+}
+
+private fun filterLabel(f: LibraryFilter): String = when (f) {
+    LibraryFilter.All -> uiStr(R.string.l_lib_all)
+    LibraryFilter.Favorites -> uiStr(R.string.l_lib_favorites)
+    LibraryFilter.Recent -> uiStr(R.string.l_lib_recent)
+    LibraryFilter.Steam -> "Steam"
+    LibraryFilter.Epic -> "Epic"
+}
+
 @Composable
 private fun LibraryFilterChip(label: String, selected: Boolean, click: () -> Unit) {
     Surface(
@@ -338,11 +357,14 @@ internal fun CompactArtworkCard(item: LibraryItem, cb: LibraryCallbacks) {
                 )
             )
             Row(Modifier.fillMaxSize().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                ArtworkCompat(
-                    item.coverPath ?: item.bannerPath ?: item.iconPath,
-                    item.fallbackIcon,
-                    Modifier.size(68.dp).clip(RoundedCornerShape(11.dp))
-                )
+                Box {
+                    ArtworkCompat(
+                        item.coverPath ?: item.bannerPath ?: item.iconPath,
+                        item.fallbackIcon,
+                        Modifier.size(68.dp).clip(RoundedCornerShape(11.dp))
+                    )
+                    com.winlator.cmod.store.StoreBadge(item.store, Modifier.align(Alignment.BottomEnd).padding(3.dp), 18.dp)
+                }
                 Spacer(Modifier.width(13.dp))
                 Column(Modifier.weight(1f)) {
                     Text(item.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -375,6 +397,7 @@ internal fun CoverArtworkCard(item: LibraryItem, cb: LibraryCallbacks) {
                 Text(item.name, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(item.containerName, color = Color.White.copy(.72f), style = MaterialTheme.typography.bodySmall)
             }
+            com.winlator.cmod.store.StoreBadge(item.store, Modifier.align(Alignment.TopStart).padding(10.dp), 24.dp)
             Box(Modifier.align(Alignment.TopEnd)) { MenuButtonCompat(item, cb, true) }
             Box(Modifier.align(Alignment.BottomEnd).padding(9.dp)) { PlayCompat(item, cb, true) }
         }

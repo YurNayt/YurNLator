@@ -93,12 +93,12 @@ object AppUpdater {
         val (code, body) = get("https://api.github.com/repos/$DEV_REPO/releases/tags/dev")
         if (code !in 200..299) return Check.Failed("HTTP $code")
         val release = JSONObject(body)
-        // YurNLator-dev-230-abc1234.apk (standard) / YurNLator-dev-230-abc1234-antutu.apk
+        // YurNLator-dev-230-abc1234.apk (standard) / YurNLator-dev-230-abc1234-ludashi2.apk
         val re = if (flavor == "standard") Regex("""YurNLator-dev-(\d+)-[0-9a-f]+\.apk""")
                  else Regex("""YurNLator-dev-(\d+)-[0-9a-f]+-${Regex.escape(flavor)}\.apk""")
         val best = assets(release).mapNotNull { a -> re.matchEntire(a.optString("name"))?.let { it.groupValues[1].toLong() to a } }
             .maxByOrNull { it.first } ?: return Check.Failed(
-                if (flavor != "standard" && flavor != "antutu") "test builds: standard and AnTuTu only" else "no $flavor APK")
+                if (flavor != "standard" && flavor != "ludashi2") "test builds: standard and Ludashi 2 only" else "no $flavor APK")
         // A build's versionCode is its CI run number, the number in the APK name.
         if (best.first <= installedBuild(context)) return Check.UpToDate
         return Check.Available(update(best.second, "dev ${best.first}", release.optString("body")))

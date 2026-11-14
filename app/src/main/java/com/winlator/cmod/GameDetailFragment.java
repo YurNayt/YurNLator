@@ -119,13 +119,10 @@ public class GameDetailFragment extends Fragment {
 
                     @Override
                     public void onRemove() {
-                        ContentDialog.confirm(requireContext(), R.string.do_you_want_to_remove_this_shortcut, () -> {
-                            if (shortcut.remove()) {
-                                ShortcutsFragment.disableShortcutOnScreen(requireContext(), shortcut);
-                                getParentFragmentManager().popBackStack();
-                            } else {
-                                android.widget.Toast.makeText(requireContext(), UiStrings.get(R.string.l_sc_couldn_t_remove_the_shortcut_s), android.widget.Toast.LENGTH_LONG).show();
-                            }
+                        android.content.Context ctx = requireContext();
+                        com.winlator.cmod.store.ShortcutRemoval.ask(ctx, shortcut, () -> {
+                            ShortcutsFragment.disableShortcutOnScreen(ctx, shortcut);
+                            if (isAdded()) getParentFragmentManager().popBackStack();
                         });
                     }
                 }

@@ -265,6 +265,14 @@
         <item name="android:layout_marginRight">2dp</item>
     </style>
 
+    <!-- Square tool buttons with rounded corners (log window). -->
+    <style name="ListMenuButton.Square" parent="ListMenuButton">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:padding">9dp</item>
+        <item name="android:background">@drawable/ui_icon_button_square</item>
+    </style>
+
     <style name="ListMenuButton.Dark" parent="ListMenuButton">
         <item name="android:tint">@color/colorAccent</item>
     </style>
@@ -300,13 +308,13 @@
     <style name="HorizontalLine">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">1dp</item>
-        <item name="android:background">@color/colorAccent</item>
+        <item name="android:background">#2A2C33</item>
         <item name="android:layout_marginTop">8dp</item>
         <item name="android:layout_marginBottom">8dp</item>
     </style>
 
     <style name="HorizontalLine.Dark" parent="HorizontalLine">
-        <item name="android:background">@color/colorAccent</item>
+        <item name="android:background">#2A2C33</item>
     </style>
 
     <style name="FieldSeparator">

@@ -1,2 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android"><item android:state_pressed="true"><shape><solid android:color="#4A4D56" /><corners android:radius="10dp" /></shape></item><item><shape><gradient android:angle="270" android:startColor="#E326282F" android:endColor="#D91C1E24" /><stroke android:width="1dp" android:color="#383B45" /><corners android:radius="10dp" /></shape></item></selector>
+<!-- Neutral dialog button: one flat tone, no outline. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true"><shape><solid android:color="#30333B" /><corners android:radius="12dp" /></shape></item>
+    <item><shape><solid android:color="#202228" /><corners android:radius="12dp" /></shape></item>
+</selector>

@@ -954,7 +954,7 @@
     <string name="l_hud_dual_cell">Двухъячеечный аккумулятор</string>
     <string name="l_hud_dual_cell_hint">Потребление ×2: для телефонов с двумя ячейками, где HUD показывает половину реального потребления.</string>
     <string name="l_rd_blocked">%1$s дважды уронил экранный рендерер: экран теперь рисует системный драйвер, игра по-прежнему работает на %1$s.</string>
-    <string name="l_upd_dev_variants">Тестовые сборки есть только в обычном варианте и варианте AnTuTu.</string>
+    <string name="l_upd_dev_variants">Тестовые сборки есть только в обычном варианте и варианте Ludashi 2.</string>
     <string name="l_pst_performance_mali">Производительность (Mali)</string>
     <string name="l_pst_extreme">Экстрим</string>
     <string name="l_pst_extreme_2">Экстрим 2</string>
@@ -993,7 +993,7 @@
     <string name="l_frq_bench_off">Не подбирать</string>
     <string name="l_frq_bench_all">Все</string>
     <string name="l_frq_v_ceiling">ЦПУ ≤ %1$s ГГц</string>
-    <string name="l_frq_bench_need_root">Для подбора частот нужен root у этого приложения (каждый вариант APK, обычный или AnTuTu, получает root отдельно).</string>
+    <string name="l_frq_bench_need_root">Для подбора частот нужен root у этого приложения (каждый вариант APK, обычный или Ludashi 2, получает root отдельно).</string>
     <string name="l_bench_cpu_by_cycles">ЦПУ %1$s ГГц по циклам (cpufreq показывает %2$s ГГц)</string>
     <string name="l_xs_bionic_wine">Этот Wine / Proton собран под bionic (для Bannerlator) и не запускается в YurNLator. Выберите другой в настройках контейнера.</string>
     <string name="l_sv_title">Сохранения</string>
@@ -1135,4 +1135,9 @@
     <string name="l_st_more">Показать ещё</string>
     <string name="l_st_owned">Есть в твоей библиотеке</string>
     <string name="l_st_buy_hint">Покупка — на странице магазина (с баланса кошелька или картой); после неё игра появится на вкладке «Библиотека», там же устанавливается.</string>
+    <string name="l_rm_question">Удалить «%1$s» из библиотеки?</string>
+    <string name="l_rm_store_too">Также удалить игру с устройства (%1$s, %2$s)</string>
+    <string name="l_rm_folder_too">Также удалить папку игры с устройства:\n%1$s</string>
+    <string name="l_rm_removing">Удаляю игру…</string>
+    <string name="l_rm_removed">Игра удалена с устройства</string>
 </resources>

@@ -366,7 +366,7 @@ private fun GameSheet(item: StoreItem, onDismiss: () -> Unit) {
  * The stores' own icons, taken from their sites (the site icon, else Google's copy of it) and kept
  * in files/store_icons so they show offline too. Until then the store's first letter.
  */
-private object StoreIcons {
+internal object StoreIcons {
     // Sharp copies of the stores' logos (Wikimedia renders them as PNG at any size); the site icon as a fallback.
     private val urls = mapOf(
         Store.STEAM to listOf("https://commons.wikimedia.org/wiki/Special:FilePath/Steam_icon_logo.svg?width=256",

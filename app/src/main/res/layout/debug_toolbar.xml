@@ -5,20 +5,20 @@
     android:orientation="horizontal">
 
     <ImageButton
-        style="@style/ListMenuButton"
+        style="@style/ListMenuButton.Square"
         android:id="@+id/BTCopy"
         android:src="@drawable/ui_ic_copy"
         android:contentDescription="@string/l_log_copy"
         android:layout_marginRight="8dp" />
 
     <ImageButton
-        style="@style/ListMenuButton"
+        style="@style/ListMenuButton.Square"
         android:id="@+id/BTClear"
         android:src="@drawable/icon_remove"
         android:layout_marginRight="8dp" />
 
     <ImageButton
-        style="@style/ListMenuButton"
+        style="@style/ListMenuButton.Square"
         android:id="@+id/BTPause"
         android:src="@drawable/icon_pause"
         android:layout_marginRight="8dp" />
