@@ -86,7 +86,8 @@ internal fun LandscapePagerCore(
         drawer?.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
         onDispose {
             if (activity?.resources?.configuration?.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
-                drawer?.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+                // The side menu stays closed: every item of it is in the bottom bar / Settings.
+                drawer?.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
             }
         }
     }

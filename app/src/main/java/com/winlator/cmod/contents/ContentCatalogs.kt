@@ -92,8 +92,12 @@ object ContentCatalogs {
                 val o = arr.optJSONObject(i) ?: return@mapNotNull null
                 val url = o.optString("remoteUrl")
                 val name = o.optString("verName").trim()
+                val type = o.optString("type")
+                // Bannerlator's Wine / Proton layers (GE-Proton, Proton-CachyOS, DroidDeck-Proton) are
+                // bionic builds like YurNLator's own Proton, with the same libraries: they install
+                // under their catalog name (ContentsManager.adoptCatalogName) and run here.
                 if (url.isBlank() || name.isBlank()) null
-                else Entry(o.optString("type"), name, o.optString("verCode", "0").toIntOrNull() ?: 0, url, source.name)
+                else Entry(type, name, o.optString("verCode", "0").toIntOrNull() ?: 0, url, source.name)
             }
         }.getOrDefault(emptyList())
         // The FEX nightly repo keeps only its last few releases while its catalog still lists

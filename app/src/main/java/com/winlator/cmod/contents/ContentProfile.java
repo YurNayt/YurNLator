@@ -59,5 +59,8 @@ public class ContentProfile {
     public String wineLibPath;
     public String wineBinPath;
     public String winePrefixPack;
+    /** The name the catalog lists a Wine / Proton package under ("GE-Proton-11.0-9-arm64ec (v16)"),
+     *  when it differs from the name inside the package ("11.0-9-arm64ec"); null otherwise. */
+    public String catalogName;
     public String remoteUrl;
 }

@@ -330,7 +330,7 @@ public class OnboardingActivity extends AppCompatActivity {
                 item.type = typeName;
                 item.name = profile.verName;
                 item.versionCode = profile.verCode;
-                item.url = profile.remoteUrl;
+                item.url = profile.remoteUrl != null ? profile.remoteUrl : contentsManager.remoteUrlFor(profile);
                 item.installed = isInstalled(profile);
                 item.entryName = item.installed ? installedEntryName(type, profile) : "";
                 String key = typeName + ":" + profile.verCode + ":" + profile.verName;
@@ -354,6 +354,8 @@ public class OnboardingActivity extends AppCompatActivity {
                     item.versionCode = profile.verCode;
                     item.installed = true;
                     item.entryName = ContentsManager.getEntryName(profile);
+                    // Where it was downloaded from: it stays under that source's tab.
+                    item.url = contentsManager.remoteUrlFor(profile);
                     rebuilt.add(item);
                 }
             }
@@ -391,7 +393,8 @@ public class OnboardingActivity extends AppCompatActivity {
 
     private boolean isInstalled(ContentProfile candidate) {
         for (ContentProfile installed : contentsManager.getInstalledProfiles(candidate.type)) {
-            if (installed.verCode == candidate.verCode && installed.verName.equals(candidate.verName)) return true;
+            if (installed.verCode == candidate.verCode && (installed.verName.equals(candidate.verName)
+                    || candidate.verName.equals(installed.catalogName))) return true;
         }
         return false;
     }
@@ -439,8 +442,10 @@ public class OnboardingActivity extends AppCompatActivity {
                         runtime,
                         inUse,
                         false,
-                        item.installed ? null : (item.packageInfo != null ? "Proton releases"
-                                : (ContentCatalogs.sourceOf(item.url) != null ? ContentCatalogs.sourceOf(item.url) : "Winlator Contents"))
+                        // Installed items keep their source too (they vanished from the source's tab).
+                        item.packageInfo != null ? "Proton releases"
+                                : item.url == null ? null
+                                : (ContentCatalogs.sourceOf(item.url) != null ? ContentCatalogs.sourceOf(item.url) : "Winlator Contents")
                 ));
             }
         }
@@ -508,7 +513,7 @@ public class OnboardingActivity extends AppCompatActivity {
             try {
                 if (!DownloadTracker.download(key, item.url, archive, true)) throw new Exception("Download failed");
                 DownloadTracker.installing(key);
-                installContentArchive(Uri.fromFile(archive), item.name, 72, () -> {
+                installContentArchive(Uri.fromFile(archive), item.name, item.name, item.versionCode, 72, () -> {
                     rebuildCatalog();
                     runOnUiThread(() -> finishInstall(id, null));
                 }, error -> runOnUiThread(() -> finishInstall(id, error)));
@@ -562,6 +567,12 @@ public class OnboardingActivity extends AppCompatActivity {
 
     private void installContentArchive(Uri uri, String displayName, int startProgress,
                                        Runnable success, FailureCallback failure) {
+        installContentArchive(uri, displayName, null, 0, startProgress, success, failure);
+    }
+
+    /** [catalogName] / [catalogCode]: the catalog entry the archive was downloaded for (null for a file). */
+    private void installContentArchive(Uri uri, String displayName, String catalogName, int catalogCode, int startProgress,
+                                       Runnable success, FailureCallback failure) {
         postInstallProgress("Installing " + displayName, startProgress);
         contentsManager.extraContentFile(uri, archiveProgress -> {
             int progress = archiveProgress < 0
@@ -576,6 +587,7 @@ public class OnboardingActivity extends AppCompatActivity {
 
             @Override
             public void onSucceed(ContentProfile extracted) {
+                ContentsManager.adoptCatalogName(OnboardingActivity.this, extracted, catalogName, catalogCode);
                 String installedName = extracted.verName != null && !extracted.verName.isEmpty()
                         ? extracted.verName : displayName;
                 postInstallProgress("Validating " + installedName, 92);
@@ -669,7 +681,7 @@ public class OnboardingActivity extends AppCompatActivity {
         ComponentItem item = findComponent(componentId);
         if (item == null) return null;
         for (ContentProfile profile : contentsManager.getInstalledProfiles(item.profile.type)) {
-            if (profile.verCode == item.versionCode && profile.verName.equals(item.name)) return profile;
+            if (profile.verCode == item.versionCode && (profile.verName.equals(item.name) || item.name.equals(profile.catalogName))) return profile;
         }
         return null;
     }

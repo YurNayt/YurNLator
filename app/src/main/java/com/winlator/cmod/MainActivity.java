@@ -359,7 +359,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             default:
                 setRequestedOrientation(orientationLocked
                         ? ActivityInfo.SCREEN_ORIENTATION_LOCKED
-                        : ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+                        : ActivityInfo.SCREEN_ORIENTATION_FULL_USER); // follows the phone's rotation lock
                 break;
         }
         invalidateOptionsMenu();
