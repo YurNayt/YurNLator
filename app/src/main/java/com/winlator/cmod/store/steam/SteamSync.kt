@@ -387,6 +387,25 @@ object SteamSync {
         if (ok) toast(context, uiStr(R.string.l_sts_ach_sent, count))
     }
 
+    /** One achievement of the game, as on the Steam profile. */
+    data class Achievement(val name: String, val title: String, val description: String, val icon: String?,
+                           val unlocked: Boolean, val time: Long, val hidden: Boolean)
+
+    /** The game's achievements with the profile's progress (blocking; null when offline or the game has none). */
+    fun achievements(context: Context, appId: Int): List<Achievement>? = runCatching {
+        if (!SteamSession.awaitOnline(context, 20_000L)) return null
+        val (_, cb) = userStats(appId) ?: return null
+        val list = runCatching { cb.getExpandedAchievements(Goldberg.language()) }.getOrNull()?.takeIf { it.isNotEmpty() }
+            ?: cb.getExpandedAchievements()
+        list.mapNotNull { a ->
+            val name = a.name ?: return@mapNotNull null
+            val file = (if (a.isUnlocked) a.icon else a.iconGray)?.takeIf { it.isNotBlank() }
+            Achievement(name, a.displayName?.ifBlank { null } ?: name, a.description ?: "",
+                file?.let { "https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/$appId/$it" },
+                a.isUnlocked, a.unlockTimestamp.toLong(), a.hidden)
+        }.sortedWith(compareByDescending<Achievement> { it.unlocked }.thenByDescending { it.time })
+    }.onFailure { Log.w(TAG, "achievements $appId", it) }.getOrNull()?.takeIf { it.isNotEmpty() }
+
     private fun toast(context: Context, text: String) {
         Handler(Looper.getMainLooper()).post { runCatching { Toast.makeText(context.applicationContext, text, Toast.LENGTH_LONG).show() } }
     }

@@ -1093,7 +1093,6 @@
     <string name="l_ste_sign_in_hint">You sign in on Epic\'s own page. Only the sign-in tokens are kept on the device, never the password.</string>
     <string name="l_ste_sign_in">Sign in with Epic Games</string>
     <string name="l_ste_failed">Epic sign-in failed, try again</string>
-    <string name="l_ste_install_soon">Installing Epic games comes in the next version.</string>
     <string name="l_sts_cloud_down">Steam Cloud: %1$d save files downloaded</string>
     <string name="l_sts_cloud_up">Steam Cloud: %1$d save files uploaded</string>
     <string name="l_sts_ach_sent">Steam: achievements added to your profile: %1$d</string>
@@ -1101,4 +1100,11 @@
     <string name="l_sts_sync_note">Cloud saves sync when a game starts and after it closes. Your Steam achievements show in the game; new ones go to your profile (switch above).</string>
     <string name="l_log_copy">Copy the log</string>
     <string name="l_log_copied">Copied lines: %1$d</string>
+    <string name="l_sts_ach_loading">Loading achievements…</string>
+    <string name="l_sts_ach_title">Achievements: %1$d of %2$d</string>
+    <string name="l_sts_ach_hidden">Hidden achievement</string>
+    <string name="l_sts_ach_when">Earned %1$s</string>
+    <string name="l_sts_ach_less">Show less</string>
+    <string name="l_sts_ach_all">Show all (%1$d)</string>
+    <string name="l_ste_uninstall_q">Delete %1$s? The game\'s files and its shortcuts will be removed.</string>
 </resources>

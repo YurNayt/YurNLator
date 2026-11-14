@@ -49,7 +49,7 @@ class SteamDownloadService : Service() {
     }
 
     private fun build(): android.app.Notification {
-        val active = SteamInstaller.jobs.value.values.filter { it.active }
+        val active = (SteamInstaller.jobs.value.values + com.winlator.cmod.store.epic.EpicInstaller.jobs.value.values).filter { it.active }
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val b = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.winlator_mark)
@@ -70,7 +70,7 @@ class SteamDownloadService : Service() {
     }
 
     private fun refresh() {
-        if (!SteamInstaller.anyActive()) {
+        if (!SteamInstaller.anyActive() && !com.winlator.cmod.store.epic.EpicInstaller.anyActive()) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return

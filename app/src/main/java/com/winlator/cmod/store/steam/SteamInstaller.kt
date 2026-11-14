@@ -336,22 +336,9 @@ object SteamInstaller {
         return best.relativeTo(dir).path to ""
     }
 
-    /** Deletes a folder tree without ever following a link out of it. */
-    private fun deleteTree(f: File) {
-        if (Files.isSymbolicLink(f.toPath())) { f.delete(); return }
-        if (f.isDirectory) f.listFiles()?.forEach { deleteTree(it) }
-        f.delete()
-    }
+    private fun deleteTree(f: File) = com.winlator.cmod.store.StoreShortcuts.deleteTree(f)
 
-    private fun shortcutName(name: String) = name.replace(Regex("[\\\\/:*?\"<>|]+"), " ").replace(Regex("\\s+"), " ").trim().ifEmpty { "Game" }
-
-    /** Shortcuts (any container) that start this game. */
-    private fun shortcutsOf(context: Context, dir: String): List<File> =
-        ContainerManager(context).containers.flatMap { c ->
-            c.desktopDir.listFiles { f -> f.name.endsWith(".desktop") }.orEmpty().filter { f ->
-                runCatching { f.readText().contains(dir) }.getOrDefault(false)
-            }
-        }
+    private fun shortcutsOf(context: Context, dir: String): List<File> = com.winlator.cmod.store.StoreShortcuts.of(context, dir)
 
     fun shortcutCount(context: Context, appId: Int): Int =
         _installed.value[appId]?.let { shortcutsOf(context, it.dir).size } ?: 0
@@ -370,46 +357,17 @@ object SteamInstaller {
         saveRegistry(context)
     }
 
-    private fun wineHome(context: Context, container: Container): String {
-        val imagefs = File(context.filesDir, "imagefs").absolutePath.trimEnd('/')
-        val root = container.rootDir.absolutePath.trimEnd('/')
-        return if (root.startsWith(imagefs)) root.substring(imagefs.length) else "/home/" + ImageFs.USER
-    }
-
     /** Adds the game to [container]'s library; returns the exe (for the components check). */
     fun addShortcut(context: Context, container: Container, appId: Int): File? {
         val i = _installed.value[appId] ?: return null
         val exe = i.exeFile.takeIf { it.isFile } ?: return null
-        val name = shortcutName(i.name)
-        val desktopDir = container.desktopDir.apply { mkdirs() }
-        val desktop = File(desktopDir, "$name.desktop")
-        val prefix = wineHome(context, container) + "/.wine"
-        val text = buildString {
-            append("[Desktop Entry]\n")
-            append("Name=").append(name).append('\n')
-            append("Exec=env WINEPREFIX=\"").append(prefix).append("\" wine \"").append(exe.absolutePath).append("\"\n")
-            append("Type=Application\n")
-            append("Icon=").append(name).append('\n')
-            append("container_id:").append(container.id).append('\n')
-            append("\n[Extra Data]\n")
-            append("steamAppId=").append(appId).append('\n')
-            if (i.args.isNotBlank()) append("execArgs=").append(i.args).append('\n')
-        }
-        desktop.writeText(text)
-        runCatching {
-            val icons = container.getIconsDir(64).apply { mkdirs() }
-            ExeIconExtractor.extractIcon(exe, File(icons, "$name.png"))
-        }
-        return exe
+        return com.winlator.cmod.store.StoreShortcuts.add(context, container, i.name, exe, i.args, mapOf("steamAppId" to appId.toString()))
     }
 
-    /** Saves the game's Steam library picture as its cover (YurNLator/covers/<name>.png). */
+    /** Saves the game's Steam library picture as its cover. */
     fun saveCover(appId: Int, bytes: ByteArray) {
         val i = _installed.value[appId] ?: return
-        runCatching {
-            val dir = File(Environment.getExternalStorageDirectory(), "YurNLator/covers").apply { mkdirs() }
-            File(dir, shortcutName(i.name) + ".png").writeBytes(bytes)
-        }
+        com.winlator.cmod.store.StoreShortcuts.saveCover(i.name, bytes)
     }
 
     fun containers(context: Context): List<Container> = ContainerManager(context).containers

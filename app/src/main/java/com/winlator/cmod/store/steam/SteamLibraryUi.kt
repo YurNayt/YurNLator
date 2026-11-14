@@ -55,6 +55,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -88,10 +89,10 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
 
-private fun size(b: Long) = StringUtils.formatBytes(b)
+internal fun size(b: Long) = StringUtils.formatBytes(b)
 
-private fun freeBytes(): Long = runCatching {
-    val r = SteamInstaller.root().apply { mkdirs() }
+internal fun freeBytes(root: File = SteamInstaller.root()): Long = runCatching {
+    val r = root.apply { mkdirs() }
     StatFs(r.absolutePath).availableBytes
 }.getOrDefault(-1L)
 
@@ -276,7 +277,7 @@ private fun Library(status: SteamSession.Status, onSignOut: () -> Unit) {
 }
 
 @Composable
-private fun JobLine(j: SteamInstaller.Job) {
+internal fun JobLine(j: SteamInstaller.Job) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         when (j.phase) {
             SteamInstaller.Phase.QUEUED -> Text(uiStr(R.string.l_sts_queued), style = MaterialTheme.typography.bodySmall)
@@ -375,6 +376,7 @@ private fun GameSheet(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstalle
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            AchievementsSection(a.id)
         }
     }
     if (pickContainer) {
@@ -424,6 +426,47 @@ private fun GameSheet(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstalle
         },
         dismissButton = { TextButton(onClick = { askRemove = false }) { Text(uiStr(R.string.l_sts_cancel)) } },
     )
+}
+
+/** The game's achievements and how many of them are earned on the profile. */
+@Composable
+private fun AchievementsSection(appId: Int) {
+    val context = LocalContext.current
+    val list by produceState<List<SteamSync.Achievement>?>(null, appId) { value = withContext(Dispatchers.IO) { SteamSync.achievements(context, appId) } ?: emptyList() }
+    var all by remember(appId) { mutableStateOf(false) }
+    val l = list
+    Spacer(Modifier.height(6.dp))
+    if (l == null) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(uiStr(R.string.l_sts_ach_loading), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+    if (l.isEmpty()) return
+    val got = l.count { it.unlocked }
+    Text(uiStr(R.string.l_sts_ach_title, got, l.size), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    LinearProgressIndicator(progress = { got.toFloat() / l.size }, modifier = Modifier.fillMaxWidth())
+    val fmt = remember { java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM) }
+    (if (all) l else l.take(6)).forEach { ach ->
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            RemoteImage(ach.icon, Modifier.size(44.dp).clip(RoundedCornerShape(4.dp)))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                val secret = ach.hidden && !ach.unlocked
+                Text(if (secret) uiStr(R.string.l_sts_ach_hidden) else ach.title, style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium, color = if (ach.unlocked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                if (!secret && ach.description.isNotBlank()) Text(ach.description, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (ach.unlocked && ach.time > 0) Text(uiStr(R.string.l_sts_ach_when, fmt.format(java.util.Date(ach.time * 1000))),
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+    if (l.size > 6) TextButton(onClick = { all = !all }) {
+        Text(if (all) uiStr(R.string.l_sts_ach_less) else uiStr(R.string.l_sts_ach_all, l.size))
+    }
 }
 
 /** The Steam emulator switch of an installed game. */

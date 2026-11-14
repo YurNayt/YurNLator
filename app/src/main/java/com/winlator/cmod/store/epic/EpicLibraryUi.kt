@@ -64,6 +64,14 @@ import com.winlator.cmod.R
 import com.winlator.cmod.store.LocalStoreStyle
 import com.winlator.cmod.store.RemoteImage
 import com.winlator.cmod.store.StoreButton
+import com.winlator.cmod.store.StoreNet
+import com.winlator.cmod.store.StoreSecondaryButton
+import com.winlator.cmod.store.StoreShortcuts
+import com.winlator.cmod.store.steam.JobLine
+import com.winlator.cmod.store.steam.SteamInstaller
+import com.winlator.cmod.store.steam.freeBytes
+import com.winlator.cmod.store.steam.size
+import okhttp3.Request
 import com.winlator.cmod.ui.components.KeepDialogFullscreen
 import com.winlator.cmod.ui.uiStr
 import kotlinx.coroutines.Dispatchers
@@ -152,6 +160,9 @@ private fun Library(name: String) {
     val scope = rememberCoroutineScope()
     val games by EpicLibrary.games.collectAsState()
     val loading by EpicLibrary.loading.collectAsState()
+    val jobs by EpicInstaller.jobs.collectAsState()
+    val installed by EpicInstaller.installed.collectAsState()
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { EpicInstaller.load(context) } }
     var filter by rememberSaveable { mutableStateOf("") }
     var open by remember { mutableStateOf<EpicGame?>(null) }
     var askSignOut by remember { mutableStateOf(false) }
@@ -190,7 +201,12 @@ private fun Library(name: String) {
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(g.title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                        if (g.developer.isNotBlank()) Text(g.developer, maxLines = 1, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val j = jobs[g.appName]
+                        when {
+                            j != null && j.phase != SteamInstaller.Phase.DONE -> JobLine(j)
+                            installed.containsKey(g.appName) -> Text(uiStr(R.string.l_sts_installed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            g.developer.isNotBlank() -> Text(g.developer, maxLines = 1, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
@@ -212,6 +228,15 @@ private fun Library(name: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GameSheet(g: EpicGame, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val jobs by EpicInstaller.jobs.collectAsState()
+    val installed by EpicInstaller.installed.collectAsState()
+    val job = jobs[g.appName]
+    val inst = installed[g.appName]
+    var pickContainer by remember { mutableStateOf(false) }
+    var askRemove by remember { mutableStateOf(false) }
+    val free = remember { freeBytes(EpicInstaller.root()) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         KeepDialogFullscreen()
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 24.dp),
@@ -219,8 +244,84 @@ private fun GameSheet(g: EpicGame, onDismiss: () -> Unit) {
             RemoteImage(g.wide ?: g.tall, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(LocalStoreStyle.current?.cardShape ?: RoundedCornerShape(14.dp)))
             Text(g.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             if (g.developer.isNotBlank()) Text(g.developer, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
-            Text(uiStr(R.string.l_ste_install_soon), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            when {
+                job?.active == true -> {
+                    JobLine(job)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StoreButton(onClick = { EpicInstaller.pause(g.appName) }) { Text(uiStr(R.string.l_sts_pause)) }
+                        StoreSecondaryButton(onClick = { EpicInstaller.cancel(g) }) { Text(uiStr(R.string.l_sts_cancel_dl)) }
+                    }
+                }
+                inst != null -> {
+                    Text(uiStr(R.string.l_sts_folder, inst.dir), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    StoreButton(positive = true, onClick = {
+                        if (StoreShortcuts.containers(context).isEmpty()) Toast.makeText(context, uiStr(R.string.l_sts_no_containers), Toast.LENGTH_LONG).show()
+                        else pickContainer = true
+                    }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_add_to_library)) }
+                    StoreSecondaryButton(onClick = { askRemove = true }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_uninstall)) }
+                }
+                else -> {
+                    if (job != null) JobLine(job)
+                    if (free >= 0) Text(uiStr(R.string.l_sts_free_space, size(free)), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    StoreButton(positive = true, onClick = { EpicInstaller.install(context, g) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (job != null && job.phase != SteamInstaller.Phase.DONE) uiStr(R.string.l_sts_resume) else uiStr(R.string.l_sts_install))
+                    }
+                    if (job != null && job.phase != SteamInstaller.Phase.DONE)
+                        StoreSecondaryButton(onClick = { EpicInstaller.cancel(g) }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_sts_cancel_dl)) }
+                    Text(uiStr(R.string.l_sts_folder, EpicInstaller.dirFor(g).path), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
+    if (pickContainer) {
+        val list = remember { StoreShortcuts.containers(context) }
+        AlertDialog(
+            onDismissRequest = { pickContainer = false },
+            title = { Text(uiStr(R.string.l_sts_pick_container)) },
+            text = {
+                Column {
+                    list.forEach { c ->
+                        Text(c.name, Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable {
+                            pickContainer = false
+                            scope.launch {
+                                val exe = withContext(Dispatchers.IO) {
+                                    val e = EpicInstaller.addShortcut(context, c, g.appName)
+                                    if (e != null) (g.tall ?: g.wide)?.let { url ->
+                                        runCatching {
+                                            StoreNet.client.newCall(Request.Builder().url(url).build()).execute().use { r ->
+                                                if (r.isSuccessful) r.body?.bytes()?.let { StoreShortcuts.saveCover(g.title, it) }
+                                            }
+                                        }
+                                    }
+                                    e
+                                }
+                                if (exe == null) Toast.makeText(context, uiStr(R.string.l_sts_no_exe), Toast.LENGTH_LONG).show() else {
+                                    Toast.makeText(context, uiStr(R.string.l_sts_added, c.name), Toast.LENGTH_LONG).show()
+                                    (context as? android.app.Activity)?.let { act ->
+                                        runCatching { com.winlator.cmod.ui.components.WindowsComponentsDialog.recommendAfterAdding(act, c, exe) }
+                                    }
+                                }
+                            }
+                        }.padding(vertical = 12.dp, horizontal = 8.dp), style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { pickContainer = false }) { Text(uiStr(R.string.l_sts_cancel)) } },
+        )
+    }
+    if (askRemove && inst != null) AlertDialog(
+        onDismissRequest = { askRemove = false },
+        title = { Text(uiStr(R.string.l_sts_uninstall)) },
+        text = { Text(uiStr(R.string.l_ste_uninstall_q, g.title)) },
+        confirmButton = {
+            TextButton(onClick = {
+                askRemove = false
+                scope.launch { withContext(Dispatchers.IO) { EpicInstaller.uninstall(context, g.appName) }; onDismiss() }
+            }) { Text(uiStr(R.string.l_sts_uninstall), color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(onClick = { askRemove = false }) { Text(uiStr(R.string.l_sts_cancel)) } },
+    )
 }
