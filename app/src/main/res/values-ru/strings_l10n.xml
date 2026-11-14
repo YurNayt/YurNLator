@@ -1089,4 +1089,9 @@
     <string name="l_sts_goldberg_dl">Скачиваю эмулятор… %1$d%%</string>
     <string name="l_sts_goldberg_failed">Не удалось переключить эмулятор</string>
     <string name="l_sts_reconnecting">Связь прервалась, продолжаю…</string>
+    <string name="l_ste_sign_in_title">Вход в Epic Games</string>
+    <string name="l_ste_sign_in_hint">Вход выполняется на странице самой Epic. На устройстве хранятся только токены входа, пароль не сохраняется.</string>
+    <string name="l_ste_sign_in">Войти через Epic Games</string>
+    <string name="l_ste_failed">Не удалось войти в Epic, попробуйте ещё раз</string>
+    <string name="l_ste_install_soon">Установка игр Epic появится в следующей версии.</string>
 </resources>

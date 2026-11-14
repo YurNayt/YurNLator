@@ -1089,4 +1089,9 @@
     <string name="l_sts_goldberg_dl">Downloading the emulator… %1$d%%</string>
     <string name="l_sts_goldberg_failed">Couldn\'t switch the emulator</string>
     <string name="l_sts_reconnecting">Connection lost, continuing…</string>
+    <string name="l_ste_sign_in_title">Sign in to Epic Games</string>
+    <string name="l_ste_sign_in_hint">You sign in on Epic\'s own page. Only the sign-in tokens are kept on the device, never the password.</string>
+    <string name="l_ste_sign_in">Sign in with Epic Games</string>
+    <string name="l_ste_failed">Epic sign-in failed, try again</string>
+    <string name="l_ste_install_soon">Installing Epic games comes in the next version.</string>
 </resources>

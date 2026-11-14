@@ -116,18 +116,16 @@ private fun StorePicker(onPick: (Store) -> Unit) {
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(uiStr(R.string.l_st_stores), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(uiStr(R.string.l_st_pick_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        StoreCard("Steam", uiStr(R.string.l_st_steam_desc), Color(0xFF1B2838), Color(0xFF66C0F4)) { onPick(Store.STEAM) }
-        StoreCard("Epic Games Store", uiStr(R.string.l_st_epic_desc), Color(0xFF121212), Color(0xFFF5F5F5)) { onPick(Store.EPIC) }
+        StoreCard(Store.STEAM, "Steam", uiStr(R.string.l_st_steam_desc), Color(0xFF1B2838), Color(0xFF66C0F4)) { onPick(Store.STEAM) }
+        StoreCard(Store.EPIC, "Epic Games Store", uiStr(R.string.l_st_epic_desc), Color(0xFF121212), Color(0xFFF5F5F5)) { onPick(Store.EPIC) }
     }
 }
 
 @Composable
-private fun StoreCard(title: String, desc: String, bg: Color, accent: Color, onClick: () -> Unit) {
+private fun StoreCard(store: Store, title: String, desc: String, bg: Color, accent: Color, onClick: () -> Unit) {
     Surface(onClick = onClick, shape = RoundedCornerShape(18.dp), color = bg, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(52.dp).background(accent.copy(alpha = .16f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                Text(title.take(1), color = accent, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            }
+            StoreIcon(store, 52.dp, accent)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
@@ -163,27 +161,16 @@ private fun StoreScreen(store: Store, onBack: () -> Unit) {
         value = withContext(Dispatchers.IO) { if (store == Store.STEAM) SteamCatalog.search(submitted) else EpicCatalog.search(submitted) }
     }
 
-    if (tab == 1 && store == Store.STEAM) {
+    if (tab == 1) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) { StoreHeader(store, tab, { tab = it }, onBack) }
-            com.winlator.cmod.store.steam.SteamLibraryScreen(Modifier.weight(1f))
+            if (store == Store.STEAM) com.winlator.cmod.store.steam.SteamLibraryScreen(Modifier.weight(1f))
+            else com.winlator.cmod.store.epic.EpicLibraryScreen(Modifier.weight(1f))
         }
         return
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { StoreHeader(store, tab, { tab = it }, onBack) }
-        if (tab == 1) {
-            item {
-                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(uiStr(R.string.l_st_library), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text(uiStr(R.string.l_st_library_soon, store.title), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-            return@LazyColumn
-        }
         item {
             OutlinedTextField(
                 value = query, onValueChange = { query = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
@@ -225,6 +212,8 @@ private fun StoreHeader(store: Store, tab: Int, onTab: (Int) -> Unit, onBack: ()
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null) }
+            StoreIcon(store, 30.dp, styleOf(store).title)
+            Spacer(Modifier.width(10.dp))
             Text(if (store == Store.STEAM) "STEAM" else store.title, style = MaterialTheme.typography.headlineSmall,
                 fontWeight = if (store == Store.STEAM) FontWeight.Black else FontWeight.Bold,
                 letterSpacing = if (store == Store.STEAM) 3.sp else 0.sp, color = styleOf(store).title)
@@ -302,6 +291,62 @@ private fun GameSheet(item: StoreItem, onDismiss: () -> Unit) {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }, modifier = Modifier.fillMaxWidth()) { Text(uiStr(R.string.l_st_open_page, item.store.title)) }
             Text(uiStr(if (item.store == Store.STEAM) R.string.l_sts_install_from_library else R.string.l_st_install_soon), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/**
+ * The stores' own icons, taken from their sites (the site icon, else Google's copy of it) and kept
+ * in files/store_icons so they show offline too. Until then the store's first letter.
+ */
+private object StoreIcons {
+    private val urls = mapOf(
+        Store.STEAM to listOf("https://store.steampowered.com/apple-touch-icon.png",
+            "https://www.google.com/s2/favicons?domain=store.steampowered.com&sz=128"),
+        Store.EPIC to listOf("https://store.epicgames.com/apple-touch-icon.png",
+            "https://www.google.com/s2/favicons?domain=epicgames.com&sz=128"),
+    )
+    private val memory = HashMap<Store, Bitmap>()
+
+    fun cached(store: Store): Bitmap? = synchronized(memory) { memory[store] }
+
+    fun load(context: android.content.Context, store: Store): Bitmap? {
+        cached(store)?.let { return it }
+        val file = java.io.File(context.filesDir, "store_icons/${store.name}.png")
+        var bmp = if (file.isFile) BitmapFactory.decodeFile(file.path) else null
+        if (bmp == null) {
+            var best: Pair<ByteArray, Bitmap>? = null
+            for (u in urls[store].orEmpty()) {
+                val bytes = runCatching {
+                    StoreNet.client.newCall(Request.Builder().url(u).build()).execute().use { r -> if (r.isSuccessful) r.body?.bytes() else null }
+                }.getOrNull() ?: continue
+                val b = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: continue
+                if (best == null || b.width > best.second.width) best = bytes to b
+                if (b.width >= 96) break
+            }
+            best?.let { (bytes, b) ->
+                runCatching { file.parentFile?.mkdirs(); file.writeBytes(bytes) }
+                bmp = b
+            }
+        }
+        bmp?.let { synchronized(memory) { memory[store] = it } }
+        return bmp
+    }
+}
+
+@Composable
+private fun StoreIcon(store: Store, size: androidx.compose.ui.unit.Dp, accent: Color) {
+    val context = LocalContext.current
+    val bitmap by produceState(StoreIcons.cached(store), store) {
+        if (value == null) value = withContext(Dispatchers.IO) { StoreIcons.load(context, store) }
+    }
+    val shape = RoundedCornerShape(size * 0.26f)
+    val b = bitmap
+    if (b != null) {
+        Image(b.asImageBitmap(), store.title, Modifier.size(size).clip(shape), contentScale = ContentScale.Crop)
+    } else {
+        Box(Modifier.size(size).background(accent.copy(alpha = .16f), shape), contentAlignment = Alignment.Center) {
+            Text(store.title.take(1), color = accent, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
     }
 }
