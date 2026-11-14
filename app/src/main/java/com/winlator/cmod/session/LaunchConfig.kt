@@ -59,8 +59,13 @@ data class LaunchConfig(
         /** UnityPlayer.dll or a "<exe>_Data" folder next to the game's exe. */
         @JvmStatic
         fun isUnity(exePath: String?): Boolean = runCatching {
-            if (exePath.isNullOrBlank()) return false
-            val exe = java.io.File(exePath)
+            // shortcut.path is the Exec tail: "\"/storage/…/Game.exe\" args", or Z:\… for the root.
+            var p = exePath?.trim().orEmpty()
+            if (p.startsWith("\"")) p = p.substring(1).substringBefore('"')
+            else if (p.contains(".exe ", ignoreCase = true)) p = p.substring(0, p.indexOf(".exe ", ignoreCase = true) + 4)
+            if (p.startsWith("Z:", ignoreCase = true)) p = p.substring(2).replace('\\', '/')
+            if (p.isBlank()) return false
+            val exe = java.io.File(p)
             val dir = exe.parentFile ?: return false
             java.io.File(dir, "UnityPlayer.dll").isFile ||
                 java.io.File(dir, exe.nameWithoutExtension + "_Data").isDirectory
