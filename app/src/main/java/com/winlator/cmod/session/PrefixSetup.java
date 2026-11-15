@@ -98,6 +98,7 @@ public final class PrefixSetup {
 
         WineStartMenuCreator.create(context, container);
         WineUtils.createDosdevicesSymlinks(container);
+        WineFonts.ensure(imageFs, wineInfo);
 
         boolean dinput = GamepadApi.dinputShown(launch);
         Log.i("PrefixSetup", "Gamepad API " + launch.getPadApi() + (launch.isUnityGame() ? " (Unity)" : "") + ": DirectInput " + (dinput ? "shown" : "hidden"));
