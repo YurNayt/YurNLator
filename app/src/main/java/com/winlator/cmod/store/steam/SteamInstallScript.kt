@@ -45,7 +45,8 @@ object SteamInstallScript {
     }
 
     /** D:\…\Game for a folder on one of the container's drives, else Z:\… (the device root). */
-    private fun windowsPath(container: Container, dir: File): String {
+    @JvmStatic
+    fun windowsPath(container: Container, dir: File): String {
         val path = runCatching { dir.canonicalPath }.getOrDefault(dir.path)
         for (d in container.drivesIterator()) {
             val root = runCatching { File(d[1]).canonicalPath }.getOrNull() ?: continue

@@ -253,6 +253,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 catch (Throwable t) { android.util.Log.w("SteamInstallScript", "before launch", t); }
                 try { com.winlator.cmod.session.LauncherFixes.apply(container); }
                 catch (Throwable t) { android.util.Log.w("LauncherFixes", "before launch", t); }
+                try { com.winlator.cmod.session.UbisoftGames.beforeLaunch(this, container, shortcut); }
+                catch (Throwable t) { android.util.Log.w("UbisoftGames", "before launch", t); }
                 try { com.winlator.cmod.session.ProgramDllOverrides.beforeLaunch(container, shortcut); }
                 catch (Throwable t) { android.util.Log.w("ProgramDllOverrides", "before launch", t); }
                 try { com.winlator.cmod.session.GameLanguage.beforeLaunch(container, shortcut); }
