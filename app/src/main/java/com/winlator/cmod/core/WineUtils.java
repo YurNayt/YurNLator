@@ -212,7 +212,9 @@ public abstract class WineUtils {
 public static void changeServicesStatus(Container container, String startupSelection) {
     final String[] services = {
         "BITS:3", "Eventlog:2", "HTTP:3", "LanmanServer:3", "NDIS:2",
-        "PlugPlay:4", "RpcSs:4", "scardsvr:3", "Schedule:3",
+        // RpcSs on demand (3), not disabled: COM servers, BITS and WMI need it, and launchers /
+        // updaters (Ubisoft's, Rockstar's...) crash without it ("Failed to start RpcSs service").
+        "PlugPlay:4", "RpcSs:3", "scardsvr:3", "Schedule:3",
         "Spooler:3", "StiSvc:3", "TermService:3",
         "winebus:2", "winehid:2", "Winmgmt:3", "wuauserv:3"
     };

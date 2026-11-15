@@ -104,9 +104,10 @@ public final class PrefixSetup {
         WineUtils.setJoystickRegistryKeys(container, dinput, true);
 
         String startup = launch.getStartupSelection();
-        if (!startup.equals(container.getExtra("startupSelection"))) {
+        // ":rpc" = written since RpcSs stays on demand: older containers get the services again.
+        if (!(startup + ":rpc").equals(container.getExtra("startupSelection"))) {
             WineUtils.changeServicesStatus(container, startup);
-            container.putExtra("startupSelection", startup);
+            container.putExtra("startupSelection", startup + ":rpc");
             changed = true;
         }
         if (changed) container.saveData();
