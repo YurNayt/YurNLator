@@ -632,6 +632,10 @@ public class ShortcutsFragment extends Fragment {
     }
 
     private void runFromShortcut(Shortcut shortcut) {
+        runFromShortcut(shortcut, false);
+    }
+
+    private void runFromShortcut(Shortcut shortcut, boolean asAdmin) {
         Activity activity = getActivity();
         if (activity == null) return;
         if (libraryController != null) {
@@ -644,6 +648,7 @@ public class ShortcutsFragment extends Fragment {
             intent.putExtra("shortcut_name", shortcut.name);
             intent.putExtra("disableXinput", shortcut.getExtra("disableXinput", "0"));
             intent.putExtra("native_rendering", shortcut.getRendererNative());
+            if (asAdmin) intent.putExtra(com.winlator.cmod.session.AdminRun.EXTRA, true);
             activity.startActivity(intent);
         } else {
             XrActivity.openIntent(activity, shortcut.container.id, shortcut.file.getPath());
@@ -666,6 +671,9 @@ public class ShortcutsFragment extends Fragment {
         else if (LibraryComposeHost.ACTION_ICON.equals(action)) {
             shortcutForIconUpdate = shortcut;
             iconPickerLauncher.launch("image/*");
+        }
+        else if (LibraryComposeHost.ACTION_RUN_ADMIN.equals(action)) {
+            runFromShortcut(shortcut, true);
         }
         else if (LibraryComposeHost.ACTION_REMOVE.equals(action)) {
             com.winlator.cmod.store.ShortcutRemoval.ask(context, shortcut, () -> {

@@ -1142,4 +1142,18 @@
     <string name="l_rm_removed">Game removed from the device</string>
     <string name="l_ste_size">Size: %1$s (download %2$s)</string>
     <string name="l_ste_no_space">Not enough free space on the device</string>
+    <string name="l_gd_container">Container</string>
+    <string name="l_gd_presets">Presets</string>
+    <string name="l_gd_components">Components</string>
+    <string name="l_gd_run_admin">Run as administrator</string>
+    <string name="l_gd_playtime">Played</string>
+    <string name="l_gd_launches">Launches</string>
+    <string name="l_gd_last_played">Last played</string>
+    <string name="l_gd_size">Size</string>
+    <string name="l_gd_store">Store</string>
+    <string name="l_gd_hm">%1$d h %2$d min</string>
+    <string name="l_gd_h">%1$d h</string>
+    <string name="l_gd_m">%1$d min</string>
+    <string name="l_hint_run_admin">Turns UAC off in the container (EnableLUA = 0): installers and games get administrator rights without access errors</string>
+    <string name="l_lbl_run_programs_as_administrator">Run programs as administrator</string>
 </resources>

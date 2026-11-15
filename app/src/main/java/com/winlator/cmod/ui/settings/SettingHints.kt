@@ -27,6 +27,7 @@ internal object SettingHints {
         "Driver Version" to R.string.l_hint_vk_driver,
         "Gamepad API" to R.string.l_hint_pad_api,
         "Game language" to R.string.l_hint_game_lang,
+        "Run programs as administrator" to R.string.l_hint_run_admin,
     )
 
     /** Shown with their English name when the app is in another language. */

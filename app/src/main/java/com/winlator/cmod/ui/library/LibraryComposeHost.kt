@@ -89,6 +89,7 @@ object LibraryComposeHost {
     const val ACTION_REMOVE = "remove"
     const val ACTION_FAVORITE = "favorite"
     const val ACTION_PRESETS = "presets"
+    const val ACTION_RUN_ADMIN = "run_admin"
 
     @JvmStatic
     fun create(

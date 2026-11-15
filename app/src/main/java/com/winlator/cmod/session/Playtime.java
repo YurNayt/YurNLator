@@ -62,6 +62,6 @@ public final class Playtime {
 
     public void countLaunch() {
         String key = name + "_play_count";
-        prefs.edit().putInt(key, prefs.getInt(key, 0) + 1).apply();
+        prefs.edit().putInt(key, prefs.getInt(key, 0) + 1).putLong(name + "_last_played", System.currentTimeMillis()).apply();
     }
 }

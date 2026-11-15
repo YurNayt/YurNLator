@@ -258,6 +258,7 @@ private class ContainerEditorStateV2(
         repeat(cpuCount) { add(set == null || set.isEmpty() || it.toString() in set) }
     }
 
+    var runAsAdmin by mutableStateOf(editing?.let { com.winlator.cmod.session.AdminRun.containerOn(it) } ?: true)
     var startup by mutableIntStateOf(editing?.startupSelection?.toInt() ?: Container.STARTUP_SELECTION_ESSENTIAL.toInt())
     var openGlDefaultInitialized by mutableStateOf((editing?.getExtra("openGlDefaultInitialized", "0") ?: "0") == "1")
     private val initialEnvVars = cleanContainerEnvironment(editing?.envVars ?: GpuProfileManager.defaultEnvVars(context))
@@ -335,7 +336,7 @@ private class ContainerEditorStateV2(
         fullscreen, desktopTheme, desktopBackground, wallpaperStamp, mouseWarp,
         renderer, rendererPresentMode, rendererDriver, filterMode, surfaceFormat, trueDisplayX, displayBackend,
         displayXPerformanceMode, displayXPresentAtRefreshRate, graphicsDriver, graphicsConfig,
-        wrapper, wrapperConfig, emulator, fexVersion, boxVersion, fexPreset, boxPreset, exclusive, xinput, dinput, padApi,
+        wrapper, wrapperConfig, emulator, fexVersion, boxVersion, fexPreset, boxPreset, exclusive, xinput, dinput, padApi, runAsAdmin,
         syncCpu, forceSsbs, mangoPreload, startup, openGlDefaultInitialized, autoMesaGlVersionOverride, envVars,
         cpu64.joinToString(), cpu32.joinToString(), components.entries.sortedBy { it.key }.joinToString()
     ).joinToString("|")
@@ -526,6 +527,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         container.setInputType(inputType)
         container.putExtra(com.winlator.cmod.session.GamepadApi.KEY, state.padApi.ifEmpty { null })
         container.setStartupSelection(state.startup.toByte())
+        com.winlator.cmod.session.AdminRun.setContainer(container, state.runAsAdmin)
         container.setBox64Version(state.boxVersion)
         container.setBox64Preset(state.boxPreset)
         container.setFEXCoreVersion(state.fexVersion)
@@ -608,6 +610,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
                     .put("oboeAdaptive", if (state.oboeAdaptive) "1" else "0")
                     .put("oboeExclusive", if (state.oboeExclusive) "1" else "0")
                     .apply { if (state.padApi.isNotEmpty()) put(com.winlator.cmod.session.GamepadApi.KEY, state.padApi) }
+                    .put(com.winlator.cmod.session.AdminRun.KEY, if (state.runAsAdmin) "1" else "0")
                     .put("openGlDefaultInitialized", if (state.openGlDefaultInitialized) "1" else "0")
                     .put("autoMesaGlVersionOverride", if (state.autoMesaGlVersionOverride) "1" else "0"))
             }
@@ -1195,6 +1198,8 @@ private fun ContainerCategoryV2(
                 SettingChoice("Startup Selection", startupEntries[s.startup.coerceIn(0, 2)], startupEntries) {
                     s.startup = startupEntries.indexOf(it).coerceAtLeast(0)
                 }
+                SettingsDivider()
+                SettingToggle("Run programs as administrator", s.runAsAdmin) { s.runAsAdmin = it }
                 SettingsDivider()
                 SettingSyncChoice(s.envVars) { s.setEnvironment(it) }
             }

@@ -74,14 +74,20 @@ public class GameDetailFragment extends Fragment {
         View content = GameDetailComposeHost.create(
                 requireContext(),
                 com.winlator.cmod.core.ExeVersionInfo.displayName(shortcut.name, shortcut.path),
-                withPlaytime(buildEnvironmentSubtitle()),
+                buildEnvironmentSubtitle(),
                 artworkPath,
                 fallback,
                 "1".equals(shortcut.getExtra("favorite", "0")),
+                shortcut,
                 new GameDetailCallbacks() {
                     @Override
                     public void onPlay() {
-                        runShortcut();
+                        runShortcut(false);
+                    }
+
+                    @Override
+                    public void onPlayAdmin() {
+                        runShortcut(true);
                     }
 
                     @Override
@@ -145,10 +151,11 @@ public class GameDetailFragment extends Fragment {
         return runtime + "  •  " + renderer;
     }
 
-    private void runShortcut() {
+    private void runShortcut(boolean asAdmin) {
         Activity activity = requireActivity();
         if (!XrActivity.isEnabled(requireContext())) {
             Intent intent = new Intent(activity, XServerDisplayActivity.class);
+            if (asAdmin) intent.putExtra(com.winlator.cmod.session.AdminRun.EXTRA, true);
             intent.putExtra("container_id", shortcut.container.id);
             intent.putExtra("shortcut_path", shortcut.file.getPath());
             intent.putExtra("shortcut_name", shortcut.name);
@@ -199,10 +206,4 @@ public class GameDetailFragment extends Fragment {
         super.onPause();
     }
 
-    /** The environment line, then how long and how often the game was played. */
-    private String withPlaytime(String subtitle) {
-        String played = com.winlator.cmod.session.Playtime.describe(requireContext(), shortcut.name);
-        if (played.isEmpty()) return subtitle;
-        return subtitle == null || subtitle.isEmpty() ? played : subtitle + "\n" + played;
-    }
 }

@@ -48,6 +48,7 @@ internal fun ContainerAdvancedPane(containerId: Int) {
     var dinput by remember { mutableStateOf((container.getInputType() and WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()) != 0) }
     var padApi by remember { mutableStateOf(com.winlator.cmod.session.GamepadApi.containerChoice(container)) }
     var syncCpu by remember { mutableStateOf(container.isSyncCpuTopology()) }
+    var runAsAdmin by remember { mutableStateOf(com.winlator.cmod.session.AdminRun.containerOn(container)) }
     val cpuCount = remember { Runtime.getRuntime().availableProcessors().coerceAtLeast(1) }
     val cpu64 = remember {
         mutableStateListOf<Boolean>().apply { addAll(cpuSelection(container.getCPUList(true), cpuCount)) }
@@ -107,6 +108,12 @@ internal fun ContainerAdvancedPane(containerId: Int) {
                 SettingChoice("Startup Selection", startupEntries[startup], startupEntries) { value ->
                     startup = startupEntries.indexOf(value).coerceAtLeast(0)
                     container.setStartupSelection(startup.toByte())
+                    container.saveData()
+                }
+                SettingsDivider()
+                SettingToggle("Run programs as administrator", runAsAdmin) {
+                    runAsAdmin = it
+                    com.winlator.cmod.session.AdminRun.setContainer(container, it)
                     container.saveData()
                 }
                 SettingsDivider()

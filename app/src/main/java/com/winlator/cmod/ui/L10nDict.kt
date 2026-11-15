@@ -214,6 +214,7 @@ object L10nDict {
         "gseries" to R.string.l_lbl_gseries,
         "Game language" to R.string.l_lbl_game_language,
         "Don't change" to R.string.l_lbl_don_t_change,
+        "Run programs as administrator" to R.string.l_lbl_run_programs_as_administrator,
     )
 
     /** [en] in the app language (unchanged when there is no translation). */

@@ -1142,4 +1142,18 @@
     <string name="l_rm_removed">Игра удалена с устройства</string>
     <string name="l_ste_size">Размер: %1$s (загрузка %2$s)</string>
     <string name="l_ste_no_space">Не хватает свободного места на устройстве</string>
+    <string name="l_gd_container">Контейнер</string>
+    <string name="l_gd_presets">Пресеты</string>
+    <string name="l_gd_components">Компоненты</string>
+    <string name="l_gd_run_admin">Запуск от имени администратора</string>
+    <string name="l_gd_playtime">Наиграно</string>
+    <string name="l_gd_launches">Запусков</string>
+    <string name="l_gd_last_played">Последний запуск</string>
+    <string name="l_gd_size">Размер</string>
+    <string name="l_gd_store">Магазин</string>
+    <string name="l_gd_hm">%1$d ч %2$d мин</string>
+    <string name="l_gd_h">%1$d ч</string>
+    <string name="l_gd_m">%1$d мин</string>
+    <string name="l_hint_run_admin">Отключает UAC в контейнере (EnableLUA = 0): установщики и игры получают права администратора без ошибок доступа</string>
+    <string name="l_lbl_run_programs_as_administrator">Запускать программы от имени администратора</string>
 </resources>

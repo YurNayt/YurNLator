@@ -246,6 +246,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg"), container, shortcut);
                 com.winlator.cmod.session.RefreshRate.applyWineModeEmulation(imageFs, wineInfo);
                 // A game from the Steam library: its newer cloud saves and its achievements, before it starts.
+                try { com.winlator.cmod.session.AdminRun.beforeLaunch(container, shortcut,
+                        getIntent().getBooleanExtra(com.winlator.cmod.session.AdminRun.EXTRA, false)); }
+                catch (Throwable t) { android.util.Log.w("AdminRun", "before launch", t); }
                 try { com.winlator.cmod.session.GameLanguage.beforeLaunch(container, shortcut); }
                 catch (Throwable t) { android.util.Log.w("GameLanguage", "before launch", t); }
                 try { com.winlator.cmod.store.epic.EpicLaunch.beforeLaunch(this, shortcut); }
