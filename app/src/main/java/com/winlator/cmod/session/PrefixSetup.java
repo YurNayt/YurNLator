@@ -103,8 +103,6 @@ public final class PrefixSetup {
         Log.i("PrefixSetup", "Gamepad API " + launch.getPadApi() + (launch.isUnityGame() ? " (Unity)" : "") + ": DirectInput " + (dinput ? "shown" : "hidden"));
         WineUtils.setJoystickRegistryKeys(container, dinput, true);
 
-        LauncherFixes.apply(container);
-
         String startup = launch.getStartupSelection();
         // ":rpc" = written since RpcSs stays on demand: older containers get the services again.
         if (!(startup + ":rpc").equals(container.getExtra("startupSelection"))) {

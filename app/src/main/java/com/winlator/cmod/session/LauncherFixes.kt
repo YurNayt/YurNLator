@@ -20,14 +20,17 @@ object LauncherFixes {
     /** Exe names (any case) that should use Wine's Direct3D instead of DXVK. */
     private val WINED3D_LAUNCHERS = listOf(
         "FC3UpdaterSteam.exe", "FC3Updater.exe",                      // Far Cry 3 (Steam / retail) updater
-        "UbisoftConnect.exe", "upc.exe", "UplayWebCore.exe", "Uplay.exe", "UbisoftGameLauncher.exe", "UbisoftGameLauncher64.exe",
     )
+    /** Were on the list (build 279-280): Ubisoft Connect's own programs keep DXVK after all. */
+    private val NO_LONGER = listOf("UbisoftConnect.exe", "upc.exe", "UplayWebCore.exe", "Uplay.exe", "UbisoftGameLauncher.exe", "UbisoftGameLauncher64.exe")
     private val D3D_DLLS = listOf("d3d8", "d3d9", "d3d10core", "d3d11", "dxgi")
 
+    /** Before Wine starts, ahead of the game's own per-program choices (which win). */
     @JvmStatic
     fun apply(container: Container) {
         runCatching {
             WineRegistryEditor(File(container.rootDir, ".wine/user.reg")).use { reg ->
+                for (exe in NO_LONGER) for (dll in D3D_DLLS) reg.removeValue("Software\\Wine\\AppDefaults\\$exe\\DllOverrides", dll)
                 for (exe in WINED3D_LAUNCHERS) {
                     val key = "Software\\Wine\\AppDefaults\\$exe\\DllOverrides"
                     for (dll in D3D_DLLS) reg.setStringValue(key, dll, "builtin")
