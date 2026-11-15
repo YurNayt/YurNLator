@@ -1076,6 +1076,7 @@ private fun ShortcutCategoryV2(
                 s.execArgs = it; s.extra("execArgs", it.ifBlank { null })
             }
             EnvironmentVariablesEditor(s.envVars, onChanged = { s.setEnvironment(it) })
+            ProgramDllOverridesCard(s.shortcut)
             SettingsCard {
                 shortcutComponentRowsV2.forEachIndexed { index, (key, label) ->
                     val entries = listOf("Builtin (Wine)", "Native (Windows)")

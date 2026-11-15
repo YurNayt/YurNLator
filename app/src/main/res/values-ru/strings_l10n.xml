@@ -1156,4 +1156,12 @@
     <string name="l_gd_m">%1$d мин</string>
     <string name="l_hint_run_admin">Отключает UAC в контейнере (EnableLUA = 0): установщики и игры получают права администратора без ошибок доступа</string>
     <string name="l_lbl_run_programs_as_administrator">Запускать программы от имени администратора</string>
+    <string name="l_dov_title">Эксперт: DLL для отдельных программ</string>
+    <string name="l_dov_hint">Для одного exe игры (лаунчер, программа обновления): DLL от Wine, из Windows или никакая. Остальная игра — как обычно.</string>
+    <string name="l_dov_builtin">Встроенная (Wine)</string>
+    <string name="l_dov_native">Родная (Windows)</string>
+    <string name="l_dov_disabled">Отключена</string>
+    <string name="l_dov_exe">Программа (exe)</string>
+    <string name="l_dov_dll">Библиотека (DLL)</string>
+    <string name="l_dov_add">Добавить</string>
 </resources>

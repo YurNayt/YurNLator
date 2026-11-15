@@ -1156,4 +1156,12 @@
     <string name="l_gd_m">%1$d min</string>
     <string name="l_hint_run_admin">Turns UAC off in the container (EnableLUA = 0): installers and games get administrator rights without access errors</string>
     <string name="l_lbl_run_programs_as_administrator">Run programs as administrator</string>
+    <string name="l_dov_title">Expert: DLLs for single programs</string>
+    <string name="l_dov_hint">For one exe of the game (a launcher, an updater): Wine\'s DLL, the Windows one, or none. The rest of the game keeps the usual setting.</string>
+    <string name="l_dov_builtin">Built-in (Wine)</string>
+    <string name="l_dov_native">Native (Windows)</string>
+    <string name="l_dov_disabled">Disabled</string>
+    <string name="l_dov_exe">Program (exe)</string>
+    <string name="l_dov_dll">Library (DLL)</string>
+    <string name="l_dov_add">Add</string>
 </resources>

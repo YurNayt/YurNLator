@@ -249,6 +249,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 try { com.winlator.cmod.session.AdminRun.beforeLaunch(container, shortcut,
                         getIntent().getBooleanExtra(com.winlator.cmod.session.AdminRun.EXTRA, false)); }
                 catch (Throwable t) { android.util.Log.w("AdminRun", "before launch", t); }
+                try { com.winlator.cmod.store.steam.SteamInstallScript.beforeLaunch(this, container, shortcut); }
+                catch (Throwable t) { android.util.Log.w("SteamInstallScript", "before launch", t); }
+                try { com.winlator.cmod.session.ProgramDllOverrides.beforeLaunch(container, shortcut); }
+                catch (Throwable t) { android.util.Log.w("ProgramDllOverrides", "before launch", t); }
                 try { com.winlator.cmod.session.GameLanguage.beforeLaunch(container, shortcut); }
                 catch (Throwable t) { android.util.Log.w("GameLanguage", "before launch", t); }
                 try { com.winlator.cmod.store.epic.EpicLaunch.beforeLaunch(this, shortcut); }

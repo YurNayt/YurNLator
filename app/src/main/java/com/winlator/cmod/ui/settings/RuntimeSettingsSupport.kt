@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -572,6 +574,8 @@ internal fun SettingChoice(
                         SettingHint(label)
                     }
                     GlossaryHelpIcon(label)
+                    // Kept away from the arrow: taps meant for the list often hit "?".
+                    Spacer(Modifier.width(26.dp))
                     Icon(Icons.Outlined.KeyboardArrowDown, null)
                 }
             }
@@ -645,6 +649,8 @@ internal fun SettingWineRuntimeChoice(
                     }
                 }
                 GlossaryHelpIcon(label)
+                // Kept away from the arrow: taps meant for the list often hit "?".
+                Spacer(Modifier.width(26.dp))
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
@@ -724,6 +730,8 @@ internal fun SettingInstallChoice(
                     Text(if (selected.isBlank()) uiStr(R.string.l_rt_choose_a_version) else VersionGroups.title(selected, prefix), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
                 }
                 GlossaryHelpIcon(label)
+                // Kept away from the arrow: taps meant for the list often hit "?".
+                Spacer(Modifier.width(26.dp))
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
@@ -813,6 +821,8 @@ internal fun SettingDriverChoice(
                     SettingHint(label)
                 }
                 GlossaryHelpIcon(label)
+                // Kept away from the arrow: taps meant for the list often hit "?".
+                Spacer(Modifier.width(26.dp))
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }

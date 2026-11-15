@@ -181,6 +181,7 @@ fun SettingPresetChoice(
                     )
                 }
                 GlossaryHelpIcon(label)
+                Spacer(Modifier.width(26.dp))
                 Icon(Icons.Outlined.KeyboardArrowDown, null)
             }
         }
