@@ -1,7 +1,25 @@
 {
  "version": 1,
- "updated": 1794738225,
+ "updated": 1794756800,
  "presets": [
+  {
+   "id": "44d17ba8f734",
+   "game": "eldenring",
+   "game_key": "eldenring",
+   "exe": "eldenring.exe",
+   "title": "more stable 25/30fps",
+   "author": "",
+   "device": "vivo V2408A",
+   "soc": "SM8750",
+   "gpu": "Adreno 830",
+   "created": 1794756791,
+   "app_version": "v1.1.0",
+   "issue": 6,
+   "likes": 0,
+   "comments": 0,
+   "login": "",
+   "published": 1794756800
+  },
   {
    "id": "97e3091853a8",
    "game": "GTAVLauncher",
