@@ -1,6 +1,8 @@
 package com.winlator.cmod.ui.shortcut
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,8 +71,9 @@ internal fun ProgramDllOverridesCard(shortcut: Shortcut) {
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp))
             OutlinedTextField(dll, { dll = it.trim() }, label = { Text(uiStr(R.string.l_dov_dll)) }, singleLine = true,
                 placeholder = { Text("d3d9, dxgi, xinput1_3…") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                modes.forEach { (v, label) -> FilterChip(selected = mode == v, onClick = { mode = v }, label = { Text(label) }) }
+            // Scrolls sideways: three chips don't fit a phone's width.
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                modes.forEach { (v, label) -> FilterChip(selected = mode == v, onClick = { mode = v }, label = { Text(label, maxLines = 1, softWrap = false) }) }
             }
             TextButton(enabled = exe.isNotBlank() && dll.isNotBlank(), onClick = {
                 val e = ProgramDllOverrides.Entry(exe, dll.removeSuffix(".dll"), mode)
