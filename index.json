@@ -1,7 +1,25 @@
 {
  "version": 1,
- "updated": 1794409328,
+ "updated": 1794738225,
  "presets": [
+  {
+   "id": "97e3091853a8",
+   "game": "GTAVLauncher",
+   "game_key": "gtavlauncher",
+   "exe": "gtavlauncher.exe",
+   "title": "60FPS",
+   "author": "marang",
+   "device": "vivo I2401",
+   "soc": "SM8750",
+   "gpu": "Adreno 830",
+   "created": 1794738213,
+   "app_version": "v1.1.0",
+   "issue": 5,
+   "likes": 0,
+   "comments": 0,
+   "login": "",
+   "published": 1794738225
+  },
   {
    "id": "092348668d3b",
    "game": "eurotrucks2",
