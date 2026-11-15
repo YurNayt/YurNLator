@@ -14,8 +14,8 @@ import java.io.File
  * program crashes (Far Cry 3's FC3UpdaterSteam: "page fault on execute access" ~10 s in). These
  * programs get Wine's own Direct3D (Wine's per-program DllOverrides); the game they start keeps DXVK.
  */
-object GameFixes {
-    private const val TAG = "GameFixes"
+object LauncherFixes {
+    private const val TAG = "LauncherFixes"
 
     /** Exe names (any case) that should use Wine's Direct3D instead of DXVK. */
     private val WINED3D_LAUNCHERS = listOf(
