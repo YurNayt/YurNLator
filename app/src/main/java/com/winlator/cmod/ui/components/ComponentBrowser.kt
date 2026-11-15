@@ -166,7 +166,7 @@ fun ComponentBrowser(
         val profile = com.winlator.cmod.core.GpuProfileManager.current(context)
         when {
             profile == com.winlator.cmod.core.GpuProfile.ADRENO ->
-                items.filter { it.installed || it.type != GPU_DRIVER || sourceGpu[it.author] != "mali" }
+                items.filter { it.installed || it.type != GPU_DRIVER || (sourceGpu[it.author] != "mali" && sourceGpu[it.author] != "xclipse") }
             !maliActive || maliShowAll -> items
             else -> items.filter {
                 it.inUse || it.type == WRAPPER ||

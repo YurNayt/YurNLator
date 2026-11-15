@@ -28,7 +28,7 @@ data class DriverSource(
     val feeds: List<DriverFeed>,
     val note: String = "",
     val builtIn: Boolean = false,
-    /** GPU the drivers are for: "adreno" (Turnip, Qualcomm), "mali" (PanVK), null = any / unknown. */
+    /** GPU the drivers are for: "adreno" (Turnip, Qualcomm), "mali" (PanVK), "xclipse" (RADV), null = any / unknown. */
     val gpu: String? = null,
     /** Mali models the author's builds are tested on ("g57", "g615"…); empty = not specified. */
     val models: List<String> = emptyList()
@@ -71,6 +71,10 @@ object DriverSources {
             "Mali PanVK: G57 MC2 (Helio G99, Galaxy A15)", true, "mali", listOf("g57")),
         DriverSource("PanVK · Noysz", listOf(DriverFeed.Github("Noysz", "panvk-g99-jm")),
             "Mali PanVK: G57 MC2 / Helio G99, experimental", true, "mali", listOf("g57")),
+        // Mesa RADV ported to Samsung Xclipse (MIT, JimVulkan): the open AMD driver instead of
+        // Samsung's own. The glibc (Linux) build in the same releases is skipped by the catalog.
+        DriverSource("RADV · JimVulkan", listOf(DriverFeed.Github("JimVulkan", "radv-xclipse")),
+            "Samsung Xclipse 920, 530, 940, 540, 550, 950, 960 (Mesa RADV)", true, "xclipse"),
     )
 
     /** Bumped on every change, so open screens reload their driver lists. */
@@ -118,17 +122,25 @@ object DriverSources {
     @JvmStatic
     fun sortForGpu(context: Context, sources: List<DriverSource>): List<DriverSource> {
         val renderer = com.winlator.cmod.core.GpuProfileManager.detect(context).renderer.lowercase()
+        if (renderer.contains("xclipse")) return sources.sortedBy { if (it.gpu == "xclipse") 0 else 1 }
         val model = Regex("(g\\d{2,3})").find(renderer.replace("mali-", " "))?.value ?: return sources
         return sources.sortedBy { if (it.models.isEmpty()) 1 else if (model in it.models) 0 else 2 }
     }
 
     @JvmStatic
     fun fitsProfile(context: Context, source: DriverSource, profile: com.winlator.cmod.core.GpuProfile =
-        com.winlator.cmod.core.GpuProfileManager.current(context)): Boolean = when (profile) {
+        com.winlator.cmod.core.GpuProfileManager.current(context)): Boolean =
+        if (source.gpu == "xclipse") profile == com.winlator.cmod.core.GpuProfile.UNIVERSAL || isXclipse(context)
+        else when (profile) {
         com.winlator.cmod.core.GpuProfile.ADRENO -> source.gpu != "mali"
         com.winlator.cmod.core.GpuProfile.MALI -> source.gpu != "adreno" || com.winlator.cmod.core.MaliCompat.showAll(context)
         else -> true
     }
+
+    /** This phone's GPU is a Samsung Xclipse. */
+    @JvmStatic
+    fun isXclipse(context: Context): Boolean =
+        com.winlator.cmod.core.GpuProfileManager.detect(context).renderer.contains("xclipse", ignoreCase = true)
 
     /** Adds a custom author. Returns an error message, or null on success. */
     fun addCustom(context: Context, name: String, feed: DriverFeed): String? {

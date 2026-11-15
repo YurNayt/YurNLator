@@ -111,7 +111,9 @@ public final class RemoteDriverCatalog {
                     if (asset == null) continue;
                     String url = asset.optString("browser_download_url", "");
                     String assetName = asset.optString("name", "");
-                    if (!url.isEmpty() && assetName.toLowerCase(Locale.ENGLISH).endsWith(".zip")) {
+                    // Linux (glibc) builds next to the Android ones can't load here.
+                    if (!url.isEmpty() && assetName.toLowerCase(Locale.ENGLISH).endsWith(".zip")
+                            && !assetName.toLowerCase(Locale.ENGLISH).contains("glibc")) {
                         zipAssets.add(asset);
                     }
                 }
