@@ -176,20 +176,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         mainToolbar = findViewById(R.id.Toolbar);
         setSupportActionBar((androidx.appcompat.widget.Toolbar) mainToolbar);
-        // The top bar belongs to the screen below it: when a new screen's view is made, its title
-        // and buttons fade in with the screen's own timing and curve. Before, the title switched
-        // at once while the content was still crossfading, so "Library" sat over a game's page.
-        getSupportFragmentManager().registerFragmentLifecycleCallbacks(new FragmentManager.FragmentLifecycleCallbacks() {
-            @Override
-            public void onFragmentViewCreated(@NonNull FragmentManager fm, @NonNull Fragment f, @NonNull View v, Bundle state) {
-                if (mainToolbar == null || f.getId() != R.id.FLFragmentContainer) return;
-                mainToolbar.animate().cancel();
-                mainToolbar.setAlpha(0f);
-                // Same timing as a tab's own fade-in (nav_enter).
-                mainToolbar.animate().alpha(1f).setDuration(170)
-                        .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
-            }
-        }, false);
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(false);
@@ -531,12 +517,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void show(Fragment fragment, boolean reverse) {
         FragmentManager fragmentManager = getSupportFragmentManager();
-        // Tab switches: a short fade instead of sliding whole screens (smoother on first composition).
+        // Tab switch: the top bar (title, its buttons) and the screen change together and fade in as
+        // one. Separate animations made them drift apart: the new title and buttons were there at
+        // once while the old screen was still fading out under them ("Stores" over the library).
         fragmentManager.beginTransaction()
                 .setReorderingAllowed(true)
-                .setCustomAnimations(R.anim.nav_enter, R.anim.nav_exit)
                 .replace(R.id.FLFragmentContainer, fragment)
                 .commit();
+        View mainArea = findViewById(R.id.FLMainArea);
+        if (mainArea != null) {
+            mainArea.animate().cancel();
+            mainArea.setAlpha(0f);
+            mainArea.animate().alpha(1f).setDuration(180)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        }
 
         drawerLayout.closeDrawer(GravityCompat.START);
     }

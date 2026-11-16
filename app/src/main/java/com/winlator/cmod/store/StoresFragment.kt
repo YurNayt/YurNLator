@@ -57,6 +57,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -94,9 +95,6 @@ class StoresFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.title = uiStr(R.string.l_st_stores)
-        // The top bar with "Stores" stays over a store's page too (portrait; landscape draws its own).
-        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        if (!landscape) (activity as? com.winlator.cmod.MainActivity)?.setMainToolbarVisible(true)
     }
 }
 
@@ -109,6 +107,13 @@ private fun StoresScreen() {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (landscape) com.winlator.cmod.ui.LandscapeMainNavigation(activity, R.id.main_menu_stores, uiStr(R.string.l_st_stores))
         val s = store?.let { runCatching { Store.valueOf(it) }.getOrNull() }
+        // A store's page has its own header (back arrow, logo): no "Stores" top bar over it, like a
+        // game's page. The picker keeps the bar. (Portrait; landscape draws its own chrome.)
+        val storeOpen = s != null
+        DisposableEffect(activity, storeOpen, landscape) {
+            if (!landscape) activity?.setMainToolbarVisible(!storeOpen)
+            onDispose { if (!landscape) activity?.setMainToolbarVisible(true) }
+        }
         if (s == null) StorePicker { store = it.name } else {
             BackHandler { store = null }
             StoreTheme(s) { StoreScreen(s) { store = null } }
