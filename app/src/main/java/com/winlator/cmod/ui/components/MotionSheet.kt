@@ -1,5 +1,7 @@
 package com.winlator.cmod.ui.components
 
+import android.view.ViewGroup
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,7 +22,10 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCompositionContext
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,7 +47,9 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -70,21 +77,44 @@ interface MotionSheetScope {
  */
 @Composable
 fun MotionSheet(onDismissRequest: () -> Unit, content: @Composable ColumnScope.(MotionSheetScope) -> Unit) {
-    // Back goes through the dialog's own dismiss request to the animated close.
-    val closer = remember { mutableStateOf<(() -> Unit)?>(null) }
-    Dialog(
-        onDismissRequest = { closer.value?.invoke() ?: onDismissRequest() },
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false, dismissOnClickOutside = false)
-    ) {
-        // Our own dim and motion: none from the window.
-        (LocalView.current.parent as? DialogWindowProvider)?.window?.let { w ->
-            LaunchedEffect(w) {
-                w.setDimAmount(0f)
-                w.setWindowAnimations(0)
+    // Drawn inside the current window, over its content, instead of in a window of its own: a new
+    // window takes the focus and makes the system show and hide its bars again, which cost a frame
+    // in the middle of the slide (it paused and went on). The theme and the rest come along
+    // through the parent composition. A window too small for it (a small dialog) gets a Dialog.
+    val host = LocalView.current
+    val root = remember(host) {
+        (host.rootView.findViewById<ViewGroup>(android.R.id.content) ?: host.rootView as? ViewGroup)
+            ?.takeIf { it.width >= host.resources.displayMetrics.widthPixels * 0.9f }
+    }
+    val latestContent = rememberUpdatedState(content)
+    val latestDismiss = rememberUpdatedState(onDismissRequest)
+    if (root == null) {
+        val closer = remember { mutableStateOf<(() -> Unit)?>(null) }
+        Dialog(
+            onDismissRequest = { closer.value?.invoke() ?: onDismissRequest() },
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false, dismissOnClickOutside = false)
+        ) {
+            (LocalView.current.parent as? DialogWindowProvider)?.window?.let { w ->
+                LaunchedEffect(w) { w.setDimAmount(0f); w.setWindowAnimations(0) }
+            }
+            KeepDialogFullscreen()
+            SheetBody(onDismissRequest, { closer.value = it }, content)
+        }
+        return
+    }
+    val parent = rememberCompositionContext()
+    DisposableEffect(root) {
+        val overlay = ComposeView(host.context).apply {
+            setParentCompositionContext(parent)
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+            setContent {
+                var close by remember { mutableStateOf<(() -> Unit)?>(null) }
+                BackHandler { close?.invoke() ?: latestDismiss.value() }
+                SheetBody({ latestDismiss.value() }, { close = it }) { sheet -> latestContent.value(this, sheet) }
             }
         }
-        KeepDialogFullscreen()
-        SheetBody(onDismissRequest, { closer.value = it }, content)
+        root.addView(overlay, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        onDispose { root.removeView(overlay) }
     }
 }
 
