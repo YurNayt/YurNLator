@@ -42,6 +42,17 @@ public final class GuestLaunch {
         if (shortcut != null) log.accept("[YurNLator] shortcut path: " + shortcut.path);
         log.accept("[YurNLator] gamepad: " + lc.getPadApi() + (lc.isUnityGame() ? ", Unity game" : "")
                 + " -> XInput" + (GamepadApi.dinputShown(lc) ? " + DirectInput" : " only"));
+        // What actually runs the x86 code and with which settings: launched from the file manager
+        // there is no shortcut, so only the container's emulator / preset / variables apply.
+        try {
+            log.accept("[YurNLator] " + emulatorLine(context, container, shortcut, wineInfo, lc));
+            String cv = container.getEnvVars() != null ? container.getEnvVars().trim() : "";
+            log.accept("[YurNLator] container variables: " + (cv.isEmpty() ? "none" : cv));
+            if (shortcut != null) {
+                String sv = shortcut.getExtra("envVars").trim();
+                log.accept("[YurNLator] shortcut variables: " + (sv.isEmpty() ? "none" : sv));
+            }
+        } catch (Throwable t) { android.util.Log.w("GuestLaunch", "emulator line", t); }
 
         ArrayList<String> bindingPaths = new ArrayList<>();
         for (String[] drive : container.drivesIterator()) bindingPaths.add(drive[1]);
@@ -50,6 +61,20 @@ public final class GuestLaunch {
         launcher.setFEXCorePreset(lc.getFexcorePreset());
         launcher.setWaylandRuntimeDir(wayland ? WaylandSession.runtimeDir(context).getPath() : null);
         return launcher;
+    }
+
+    /** "32-bit emulator: FEXCore 2611, preset X (FEX_...=...)" or the Box64 equivalent. */
+    private static String emulatorLine(Context context, Container container, Shortcut shortcut,
+                                       WineInfo wineInfo, LaunchConfig lc) {
+        if (wineInfo == null || !wineInfo.isArm64EC())
+            return "emulator: Box64 (whole Wine), preset " + lc.getBox64Preset();
+        if ("fexcore".equalsIgnoreCase(lc.getEmulator())) {
+            String ver = shortcut != null ? shortcut.getExtra("fexcoreVersion", container.getFEXCoreVersion()) : container.getFEXCoreVersion();
+            EnvVars preset = com.winlator.cmod.fexcore.FEXCorePresetManager.getEnvVars(context, lc.getFexcorePreset());
+            return "32-bit emulator: FEXCore " + ver + ", preset " + lc.getFexcorePreset() + " (" + preset + ")";
+        }
+        String ver = shortcut != null ? shortcut.getExtra("box64Version", container.getBox64Version()) : container.getBox64Version();
+        return "32-bit emulator: WOWBox64 " + ver + ", preset " + lc.getBox64Preset();
     }
 
     /** The variables the launch adds: game fixes, the user's own, OpenGL, then the defaults. */
