@@ -6,6 +6,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -65,7 +75,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -140,8 +149,10 @@ private fun QuickMenu(bridge: QuickMenuBridge, opened: Int) {
         var confirmExit by remember { mutableStateOf(false) }
         val scheme = MaterialTheme.colorScheme
         val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+        val panelWidth = minOf(screenWidth * 0.62f, 520.dp)
+        val swipe = rememberSwipeToClose(bridge, opened, with(LocalDensity.current) { panelWidth.toPx() })
         Surface(
-            modifier = Modifier.fillMaxHeight().width(minOf(screenWidth * 0.62f, 520.dp)),
+            modifier = Modifier.fillMaxHeight().width(panelWidth).then(swipe),
             color = scheme.background,
             shape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
         ) {
@@ -194,6 +205,61 @@ private fun QuickMenu(bridge: QuickMenuBridge, opened: Int) {
             dismissButton = { TextButton(onClick = { confirmExit = false }) { Text(uiStr(R.string.l_qm_cancel)) } }
         )
     }
+}
+
+/**
+ * Swipe the open menu to the left to close it (it couldn't be dragged at all: the drawer is locked
+ * so an edge swipe in a game doesn't pull it out). While the finger is down the panel IS the
+ * finger: no easing, its offset follows 1:1, and the dim behind it fades with the same value.
+ * On release it closes past 40 % of its width or on a quick flick, with a spring that starts at
+ * the finger's speed; otherwise it springs back fast. Sliders and the chip rows inside take their
+ * own horizontal drags first (Compose hands a drag to the innermost handler), so moving a slider
+ * never closes the menu. No overshoot: the panel sits on the screen edge, a bounce past it would
+ * open a gap.
+ */
+@Composable
+private fun rememberSwipeToClose(bridge: QuickMenuBridge, opened: Int, widthPx: Float): Modifier {
+    val offset = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val flickPx = with(density) { 600.dp.toPx() }      // px per second
+    LaunchedEffect(opened) { offset.snapTo(0f) }
+    LaunchedEffect(widthPx) {
+        snapshotFlow { offset.value }.collect { bridge.setScrim(1f - (-it / widthPx).coerceIn(0f, 1f)) }
+    }
+    suspend fun settle(velocity: Float) {
+        val close = -offset.value > widthPx * 0.4f || velocity < -flickPx
+        if (close) {
+            offset.animateTo(-widthPx, spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium), velocity)
+            bridge.closeNow()
+            offset.snapTo(0f)
+        } else {
+            offset.animateTo(0f, spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow), velocity)
+        }
+    }
+    return Modifier
+        .pointerInput(widthPx) {
+            val tracker = VelocityTracker()
+            var total = 0f
+            detectHorizontalDragGestures(
+                onDragStart = {
+                    tracker.resetTracking()
+                    total = offset.value
+                    scope.launch { offset.stop() }
+                },
+                onDragEnd = {
+                    val v = tracker.calculateVelocity().x
+                    scope.launch { settle(v) }
+                },
+                onDragCancel = { scope.launch { settle(0f) } }
+            ) { change, amount ->
+                change.consume()
+                total = (total + amount).coerceIn(-widthPx, 0f)
+                tracker.addPosition(change.uptimeMillis, Offset(total, 0f))
+                scope.launch { offset.snapTo(total) }
+            }
+        }
+        .graphicsLayer { translationX = offset.value }
 }
 
 @Composable

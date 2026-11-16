@@ -83,6 +83,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     TouchpadView touchpadView;
     XEnvironment environment;
     DrawerLayout drawerLayout;
+    /** The drawer's dim (DrawerLayout's default 0x99000000); the quick menu's swipe fades it. */
+    static final int DRAWER_SCRIM_ALPHA = 0x99;
     private ContainerManager containerManager;
     protected Container container;
     XServer xServer;
@@ -319,12 +321,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
         drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
             public void onDrawerOpened(View drawerView) {
+                drawerLayout.setScrimColor(DRAWER_SCRIM_ALPHA << 24);
                 QuickMenuHost.onOpened();
                 sidebar.reopen();
             }
 
             @Override
             public void onDrawerClosed(View drawerView) {
+                drawerLayout.setScrimColor(DRAWER_SCRIM_ALPHA << 24);
                 quickMenuBridge.stopTasks();
                 sidebar.hideAllPanels();
             }

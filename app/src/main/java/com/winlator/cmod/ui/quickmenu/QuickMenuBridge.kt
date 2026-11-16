@@ -155,4 +155,8 @@ interface QuickMenuBridge {
     fun setPaused(paused: Boolean)
     fun exitGame()
     fun close()
+    /** Closes the drawer at once, no slide: the swipe-to-close gesture already moved it off screen. */
+    fun closeNow()
+    /** The dim behind the open menu, 0 (none) .. 1 (full); follows the swipe that closes it. */
+    fun setScrim(fraction: Float)
 }

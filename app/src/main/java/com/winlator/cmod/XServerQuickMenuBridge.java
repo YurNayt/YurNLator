@@ -746,6 +746,15 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
 
     @Override public void close() { a.drawerLayout.closeDrawers(); }
 
+    @Override public void closeNow() {
+        a.drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START, false);
+    }
+
+    @Override public void setScrim(float fraction) {
+        float f = Math.max(0f, Math.min(1f, fraction));
+        a.drawerLayout.setScrimColor(Math.round(XServerDisplayActivity.DRAWER_SCRIM_ALPHA * f) << 24);
+    }
+
     /** "0-3, 6" from an affinity bit mask; "" when unknown or every core. */
     static String coreList(int mask) {
         int n = Runtime.getRuntime().availableProcessors();
