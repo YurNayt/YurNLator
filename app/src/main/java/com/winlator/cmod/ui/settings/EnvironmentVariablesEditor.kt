@@ -287,6 +287,9 @@ private fun AddEnvironmentVariableDialog(
     MotionDialog(
         onDismissRequest = onDismiss,
         title = uiStr(R.string.l_lbl_add_environment_variable),
+        // The known-names list at full height (220) with its gap (6) and outline (2): opened, the
+        // window sits in the middle of the screen.
+        growth = 228.dp,
         confirmButton = {
             TextButton(
                 enabled = canAdd,

@@ -2,7 +2,9 @@ package com.winlator.cmod.ui.components
 
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -61,6 +63,12 @@ import com.winlator.cmod.ui.Motion
 import com.winlator.cmod.ui.MotionKind
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+
+/**
+ * Height of the video-memory limit picker (handle 48 + title 34 + 8 rows of 46 + gaps 48 + bottom
+ * 18 dp): the sheet whose speed every sheet moves at.
+ */
+private const val REFERENCE_SHEET_DP = 516f
 
 private class SheetLook(val containerColor: Color, val dragHandle: (@Composable () -> Unit)?)
 
@@ -161,12 +169,19 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
     var closing by remember { mutableStateOf(false) }
     val flickPx = with(density) { 900.dp.toPx() }
 
+    // Every sheet moves at the same speed: the tuned length is for a sheet as tall as the
+    // video-memory limit picker (REFERENCE_SHEET_DP); a shorter trip takes less time, a longer one
+    // more. With one length for all, a short sheet crawled and a tall one rushed.
+    val refPx = with(density) { REFERENCE_SHEET_DP.dp.toPx() }
     fun runTo(target: Float, then: (() -> Unit)? = null) {
         job?.cancel()
         job = scope.launch {
+            val from = offset.coerceAtMost(heightPx.toFloat())
+            val c = Motion.curve(MotionKind.SHEET)
+            val ms = (c.ms * kotlin.math.abs(target - from) / refPx).toInt().coerceIn(60, 3000)
             // Going away starts at once (no slow start), like the variables list.
-            val curve = if (target > 0f) Motion.exitTween<Float>(MotionKind.SHEET) else Motion.tween<Float>(MotionKind.SHEET)
-            animate(offset.coerceAtMost(heightPx.toFloat()), target, animationSpec = curve) { v, _ -> offset = v }
+            val easing = if (target > 0f) CubicBezierEasing(0f, 0f, c.x2, c.y2) else c.easing()
+            animate(from, target, animationSpec = tween(ms, easing = easing)) { v, _ -> offset = v }
             then?.invoke()
         }
     }
