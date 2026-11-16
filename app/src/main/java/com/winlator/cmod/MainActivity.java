@@ -185,8 +185,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 if (mainToolbar == null || f.getId() != R.id.FLFragmentContainer) return;
                 mainToolbar.animate().cancel();
                 mainToolbar.setAlpha(0f);
-                mainToolbar.animate().alpha(1f).setDuration(240)
-                        .setInterpolator(new android.view.animation.PathInterpolator(0.32f, 0.72f, 0f, 1f)).start();
+                // Same timing as a tab's own fade-in (nav_enter).
+                mainToolbar.animate().alpha(1f).setDuration(170)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
             }
         }, false);
         ActionBar actionBar = getSupportActionBar();

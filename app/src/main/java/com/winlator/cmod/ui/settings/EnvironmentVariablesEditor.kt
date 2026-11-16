@@ -2,7 +2,21 @@ package com.winlator.cmod.ui.settings
 
 import com.winlator.cmod.ui.uiStr
 import com.winlator.cmod.R
+import android.view.Gravity
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,12 +31,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -291,43 +302,64 @@ private fun AddEnvironmentVariableDialog(
         title = { Text(uiStr(R.string.l_lbl_add_environment_variable)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                // The known names drop down over the dialog (a popup) instead of growing it: an
-                // AlertDialog re-centres on every height change, so an inline list made the whole
-                // dialog jump up and down while it opened and closed.
-                val menuOpen = suggestionsOpen && suggestions.isNotEmpty()
-                ExposedDropdownMenuBox(expanded = menuOpen, onExpandedChange = { suggestionsOpen = it }) {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text(uiStr(R.string.env_add_name)) },
-                        singleLine = true,
-                        isError = duplicate,
-                        supportingText = if (duplicate) ({ Text(uiStr(R.string.env_add_already_added)) }) else null,
-                        trailingIcon = {
-                            // Only the arrow opens the list; typing in the field doesn't.
-                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                expanded = menuOpen,
-                                modifier = Modifier.menuAnchor(MenuAnchorType.SecondaryEditable)
+                // The dialog is pinned near the top of the screen: an AlertDialog re-centres on
+                // every height change, so the list opening below the name made the whole dialog
+                // jump up and down. Pinned, only what is under the list moves, and only downwards.
+                PinDialogToTop()
+                val arrowTurn by animateFloatAsState(
+                    if (suggestionsOpen) 180f else 0f,
+                    spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+                    label = "arrow"
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(uiStr(R.string.env_add_name)) },
+                    singleLine = true,
+                    isError = duplicate,
+                    supportingText = if (duplicate) ({ Text(uiStr(R.string.env_add_already_added)) }) else null,
+                    trailingIcon = {
+                        IconButton(onClick = { suggestionsOpen = !suggestionsOpen }) {
+                            Icon(
+                                Icons.Outlined.KeyboardArrowDown,
+                                uiStr(R.string.env_add_suggestions),
+                                modifier = Modifier.graphicsLayer { rotationZ = arrowTurn }
                             )
-                        },
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                // One spring family for the list: it unfolds and fades from the same timing, and a
+                // tap on the arrow mid-way reverses it from where it is.
+                AnimatedVisibility(
+                    visible = suggestionsOpen && suggestions.isNotEmpty(),
+                    enter = expandVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow), expandFrom = Alignment.Top) +
+                        fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)),
+                    exit = shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium), shrinkTowards = Alignment.Top) +
+                        fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium))
+                ) {
+                    Surface(
                         shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable, enabled = false)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = menuOpen,
-                        onDismissRequest = { suggestionsOpen = false },
-                        modifier = Modifier.heightIn(max = 260.dp)
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        suggestions.forEach { s ->
-                            DropdownMenuItem(
-                                text = { Text(s.name, style = MaterialTheme.typography.bodyMedium) },
-                                onClick = {
-                                    name = s.name
-                                    value = ""
-                                    suggestionsOpen = false
-                                },
-                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                            )
+                        LazyColumn(Modifier.heightIn(max = 220.dp)) {
+                            items(suggestions, key = { it.name }) { s ->
+                                Text(
+                                    s.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            name = s.name
+                                            value = ""
+                                            suggestionsOpen = false
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 11.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -343,4 +375,16 @@ private fun AddEnvironmentVariableDialog(
             }
         }
     )
+}
+
+/** Keeps the dialog this is called in at a fixed spot near the top instead of centred. */
+@Composable
+private fun PinDialogToTop() {
+    val window = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
+    val top = (LocalView.current.resources.displayMetrics.heightPixels * 0.12f).toInt()
+    SideEffect {
+        window.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL)
+        val lp = window.attributes
+        if (lp.y != top) { lp.y = top; window.attributes = lp }
+    }
 }

@@ -119,9 +119,12 @@ private fun GameDetailScreen(title: String, subtitle: String, artworkPath: Strin
     val activity = LocalContext.current as? MainActivity
     val context = LocalContext.current.applicationContext
     if (landscape) KeepLandscapeChromeHidden(activity, restoreChromeOnPortrait = false)
+    // Landscape only: in portrait the page is a layer over the top bar (GameDetailFragment).
     DisposableEffect(activity, landscape) {
-        activity?.setBottomNavigationVisible(false)
-        activity?.setMainToolbarVisible(false)
+        if (landscape) {
+            activity?.setBottomNavigationVisible(false)
+            activity?.setMainToolbarVisible(false)
+        }
         onDispose { }
     }
     val artwork by produceState<Bitmap?>(fallback, artworkPath, fallback) {

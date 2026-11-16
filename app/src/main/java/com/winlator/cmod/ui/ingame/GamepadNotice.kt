@@ -7,6 +7,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,10 +57,17 @@ import kotlinx.coroutines.launch
  * a flick or past 40 % of its height, with a spring started at the finger's speed; otherwise it
  * springs back with a slight bounce (only a drag earns a bounce) and its 3 s start again.
  * Everything is a spring, so a card that is entering or leaving can be caught by the finger.
- * One notice at a time; the card takes touches only on itself.
+ * A tap sends it away at once. It sits clear of the top edge, so a finger on it never starts the
+ * system's notification shade. One notice at a time; the card takes touches only on itself.
  */
 /** How long the notice stays when nobody touches it. */
 private const val SHOWN_MS = 3000L
+
+/**
+ * Its distance from the top edge: clear of the strip where a swipe down opens the system's
+ * notification shade (a finger that started on the card up there pulled the shade instead).
+ */
+private val NOTICE_TOP = 56.dp
 
 object GamepadNotice {
     private const val TAG = "gamepad_notice"
@@ -89,12 +97,12 @@ object GamepadNotice {
 @Composable
 private fun Notice(title: String, subtitle: String?, onGone: () -> Unit) {
     val density = LocalDensity.current
-    val topMargin = with(density) { 16.dp.toPx() }
+    val topMargin = with(density) { NOTICE_TOP.toPx() }
     val flickPx = with(density) { 500.dp.toPx() }      // px per second
     var heightPx by remember { mutableIntStateOf(0) }
     // Distance to be fully off screen above: the card plus its margin.
     val away = { -(heightPx + topMargin + with(density) { 8.dp.toPx() }) }
-    val y = remember { Animatable(-with(density) { 96.dp.toPx() }) }
+    val y = remember { Animatable(-with(density) { (NOTICE_TOP + 72.dp).toPx() }) }
     val scope = rememberCoroutineScope()
     // Bumped by every touch: restarts the stay timer, and a held card is never taken away.
     var holds by remember { mutableIntStateOf(0) }
@@ -118,8 +126,10 @@ private fun Notice(title: String, subtitle: String?, onGone: () -> Unit) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 6.dp,
         modifier = Modifier
-            .padding(top = 16.dp, start = 12.dp, end = 12.dp, bottom = 8.dp)
+            .padding(top = NOTICE_TOP, start = 12.dp, end = 12.dp, bottom = 8.dp)
             .onSizeChanged { heightPx = it.height }
+            // A tap sends it away at once (up, the way it came).
+            .pointerInput(Unit) { detectTapGestures(onTap = { scope.launch { leave() } }) }
             .pointerInput(Unit) {
                 val tracker = VelocityTracker()
                 var total = 0f

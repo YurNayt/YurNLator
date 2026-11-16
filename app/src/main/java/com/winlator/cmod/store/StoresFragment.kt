@@ -94,6 +94,9 @@ class StoresFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.title = uiStr(R.string.l_st_stores)
+        // The top bar with "Stores" stays over a store's page too (portrait; landscape draws its own).
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        if (!landscape) (activity as? com.winlator.cmod.MainActivity)?.setMainToolbarVisible(true)
     }
 }
 

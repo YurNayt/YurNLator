@@ -13,23 +13,44 @@
         android:background="@drawable/ui_glass_background"
         android:orientation="vertical">
 
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/Toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="58dp"
-            android:background="@drawable/ui_glass_background"
-            android:paddingStart="6dp"
-            android:paddingEnd="12dp"
-            app:title="@string/app_name"
-            app:titleTextAppearance="@style/GlassToolbarTitle"
-            app:titleTextColor="@color/ui_text_primary" />
-
+        <!-- Top bar + screens, and above them a layer for pages opened from a screen (a game's
+             page): it covers the top bar but not the bottom one, and nothing under it changes
+             size or is rebuilt while it slides in and out. -->
         <FrameLayout
-            android:id="@+id/FLFragmentContainer"
+            android:id="@+id/FLMainArea"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:background="@drawable/ui_glass_background" />
+            android:layout_weight="1">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <androidx.appcompat.widget.Toolbar
+                    android:id="@+id/Toolbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:background="@drawable/ui_glass_background"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="12dp"
+                    app:title="@string/app_name"
+                    app:titleTextAppearance="@style/GlassToolbarTitle"
+                    app:titleTextColor="@color/ui_text_primary" />
+
+                <FrameLayout
+                    android:id="@+id/FLFragmentContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/ui_glass_background" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/FLOverlayContainer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </FrameLayout>
 
         <com.winlator.cmod.ui.WinZBottomNavigationView
             android:id="@+id/BottomNavigation"

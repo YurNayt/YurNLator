@@ -62,7 +62,8 @@ public class GameDetailFragment extends Fragment {
             return new FrameLayout(requireContext());
         }
 
-        ((AppCompatActivity) requireActivity()).getSupportActionBar().setTitle(com.winlator.cmod.core.ExeVersionInfo.displayName(shortcut.name, shortcut.path));
+        // Portrait: the page covers the top bar, which keeps the library's title for the way back.
+        if (isLandscape()) ((AppCompatActivity) requireActivity()).getSupportActionBar().setTitle(com.winlator.cmod.core.ExeVersionInfo.displayName(shortcut.name, shortcut.path));
         String baseName = FileUtils.getBasename(shortcut.file.getPath());
         File banner = new File(Environment.getExternalStorageDirectory(),
                 "YurNLator/banners/" + baseName + ".png");
@@ -184,12 +185,13 @@ public class GameDetailFragment extends Fragment {
 
     private void applyDetailChrome() {
         if (!(getActivity() instanceof MainActivity)) return;
+        // Portrait: the page is a layer over the top bar and leaves the bars alone (hiding them
+        // resized the library under it, which then jumped on the way back).
+        if (!isLandscape()) return;
         MainActivity activity = (MainActivity) getActivity();
         activity.setDetailMode(true);
-        if (isLandscape()) {
-            activity.setBottomNavigationVisible(false);
-            activity.setMainToolbarVisible(false);
-        }
+        activity.setBottomNavigationVisible(false);
+        activity.setMainToolbarVisible(false);
     }
 
     @Override
@@ -200,9 +202,6 @@ public class GameDetailFragment extends Fragment {
 
     @Override
     public void onPause() {
-        if (!isLandscape() && getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setDetailMode(false);
-        }
         super.onPause();
     }
 

@@ -547,10 +547,25 @@ public class ShortcutsFragment extends Fragment {
     }
 
     private void openGameDetails(Shortcut shortcut) {
+        boolean landscape = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        if (landscape) {
+            // Landscape screens draw their own chrome: the page replaces the library as before.
+            getParentFragmentManager().beginTransaction()
+                    .setCustomAnimations(R.anim.nav_enter, R.anim.nav_exit, R.anim.nav_enter, R.anim.nav_exit)
+                    .addToBackStack(null)
+                    .replace(R.id.FLFragmentContainer, new GameDetailFragment(shortcut.file.getPath()))
+                    .commit();
+            return;
+        }
+        // Portrait: the page is a layer over the library and its top bar (artwork up to the top),
+        // sliding in from the right and back out the same way. The library underneath stays as
+        // it is: nothing resizes or is rebuilt, so neither way through can jump or flash.
         getParentFragmentManager().beginTransaction()
-                .setCustomAnimations(R.anim.push_enter, R.anim.push_exit, R.anim.pop_enter, R.anim.pop_exit)
+                .setReorderingAllowed(true)
+                .setCustomAnimations(R.anim.push_enter, 0, 0, R.anim.pop_exit)
                 .addToBackStack(null)
-                .replace(R.id.FLFragmentContainer, new GameDetailFragment(shortcut.file.getPath()))
+                .add(R.id.FLOverlayContainer, new GameDetailFragment(shortcut.file.getPath()))
                 .commit();
     }
 
