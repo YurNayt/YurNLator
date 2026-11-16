@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -303,7 +304,10 @@ private fun AddEnvironmentVariableDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(uiStr(R.string.l_qm_cancel)) } }
     ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // No arrangement spacing here: the list's gap lives inside its animation (below), else
+            // the gap appeared and vanished at once at the start / end of it and the value field
+            // jumped 6 dp just after the list had closed.
+            Column {
                 // Near the top of the screen and drawn in the window itself (MotionDialog), so the
                 // list opening below the name grows it smoothly downwards. (Pinned when it falls
                 // back to an AlertDialog window, which would re-centre and jump.)
@@ -342,10 +346,10 @@ private fun AddEnvironmentVariableDialog(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        // The window's own grey, not black on grey.
+                        // Outline and fill as the fields around it: the window's grey, the fields' outline.
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         color = AlertDialogDefaults.containerColor,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.padding(top = 6.dp).fillMaxWidth()
                     ) {
                         LazyColumn(Modifier.heightIn(max = 220.dp)) {
                             items(suggestions, key = { it.name }) { s ->
@@ -365,6 +369,7 @@ private fun AddEnvironmentVariableDialog(
                         }
                     }
                 }
+                Spacer(Modifier.height(6.dp))
                 OutlinedTextField(
                     value = value,
                     onValueChange = { value = it },
