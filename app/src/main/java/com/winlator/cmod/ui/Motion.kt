@@ -84,6 +84,14 @@ object Motion {
 
     fun <T> tween(kind: MotionKind): TweenSpec<T> = curve(kind).let { composeTween(it.ms, easing = it.easing()) }
 
+    /**
+     * The same motion for something going away: it starts at once (the curve's slow start
+     * dropped, its ending and length kept). With a slow-starting curve a list that closes stood
+     * still for its first ~100 ms, which read as a delay before it reacted.
+     */
+    fun <T> exitTween(kind: MotionKind): TweenSpec<T> =
+        curve(kind).let { composeTween(it.ms, easing = CubicBezierEasing(0f, 0f, it.x2, it.y2)) }
+
     /** Lists and groups opening on a tap. */
     fun <T> expand(): TweenSpec<T> = tween(MotionKind.EXPAND)
 

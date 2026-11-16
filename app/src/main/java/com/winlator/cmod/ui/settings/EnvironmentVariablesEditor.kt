@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -307,7 +308,11 @@ private fun AddEnvironmentVariableDialog(
                 // list opening below the name grows it smoothly downwards. (Pinned when it falls
                 // back to an AlertDialog window, which would re-centre and jump.)
                 PinDialogToTop()
-                val arrowTurn by animateFloatAsState(if (suggestionsOpen) 180f else 0f, Motion.tween(MotionKind.VAR_LIST), label = "arrow")
+                val arrowTurn by animateFloatAsState(
+                    if (suggestionsOpen) 180f else 0f,
+                    if (suggestionsOpen) Motion.tween(MotionKind.VAR_LIST) else Motion.exitTween(MotionKind.VAR_LIST),
+                    label = "arrow"
+                )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -332,12 +337,14 @@ private fun AddEnvironmentVariableDialog(
                 AnimatedVisibility(
                     visible = suggestionsOpen && suggestions.isNotEmpty(),
                     enter = expandVertically(Motion.tween(MotionKind.VAR_LIST), expandFrom = Alignment.Top) + fadeIn(Motion.tween(MotionKind.VAR_LIST)),
-                    exit = shrinkVertically(Motion.tween(MotionKind.VAR_LIST), shrinkTowards = Alignment.Top) + fadeOut(Motion.tween(MotionKind.VAR_LIST))
+                    exit = shrinkVertically(Motion.exitTween(MotionKind.VAR_LIST), shrinkTowards = Alignment.Top) +
+                        fadeOut(Motion.exitTween(MotionKind.VAR_LIST))
                 ) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        color = MaterialTheme.colorScheme.surface,
+                        // The window's own grey, not black on grey.
+                        color = AlertDialogDefaults.containerColor,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         LazyColumn(Modifier.heightIn(max = 220.dp)) {
