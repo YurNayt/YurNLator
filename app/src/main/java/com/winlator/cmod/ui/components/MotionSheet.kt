@@ -6,6 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -118,8 +122,14 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
         if (velocity > flickPx || offset > heightPx * 0.4f) sheetScope.close() else runTo(0f)
     }
 
-    // Open once measured.
-    LaunchedEffect(heightPx > 0) { if (heightPx > 0 && !closing) runTo(0f) }
+    // Open once measured, two frames later: the window hides the system bars as it appears, and
+    // the first frames are spent on that and on composing the list.
+    LaunchedEffect(heightPx > 0) {
+        if (heightPx > 0 && !closing) {
+            withFrameNanos { }; withFrameNanos { }
+            runTo(0f)
+        }
+    }
     LaunchedEffect(sheetScope) { registerClose { sheetScope.close() } }
 
     // Drags that start in the list: when it can't scroll up any more, the sheet moves instead.
@@ -164,6 +174,10 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
                 .widthIn(max = 640.dp)
                 .fillMaxWidth()
                 .heightIn(max = maxHeight)
+                // The sheet's own size never depends on the system bars: they are hidden just after
+                // it appears, and a bottom padding that vanished mid-slide made it drop ~48 dp and
+                // look as if it stopped short and then moved on.
+                .consumeWindowInsets(WindowInsets.systemBars)
                 .onSizeChanged { heightPx = it.height }
                 .graphicsLayer { translationY = offset.coerceAtLeast(0f) }
                 .nestedScroll(nested),

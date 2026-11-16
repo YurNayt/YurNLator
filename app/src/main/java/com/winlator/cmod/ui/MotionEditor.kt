@@ -121,6 +121,14 @@ object MotionEditorHost {
             }
         }
         root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        // Screens opened as layers over everything (the container editor) are added after the
+        // panel: keep it in front of them.
+        root.setOnHierarchyChangeListener(object : ViewGroup.OnHierarchyChangeListener {
+            override fun onChildViewAdded(parent: android.view.View?, child: android.view.View?) {
+                if (child?.tag != TAG) root.findViewWithTag<android.view.View>(TAG)?.let { p -> p.post { p.bringToFront() } }
+            }
+            override fun onChildViewRemoved(parent: android.view.View?, child: android.view.View?) {}
+        })
     }
 }
 

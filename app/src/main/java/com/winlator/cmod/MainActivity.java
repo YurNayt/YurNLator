@@ -473,13 +473,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (item != null) item.setVisible(com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(this));
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // The floating motion editor, when switched on in Settings.
-        com.winlator.cmod.ui.MotionEditorHost.sync(this);
-    }
-
     public void setBottomNavigationVisible(boolean visible) {
         if (bottomNavigation != null) bottomNavigation.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
