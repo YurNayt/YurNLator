@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Forward (library -> game, list -> editor): the new screen comes in from the right.
+     One axis for the whole move: forward goes left, back goes right (pop_*). -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@interpolator/nav_curve"
+    android:shareInterpolator="true">
+    <alpha android:fromAlpha="0" android:toAlpha="1" android:duration="260" />
+    <translate android:fromXDelta="8%" android:toXDelta="0%" android:duration="260" />
+</set>

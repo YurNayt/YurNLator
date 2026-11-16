@@ -176,6 +176,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         mainToolbar = findViewById(R.id.Toolbar);
         setSupportActionBar((androidx.appcompat.widget.Toolbar) mainToolbar);
+        // The top bar belongs to the screen below it: when a new screen's view is made, its title
+        // and buttons fade in with the screen's own timing and curve. Before, the title switched
+        // at once while the content was still crossfading, so "Library" sat over a game's page.
+        getSupportFragmentManager().registerFragmentLifecycleCallbacks(new FragmentManager.FragmentLifecycleCallbacks() {
+            @Override
+            public void onFragmentViewCreated(@NonNull FragmentManager fm, @NonNull Fragment f, @NonNull View v, Bundle state) {
+                if (mainToolbar == null || f.getId() != R.id.FLFragmentContainer) return;
+                mainToolbar.animate().cancel();
+                mainToolbar.setAlpha(0f);
+                mainToolbar.animate().alpha(1f).setDuration(240)
+                        .setInterpolator(new android.view.animation.PathInterpolator(0.32f, 0.72f, 0f, 1f)).start();
+            }
+        }, false);
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(false);

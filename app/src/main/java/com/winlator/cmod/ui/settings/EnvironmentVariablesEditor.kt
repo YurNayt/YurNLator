@@ -2,9 +2,7 @@ package com.winlator.cmod.ui.settings
 
 import com.winlator.cmod.ui.uiStr
 import com.winlator.cmod.R
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,10 +17,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -291,46 +291,43 @@ private fun AddEnvironmentVariableDialog(
         title = { Text(uiStr(R.string.l_lbl_add_environment_variable)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(uiStr(R.string.env_add_name)) },
-                    singleLine = true,
-                    isError = duplicate,
-                    supportingText = if (duplicate) ({ Text(uiStr(R.string.env_add_already_added)) }) else null,
-                    trailingIcon = {
-                        IconButton(onClick = { suggestionsOpen = !suggestionsOpen }) {
-                            Icon(
-                                if (suggestionsOpen) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
-                                uiStr(R.string.env_add_suggestions)
+                // The known names drop down over the dialog (a popup) instead of growing it: an
+                // AlertDialog re-centres on every height change, so an inline list made the whole
+                // dialog jump up and down while it opened and closed.
+                val menuOpen = suggestionsOpen && suggestions.isNotEmpty()
+                ExposedDropdownMenuBox(expanded = menuOpen, onExpandedChange = { suggestionsOpen = it }) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(uiStr(R.string.env_add_name)) },
+                        singleLine = true,
+                        isError = duplicate,
+                        supportingText = if (duplicate) ({ Text(uiStr(R.string.env_add_already_added)) }) else null,
+                        trailingIcon = {
+                            // Only the arrow opens the list; typing in the field doesn't.
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = menuOpen,
+                                modifier = Modifier.menuAnchor(MenuAnchorType.SecondaryEditable)
                             )
-                        }
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                AnimatedVisibility(visible = suggestionsOpen && suggestions.isNotEmpty()) {
-                    Surface(
+                        },
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        color = MaterialTheme.colorScheme.surface,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable, enabled = false)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { suggestionsOpen = false },
+                        modifier = Modifier.heightIn(max = 260.dp)
                     ) {
-                        LazyColumn(Modifier.heightIn(max = 220.dp)) {
-                            items(suggestions, key = { it.name }) { s ->
-                                Text(
-                                    s.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            name = s.name
-                                            value = ""
-                                            suggestionsOpen = false
-                                        }
-                                        .padding(horizontal = 14.dp, vertical = 11.dp)
-                                )
-                            }
+                        suggestions.forEach { s ->
+                            DropdownMenuItem(
+                                text = { Text(s.name, style = MaterialTheme.typography.bodyMedium) },
+                                onClick = {
+                                    name = s.name
+                                    value = ""
+                                    suggestionsOpen = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
                         }
                     }
                 }

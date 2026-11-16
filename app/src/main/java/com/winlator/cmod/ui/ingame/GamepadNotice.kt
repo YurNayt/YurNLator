@@ -41,7 +41,8 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.winlator.cmod.ui.theme.WinZTheme
+import com.winlator.cmod.ui.theme.WinlatorThemeManager
+import com.winlator.cmod.ui.theme.winlatorColorScheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -72,7 +73,12 @@ object GamepadNotice {
         view.tag = TAG
         view.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         view.setContent {
-            WinZTheme { Notice(title, subtitle) { root.post { root.removeView(view) } } }
+            // The app's colours without WinZTheme: that one paints a full background behind its
+            // content, which showed as a black box around the card (and outlived it).
+            val theme = WinlatorThemeManager.currentTheme(root.context)
+            MaterialTheme(colorScheme = winlatorColorScheme(theme)) {
+                Notice(title, subtitle) { root.post { root.removeView(view) } }
+            }
         }
         root.addView(view, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,

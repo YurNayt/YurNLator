@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Forward: the old screen (drawn on top while it leaves) clears out quickly to the left,
+     so the two never sit half-transparent over each other. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_linear_in"
+    android:shareInterpolator="true">
+    <alpha android:fromAlpha="1" android:toAlpha="0" android:duration="130" />
+    <translate android:fromXDelta="0%" android:toXDelta="-4%" android:duration="130" />
+</set>

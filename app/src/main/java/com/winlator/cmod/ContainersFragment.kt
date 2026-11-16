@@ -101,7 +101,8 @@ class ContainersFragment : Fragment(), ContainersCallbacks {
     private fun openEditor(fragment: Fragment) {
         parentFragmentManager.beginTransaction()
             .setReorderingAllowed(true)
-            .setCustomAnimations(R.anim.nav_enter, R.anim.nav_exit, R.anim.nav_enter, R.anim.nav_exit)
+            // Added over the list (nothing is removed): it comes in from the right and leaves the same way.
+            .setCustomAnimations(R.anim.push_enter, 0, 0, R.anim.pop_exit)
             .addToBackStack(null)
             .add(android.R.id.content, fragment)
             .commit()

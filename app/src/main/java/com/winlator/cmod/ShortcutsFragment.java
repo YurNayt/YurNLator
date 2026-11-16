@@ -260,7 +260,7 @@ public class ShortcutsFragment extends Fragment {
         }
         if (item.getItemId() == MENU_FILE_MANAGER) {
             getParentFragmentManager().beginTransaction()
-                    .setCustomAnimations(R.anim.nav_enter, R.anim.nav_exit)
+                    .setCustomAnimations(R.anim.push_enter, R.anim.push_exit, R.anim.pop_enter, R.anim.pop_exit)
                     .addToBackStack(null)
                     .replace(R.id.FLFragmentContainer, new FileManagerFragment())
                     .commit();
@@ -548,7 +548,7 @@ public class ShortcutsFragment extends Fragment {
 
     private void openGameDetails(Shortcut shortcut) {
         getParentFragmentManager().beginTransaction()
-                .setCustomAnimations(R.anim.nav_enter, R.anim.nav_exit, R.anim.nav_enter, R.anim.nav_exit)
+                .setCustomAnimations(R.anim.push_enter, R.anim.push_exit, R.anim.pop_enter, R.anim.pop_exit)
                 .addToBackStack(null)
                 .replace(R.id.FLFragmentContainer, new GameDetailFragment(shortcut.file.getPath()))
                 .commit();

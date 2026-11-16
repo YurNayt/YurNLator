@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Back: the previous screen returns from the left, the reverse of push_exit. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@interpolator/nav_curve"
+    android:shareInterpolator="true">
+    <alpha android:fromAlpha="0" android:toAlpha="1" android:duration="260" />
+    <translate android:fromXDelta="-4%" android:toXDelta="0%" android:duration="260" />
+</set>
