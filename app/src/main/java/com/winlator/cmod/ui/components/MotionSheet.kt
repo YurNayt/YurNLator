@@ -169,16 +169,21 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
     var closing by remember { mutableStateOf(false) }
     val flickPx = with(density) { 900.dp.toPx() }
 
-    // Every sheet moves at the same speed: the tuned length is for a sheet as tall as the
-    // video-memory limit picker (REFERENCE_SHEET_DP); a shorter trip takes less time, a longer one
-    // more. With one length for all, a short sheet crawled and a tall one rushed.
+    // Every sheet takes the same time and covers the same way: it rises at most as far as the
+    // video-memory limit picker is tall (REFERENCE_SHEET_DP), in the "Picker windows" length.
+    // A taller sheet starts that far below its place and fades in on the way (its top would
+    // otherwise appear out of nowhere); a shorter one rises its own height.
     val refPx = with(density) { REFERENCE_SHEET_DP.dp.toPx() }
+    // A function, not a value: the remembered close / fling handlers must see the measured height.
+    fun travel() = if (heightPx > 0) minOf(heightPx.toFloat(), refPx) else refPx
+    val tall = heightPx > refPx
     fun runTo(target: Float, then: (() -> Unit)? = null) {
         job?.cancel()
         job = scope.launch {
             val from = offset.coerceAtMost(heightPx.toFloat())
             val c = Motion.curve(MotionKind.SHEET)
-            val ms = (c.ms * kotlin.math.abs(target - from) / refPx).toInt().coerceIn(60, 3000)
+            // The full way takes the tuned length; what is left after a drag, its share of it.
+            val ms = (c.ms * (kotlin.math.abs(target - from) / travel()).coerceAtMost(1f)).toInt().coerceAtLeast(60)
             // Going away starts at once (no slow start), like the variables list.
             val easing = if (target > 0f) CubicBezierEasing(0f, 0f, c.x2, c.y2) else c.easing()
             animate(from, target, animationSpec = tween(ms, easing = easing)) { v, _ -> offset = v }
@@ -190,12 +195,13 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
             override fun close() {
                 if (closing) return
                 closing = true
-                runTo(heightPx.toFloat()) { onDismissRequest() }
+                // Back the way it came: as far as it rose (further if it was dragged further).
+                runTo(maxOf(offset, travel())) { onDismissRequest() }
             }
         }
     }
     fun settle(velocity: Float) {
-        if (velocity > flickPx || offset > heightPx * 0.4f) sheetScope.close() else runTo(0f)
+        if (velocity > flickPx || offset > travel() * 0.4f) sheetScope.close() else runTo(0f)
     }
 
     // Open once measured, two frames later: the window hides the system bars as it appears, and
@@ -203,6 +209,7 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
     LaunchedEffect(heightPx > 0) {
         if (heightPx > 0 && !closing) {
             withFrameNanos { }; withFrameNanos { }
+            offset = minOf(heightPx.toFloat(), refPx)
             runTo(0f)
         }
     }
@@ -235,7 +242,7 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
         }
     }
 
-    val fraction = if (heightPx > 0) 1f - (offset / heightPx).coerceIn(0f, 1f) else 0f
+    val fraction = if (heightPx > 0) 1f - (offset / travel()).coerceIn(0f, 1f) else 0f
     Box(Modifier.fillMaxSize()) {
         // Dim, as Material's (32 % black), following the sheet.
         Box(
@@ -255,7 +262,10 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
                 // look as if it stopped short and then moved on.
                 .consumeWindowInsets(WindowInsets.systemBars)
                 .onSizeChanged { heightPx = it.height }
-                .graphicsLayer { translationY = offset.coerceAtLeast(0f) }
+                .graphicsLayer {
+                    translationY = offset.coerceAtLeast(0f)
+                    alpha = if (tall) 1f - (offset / travel()).coerceIn(0f, 1f) else 1f
+                }
                 .nestedScroll(nested),
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             color = look.containerColor,
