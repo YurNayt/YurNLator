@@ -25,11 +25,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -100,7 +98,6 @@ private sealed class UiState {
 private fun AppUpdateSheet(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var dev by remember { mutableStateOf(AppUpdater.devChannel(context)) }
     var state by remember { mutableStateOf<UiState>(UiState.Idle) }
 
@@ -118,7 +115,7 @@ private fun AppUpdateSheet(onDismiss: () -> Unit) {
         if (running != null) { state = UiState.Downloading; finished(running.await()) } else check()
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
+    MotionSheet(onDismissRequest = onDismiss) { _ ->
         KeepDialogFullscreen()
         Column(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 18.dp, end = 18.dp, bottom = 22.dp)

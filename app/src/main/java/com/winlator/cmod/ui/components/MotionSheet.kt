@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,6 +62,8 @@ import com.winlator.cmod.ui.MotionKind
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
+private class SheetLook(val containerColor: Color, val dragHandle: (@Composable () -> Unit)?)
+
 /** What a sheet's content can do: close it the animated way (then onDismissRequest runs). */
 interface MotionSheetScope {
     fun close()
@@ -76,7 +80,13 @@ interface MotionSheetScope {
  * closing sheet can be caught by the finger. Back and a tap on the dim close it.
  */
 @Composable
-fun MotionSheet(onDismissRequest: () -> Unit, content: @Composable ColumnScope.(MotionSheetScope) -> Unit) {
+fun MotionSheet(
+    onDismissRequest: () -> Unit,
+    containerColor: Color = BottomSheetDefaults.ContainerColor,
+    dragHandle: (@Composable () -> Unit)? = { BottomSheetDefaults.DragHandle() },
+    content: @Composable ColumnScope.(MotionSheetScope) -> Unit
+) {
+    val look = SheetLook(containerColor, dragHandle)
     // Drawn inside the current window, over its content, instead of in a window of its own: a new
     // window takes the focus and makes the system show and hide its bars again, which cost a frame
     // in the middle of the slide (it paused and went on). The theme and the rest come along
@@ -94,14 +104,14 @@ fun MotionSheet(onDismissRequest: () -> Unit, content: @Composable ColumnScope.(
                 LaunchedEffect(w) { w.setDimAmount(0f); w.setWindowAnimations(0) }
             }
             KeepDialogFullscreen()
-            SheetBody(onDismissRequest, { closer.value = it }, content)
+            SheetBody(onDismissRequest, { closer.value = it }, look, content)
         }
         return
     }
     InWindowOverlay(root) {
         var close by remember { mutableStateOf<(() -> Unit)?>(null) }
         BackHandler { close?.invoke() ?: latestDismiss.value() }
-        SheetBody({ latestDismiss.value() }, { close = it }) { sheet -> latestContent.value(this, sheet) }
+        SheetBody({ latestDismiss.value() }, { close = it }, look) { sheet -> latestContent.value(this, sheet) }
     }
 }
 
@@ -139,7 +149,7 @@ fun InWindowOverlay(root: ViewGroup, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) -> Unit,
+private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) -> Unit, look: SheetLook,
                       content: @Composable ColumnScope.(MotionSheetScope) -> Unit) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -154,7 +164,8 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
     fun runTo(target: Float, then: (() -> Unit)? = null) {
         job?.cancel()
         job = scope.launch {
-            val curve = Motion.tween<Float>(MotionKind.SHEET)
+            // Going away starts at once (no slow start), like the variables list.
+            val curve = if (target > 0f) Motion.exitTween<Float>(MotionKind.SHEET) else Motion.tween<Float>(MotionKind.SHEET)
             animate(offset.coerceAtMost(heightPx.toFloat()), target, animationSpec = curve) { v, _ -> offset = v }
             then?.invoke()
         }
@@ -232,7 +243,7 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
                 .graphicsLayer { translationY = offset.coerceAtLeast(0f) }
                 .nestedScroll(nested),
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            color = BottomSheetDefaults.ContainerColor,
+            color = look.containerColor,
             tonalElevation = 1.dp
         ) {
             Column(Modifier.fillMaxWidth()) {
@@ -253,7 +264,7 @@ private fun SheetBody(onDismissRequest: () -> Unit, registerClose: (() -> Unit) 
                         }
                     },
                     contentAlignment = Alignment.Center
-                ) { BottomSheetDefaults.DragHandle() }
+                ) { look.dragHandle?.invoke() ?: Spacer(Modifier.height(16.dp)) }
                 content(sheetScope)
             }
         }

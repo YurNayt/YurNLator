@@ -43,13 +43,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -333,7 +331,7 @@ private fun GameSheet(a: SteamApp, job: SteamInstaller.Job?, inst: SteamInstalle
     var pickContainer by remember { mutableStateOf(false) }
     var askRemove by remember { mutableStateOf(false) }
     val free = remember { freeBytes() }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    MotionSheet(onDismissRequest = onDismiss) { _ ->
         KeepDialogFullscreen()
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {

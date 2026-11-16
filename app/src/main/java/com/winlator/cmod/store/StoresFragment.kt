@@ -46,12 +46,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -337,7 +335,7 @@ private fun GameSheet(item: StoreItem, onDismiss: () -> Unit) {
     val details by produceState<StoreDetails?>(null, item) {
         value = if (item.store == Store.STEAM) withContext(Dispatchers.IO) { SteamCatalog.details(item.id) } else null
     }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    MotionSheet(onDismissRequest = onDismiss) { _ ->
         KeepDialogFullscreen()
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -38,13 +38,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -213,7 +211,6 @@ private fun PresetSheet(
     onSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scheme = MaterialTheme.colorScheme
     val variables = remember { store.variables() }
     val preset = presets.firstOrNull { it.id == selectedId } ?: presets.firstOrNull()
@@ -252,7 +249,7 @@ private fun PresetSheet(
         onChanged()
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+    MotionSheet(onDismissRequest = onDismiss) { _ ->
         KeepDialogFullscreen()
         LazyColumn(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding(),

@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.winlator.cmod.ui.Motion
+import com.winlator.cmod.ui.MotionKind
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -258,7 +259,7 @@ fun ChoiceSheet(
                 // expand motion (ease-out, 0.5 s); before, they just appeared.
                 item(key = "choice:" + head.value) {
                     ChoiceRow(
-                        modifier = Modifier.animateItem(Motion.expand(), Motion.expand(), Motion.expand()),
+                        modifier = Modifier.animateItem(Motion.expand(), Motion.expand(), Motion.exitTween(MotionKind.EXPAND)),
                         option = head,
                         selected = selected,
                         more = rest.size,
@@ -271,7 +272,7 @@ fun ChoiceSheet(
                     )
                 }
                 if (isOpen) items(rest, key = { "choice:" + it.value }) { option ->
-                    Box(Modifier.animateItem(Motion.expand(), Motion.expand(), Motion.expand()).padding(start = 18.dp)) {
+                    Box(Modifier.animateItem(Motion.expand(), Motion.expand(), Motion.exitTween(MotionKind.EXPAND)).padding(start = 18.dp)) {
                         ChoiceRow(option = option, selected = selected, onClick = { pick(option) })
                     }
                 }

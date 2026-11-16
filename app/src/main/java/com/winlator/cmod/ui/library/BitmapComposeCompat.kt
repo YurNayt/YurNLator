@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -53,11 +54,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -206,8 +205,13 @@ internal fun LibraryRoot(
                 }
             }
         } else {
+            // Each section starts at its top. One shared scroll state kept the first game on
+            // screen across a switch: in "Recent" (the list reversed) that game is last, so the
+            // section opened scrolled to its end.
+            val gridState = remember(filter) { LazyGridState() }
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(if (grid) 172.dp else 360.dp),
+                state = gridState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 112.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -417,9 +421,13 @@ private fun RequestArtworkCompat(item: LibraryItem, cb: LibraryCallbacks) {
 
 @Composable
 private fun ArtworkCompat(path: String?, fallback: Bitmap?, modifier: Modifier) {
-    val bitmap by produceState<Bitmap?>(fallback, path) {
+    // Decoded artwork is kept in memory: switching sections or grid / list showed each card's
+    // small icon for a moment while its picture was read from storage again.
+    val cached = remember(path) { ArtworkCache.get(path) }
+    val bitmap by produceState(cached ?: fallback, path) {
+        if (cached != null) return@produceState
         value = withContext(Dispatchers.IO) {
-            path?.takeIf { File(it).isFile }?.let(BitmapFactory::decodeFile) ?: fallback
+            path?.takeIf { File(it).isFile }?.let { p -> BitmapFactory.decodeFile(p)?.also { ArtworkCache.put(p, it) } } ?: fallback
         }
     }
     if (bitmap != null) Image(bitmap!!.asImageBitmap(), null, modifier, contentScale = ContentScale.Crop)
@@ -450,20 +458,13 @@ private fun MenuButtonCompat(item: LibraryItem, cb: LibraryCallbacks, light: Boo
 @Composable
 internal fun LibraryItemMenuCompat(item: LibraryItem, cb: LibraryCallbacks, close: () -> Unit) {
     val landscape = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = close,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        dragHandle = {
+    MotionSheet(onDismissRequest = close, containerColor = MaterialTheme.colorScheme.surface, dragHandle = {
             Surface(
                 modifier = Modifier.padding(top = 10.dp, bottom = 8.dp).size(width = 36.dp, height = 4.dp),
                 shape = RoundedCornerShape(50),
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .42f)
             ) {}
-        }
-    ) {
+        }) { _ ->
         Column(
             Modifier
                 .fillMaxWidth()
@@ -596,4 +597,14 @@ private fun LibraryActionTileCompat(
             )
         }
     }
+}
+
+/** Decoded library artwork, by file (and its last change, so new artwork is read again). */
+internal object ArtworkCache {
+    private val cache = object : android.util.LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 8).toInt()) {
+        override fun sizeOf(key: String, value: Bitmap) = value.byteCount
+    }
+    private fun key(path: String) = path + "@" + File(path).lastModified()
+    fun get(path: String?): Bitmap? = path?.let { cache.get(key(it)) }
+    fun put(path: String, bitmap: Bitmap) { cache.put(key(path), bitmap) }
 }

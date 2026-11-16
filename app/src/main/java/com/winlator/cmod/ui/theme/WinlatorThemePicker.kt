@@ -26,10 +26,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -166,13 +164,7 @@ fun WinlatorThemePreferenceCard(modifier: Modifier = Modifier) {
     }
 
     if (expanded) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { expanded = false },
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.background,
-            tonalElevation = 0.dp
-        ) {
+        MotionSheet(onDismissRequest = { expanded = false }, containerColor = MaterialTheme.colorScheme.background) { _ ->
             Column(
                 Modifier
                     .fillMaxWidth()

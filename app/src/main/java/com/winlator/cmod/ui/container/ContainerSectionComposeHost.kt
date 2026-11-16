@@ -36,8 +36,6 @@ import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -692,13 +690,7 @@ private fun ChoiceSetting(
         }
     }
     if (expanded) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { expanded = false },
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp
-        ) {
+        MotionSheet(onDismissRequest = { expanded = false }, containerColor = MaterialTheme.colorScheme.surface) { _ ->
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 20.dp)
             ) {

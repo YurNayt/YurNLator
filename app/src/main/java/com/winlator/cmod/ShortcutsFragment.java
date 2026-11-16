@@ -205,6 +205,7 @@ public class ShortcutsFragment extends Fragment {
         super.onCreateOptionsMenu(menu, inflater);
 
         MenuItem viewItem = menu.add(0, MENU_VIEW_MODE, 0, isGridView ? UiStrings.get(R.string.l_sc_list_view) : UiStrings.get(R.string.l_sc_grid_view));
+        viewMenuItem = viewItem;
         viewItem.setIcon(R.drawable.ui_ic_view);
         viewItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 
@@ -282,11 +283,20 @@ public class ShortcutsFragment extends Fragment {
         return super.onOptionsItemSelected(item);
     }
 
+    /** The grid / list item of the top bar (its title says what a tap switches to). */
+    private MenuItem viewMenuItem;
+
     private void setGridView(boolean gridView) {
         isGridView = gridView;
         preferences.edit().putBoolean("shortcuts_grid_view", isGridView).apply();
         if (libraryController != null) libraryController.setGridView(isGridView);
-        requireActivity().invalidateOptionsMenu();
+        // Only the item's title changes: rebuilding the whole menu (invalidateOptionsMenu) showed
+        // the top bar's buttons in another order for a moment.
+        if (viewMenuItem != null) {
+            viewMenuItem.setTitle(isGridView ? UiStrings.get(R.string.l_sc_list_view) : UiStrings.get(R.string.l_sc_grid_view));
+        } else {
+            requireActivity().invalidateOptionsMenu();
+        }
     }
 
     private void fetchCoverFromSteamGrid(Shortcut shortcut, File destFile,
