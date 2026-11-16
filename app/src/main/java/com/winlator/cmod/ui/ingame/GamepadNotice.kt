@@ -57,9 +57,12 @@ import kotlinx.coroutines.launch
  * Everything is a spring, so a card that is entering or leaving can be caught by the finger.
  * One notice at a time; the card takes touches only on itself.
  */
+/** How long the notice stays when nobody touches it. */
+private const val SHOWN_MS = 3000L
+
 object GamepadNotice {
     private const val TAG = "gamepad_notice"
-    private const val SHOWN_MS = 3000L
+
 
     @JvmStatic
     fun show(root: FrameLayout?, title: String, subtitle: String?) {
