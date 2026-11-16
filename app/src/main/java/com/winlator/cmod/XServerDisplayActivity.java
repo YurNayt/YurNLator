@@ -240,6 +240,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
                 touchControls.restoreSaved(inputControlsManager.getProfiles());
             }
+            // A gamepad connected before the game started: its notice now, and the on-screen
+            // buttons step aside (once the controls above are in place).
+            timeoutHandler.postDelayed(() -> { if (winHandler != null) winHandler.announceConnectedPads(); }, 600);
             Executors.newSingleThreadExecutor().execute(() -> {
                 setupWineSystemFiles();
                 extractGraphicsDriverFiles();

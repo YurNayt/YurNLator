@@ -129,8 +129,22 @@ public class WinHandler {
     /** Physical pads that have sent input this session: the first one's input shows the notice. */
     private final java.util.Set<Integer> activePads = new java.util.HashSet<>();
 
+    /** Pads already connected when the game screen is ready: as if they had just connected. */
+    public void announceConnectedPads() {
+        for (int id : android.view.InputDevice.getDeviceIds()) {
+            ExternalController c = ExternalController.getController(id);
+            if (c != null && c.getDeviceId() == id) notePadInput(c);
+        }
+    }
+
     private void notePadInput(ExternalController controller) {
-        if (activePads.add(controller.getDeviceId())) activity.onExternalGamepadActive(controller.getName());
+        if (!activePads.add(controller.getDeviceId())) return;
+        // One pad can show up as several devices (a DualSense also as "… Touchpad" and "… Motion
+        // Sensors"): only the pad itself names the notice.
+        String n = controller.getName();
+        String low = n != null ? n.toLowerCase(java.util.Locale.ROOT) : "";
+        if (low.contains("touchpad") || low.contains("motion sensor")) return;
+        activity.onExternalGamepadActive(n);
     }
 
     public WinHandler(XServerDisplayActivity activity) {
@@ -138,7 +152,12 @@ public class WinHandler {
         this.inputManager = (InputManager) activity.getSystemService(Context.INPUT_SERVICE);
         this.inputDeviceListener = new InputManager.InputDeviceListener() {
             @Override
-            public void onInputDeviceAdded(int deviceId) {}
+            public void onInputDeviceAdded(int deviceId) {
+                // The notice (and the on-screen buttons stepping aside) as soon as a pad connects,
+                // not at its first button press.
+                ExternalController c = ExternalController.getController(deviceId);
+                if (c != null) notePadInput(c);
+            }
 
             @Override
             public void onInputDeviceRemoved(int deviceId) {

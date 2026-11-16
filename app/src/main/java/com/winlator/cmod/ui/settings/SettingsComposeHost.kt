@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Animation
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -198,13 +197,6 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             item("language") { AppLanguagePreferenceCard() }
             item("theme") { WinlatorThemePreferenceCard() }
             item("gpu-profile") { GpuProfilePreferenceCard() }
-            item("motion-editor") {
-                var shown by remember { mutableStateOf(activity?.let { com.winlator.cmod.ui.MotionEditorHost.isShown(it) } ?: false) }
-                NavigationRow(Icons.Outlined.Animation, uiStr(R.string.motion_editor), uiStr(R.string.motion_editor_hint)) {
-                    shown = !shown
-                    activity?.let { com.winlator.cmod.ui.MotionEditorHost.setShown(it, shown) }
-                }
-            }
 
             item("environment-title") { SectionTitle(uiStr(R.string.l_set_environments)) }
             // Containers live in the bottom bar; Settings links to Input Controls instead.

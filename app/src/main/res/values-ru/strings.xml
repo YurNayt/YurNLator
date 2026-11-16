@@ -409,15 +409,10 @@
     <string name="gamepad_notice_disconnected">Геймпад отключён</string>
     <string name="gamepad_notice_osc_hidden">экранные кнопки скрыты</string>
     <string name="gamepad_notice_osc_back">Экранные кнопки снова на экране</string>
-    <string name="motion_editor">Редактор анимаций</string>
-    <string name="motion_editor_hint">Плавающая панель: кривые анимаций меняются сразу</string>
     <string name="motion_tab_in">Вкладки: появление</string>
     <string name="motion_tab_out">Вкладки: исчезание</string>
     <string name="motion_sheet">Окна выбора</string>
     <string name="motion_expand">Раскрытие списков</string>
     <string name="motion_page">Страница игры</string>
-    <string name="motion_duration">Длительность</string>
-    <string name="motion_reset">Сброс</string>
-    <string name="motion_replay">Повтор</string>
     <string name="motion_var_list">Список переменных</string>
 </resources>
