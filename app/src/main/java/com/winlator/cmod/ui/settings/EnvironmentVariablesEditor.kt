@@ -1,12 +1,11 @@
 package com.winlator.cmod.ui.settings
 
+import com.winlator.cmod.ui.Motion
 import com.winlator.cmod.ui.uiStr
 import com.winlator.cmod.R
 import android.view.Gravity
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -306,11 +305,7 @@ private fun AddEnvironmentVariableDialog(
                 // every height change, so the list opening below the name made the whole dialog
                 // jump up and down. Pinned, only what is under the list moves, and only downwards.
                 PinDialogToTop()
-                val arrowTurn by animateFloatAsState(
-                    if (suggestionsOpen) 180f else 0f,
-                    spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
-                    label = "arrow"
-                )
+                val arrowTurn by animateFloatAsState(if (suggestionsOpen) 180f else 0f, Motion.expand(), label = "arrow")
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -330,14 +325,12 @@ private fun AddEnvironmentVariableDialog(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
-                // One spring family for the list: it unfolds and fades from the same timing, and a
-                // tap on the arrow mid-way reverses it from where it is.
+                // The app's expand motion (ease-out, 0.5 s) for the list and its arrow alike; a tap
+                // on the arrow mid-way turns it back from where it is.
                 AnimatedVisibility(
                     visible = suggestionsOpen && suggestions.isNotEmpty(),
-                    enter = expandVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow), expandFrom = Alignment.Top) +
-                        fadeIn(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)),
-                    exit = shrinkVertically(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium), shrinkTowards = Alignment.Top) +
-                        fadeOut(spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium))
+                    enter = expandVertically(Motion.expand(), expandFrom = Alignment.Top) + fadeIn(Motion.expand()),
+                    exit = shrinkVertically(Motion.expand(), shrinkTowards = Alignment.Top) + fadeOut(Motion.expand())
                 ) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),

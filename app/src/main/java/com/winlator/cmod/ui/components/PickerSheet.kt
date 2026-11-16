@@ -1,5 +1,6 @@
 package com.winlator.cmod.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +39,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.winlator.cmod.ui.Motion
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -256,8 +259,11 @@ fun ChoiceSheet(
                 val rest = block.drop(1)
                 val group = head.group
                 val isOpen = group != null && group in open
+                // Rows of a group fade in and the ones below slide down to make room, on the app's
+                // expand motion (ease-out, 0.5 s); before, they just appeared.
                 item(key = "choice:" + head.value) {
                     ChoiceRow(
+                        modifier = Modifier.animateItem(Motion.expand(), Motion.expand(), Motion.expand()),
                         option = head,
                         selected = selected,
                         more = rest.size,
@@ -270,7 +276,7 @@ fun ChoiceSheet(
                     )
                 }
                 if (isOpen) items(rest, key = { "choice:" + it.value }) { option ->
-                    Box(Modifier.padding(start = 18.dp)) {
+                    Box(Modifier.animateItem(Motion.expand(), Motion.expand(), Motion.expand()).padding(start = 18.dp)) {
                         ChoiceRow(option = option, selected = selected, onClick = { pick(option) })
                     }
                 }
@@ -281,6 +287,7 @@ fun ChoiceSheet(
 
 @Composable
 private fun ChoiceRow(
+    modifier: Modifier = Modifier,
     option: ChoiceOption,
     selected: String,
     onClick: () -> Unit,
@@ -293,7 +300,7 @@ private fun ChoiceRow(
     val isSelected = option.installed && option.value.equals(selected, ignoreCase = true)
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) scheme.secondaryContainer else scheme.surface,
         border = BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) scheme.primary else scheme.outlineVariant)
@@ -346,11 +353,13 @@ private fun ChoiceRow(
                 }
             }
             if (onToggle != null) {
+                val turn by animateFloatAsState(if (expanded) 180f else 0f, Motion.expand(), label = "versions-arrow")
                 IconButton(onClick = onToggle) {
                     Icon(
-                        if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                        Icons.Outlined.KeyboardArrowDown,
                         contentDescription = if (expanded) "Hide versions" else "Show versions",
-                        tint = scheme.primary
+                        tint = scheme.primary,
+                        modifier = Modifier.graphicsLayer { rotationZ = turn }
                     )
                 }
             }

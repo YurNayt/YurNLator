@@ -517,19 +517,32 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void show(Fragment fragment, boolean reverse) {
         FragmentManager fragmentManager = getSupportFragmentManager();
-        // Tab switch: the top bar (title, its buttons) and the screen change together and fade in as
-        // one. Separate animations made them drift apart: the new title and buttons were there at
-        // once while the old screen was still fading out under them ("Stores" over the library).
-        fragmentManager.beginTransaction()
-                .setReorderingAllowed(true)
-                .replace(R.id.FLFragmentContainer, fragment)
-                .commit();
         View mainArea = findViewById(R.id.FLMainArea);
-        if (mainArea != null) {
+        Runnable swap = () -> {
+            if (isFinishing() || fragmentManager.isStateSaved()) return;
+            fragmentManager.beginTransaction()
+                    .setReorderingAllowed(true)
+                    .replace(R.id.FLFragmentContainer, fragment)
+                    .commitNow();
+        };
+        // First screen of the app, or no main area: no transition.
+        if (mainArea == null || fragmentManager.findFragmentById(R.id.FLFragmentContainer) == null) {
+            swap.run();
+        } else {
+            // Tab switch, as in DroidDeck: the whole area above the bottom bar (top bar, its buttons
+            // and the screen, as one) fades out quickly, the new screen is put in, and it fades in
+            // while rising 10 dp, decelerating to a stop. The bottom bar stays where it is.
+            float rise = 10f * getResources().getDisplayMetrics().density;
             mainArea.animate().cancel();
-            mainArea.setAlpha(0f);
-            mainArea.animate().alpha(1f).setDuration(180)
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+            mainArea.animate().alpha(0f).translationY(0f).setDuration(70)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> {
+                        swap.run();
+                        mainArea.setTranslationY(rise);
+                        mainArea.animate().alpha(1f).translationY(0f).setDuration(200)
+                                .setInterpolator(new android.view.animation.PathInterpolator(0f, 0f, 0.58f, 1f))
+                                .start();
+                    }).start();
         }
 
         drawerLayout.closeDrawer(GravityCompat.START);
