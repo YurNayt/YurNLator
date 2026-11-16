@@ -6,6 +6,12 @@ import com.winlator.cmod.ui.L10nDict
 import com.winlator.cmod.ui.components.GlossaryHelpIcon
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -393,19 +399,31 @@ private fun VariableCard(v: PresetVar, value: String, onHelp: () -> Unit, onChan
                         modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
                     )
                 }
+                // Plain clickable boxes, not Surface(onClick): that one pads every chip out to a
+                // 48 dp touch target while drawing only the text's size, which spread 0 / 1 / 2 far
+                // apart. Unselected chips get a light fill and outline (any theme: tinted onSurface).
                 else -> LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 6.dp)
                 ) {
                     items(v.choices, key = { it }) { c ->
                         val sel = c == value
-                        Surface(
-                            onClick = { if (!sel) onChange(c) },
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (sel) scheme.primary else scheme.surfaceVariant.copy(alpha = 0.5f),
-                            contentColor = if (sel) scheme.onPrimary else scheme.onSurface
+                        val shape = RoundedCornerShape(8.dp)
+                        Box(
+                            modifier = Modifier
+                                .defaultMinSize(minWidth = 40.dp)
+                                .clip(shape)
+                                .background(if (sel) scheme.primary else scheme.onSurface.copy(alpha = 0.11f))
+                                .border(1.dp, if (sel) scheme.primary else scheme.onSurface.copy(alpha = 0.16f), shape)
+                                .clickable(role = Role.RadioButton) { if (!sel) onChange(c) },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(c, Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.labelLarge)
+                            Text(
+                                c,
+                                Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                color = if (sel) scheme.onPrimary else scheme.onSurface,
+                                style = MaterialTheme.typography.labelLarge
+                            )
                         }
                     }
                 }
