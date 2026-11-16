@@ -2,7 +2,9 @@ package com.winlator.cmod.ui.settings
 
 import com.winlator.cmod.ui.uiStr
 import com.winlator.cmod.R
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,12 +19,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -240,44 +245,104 @@ private fun MultiEnvironmentChoice(options: List<String>, value: String, onChang
     }
 }
 
+/**
+ * Add a variable: the name is typed straight away (any name), the arrow on the name field opens
+ * the known variables (filtered by what is typed, the ones already in the list left out), and the
+ * value is right below. A name already in the list says so instead of the Add button doing nothing
+ * (it used to: the dialog started on the first known variable, often one the container had).
+ */
 @Composable
 private fun AddEnvironmentVariableDialog(
     existing: Set<String>,
     onDismiss: () -> Unit,
     onAdd: (String, String) -> Unit
 ) {
-    val available = knownEnvironmentVariables.map { it.name }
-    var name by remember { mutableStateOf(available.firstOrNull().orEmpty()) }
-    var customName by remember { mutableStateOf("") }
-    val options = available + "Custom…"
-    val selected = if (name in available) name else "Custom…"
+    var name by remember { mutableStateOf("") }
+    var value by remember { mutableStateOf("") }
+    var suggestionsOpen by remember { mutableStateOf(false) }
+
+    val cleanName = name.trim().replace(" ", "").substringBefore('=')
+    val duplicate = cleanName.isNotEmpty() && cleanName in existing
+    val spec = knownEnvironmentVariables.firstOrNull { it.name == cleanName }
+    val suggestions = knownEnvironmentVariables
+        .filter { it.name !in existing && (cleanName.isEmpty() || it.name.contains(cleanName, ignoreCase = true)) }
+    val canAdd = cleanName.isNotEmpty() && !duplicate
+    val optionsHint = spec?.options?.takeIf { it.isNotEmpty() }
+        ?.let { uiStr(R.string.env_add_options, it.joinToString(", ")) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = {
-                val finalName = if (selected == "Custom…") customName.trim().replace(" ", "") else name
-                if (finalName.isNotBlank() && finalName !in existing) {
-                    val spec = knownEnvironmentVariables.firstOrNull { it.name == finalName }
-                    val initial = when (spec?.kind) {
-                        EnvValueKind.CHECKBOX -> spec.options.firstOrNull().orEmpty()
-                        EnvValueKind.SELECT -> spec.options.firstOrNull().orEmpty()
-                        else -> ""
+            TextButton(
+                enabled = canAdd,
+                onClick = {
+                    val typed = value.trim().replace(" ", "")
+                    val initial = typed.ifEmpty {
+                        when (spec?.kind) {
+                            EnvValueKind.CHECKBOX, EnvValueKind.SELECT -> spec.options.firstOrNull().orEmpty()
+                            else -> ""
+                        }
                     }
-                    onAdd(finalName, initial)
+                    onAdd(cleanName, initial)
                 }
-            }) { Text(uiStr(R.string.l_lbl_add)) }
+            ) { Text(uiStr(R.string.l_lbl_add)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(uiStr(R.string.l_qm_cancel)) } },
         title = { Text(uiStr(R.string.l_lbl_add_environment_variable)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SettingChoice("Variable", selected, options) { picked ->
-                    name = if (picked == "Custom…") "" else picked
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(uiStr(R.string.env_add_name)) },
+                    singleLine = true,
+                    isError = duplicate,
+                    supportingText = if (duplicate) ({ Text(uiStr(R.string.env_add_already_added)) }) else null,
+                    trailingIcon = {
+                        IconButton(onClick = { suggestionsOpen = !suggestionsOpen }) {
+                            Icon(
+                                if (suggestionsOpen) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                                uiStr(R.string.env_add_suggestions)
+                            )
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                AnimatedVisibility(visible = suggestionsOpen && suggestions.isNotEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        LazyColumn(Modifier.heightIn(max = 220.dp)) {
+                            items(suggestions, key = { it.name }) { s ->
+                                Text(
+                                    s.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            name = s.name
+                                            value = ""
+                                            suggestionsOpen = false
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 11.dp)
+                                )
+                            }
+                        }
+                    }
                 }
-                if (selected == "Custom…") {
-                    SettingText("Name", customName) { customName = it }
-                }
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    label = { Text(uiStr(R.string.l_lbl_value)) },
+                    singleLine = true,
+                    supportingText = if (optionsHint != null) ({ Text(optionsHint) }) else null,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     )

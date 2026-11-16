@@ -126,6 +126,12 @@ public class WinHandler {
     }
     private final InputManager inputManager;
     private final InputManager.InputDeviceListener inputDeviceListener;
+    /** Physical pads that have sent input this session: the first one's input shows the notice. */
+    private final java.util.Set<Integer> activePads = new java.util.HashSet<>();
+
+    private void notePadInput(ExternalController controller) {
+        if (activePads.add(controller.getDeviceId())) activity.onExternalGamepadActive(controller.getName());
+    }
 
     public WinHandler(XServerDisplayActivity activity) {
         this.activity = activity;
@@ -137,6 +143,7 @@ public class WinHandler {
             @Override
             public void onInputDeviceRemoved(int deviceId) {
                 releaseSlot(deviceId);
+                if (activePads.remove(deviceId) && activePads.isEmpty()) activity.onExternalGamepadGone();
             }
 
             @Override
@@ -685,6 +692,7 @@ public class WinHandler {
         deviceToSlot.clear();
         usedSlots.clear();
         controllers.clear();
+        activePads.clear();
         fallbackSlot = -1;
         vibrationRunning = false;
         if (vibrationServer != null) {
@@ -707,7 +715,7 @@ public class WinHandler {
         if (controller != null) {
             lastController = controller;
             boolean handled = controller.updateStateFromMotionEvent(event);
-            if (handled) sendGamepadState(controller);
+            if (handled) { sendGamepadState(controller); notePadInput(controller); }
             return handled;
         }
         return false;
@@ -718,7 +726,7 @@ public class WinHandler {
         if (controller != null && event.getRepeatCount() == 0) {
             lastController = controller;
             boolean handled = controller.updateStateFromKeyEvent(event);
-            if (handled) sendGamepadState(controller);
+            if (handled) { sendGamepadState(controller); notePadInput(controller); }
             return handled;
         }
         return false;

@@ -684,4 +684,12 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="app_language_system">Follow system language</string>
     <string name="app_language_english" translatable="false">English</string>
     <string name="app_language_russian" translatable="false">Русский</string>
+    <string name="env_add_name">Variable name</string>
+    <string name="env_add_suggestions">Known variables</string>
+    <string name="env_add_already_added">Already in the list</string>
+    <string name="env_add_options">Options: %1$s</string>
+    <string name="gamepad_notice_connected">Gamepad connected</string>
+    <string name="gamepad_notice_disconnected">Gamepad disconnected</string>
+    <string name="gamepad_notice_osc_hidden">on-screen buttons hidden</string>
+    <string name="gamepad_notice_osc_back">On-screen buttons are back</string>
 </resources>

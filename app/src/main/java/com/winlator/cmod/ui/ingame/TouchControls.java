@@ -50,6 +50,42 @@ public final class TouchControls {
         };
     }
 
+    /** Hidden because a physical gamepad took over; not saved, they come back when it is unplugged. */
+    private boolean hiddenForGamepad = false;
+
+    /**
+     * A physical gamepad sent its first input: the on-screen buttons step aside (and the virtual
+     * pad leaves its XInput slot). True if they were on screen and are now hidden.
+     */
+    public boolean hideForGamepad() {
+        InputControlsView c = controls.get();
+        if (c == null || c.getProfile() == null || !c.isShowTouchscreenControls()) return false;
+        handler.removeCallbacks(hideRunnable);
+        c.setShowTouchscreenControls(false);
+        c.animate().cancel();
+        c.setVisibility(View.GONE);
+        c.invalidate();
+        hiddenForGamepad = true;
+        WinHandler w = winHandler.get();
+        if (w != null) w.sendGamepadState();
+        return true;
+    }
+
+    /** The gamepads are gone: the buttons [hideForGamepad] hid come back. True if they did. */
+    public boolean restoreAfterGamepad() {
+        if (!hiddenForGamepad) return false;
+        hiddenForGamepad = false;
+        InputControlsView c = controls.get();
+        if (c == null || c.getProfile() == null || c.isShowTouchscreenControls()) return false;
+        c.setShowTouchscreenControls(true);
+        showIfProfile(c);
+        c.invalidate();
+        if (prefs.getBoolean("touchscreen_timeout_enabled", false)) startTimeout();
+        WinHandler w = winHandler.get();
+        if (w != null) w.sendGamepadState();
+        return true;
+    }
+
     /** What the views run when they want the controls hidden (after a timeout). */
     public Runnable hideRunnable() { return hideRunnable; }
 
@@ -105,6 +141,7 @@ public final class TouchControls {
 
     public void hide() {
         handler.removeCallbacks(hideRunnable);
+        hiddenForGamepad = false;
         InputControlsView c = controls.get();
         TouchpadView t = touchpad.get();
         c.setShowTouchscreenControls(true);
@@ -141,6 +178,7 @@ public final class TouchControls {
     public void setShown(boolean on) {
         InputControlsView c = controls.get();
         if (c == null) return;
+        hiddenForGamepad = false;
         c.setShowTouchscreenControls(on);
         prefs.edit().putBoolean("show_touchscreen_controls_enabled", on).apply();
         if (on) showIfProfile(c);

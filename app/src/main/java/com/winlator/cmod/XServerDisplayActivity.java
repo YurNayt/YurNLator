@@ -782,6 +782,27 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return winHandler;
     }
 
+    /** WinHandler: a physical gamepad sent its first input. The on-screen buttons step aside. */
+    public void onExternalGamepadActive(String name) {
+        runOnUiThread(() -> {
+            boolean hid = touchControls != null && touchControls.hideForGamepad();
+            String pad = name != null && !name.trim().isEmpty() ? name.trim() : getString(R.string.gamepad_notice_connected);
+            com.winlator.cmod.ui.ingame.GamepadNotice.show(findViewById(R.id.FLXServerDisplay),
+                    getString(R.string.gamepad_notice_connected),
+                    hid ? pad + " · " + getString(R.string.gamepad_notice_osc_hidden) : pad);
+        });
+    }
+
+    /** WinHandler: the last gamepad in use was unplugged; the buttons it hid come back. */
+    public void onExternalGamepadGone() {
+        runOnUiThread(() -> {
+            boolean shown = touchControls != null && touchControls.restoreAfterGamepad();
+            com.winlator.cmod.ui.ingame.GamepadNotice.show(findViewById(R.id.FLXServerDisplay),
+                    getString(R.string.gamepad_notice_disconnected),
+                    shown ? getString(R.string.gamepad_notice_osc_back) : null);
+        });
+    }
+
     public XServerRendererView getXServerView() {
         return xServerView;
     }

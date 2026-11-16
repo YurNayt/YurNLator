@@ -83,7 +83,9 @@ public final class SidebarInputPanel {
         }
 
         Runnable apply = () -> {
-            if (swShow != null) {
+            // Only a real flip of the switch: the buttons a gamepad hid for now must not be saved as
+            // "off" when another setting here changes.
+            if (swShow != null && swShow.isChecked() != controls.isShowTouchscreenControls()) {
                 boolean show = swShow.isChecked();
                 controls.setShowTouchscreenControls(show);
                 prefs.edit().putBoolean("show_touchscreen_controls_enabled", show).apply();

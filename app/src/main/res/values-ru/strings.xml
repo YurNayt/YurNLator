@@ -401,4 +401,12 @@
     <string name="magnifier_not_available">Лупа недоступна в режиме DisplayX</string>
     <string name="app_language">Язык приложения</string>
     <string name="app_language_system">Как в системе</string>
+    <string name="env_add_name">Имя переменной</string>
+    <string name="env_add_suggestions">Известные переменные</string>
+    <string name="env_add_already_added">Уже есть в списке</string>
+    <string name="env_add_options">Варианты: %1$s</string>
+    <string name="gamepad_notice_connected">Геймпад подключён</string>
+    <string name="gamepad_notice_disconnected">Геймпад отключён</string>
+    <string name="gamepad_notice_osc_hidden">экранные кнопки скрыты</string>
+    <string name="gamepad_notice_osc_back">Экранные кнопки снова на экране</string>
 </resources>
