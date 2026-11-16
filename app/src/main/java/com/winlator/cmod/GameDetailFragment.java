@@ -179,6 +179,27 @@ public class GameDetailFragment extends Fragment {
         }
     }
 
+    /**
+     * Portrait: the page slides in from the right over the library and back out to the right,
+     * on the "Game page" motion (ui/Motion, tunable). The XML animations set by the library are
+     * only markers that a transition is wanted; landscape keeps them.
+     */
+    @Override
+    public android.view.animation.Animation onCreateAnimation(int transit, boolean enter, int nextAnim) {
+        if (nextAnim == 0 || isLandscape()) return super.onCreateAnimation(transit, enter, nextAnim);
+        com.winlator.cmod.ui.MotionCurve c = com.winlator.cmod.ui.Motion.curve(com.winlator.cmod.ui.MotionKind.PAGE);
+        android.view.animation.AnimationSet set = new android.view.animation.AnimationSet(true);
+        set.setInterpolator(c.interpolator());
+        float from = enter ? 0.08f : 0f, to = enter ? 0f : 0.08f;
+        set.addAnimation(new android.view.animation.AlphaAnimation(enter ? 0f : 1f, enter ? 1f : 0f));
+        set.addAnimation(new android.view.animation.TranslateAnimation(
+                android.view.animation.Animation.RELATIVE_TO_SELF, from, android.view.animation.Animation.RELATIVE_TO_SELF, to,
+                android.view.animation.Animation.RELATIVE_TO_SELF, 0f, android.view.animation.Animation.RELATIVE_TO_SELF, 0f));
+        // Leaving is quicker than arriving: the way back shouldn't make you wait.
+        set.setDuration(enter ? c.getMs() : Math.max(1, Math.round(c.getMs() * 0.6f)));
+        return set;
+    }
+
     private boolean isLandscape() {
         return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }

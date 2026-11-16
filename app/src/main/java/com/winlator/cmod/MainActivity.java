@@ -42,6 +42,8 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+import com.winlator.cmod.ui.Motion;
+import com.winlator.cmod.ui.MotionKind;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
@@ -471,6 +473,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (item != null) item.setVisible(com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(this));
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // The floating motion editor, when switched on in Settings.
+        com.winlator.cmod.ui.MotionEditorHost.sync(this);
+    }
+
     public void setBottomNavigationVisible(boolean visible) {
         if (bottomNavigation != null) bottomNavigation.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
@@ -534,13 +543,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             // while rising 10 dp, decelerating to a stop. The bottom bar stays where it is.
             float rise = 10f * getResources().getDisplayMetrics().density;
             mainArea.animate().cancel();
-            mainArea.animate().alpha(0f).translationY(0f).setDuration(70)
-                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+            // Curves and lengths: ui/Motion (tunable in the motion editor).
+            mainArea.animate().alpha(0f).translationY(0f)
+                    .setDuration(Motion.duration(MotionKind.TAB_OUT))
+                    .setInterpolator(Motion.interpolator(MotionKind.TAB_OUT))
                     .withEndAction(() -> {
                         swap.run();
                         mainArea.setTranslationY(rise);
-                        mainArea.animate().alpha(1f).translationY(0f).setDuration(200)
-                                .setInterpolator(new android.view.animation.PathInterpolator(0f, 0f, 0.58f, 1f))
+                        mainArea.animate().alpha(1f).translationY(0f)
+                                .setDuration(Motion.duration(MotionKind.TAB_IN))
+                                .setInterpolator(Motion.interpolator(MotionKind.TAB_IN))
                                 .start();
                     }).start();
         }

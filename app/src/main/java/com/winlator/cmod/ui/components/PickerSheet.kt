@@ -28,10 +28,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -74,9 +72,7 @@ fun PickerSheet(
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
-        KeepDialogFullscreen()
+    MotionSheet(onDismissRequest = onDismiss) { _ ->
         LazyColumn(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
@@ -195,7 +191,6 @@ fun ChoiceSheet(
     onDismiss: () -> Unit,
     actions: List<PickerAction> = emptyList()
 ) {
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scheme = MaterialTheme.colorScheme
     // Consecutive options of one group -> one block; ungrouped options are blocks of one.
     val blocks = remember(options) {
@@ -214,14 +209,14 @@ fun ChoiceSheet(
                 .mapNotNull { it.first().group }.toSet()
         )
     }
-    val pick: (ChoiceOption) -> Unit = { option ->
-        if (!option.busy) {
-            onPick(option)
-            if (option.installed) onDismiss()
+    MotionSheet(onDismissRequest = onDismiss) { sheet ->
+        // Picking an installed option closes the sheet the animated way (it used to vanish).
+        val pick: (ChoiceOption) -> Unit = { option ->
+            if (!option.busy) {
+                onPick(option)
+                if (option.installed) sheet.close()
+            }
         }
-    }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
-        KeepDialogFullscreen()
         LazyColumn(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
             contentPadding = PaddingValues(start = 14.dp, end = 14.dp, bottom = 18.dp),

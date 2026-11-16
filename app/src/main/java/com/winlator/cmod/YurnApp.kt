@@ -7,6 +7,7 @@ import com.winlator.cmod.core.CrashReports
 class YurnApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        com.winlator.cmod.ui.Motion.init(this)
         CrashReports.install(this)
         com.winlator.cmod.ui.UiStrings.install(this)
         // A driver that crashed the app while being probed is not loaded here again.

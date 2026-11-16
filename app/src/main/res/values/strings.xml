@@ -692,4 +692,14 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="gamepad_notice_disconnected">Gamepad disconnected</string>
     <string name="gamepad_notice_osc_hidden">on-screen buttons hidden</string>
     <string name="gamepad_notice_osc_back">On-screen buttons are back</string>
+    <string name="motion_editor">Motion editor</string>
+    <string name="motion_editor_hint">A floating panel to tune animation curves live</string>
+    <string name="motion_tab_in">Tab: new screen in</string>
+    <string name="motion_tab_out">Tab: old screen out</string>
+    <string name="motion_sheet">Picker windows</string>
+    <string name="motion_expand">Lists opening</string>
+    <string name="motion_page">Game page</string>
+    <string name="motion_duration">Duration</string>
+    <string name="motion_reset">Reset</string>
+    <string name="motion_replay">Replay</string>
 </resources>
