@@ -1,6 +1,8 @@
 package com.winlator.cmod.ui.settings
 
 import com.winlator.cmod.ui.Motion
+import com.winlator.cmod.ui.MotionKind
+import com.winlator.cmod.ui.components.MotionDialog
 import com.winlator.cmod.ui.uiStr
 import com.winlator.cmod.R
 import android.view.Gravity
@@ -280,8 +282,9 @@ private fun AddEnvironmentVariableDialog(
     val optionsHint = spec?.options?.takeIf { it.isNotEmpty() }
         ?.let { uiStr(R.string.env_add_options, it.joinToString(", ")) }
 
-    AlertDialog(
+    MotionDialog(
         onDismissRequest = onDismiss,
+        title = uiStr(R.string.l_lbl_add_environment_variable),
         confirmButton = {
             TextButton(
                 enabled = canAdd,
@@ -297,15 +300,14 @@ private fun AddEnvironmentVariableDialog(
                 }
             ) { Text(uiStr(R.string.l_lbl_add)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(uiStr(R.string.l_qm_cancel)) } },
-        title = { Text(uiStr(R.string.l_lbl_add_environment_variable)) },
-        text = {
+        dismissButton = { TextButton(onClick = onDismiss) { Text(uiStr(R.string.l_qm_cancel)) } }
+    ) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                // The dialog is pinned near the top of the screen: an AlertDialog re-centres on
-                // every height change, so the list opening below the name made the whole dialog
-                // jump up and down. Pinned, only what is under the list moves, and only downwards.
+                // Near the top of the screen and drawn in the window itself (MotionDialog), so the
+                // list opening below the name grows it smoothly downwards. (Pinned when it falls
+                // back to an AlertDialog window, which would re-centre and jump.)
                 PinDialogToTop()
-                val arrowTurn by animateFloatAsState(if (suggestionsOpen) 180f else 0f, Motion.expand(), label = "arrow")
+                val arrowTurn by animateFloatAsState(if (suggestionsOpen) 180f else 0f, Motion.tween(MotionKind.VAR_LIST), label = "arrow")
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -325,12 +327,12 @@ private fun AddEnvironmentVariableDialog(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
-                // The app's expand motion (ease-out, 0.5 s) for the list and its arrow alike; a tap
-                // on the arrow mid-way turns it back from where it is.
+                // The "Variables list" motion (picker windows' curve, 1.1 x as long, until tuned) for
+                // the list and its arrow alike; a tap on the arrow mid-way turns it back.
                 AnimatedVisibility(
                     visible = suggestionsOpen && suggestions.isNotEmpty(),
-                    enter = expandVertically(Motion.expand(), expandFrom = Alignment.Top) + fadeIn(Motion.expand()),
-                    exit = shrinkVertically(Motion.expand(), shrinkTowards = Alignment.Top) + fadeOut(Motion.expand())
+                    enter = expandVertically(Motion.tween(MotionKind.VAR_LIST), expandFrom = Alignment.Top) + fadeIn(Motion.tween(MotionKind.VAR_LIST)),
+                    exit = shrinkVertically(Motion.tween(MotionKind.VAR_LIST), shrinkTowards = Alignment.Top) + fadeOut(Motion.tween(MotionKind.VAR_LIST))
                 ) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
@@ -366,8 +368,7 @@ private fun AddEnvironmentVariableDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-        }
-    )
+    }
 }
 
 /** Keeps the dialog this is called in at a fixed spot near the top instead of centred. */

@@ -197,6 +197,9 @@ private fun MotionEditorPanel(
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = scheme.surface.copy(alpha = 0.97f),
+        // Explicit: a see-through surface colour isn't one the theme knows, and the text under it
+        // fell back to black (nearly invisible on the dark panel).
+        contentColor = scheme.onSurface,
         border = BorderStroke(1.dp, scheme.outlineVariant),
         shadowElevation = 10.dp,
         modifier = Modifier.padding(6.dp).width(300.dp)

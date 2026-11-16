@@ -81,11 +81,7 @@ fun MotionSheet(onDismissRequest: () -> Unit, content: @Composable ColumnScope.(
     // window takes the focus and makes the system show and hide its bars again, which cost a frame
     // in the middle of the slide (it paused and went on). The theme and the rest come along
     // through the parent composition. A window too small for it (a small dialog) gets a Dialog.
-    val host = LocalView.current
-    val root = remember(host) {
-        (host.rootView.findViewById<ViewGroup>(android.R.id.content) ?: host.rootView as? ViewGroup)
-            ?.takeIf { it.width >= host.resources.displayMetrics.widthPixels * 0.9f }
-    }
+    val root = rememberOverlayRoot()
     val latestContent = rememberUpdatedState(content)
     val latestDismiss = rememberUpdatedState(onDismissRequest)
     if (root == null) {
@@ -102,16 +98,40 @@ fun MotionSheet(onDismissRequest: () -> Unit, content: @Composable ColumnScope.(
         }
         return
     }
+    InWindowOverlay(root) {
+        var close by remember { mutableStateOf<(() -> Unit)?>(null) }
+        BackHandler { close?.invoke() ?: latestDismiss.value() }
+        SheetBody({ latestDismiss.value() }, { close = it }) { sheet -> latestContent.value(this, sheet) }
+    }
+}
+
+/**
+ * The window's content root to draw an overlay in, when the window covers (nearly) the whole
+ * screen; null for a small dialog window, where an overlay would be cramped.
+ */
+@Composable
+fun rememberOverlayRoot(): ViewGroup? {
+    val host = LocalView.current
+    return remember(host) {
+        (host.rootView.findViewById<ViewGroup>(android.R.id.content) ?: host.rootView as? ViewGroup)
+            ?.takeIf { it.width >= host.resources.displayMetrics.widthPixels * 0.9f }
+    }
+}
+
+/**
+ * Draws [content] over [root]'s content in the same window, as part of this composition (theme,
+ * back handling and the rest carry over). No window of its own: a new window takes the focus and
+ * makes the system re-hide its bars, and resizing one as its content animates lags behind.
+ */
+@Composable
+fun InWindowOverlay(root: ViewGroup, content: @Composable () -> Unit) {
     val parent = rememberCompositionContext()
+    val latest = rememberUpdatedState(content)
     DisposableEffect(root) {
-        val overlay = ComposeView(host.context).apply {
+        val overlay = ComposeView(root.context).apply {
             setParentCompositionContext(parent)
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-            setContent {
-                var close by remember { mutableStateOf<(() -> Unit)?>(null) }
-                BackHandler { close?.invoke() ?: latestDismiss.value() }
-                SheetBody({ latestDismiss.value() }, { close = it }) { sheet -> latestContent.value(this, sheet) }
-            }
+            setContent { latest.value() }
         }
         root.addView(overlay, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         onDispose { root.removeView(overlay) }

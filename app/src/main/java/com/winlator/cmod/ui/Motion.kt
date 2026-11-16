@@ -34,7 +34,9 @@ enum class MotionKind(val key: String, val titleRes: Int, val default: MotionCur
     /** Lists and groups opening and closing on a tap, and their arrows. */
     EXPAND("expand", R.string.motion_expand, MotionCurve(0f, 0f, 0.58f, 1f, 500)),
     /** A game's page sliding in over the library and back out. */
-    PAGE("page", R.string.motion_page, MotionCurve(0.32f, 0.72f, 0f, 1f, 260));
+    PAGE("page", R.string.motion_page, MotionCurve(0.32f, 0.72f, 0f, 1f, 260)),
+    /** The known-variables list in the add-variable window. Until set, the picker windows' curve, 1.1 × as long. */
+    VAR_LIST("var_list", R.string.motion_var_list, MotionCurve(0.4f, 0f, 0.2f, 1f, 330));
 }
 
 /**
@@ -56,7 +58,10 @@ object Motion {
     }
 
     @JvmStatic
-    fun curve(kind: MotionKind): MotionCurve = curves[kind] ?: kind.default
+    fun curve(kind: MotionKind): MotionCurve = curves[kind] ?: when (kind) {
+        MotionKind.VAR_LIST -> curve(MotionKind.SHEET).let { it.copy(ms = Math.round(it.ms * 1.1f)) }
+        else -> kind.default
+    }
 
     @JvmStatic
     fun set(kind: MotionKind, curve: MotionCurve) {

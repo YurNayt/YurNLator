@@ -702,4 +702,5 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="motion_duration">Duration</string>
     <string name="motion_reset">Reset</string>
     <string name="motion_replay">Replay</string>
+    <string name="motion_var_list">Variables list</string>
 </resources>

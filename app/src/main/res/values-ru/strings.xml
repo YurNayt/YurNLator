@@ -419,4 +419,5 @@
     <string name="motion_duration">Длительность</string>
     <string name="motion_reset">Сброс</string>
     <string name="motion_replay">Повтор</string>
+    <string name="motion_var_list">Список переменных</string>
 </resources>
