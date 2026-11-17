@@ -665,4 +665,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             ImageUtils.save(bitmap, userWallpaperFile, Bitmap.CompressFormat.PNG, 100);
         }
     }
+
+    /**
+     * Top bar icons in the theme's colour. The fragments' icons are drawn light (for the dark
+     * themes) and the menu is rebuilt on every tab switch, after the theme tinted the old one:
+     * in the white theme they were nearly invisible.
+     */
+    @Override
+    public boolean onPrepareOptionsMenu(android.view.Menu menu) {
+        boolean shown = super.onPrepareOptionsMenu(menu);
+        int color = com.winlator.cmod.ui.theme.ThemeColors.onSurface(this);
+        for (int i = 0; i < menu.size(); i++) {
+            android.view.MenuItem item = menu.getItem(i);
+            if (item.getIcon() != null) item.setIcon(item.getIcon().mutate());
+            if (item.getIcon() != null) item.getIcon().setTint(color);
+        }
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.Toolbar);
+        if (toolbar != null && toolbar.getOverflowIcon() != null) toolbar.getOverflowIcon().mutate().setTint(color);
+        return shown;
+    }
 }

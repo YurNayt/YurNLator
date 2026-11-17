@@ -1187,4 +1187,6 @@
     <string name="l_pre_share_nothing">Pick the settings, the controls or both</string>
     <string name="l_ach_unlocked">Achievement unlocked</string>
     <string name="l_sts_show_playing">«In game» on Steam</string>
+    <string name="l_lib_no_games_yet">No games yet</string>
+    <string name="l_lib_add_games_hint">Add a game with the + button</string>
 </resources>

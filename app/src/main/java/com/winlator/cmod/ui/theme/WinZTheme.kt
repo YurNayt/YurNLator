@@ -394,3 +394,11 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is ContextWrapper -> baseContext.findActivity()
     else -> null
 }
+
+/** Theme colours for the View-based parts (toolbar menus) that Compose doesn't draw. */
+object ThemeColors {
+    /** Icons and text on the top bar: dark in the white theme, light in the dark ones. */
+    @JvmStatic
+    fun onSurface(context: Context): Int =
+        winlatorColorScheme(WinlatorThemeManager.currentTheme(context)).onSurface.toArgb()
+}

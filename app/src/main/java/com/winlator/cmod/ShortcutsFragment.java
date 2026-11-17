@@ -230,9 +230,7 @@ public class ShortcutsFragment extends Fragment {
         });
         searchItem.setActionView(searchView);
 
-        MenuItem addItem = menu.add(0, MENU_FILE_MANAGER, 2, UiStrings.get(R.string.l_sc_open_file_manager));
-        addItem.setIcon(R.drawable.ui_ic_add);
-        addItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        // Adding games is the floating + button at the bottom of the library (as on the containers tab).
 
         MainActivity activity = (MainActivity) requireActivity();
         SubMenu moreMenu = menu.addSubMenu(0, MENU_MORE, 3, UiStrings.get(R.string.l_sc_more));

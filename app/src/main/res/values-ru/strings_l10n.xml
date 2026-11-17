@@ -1187,4 +1187,6 @@
     <string name="l_pre_share_nothing">Выберите настройки, раскладку или и то, и другое</string>
     <string name="l_ach_unlocked">Достижение получено</string>
     <string name="l_sts_show_playing">«В игре» в Steam</string>
+    <string name="l_lib_no_games_yet">Пока нет игр</string>
+    <string name="l_lib_add_games_hint">Добавьте игру кнопкой +</string>
 </resources>

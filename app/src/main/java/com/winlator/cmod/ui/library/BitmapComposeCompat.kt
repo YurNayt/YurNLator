@@ -54,6 +54,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -157,7 +158,8 @@ internal fun LibraryRoot(
         return
     }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 14.dp)) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
         if (landscape) {
             LibraryLandscapeHeader(
                 activity = activity,
@@ -181,28 +183,28 @@ internal fun LibraryRoot(
                     )
                 }
             } else {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Surface(
-                        onClick = { activity?.navigateToMainDestination(R.id.main_menu_file_manager) },
-                        modifier = Modifier.widthIn(max = 360.dp).fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surface,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    ) {
-                        Column(
-                            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                // Like the containers tab: a message here, adding is the + button below.
+                Box(Modifier.fillMaxSize().padding(bottom = if (landscape) 0.dp else 72.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Surface(
+                            modifier = Modifier.size(if (landscape) 62.dp else 76.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ) {
-                            Surface(
-                                modifier = Modifier.size(72.dp),
-                                shape = RoundedCornerShape(20.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
-                            ) {
-                                Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Add, null, modifier = Modifier.size(34.dp)) }
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Outlined.SportsEsports, null, modifier = Modifier.size(if (landscape) 30.dp else 38.dp))
                             }
-                            Spacer(Modifier.height(16.dp))
-                            Text(uiStr(R.string.l_lib_add_games), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                         }
+                        Spacer(Modifier.height(14.dp))
+                        Text(uiStr(R.string.l_lib_no_games_yet), style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            uiStr(R.string.l_lib_add_games_hint),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
                     }
                 }
             }
@@ -224,6 +226,14 @@ internal fun LibraryRoot(
                 }
             }
         }
+    }
+    // Portrait: adding games is a floating button, as on the containers tab (landscape has + in its header).
+    if (!landscape) {
+        FloatingActionButton(
+            onClick = { activity?.navigateToMainDestination(R.id.main_menu_file_manager) },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp)
+        ) { Icon(Icons.Outlined.Add, uiStr(R.string.l_lib_add_games)) }
+    }
     }
 }
 
