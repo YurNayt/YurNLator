@@ -232,23 +232,7 @@ public class ShortcutsFragment extends Fragment {
 
         // Adding games is the floating + button at the bottom of the library (as on the containers tab).
 
-        MainActivity activity = (MainActivity) requireActivity();
-        SubMenu moreMenu = menu.addSubMenu(0, MENU_MORE, 3, UiStrings.get(R.string.l_sc_more));
-        MenuItem moreItem = moreMenu.getItem();
-        moreItem.setIcon(R.drawable.ui_ic_more);
-        moreItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
-
-        moreMenu.add(MENU_GROUP_LOCK, MENU_LOCK_ORIENTATION, 0, UiStrings.get(R.string.l_lib_lock_screen_orientation))
-                .setCheckable(true)
-                .setChecked(activity.isOrientationLocked());
-        moreMenu.add(MENU_GROUP_ORIENTATION_MODE, MENU_VERTICAL_MODE, 1, UiStrings.get(R.string.l_lib_vertical_mode))
-                .setCheckable(true)
-                .setChecked(activity.isVerticalModeEnabled());
-        moreMenu.add(MENU_GROUP_ORIENTATION_MODE, MENU_HORIZONTAL_MODE, 2, UiStrings.get(R.string.l_lib_horizontal_mode))
-                .setCheckable(true)
-                .setChecked(activity.isHorizontalModeEnabled());
-        moreMenu.setGroupCheckable(MENU_GROUP_LOCK, true, false);
-        moreMenu.setGroupCheckable(MENU_GROUP_ORIENTATION_MODE, true, true);
+        // No ⋮ menu: its only items (orientation lock / modes) were removed from the library.
     }
 
     @Override

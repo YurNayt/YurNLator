@@ -156,6 +156,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
 
         bottomNavigation = findViewById(R.id.BottomNavigation);
+        com.winlator.cmod.ui.LandscapeNavRail.install(this, findViewById(R.id.LandscapeNavRail));
+        com.winlator.cmod.ui.LandscapeNavRail.setBenchVisible(com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(this));
+        updateNavRail();
         bottomNavigation.setOnItemSelectedListener(item -> {
             if (syncingBottomNavigation) return true;
             int target;
@@ -442,6 +445,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
 
     private void selectBottomDestination(int menuItemId) {
+        com.winlator.cmod.ui.LandscapeNavRail.select(menuItemId);
         if (bottomNavigation == null) return;
         int bottomId = 0;
         if (menuItemId == R.id.main_menu_shortcuts) bottomId = R.id.bottom_nav_library;
@@ -466,6 +470,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (bottomNavigation == null) return;
         MenuItem item = bottomNavigation.getMenu().findItem(R.id.bottom_nav_bench);
         if (item != null) item.setVisible(com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(this));
+        com.winlator.cmod.ui.LandscapeNavRail.setBenchVisible(com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(this));
+    }
+
+    /** Landscape: the tabs as a bar on the right (the bottom bar is hidden there). */
+    private void updateNavRail() {
+        View rail = findViewById(R.id.LandscapeNavRail);
+        if (rail == null) return;
+        boolean landscape = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        rail.setVisibility(landscape ? View.VISIBLE : View.GONE);
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        updateNavRail();
     }
 
     public void setBottomNavigationVisible(boolean visible) {

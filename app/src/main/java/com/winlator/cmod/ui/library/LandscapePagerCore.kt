@@ -197,10 +197,12 @@ internal fun LandscapePagerCore(
 
 @Composable
 private fun PagerImage(path: String?, fallback: Bitmap?, modifier: Modifier) {
-    val image by produceState<Bitmap?>(fallback, path) {
-        value = withContext(Dispatchers.IO) {
-            path?.takeIf { File(it).isFile }?.let { BitmapFactory.decodeFile(it) } ?: fallback
-        }
+    // From the shared cache when it was decoded before (the cards, an earlier visit): no frame
+    // of the fallback icon / empty box before the picture on every return to this view.
+    val cached = remember(path) { ArtworkCache.get(path) }
+    val image by produceState<Bitmap?>(cached ?: fallback, path) {
+        if (cached != null) return@produceState
+        value = withContext(Dispatchers.IO) { ArtworkCache.load(path) ?: fallback }
     }
     if (image != null) Image(image!!.asImageBitmap(), null, modifier, contentScale = ContentScale.Crop)
     else Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant))

@@ -106,6 +106,13 @@ internal fun LibraryRoot(
 ) {
     var filterName by rememberSaveable { mutableStateOf(LibraryFilter.All.name) }
     val filter = LibraryFilter.valueOf(filterName)
+    // Every game's cover and background read ahead into memory: switching grid / list / the
+    // landscape artwork view then shows them at once instead of each popping in a moment later.
+    LaunchedEffect(items) {
+        withContext(Dispatchers.IO) {
+            for (it in items) { ArtworkCache.load(it.coverPath); ArtworkCache.load(it.bannerPath) }
+        }
+    }
     val visible = remember(items, filter, query) {
         val source = when (filter) {
             LibraryFilter.All -> items
@@ -267,14 +274,7 @@ private fun LibraryLandscapeHeader(
         LibraryTopIcon(if (grid) Icons.Outlined.ViewList else Icons.Outlined.GridView, false) {
             onGridViewChanged(!grid)
         }
-        // The same tabs as the other screens' landscape header; adding games is the + button below.
-        LibraryTopIcon(Icons.Outlined.ShoppingBag, false) { activity?.navigateToMainDestination(R.id.main_menu_stores) }
-        LibraryTopIcon(Icons.Outlined.Home, true) {}
-        LibraryTopIcon(Icons.Outlined.Inventory2, false) { activity?.navigateToMainDestination(R.id.main_menu_containers) }
-        LibraryTopIcon(Icons.Outlined.Settings, false) { activity?.navigateToMainDestination(R.id.main_menu_settings) }
-        if (activity != null && com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(activity)) {
-            LibraryTopIcon(Icons.Outlined.Speed, false) { activity.navigateToMainDestination(R.id.main_menu_bench) }
-        }
+        // The tabs are the bar on the right (LandscapeNavRail); adding games is the + button below.
     }
 }
 
@@ -453,9 +453,7 @@ private fun ArtworkCompat(path: String?, fallback: Bitmap?, modifier: Modifier) 
     val cached = remember(path) { ArtworkCache.get(path) }
     val bitmap by produceState(cached ?: fallback, path) {
         if (cached != null) return@produceState
-        value = withContext(Dispatchers.IO) {
-            path?.takeIf { File(it).isFile }?.let { p -> BitmapFactory.decodeFile(p)?.also { ArtworkCache.put(p, it) } } ?: fallback
-        }
+        value = withContext(Dispatchers.IO) { ArtworkCache.load(path) ?: fallback }
     }
     if (bitmap != null) Image(bitmap!!.asImageBitmap(), null, modifier, contentScale = ContentScale.Crop)
     else Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant))
@@ -629,10 +627,29 @@ private fun LibraryActionTileCompat(
 
 /** Decoded library artwork, by file (and its last change, so new artwork is read again). */
 internal object ArtworkCache {
-    private val cache = object : android.util.LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 8).toInt()) {
+    private val cache = object : android.util.LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 5).toInt()) {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
     private fun key(path: String) = path + "@" + File(path).lastModified()
     fun get(path: String?): Bitmap? = path?.let { cache.get(key(it)) }
     fun put(path: String, bitmap: Bitmap) { cache.put(key(path), bitmap) }
+
+    /**
+     * Reads [path] (at most ~2048 px a side: a 4K hero art would take 19 MB) and keeps it. Off the
+     * UI thread. Null when there's no such picture.
+     */
+    fun load(path: String?): Bitmap? {
+        path ?: return null
+        get(path)?.let { return it }
+        val f = File(path)
+        if (!f.isFile) return null
+        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeFile(path, bounds)
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 2048) sample *= 2
+        val bmp = android.graphics.BitmapFactory.decodeFile(path, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: return null
+        put(path, bmp)
+        return bmp
+    }
 }

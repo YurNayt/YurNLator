@@ -16,10 +16,18 @@
         <!-- Top bar + screens, and above them a layer for pages opened from a screen (a game's
              page): it covers the top bar but not the bottom one, and nothing under it changes
              size or is rebuilt while it slides in and out. -->
-        <FrameLayout
-            android:id="@+id/FLMainArea"
+        <!-- Landscape: the screens and, on the right, the tabs as a vertical bar (the bottom bar's
+             place in portrait). The bar stays put while the screens fade on a tab switch. -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+        <FrameLayout
+            android:id="@+id/FLMainArea"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
             android:layout_weight="1">
 
             <LinearLayout
@@ -51,6 +59,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
         </FrameLayout>
+
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/LandscapeNavRail"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+        </LinearLayout>
 
         <com.winlator.cmod.ui.WinZBottomNavigationView
             android:id="@+id/BottomNavigation"
