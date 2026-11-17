@@ -413,7 +413,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // A tab switch while an editor had hidden the toolbar: bring it back (portrait;
         // landscape screens hide it themselves).
         if (getResources().getConfiguration().orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
-            setMainToolbarVisible(true);
+            // Not through setMainToolbarVisible: Stores (still the current tab here) would keep it hidden.
+            // Stores hides it itself once it's on screen (no jump of the tab fading out).
+            if (mainToolbar != null && item.getItemId() != R.id.main_menu_stores) mainToolbar.setVisibility(View.VISIBLE);
         }
 
         switch (item.getItemId()) {
@@ -478,6 +480,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     public void setMainToolbarVisible(boolean visible) {
+        // The Stores tab has no top bar (its own title stands in for it). The tab left behind
+        // hands the bar back when its screen is disposed, which can come after Stores hid it.
+        if (visible && getResources().getConfiguration().orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                && getSupportFragmentManager().findFragmentById(R.id.FLFragmentContainer) instanceof com.winlator.cmod.store.StoresFragment) {
+            visible = false;
+        }
         if (mainToolbar != null) mainToolbar.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 

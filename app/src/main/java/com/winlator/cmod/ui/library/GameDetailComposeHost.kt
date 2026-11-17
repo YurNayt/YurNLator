@@ -246,7 +246,7 @@ private fun PortraitDetail(title: String, subtitle: String, artwork: Bitmap?, fa
 private fun PlayRow(callbacks: GameDetailCallbacks, onArtwork: Boolean) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(callbacks::onPlay, Modifier.weight(1f).heightIn(min = 52.dp), shape = RoundedCornerShape(12.dp),
-            colors = if (onArtwork) ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black) else ButtonDefaults.buttonColors()) {
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) {
             Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(8.dp))
             Text(uiStr(R.string.l_lib_play), fontWeight = FontWeight.Bold, maxLines = 1)
         }

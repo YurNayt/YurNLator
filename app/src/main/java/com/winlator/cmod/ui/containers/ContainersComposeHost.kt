@@ -186,7 +186,9 @@ private fun ContainersScreen(
     if (!landscape) {
         FloatingActionButton(
             onClick = callbacks::onAdd,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp)
+            modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
         ) { Icon(Icons.Outlined.Add, uiStr(R.string.l_ctr_add_container)) }
     }
     }

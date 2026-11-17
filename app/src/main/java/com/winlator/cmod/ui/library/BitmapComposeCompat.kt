@@ -231,7 +231,9 @@ internal fun LibraryRoot(
     if (!landscape) {
         FloatingActionButton(
             onClick = { activity?.navigateToMainDestination(R.id.main_menu_file_manager) },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp)
+            modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
         ) { Icon(Icons.Outlined.Add, uiStr(R.string.l_lib_add_games)) }
     }
     }
@@ -452,8 +454,9 @@ private fun PlayCompat(item: LibraryItem, cb: LibraryCallbacks, overlay: Boolean
         onClick = { cb.onRun(item.shortcutPath) },
         modifier = Modifier.size(42.dp),
         shape = CircleShape,
-        color = if (overlay) Color.Black.copy(.72f) else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (overlay) Color.White else MaterialTheme.colorScheme.onSurface
+        // The theme's accent, on artwork and on plain cards alike.
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
     ) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.PlayArrow, uiStr(R.string.l_lib_play)) } }
 }
 

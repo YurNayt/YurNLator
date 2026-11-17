@@ -184,8 +184,8 @@ internal fun LandscapePagerCore(
                             onClick = { callbacks.onRun(item.shortcutPath) },
                             modifier = Modifier.size(44.dp),
                             shape = CircleShape,
-                            color = Color.Black.copy(.62f),
-                            contentColor = Color.White
+                            color = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.PlayArrow, uiStr(R.string.l_lib_play)) } }
                         footerActions(item)
                     }

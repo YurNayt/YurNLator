@@ -203,12 +203,12 @@ fun WinlatorThemePreferenceCard(modifier: Modifier = Modifier) {
  */
 private fun themeBadge(theme: WinlatorThemeType): ThemePreviewColors = when (theme) {
     WinlatorThemeType.WHITE -> ThemePreviewColors(Color(0xFFFFFFFF), Color(0xFFE3E5EA), Color(0xFF25272D), Color(0xFFB9BBC2))
-    WinlatorThemeType.BLACK -> ThemePreviewColors(Color(0xFF2E3037), Color(0xFF4A4D57), Color(0xFFF2F2F4), Color(0xFF5A5D68))
+    WinlatorThemeType.BLACK -> ThemePreviewColors(Color(0xFF24262C), Color(0xFF3A3D45), Color(0xFFF2F2F4), Color(0xFF4A4D57))
     WinlatorThemeType.AMOLED -> ThemePreviewColors(Color(0xFF000000), Color(0xFF1C1C1C), Color(0xFFFFFFFF), Color(0xFF3A3A3A))
-    WinlatorThemeType.BLUE -> ThemePreviewColors(Color(0xFF1D5CC4), Color(0xFF4A82DE), Color(0xFFD6E6FF), Color(0xFF15468F))
-    WinlatorThemeType.RED -> ThemePreviewColors(Color(0xFFC22F38), Color(0xFFDD5860), Color(0xFFFFDADC), Color(0xFF8E2129))
-    WinlatorThemeType.PURPLE -> ThemePreviewColors(Color(0xFF6E40C9), Color(0xFF8F68DE), Color(0xFFEDE3FF), Color(0xFF4F2D93))
-    WinlatorThemeType.GREEN -> ThemePreviewColors(Color(0xFF21804F), Color(0xFF45A06F), Color(0xFFD2F2DE), Color(0xFF175C39))
+    WinlatorThemeType.BLUE -> ThemePreviewColors(Color(0xFF153F86), Color(0xFF2B5CAE), Color(0xFFB8D4FF), Color(0xFF0F2F66))
+    WinlatorThemeType.RED -> ThemePreviewColors(Color(0xFF85202A), Color(0xFFA83A43), Color(0xFFFFC2C6), Color(0xFF60161D))
+    WinlatorThemeType.PURPLE -> ThemePreviewColors(Color(0xFF4A2A8C), Color(0xFF6845AC), Color(0xFFDCC9FF), Color(0xFF351E66))
+    WinlatorThemeType.GREEN -> ThemePreviewColors(Color(0xFF175A38), Color(0xFF2E7A52), Color(0xFFB8E6C8), Color(0xFF104028))
 }
 
 internal data class ThemePreviewColors(
