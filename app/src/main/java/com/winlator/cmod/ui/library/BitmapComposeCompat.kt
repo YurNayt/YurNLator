@@ -157,7 +157,7 @@ internal fun LibraryRoot(
                 Spacer(Modifier.height(7.dp))
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     libraryFilters(items).forEach { option ->
-                        LibraryFilterChip(filterLabel(option), option == filter) { filterName = option.name }
+                        LibraryFilterChip(filterLabel(option), option == filter, onArtwork = true) { filterName = option.name }
                     }
                 }
             },
@@ -352,12 +352,24 @@ private fun filterLabel(f: LibraryFilter): String = when (f) {
 }
 
 @Composable
-private fun LibraryFilterChip(label: String, selected: Boolean, click: () -> Unit) {
+private fun LibraryFilterChip(label: String, selected: Boolean, onArtwork: Boolean = false, click: () -> Unit) {
+    // Over the game's artwork (landscape) the theme's colours can be dark on dark (white theme):
+    // white text on a dimmed glass, the selected one white with dark text, in every theme.
     Surface(
         onClick = click,
         shape = RoundedCornerShape(10.dp),
-        color = if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        color = when {
+            onArtwork && selected -> Color.White.copy(alpha = .92f)
+            onArtwork -> Color.Black.copy(alpha = .32f)
+            selected -> MaterialTheme.colorScheme.surfaceVariant
+            else -> Color.Transparent
+        },
+        contentColor = when {
+            onArtwork && selected -> Color(0xFF111215)
+            onArtwork -> Color.White
+            else -> MaterialTheme.colorScheme.onSurface
+        },
+        border = BorderStroke(1.dp, if (onArtwork) Color.White.copy(alpha = .35f) else MaterialTheme.colorScheme.outlineVariant)
     ) { Text(label, Modifier.padding(horizontal = 15.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false) }
 }
 

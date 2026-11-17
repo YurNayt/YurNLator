@@ -105,7 +105,9 @@ private fun StoresScreen() {
     val landscape = config.screenWidthDp > config.screenHeightDp
     val activity = LocalContext.current as? com.winlator.cmod.MainActivity
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (landscape) com.winlator.cmod.ui.LandscapeMainNavigation(activity, R.id.main_menu_stores, uiStr(R.string.l_st_stores))
+        // Landscape: only the chrome handling, no "Stores" header row: the picker's own title is
+        // there (and a store's page has its own header), as in portrait.
+        if (landscape) com.winlator.cmod.ui.KeepLandscapeChromeHidden(activity)
         val s = store?.let { runCatching { Store.valueOf(it) }.getOrNull() }
         // No "Stores" top bar: the picker's own big title stands in its place, and a store's page
         // has its own header (back arrow, logo), like a game's page. (Portrait; landscape draws its own chrome.)
