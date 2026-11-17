@@ -410,13 +410,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         }
 
-        // A tab switch while an editor had hidden the toolbar: bring it back (portrait;
-        // landscape screens hide it themselves).
-        if (getResources().getConfiguration().orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
-            // Not through setMainToolbarVisible: Stores (still the current tab here) would keep it hidden.
-            // Stores hides it itself once it's on screen (no jump of the tab fading out).
-            if (mainToolbar != null && item.getItemId() != R.id.main_menu_stores) mainToolbar.setVisibility(View.VISIBLE);
-        }
 
         switch (item.getItemId()) {
             case R.id.main_menu_shortcuts:
@@ -530,6 +523,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         View mainArea = findViewById(R.id.FLMainArea);
         Runnable swap = () -> {
             if (isFinishing() || fragmentManager.isStateSaved()) return;
+            // The top bar for the new tab, set while the area is faded out (no flash of the old
+            // title, no jump): back after an editor had hidden it, none on Stores. Portrait only;
+            // landscape screens hide it themselves.
+            if (mainToolbar != null && getResources().getConfiguration().orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+                mainToolbar.setVisibility(fragment instanceof com.winlator.cmod.store.StoresFragment ? View.GONE : View.VISIBLE);
+            }
             fragmentManager.beginTransaction()
                     .setReorderingAllowed(true)
                     .replace(R.id.FLFragmentContainer, fragment)

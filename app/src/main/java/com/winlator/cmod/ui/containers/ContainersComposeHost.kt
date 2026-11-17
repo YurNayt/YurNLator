@@ -123,10 +123,7 @@ private fun ContainersScreen(
             LandscapeMainNavigation(
                 activity = activity,
                 selected = R.id.main_menu_containers,
-                title = uiStr(R.string.l_ctr_containers),
-                actionIcon = Icons.Outlined.Add,
-                actionDescription = uiStr(R.string.l_ctr_add_container),
-                onAction = callbacks::onAdd
+                title = uiStr(R.string.l_ctr_containers)
             )
         }
 
@@ -162,7 +159,7 @@ private fun ContainersScreen(
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(460.dp),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 88.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -182,8 +179,8 @@ private fun ContainersScreen(
             }
         }
     }
-    // Portrait has no top bar action, so uiStr(R.string.l_ctr_add_container) is a floating button.
-    if (!landscape) {
+    // Adding a container is a floating button in both orientations (as in the library).
+    run {
         FloatingActionButton(
             onClick = callbacks::onAdd,
             modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp),

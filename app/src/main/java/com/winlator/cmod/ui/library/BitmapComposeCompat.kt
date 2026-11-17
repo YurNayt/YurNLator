@@ -49,6 +49,8 @@ import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -132,6 +134,7 @@ internal fun LibraryRoot(
 
     if (landscape && visible.isNotEmpty() && !grid) {
         var menu by remember { mutableStateOf<LibraryItem?>(null) }
+        Box(Modifier.fillMaxSize()) {
         LandscapePagerCore(
             items = visible,
             selectedShortcutPath = selectedShortcutPath,
@@ -154,6 +157,8 @@ internal fun LibraryRoot(
                 IconButton(onClick = { menu = item }) { Icon(Icons.Outlined.MoreVert, uiStr(R.string.l_lib_more_options), tint = Color.White) }
             }
         )
+        AddGamesFab(activity, Modifier.align(Alignment.BottomEnd))
+        }
         menu?.let { LibraryItemMenuCompat(it, cb) { menu = null } }
         return
     }
@@ -184,7 +189,7 @@ internal fun LibraryRoot(
                 }
             } else {
                 // Like the containers tab: a message here, adding is the + button below.
-                Box(Modifier.fillMaxSize().padding(bottom = if (landscape) 0.dp else 72.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize().padding(bottom = 72.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Surface(
                             modifier = Modifier.size(if (landscape) 62.dp else 76.dp),
@@ -227,16 +232,19 @@ internal fun LibraryRoot(
             }
         }
     }
-    // Portrait: adding games is a floating button, as on the containers tab (landscape has + in its header).
-    if (!landscape) {
-        FloatingActionButton(
-            onClick = { activity?.navigateToMainDestination(R.id.main_menu_file_manager) },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
-        ) { Icon(Icons.Outlined.Add, uiStr(R.string.l_lib_add_games)) }
+    // Adding games is a floating button, as on the containers tab (both orientations).
+    AddGamesFab(activity, Modifier.align(Alignment.BottomEnd))
     }
-    }
+}
+
+@Composable
+private fun AddGamesFab(activity: MainActivity?, modifier: Modifier) {
+    FloatingActionButton(
+        onClick = { activity?.navigateToMainDestination(R.id.main_menu_file_manager) },
+        modifier = modifier.padding(18.dp),
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
+    ) { Icon(Icons.Outlined.Add, uiStr(R.string.l_lib_add_games)) }
 }
 
 @Composable
@@ -257,10 +265,14 @@ private fun LibraryLandscapeHeader(
         LibraryTopIcon(if (grid) Icons.Outlined.ViewList else Icons.Outlined.GridView, false) {
             onGridViewChanged(!grid)
         }
-        LibraryTopIcon(Icons.Outlined.Add, false) { activity?.navigateToMainDestination(R.id.main_menu_file_manager) }
+        // The same tabs as the other screens' landscape header; adding games is the + button below.
+        LibraryTopIcon(Icons.Outlined.ShoppingBag, false) { activity?.navigateToMainDestination(R.id.main_menu_stores) }
         LibraryTopIcon(Icons.Outlined.Home, true) {}
         LibraryTopIcon(Icons.Outlined.Inventory2, false) { activity?.navigateToMainDestination(R.id.main_menu_containers) }
         LibraryTopIcon(Icons.Outlined.Settings, false) { activity?.navigateToMainDestination(R.id.main_menu_settings) }
+        if (activity != null && com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(activity)) {
+            LibraryTopIcon(Icons.Outlined.Speed, false) { activity.navigateToMainDestination(R.id.main_menu_bench) }
+        }
         LibraryOrientationMenu(activity)
     }
 }
