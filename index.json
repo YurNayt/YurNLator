@@ -1,7 +1,27 @@
 {
  "version": 1,
- "updated": 1794756800,
+ "updated": 1794951331,
  "presets": [
+  {
+   "id": "d25834db66f4",
+   "game": "GoW",
+   "game_key": "gow",
+   "exe": "gow.exe",
+   "title": "god of war 2018",
+   "author": "",
+   "device": "Xiaomi 2510DPC44G",
+   "soc": "SM8750",
+   "gpu": "Adreno 830",
+   "created": 1794951323,
+   "app_version": "v1.1.1",
+   "issue": 7,
+   "likes": 0,
+   "comments": 0,
+   "login": "",
+   "controls": "",
+   "has_settings": true,
+   "published": 1794951331
+  },
   {
    "id": "44d17ba8f734",
    "game": "eldenring",
