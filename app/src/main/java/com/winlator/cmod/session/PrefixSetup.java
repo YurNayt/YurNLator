@@ -99,6 +99,8 @@ public final class PrefixSetup {
         WineStartMenuCreator.create(context, container);
         WineUtils.createDosdevicesSymlinks(container);
         WineFonts.ensure(imageFs, wineInfo);
+        // comctl32 v6 assembly from this Wine build (TaskDialog on Wine 11, manifests on 9/10).
+        CommonControlsV6.ensure(imageFs, wineInfo);
 
         boolean dinput = GamepadApi.dinputShown(launch);
         Log.i("PrefixSetup", "Gamepad API " + launch.getPadApi() + (launch.isUnityGame() ? " (Unity)" : "") + ": DirectInput " + (dinput ? "shown" : "hidden"));
