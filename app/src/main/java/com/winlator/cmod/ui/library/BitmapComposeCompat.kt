@@ -465,7 +465,7 @@ private fun ArtworkCompat(path: String?, fallback: Bitmap?, modifier: Modifier) 
     // small icon for a moment while its picture was read from storage again.
     val cached = remember(path) { ArtworkCache.get(path) }
     val bitmap by produceState(cached ?: fallback, path) {
-        if (cached != null) return@produceState
+        if (cached != null) { value = cached; return@produceState }
         value = withContext(Dispatchers.IO) { ArtworkCache.load(path) ?: fallback }
     }
     if (bitmap != null) Image(bitmap!!.asImageBitmap(), null, modifier, contentScale = ContentScale.Crop)

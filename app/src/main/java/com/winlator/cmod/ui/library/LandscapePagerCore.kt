@@ -201,7 +201,9 @@ private fun PagerImage(path: String?, fallback: Bitmap?, modifier: Modifier) {
     // of the fallback icon / empty box before the picture on every return to this view.
     val cached = remember(path) { ArtworkCache.get(path) }
     val image by produceState<Bitmap?>(cached ?: fallback, path) {
-        if (cached != null) return@produceState
+        // The state outlives a change of path (another game selected): set it every time, or the
+        // background stayed the first game's.
+        if (cached != null) { value = cached; return@produceState }
         value = withContext(Dispatchers.IO) { ArtworkCache.load(path) ?: fallback }
     }
     if (image != null) Image(image!!.asImageBitmap(), null, modifier, contentScale = ContentScale.Crop)
