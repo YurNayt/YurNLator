@@ -110,7 +110,8 @@ internal fun LibraryRoot(
     // landscape artwork view then shows them at once instead of each popping in a moment later.
     LaunchedEffect(items) {
         withContext(Dispatchers.IO) {
-            for (it in items) { ArtworkCache.load(it.coverPath); ArtworkCache.load(it.bannerPath) }
+            // Never fatal (a broken file, low memory): the cards load their own picture anyway.
+            for (it in items) runCatching { ArtworkCache.load(it.coverPath); ArtworkCache.load(it.bannerPath) }
         }
     }
     val visible = remember(items, filter, query) {

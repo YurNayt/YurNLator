@@ -44,7 +44,8 @@ object LandscapeNavRail {
     @JvmStatic fun setBenchVisible(visible: Boolean) { bench.value = visible }
 
     @JvmStatic
-    fun install(activity: MainActivity, view: ComposeView) {
+    fun install(activity: MainActivity, view: ComposeView?) {
+        view ?: return
         view.setContent { WinZTheme { Rail(activity) } }
     }
 
