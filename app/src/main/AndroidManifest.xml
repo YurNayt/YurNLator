@@ -85,6 +85,14 @@
             </intent-filter>
         </activity>
 
+        <!-- The crash report right after a crash of the main screens, in a process of its own. -->
+        <activity
+            android:name="com.winlator.cmod.core.CrashActivity"
+            android:process=":crash"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+
         <activity android:name="com.winlator.cmod.BigPictureActivity" android:theme="@style/Theme.AppCompat" android:exported="false" />
 
         <activity

@@ -156,7 +156,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
 
         bottomNavigation = findViewById(R.id.BottomNavigation);
-        com.winlator.cmod.ui.LandscapeNavRail.install(this, findViewById(R.id.LandscapeNavRail));
         com.winlator.cmod.ui.LandscapeNavRail.setBenchVisible(com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(this));
         updateNavRail();
         bottomNavigation.setOnItemSelectedListener(item -> {
@@ -473,11 +472,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         com.winlator.cmod.ui.LandscapeNavRail.setBenchVisible(com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(this));
     }
 
+    private boolean navRailInstalled;
+
     /** Landscape: the tabs as a bar on the right (the bottom bar is hidden there). */
     private void updateNavRail() {
         View rail = findViewById(R.id.LandscapeNavRail);
         if (rail == null) return;
         boolean landscape = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        // Composed the first time it's needed: nothing of it runs in portrait.
+        if (landscape && !navRailInstalled && rail instanceof androidx.compose.ui.platform.ComposeView) {
+            navRailInstalled = true;
+            com.winlator.cmod.ui.LandscapeNavRail.install(this, (androidx.compose.ui.platform.ComposeView) rail);
+        }
         rail.setVisibility(landscape ? View.VISIBLE : View.GONE);
     }
 

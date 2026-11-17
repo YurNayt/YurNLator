@@ -5,6 +5,7 @@ import com.winlator.cmod.R
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.AlertDialog
+import android.app.Application
 import android.app.ApplicationExitInfo
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -33,13 +34,34 @@ object CrashReports {
     @JvmStatic
     fun install(context: Context) {
         val app = context.applicationContext
+        val process = runCatching { if (Build.VERSION.SDK_INT >= 28) Application.getProcessName() else null }.getOrNull()
+        // The crash screen's own process: a crash there must not open it again.
+        if (process != null && process.endsWith(":crash")) return
+        val mainProcess = process == null || process == app.packageName
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            var text: String? = null
             runCatching {
                 val sw = StringWriter()
                 error.printStackTrace(PrintWriter(sw))
-                val text = header(app) + "Thread: ${thread.name}\n\n" + sw
-                File(app.filesDir, FILE).apply { parentFile?.mkdirs() }.writeText(text)
+                text = header(app) + "Thread: ${thread.name}\n\n" + sw
+                File(app.filesDir, FILE).apply { parentFile?.mkdirs() }.writeText(text!!)
+            }
+            // Main screens: the report right away, in its own process (a crash at start would
+            // otherwise never let the next launch show it). The game screen keeps the old way.
+            if (mainProcess && text != null) {
+                val shown = runCatching {
+                    app.startActivity(Intent(app, CrashActivity::class.java)
+                        .putExtra(CrashActivity.EXTRA_TEXT, text!!.take(200_000))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+                    // Seen here: not shown again on the next launch.
+                    PreferenceManager.getDefaultSharedPreferences(app).edit()
+                        .putLong(PREF_SEEN, File(app.filesDir, FILE).lastModified()).commit()
+                }.isSuccess
+                if (shown) {
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                    System.exit(10)
+                }
             }
             previous?.uncaughtException(thread, error)
         }
