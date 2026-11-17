@@ -49,6 +49,10 @@ object PresetHub {
         val likes: Int,
         val comments: Int,
         val appVersion: String,
+        /** Name of the on-screen controls the preset carries, "" when none. */
+        val controls: String = "",
+        /** False for a controls-only preset. */
+        val hasSettings: Boolean = true,
     ) {
         val hardware: String get() = listOf(gpu, soc).filter { it.isNotBlank() }.distinct().joinToString(" · ")
     }
@@ -106,6 +110,8 @@ object PresetHub {
                 likes = o.optInt("likes"),
                 comments = o.optInt("comments"),
                 appVersion = o.optString("app_version"),
+                controls = o.optString("controls"),
+                hasSettings = o.optBoolean("has_settings", true),
             )
         }
         return out
@@ -192,7 +198,8 @@ object PresetHub {
         val r = preset.requires
         appendLine("**Uses:** " + listOf(r.wineLabel.ifBlank { r.wine }, r.dxvk.takeIf { it.isNotBlank() }?.let { "DXVK $it" },
             r.vkd3d.takeIf { it.isNotBlank() }?.let { "VKD3D $it" }, r.driverLabel.takeIf { it.isNotBlank() })
-            .filterNotNull().filter { it.isNotBlank() }.joinToString(" · "))
+            .filterNotNull().filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "—" })
+        if (preset.controls != null) appendLine("**On-screen controls:** ${preset.controlsName} (${preset.controlsElements} elements)")
         if (preset.notes.isNotBlank()) { appendLine(); appendLine(preset.notes) }
         appendLine()
         appendLine("```yurnlator-preset")
@@ -318,6 +325,7 @@ object PresetHub {
 
     /** Reads a shared preset: the JSON file, or an issue body with the packed block. */
     fun importText(text: String): CommunityPreset? {
+        if (text.length > 512 * 1024) return null
         runCatching { CommunityPreset.parse(JSONObject(text.trim())) }.getOrNull()?.let { return it }
         val block = Regex("```yurnlator-preset\\s+([A-Za-z0-9+/=\\s]+)```").find(text)?.groupValues?.get(1) ?: return null
         return runCatching {

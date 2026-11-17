@@ -93,6 +93,60 @@ def decode_block(body):
     raise ValueError("no preset found in the issue (the ```yurnlator-preset block is missing or was edited)")
 
 
+ELEMENT_KEYS = {"type", "shape", "bindings", "scale", "x", "y", "toggleSwitch", "text", "iconId", "opacity",
+                "customColor", "mouseMoveMode", "turbo", "range", "orientation"}
+
+
+def plain(v, depth=0):
+    """A JSON value with only numbers, booleans, short strings, lists and objects (no deep nesting)."""
+    if depth > 6:
+        raise ValueError("bad controls")
+    if isinstance(v, bool) or v is None or isinstance(v, (int, float)):
+        return v
+    if isinstance(v, str):
+        return text(v, 200)
+    if isinstance(v, list):
+        if len(v) > 64:
+            raise ValueError("bad controls")
+        return [plain(x, depth + 1) for x in v]
+    if isinstance(v, dict):
+        if len(v) > 32:
+            raise ValueError("bad controls")
+        return {text(k, 40): plain(x, depth + 1) for k, x in v.items()}
+    raise ValueError("bad controls")
+
+
+def clean_controls(c):
+    """An on-screen controls profile (.icp) carried by a preset; None when there is none."""
+    if not c:
+        return None
+    if not isinstance(c, dict):
+        raise ValueError("bad controls")
+    elements = c.get("elements") or []
+    controllers = c.get("controllers") or []
+    if not isinstance(elements, list) or not isinstance(controllers, list):
+        raise ValueError("bad controls")
+    if len(elements) > 400 or len(controllers) > 16:
+        raise ValueError("the controls have too many buttons")
+    els = []
+    for e in elements:
+        if isinstance(e, dict) and e.get("type"):
+            els.append({k: plain(v) for k, v in e.items() if k in ELEMENT_KEYS})
+    ctrls = [plain(x) for x in controllers if isinstance(x, dict)]
+    if not els and not ctrls:
+        return None
+    try:
+        speed = float(c.get("cursorSpeed", 1))
+    except (TypeError, ValueError):
+        speed = 1.0
+    out = {"name": re.sub(r"[/\\]", " ", text(c.get("name"), 60)) or "Controls", "cursorSpeed": speed, "elements": els}
+    if isinstance(c.get("themeColor"), int) and c["themeColor"]:
+        out["themeColor"] = c["themeColor"]
+    if ctrls:
+        out["controllers"] = ctrls
+    return out
+
+
 def clean(p):
     if not isinstance(p, dict) or p.get("format") != "yurnlator-preset":
         raise ValueError("this is not a YurNLator preset")
@@ -109,8 +163,9 @@ def clean(p):
             if not v:
                 continue
         s[k] = v
-    if not s:
-        raise ValueError("the preset has no settings")
+    controls = clean_controls(p.get("controls"))
+    if not s and not controls:
+        raise ValueError("the preset has no settings and no controls")
     dev = p.get("device") or {}
     req = p.get("requires") or {}
     drv = req.get("driver") or {}
@@ -120,7 +175,7 @@ def clean(p):
     if not isinstance(created, int) or created <= 0 or created > now + 86400:
         created = now
     owner = re.sub(r"[^a-f0-9]", "", str(p.get("owner_hash", "")).lower())[:64]
-    return {
+    result = {
         "format": "yurnlator-preset", "version": 1,
         "id": pid, "game": text(p.get("game"), 120), "exe": text(p.get("exe"), 120).lower(),
         "title": text(p.get("title"), 80), "notes": text(p.get("notes"), 1500),
@@ -138,6 +193,9 @@ def clean(p):
         "settings": s,
         "owner_hash": owner,
     }
+    if controls:
+        result["controls"] = controls
+    return result
 
 
 def entry(p, issue, login, via_service):
@@ -147,6 +205,8 @@ def entry(p, issue, login, via_service):
         "soc": p["device"]["soc"], "gpu": p["device"]["gpu"], "created": p["created"],
         "app_version": p["app"]["version"], "issue": issue, "likes": 0, "comments": 0,
         "login": "" if via_service else login,
+        "controls": (p.get("controls") or {}).get("name", ""),
+        "has_settings": bool(p["settings"]),
     }
 
 

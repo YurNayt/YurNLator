@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
@@ -57,6 +58,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -90,6 +92,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
+import org.json.JSONObject
 
 /**
  * Community presets for one game: browse what others shared, apply it (missing components are
@@ -118,7 +121,8 @@ object CommunityPresetsDialog {
 private sealed class Page {
     object List : Page()
     data class Detail(val entry: PresetHub.IndexEntry?, val local: CommunityPreset?) : Page()
-    object Share : Page()
+    /** [controls]: an .icp opened from a file, offered as the controls to share. */
+    data class Share(val controls: JSONObject? = null, val controlsFile: String = "") : Page()
 }
 
 private fun date(sec: Long): String =
@@ -134,6 +138,31 @@ private fun shareText(context: Context, subject: String, text: String) {
         .putExtra(Intent.EXTRA_SUBJECT, subject).putExtra(Intent.EXTRA_TEXT, text)
     runCatching { context.startActivity(Intent.createChooser(send, uiStr(R.string.l_pre_share_preset)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 }
+
+/** A picked file's text, null when unreadable or over 512 KB (no preset or .icp is that big). */
+private fun readSmallText(context: Context, uri: Uri): String? = runCatching {
+    context.contentResolver.openInputStream(uri)?.use { input ->
+        val bytes = input.readNBytesCompat(512 * 1024 + 1)
+        if (bytes.size > 512 * 1024) null else bytes.toString(Charsets.UTF_8)
+    }
+}.getOrNull()
+
+private fun java.io.InputStream.readNBytesCompat(limit: Int): ByteArray {
+    val out = java.io.ByteArrayOutputStream()
+    val buf = ByteArray(8192)
+    while (out.size() < limit) {
+        val n = read(buf, 0, minOf(buf.size, limit - out.size()))
+        if (n < 0) break
+        out.write(buf, 0, n)
+    }
+    return out.toByteArray()
+}
+
+private fun fileName(context: Context, uri: Uri): String = runCatching {
+    context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst()) c.getString(0) else null
+    }
+}.getOrNull() ?: uri.lastPathSegment.orEmpty().substringAfterLast('/')
 
 @Composable
 private fun PresetsScreen(shortcut: Shortcut, close: () -> Unit) {
@@ -166,12 +195,15 @@ private fun PresetsScreen(shortcut: Shortcut, close: () -> Unit) {
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
-            val p = withContext(Dispatchers.IO) {
-                runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }
-                    .getOrNull()?.let(PresetHub::importText)
+            val text = withContext(Dispatchers.IO) { readSmallText(context, uri) }
+            val p = text?.let { withContext(Dispatchers.IO) { PresetHub.importText(it) } }
+            val controls = if (p == null) text?.let(CommunityPreset::controlsFromText) else null
+            when {
+                p != null -> page = Page.Detail(null, p)
+                // A plain .icp: share it under this game's name.
+                controls != null -> page = Page.Share(controls, fileName(context, uri))
+                else -> Toast.makeText(context, uiStr(R.string.l_pre_not_preset_nor_icp), Toast.LENGTH_LONG).show()
             }
-            if (p == null) Toast.makeText(context, uiStr(R.string.l_pre_that_file_isn_t_a_yurnlator), Toast.LENGTH_LONG).show()
-            else page = Page.Detail(null, p)
         }
     }
 
@@ -196,10 +228,10 @@ private fun PresetsScreen(shortcut: Shortcut, close: () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             when (val p = page) {
                 is Page.List -> PresetList(shortcut, all, social, loading, offline, soc, gpu.value,
-                    open = { page = Page.Detail(it, null) }, share = { page = Page.Share })
+                    open = { page = Page.Detail(it, null) }, share = { page = Page.Share() })
                 is Page.Detail -> PresetDetail(shortcut, p.entry, p.local, p.entry?.let { social[it.id] },
                     onSocial = { id, v -> social = social + (id to v) }, done = { page = Page.List; reload++ })
-                is Page.Share -> ShareForm(shortcut, done = { page = Page.List; reload++ })
+                is Page.Share -> ShareForm(shortcut, p.controls, p.controlsFile, done = { page = Page.List; reload++ })
             }
         }
     }
@@ -213,15 +245,16 @@ private fun PresetList(
     val context = LocalContext.current
     var everything by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    var controlsOnly by remember { mutableStateOf(false) }
     var undoState by remember { mutableIntStateOf(0) }
     val mine = remember(all) { PresetHub.myIds(context) }
     val exe = remember { CommunityPreset.exeOf(shortcut) }
-    val list = remember(all, everything, query, gpu) {
+    val list = remember(all, everything, query, gpu, controlsOnly) {
         val src = all.orEmpty()
         val base = if (everything) src.filter {
             query.isBlank() || it.game.contains(query, true) || it.title.contains(query, true) || it.exe.contains(query, true)
         } else PresetHub.forGame(src, shortcut.name, exe)
-        PresetHub.rank(base, soc, gpu)
+        PresetHub.rank(if (controlsOnly) base.filter { it.controls.isNotBlank() } else base, soc, gpu)
     }
 
     LazyColumn(
@@ -254,6 +287,9 @@ private fun PresetList(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 FilterChip(selected = !everything, onClick = { everything = false }, label = { Text(uiStr(R.string.l_pre_this_game)) })
                 FilterChip(selected = everything, onClick = { everything = true }, label = { Text(uiStr(R.string.l_pre_all_games)) })
+                FilterChip(selected = controlsOnly, onClick = { controlsOnly = !controlsOnly },
+                    leadingIcon = { Icon(Icons.Outlined.SportsEsports, null, Modifier.size(16.dp)) },
+                    label = { Text(uiStr(R.string.l_pre_chip_controls)) })
                 Spacer(Modifier.weight(1f))
                 if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
@@ -302,6 +338,11 @@ private fun PresetCard(e: PresetHub.IndexEntry, sameChip: Boolean, sameGpu: Bool
                 else if (sameGpu) Badge(uiStr(R.string.l_pre_your_gpu), MaterialTheme.colorScheme.primary)
                 if (mine) Badge(uiStr(R.string.l_pre_mine), MaterialTheme.colorScheme.tertiary)
             }
+            if (e.controls.isNotBlank()) Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.SportsEsports, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
+                Text(" " + (if (e.hasSettings) uiStr(R.string.l_pre_card_with_controls, e.controls) else uiStr(R.string.l_pre_card_controls_only, e.controls)),
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             if (showGame) Text(e.game, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(listOf(e.author.ifBlank { "anonymous" }, e.device, e.hardware).filter { it.isNotBlank() }.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -334,6 +375,7 @@ private fun PresetDetail(
     var showAll by remember { mutableStateOf(false) }
     var hasService by remember { mutableStateOf(false) }
     var comments by remember { mutableStateOf<List<PresetHub.Comment>?>(null) }
+    var withControls by remember { mutableStateOf(true) }
 
     LaunchedEffect(entry) {
         if (entry != null) {
@@ -372,10 +414,32 @@ private fun PresetDetail(
             Text(p.notes, Modifier.fillMaxWidth().padding(12.dp))
         }
 
-        Text(uiStr(R.string.l_pre_what_it_needs), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        val hasSettings = p.settings.isNotEmpty()
+        if (p.controls != null) Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.SportsEsports, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.secondary)
+                    Spacer(Modifier.width(8.dp))
+                    Text(uiStr(R.string.l_pre_onscreen_controls), fontWeight = FontWeight.SemiBold)
+                }
+                Text(uiStr(R.string.l_pre_controls_summary, p.controlsName, p.controlsElements), style = MaterialTheme.typography.bodyMedium)
+                if (hasSettings) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { withControls = !withControls }) {
+                    Checkbox(withControls, { withControls = it })
+                    Text(uiStr(R.string.l_pre_also_set_controls), style = MaterialTheme.typography.bodyMedium)
+                }
+                if (hasSettings) TextButton(enabled = busy == null, onClick = {
+                    scope.launch {
+                        val name = withContext(Dispatchers.IO) { runCatching { PresetApply.applyControls(context, shortcut, p) }.getOrNull() }
+                        Toast.makeText(context, if (name != null) uiStr(R.string.l_pre_controls_set, name, shortcut.name) else uiStr(R.string.l_pre_controls_failed), Toast.LENGTH_LONG).show()
+                    }
+                }) { Text(uiStr(R.string.l_pre_controls_only_btn)) }
+            }
+        }
+
+        if (hasSettings) Text(uiStr(R.string.l_pre_what_it_needs), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         val r = reqs
         if (r == null) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-        else r.forEach { q ->
+        else if (hasSettings) r.forEach { q ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("${q.what}: ${q.wanted}", style = MaterialTheme.typography.bodyMedium)
@@ -407,13 +471,17 @@ private fun PresetDetail(
                 scope.launch {
                     busy = uiStr(R.string.l_pre_preparing)
                     result = runCatching {
-                        PresetApply.apply(context, shortcut, p) { msg -> scope.launch { busy = msg } }
+                        PresetApply.apply(context, shortcut, p, withControls) { msg -> scope.launch { busy = msg } }
                     }.getOrElse { listOf(uiStr(R.string.l_pre_failed) + (it.message ?: it.javaClass.simpleName)) }
                     busy = null
                     reqs = runCatching { PresetApply.check(context, shortcut, p) }.getOrNull() ?: reqs
                     Toast.makeText(context, uiStr(R.string.l_pre_preset_applied_to_1_s, shortcut.name), Toast.LENGTH_SHORT).show()
                 }
-            }) { Text(if (result == null) uiStr(R.string.l_pre_apply_to_this_game) else uiStr(R.string.l_pre_apply_again)) }
+            }) { Text(when {
+                !hasSettings -> uiStr(R.string.l_pre_set_controls)
+                result == null -> uiStr(R.string.l_pre_apply_to_this_game)
+                else -> uiStr(R.string.l_pre_apply_again)
+            }) }
             if (entry != null && hasService) {
                 val liked = social?.liked == true
                 OutlinedButton(onClick = {
@@ -461,8 +529,8 @@ private fun PresetDetail(
             })
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(.5f))
-        Row(Modifier.fillMaxWidth().clickable { showAll = !showAll }, verticalAlignment = Alignment.CenterVertically) {
+        if (hasSettings) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(.5f))
+        if (hasSettings) Row(Modifier.fillMaxWidth().clickable { showAll = !showAll }, verticalAlignment = Alignment.CenterVertically) {
             Text(uiStr(R.string.l_pre_settings_1_s, p.settings.size), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(if (showAll) uiStr(R.string.l_bench_hide) else uiStr(R.string.l_bench_show), color = MaterialTheme.colorScheme.primary)
         }
@@ -477,7 +545,7 @@ private fun PresetDetail(
 }
 
 @Composable
-private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
+private fun ShareForm(shortcut: Shortcut, fileControls: JSONObject?, fileControlsName: String, done: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var title by remember { mutableStateOf("") }
@@ -487,10 +555,35 @@ private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var built by remember { mutableStateOf<Pair<CommunityPreset, String>?>(null) }
     val hasArgs = remember { shortcut.getExtra("execArgs").isNotBlank() }
+    var includeSettings by remember { mutableStateOf(fileControls == null) }
+    // Controls to share: 0 none, 1 the game's profile, 2 an .icp file.
+    val gameProfileId = remember { shortcut.getExtra("controlsProfile", "0").toIntOrNull() ?: 0 }
+    val gameProfileName = remember {
+        if (gameProfileId <= 0) null
+        else runCatching { com.winlator.cmod.inputcontrols.InputControlsManager(context).getProfile(gameProfileId)?.name }.getOrNull()
+    }
+    var file by remember { mutableStateOf(fileControls) }
+    var pickedName by remember { mutableStateOf(fileControlsName) }
+    var controlsFrom by remember { mutableIntStateOf(if (fileControls != null) 2 else 0) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val c = withContext(Dispatchers.IO) { readSmallText(context, uri)?.let(CommunityPreset::controlsFromText) }
+            if (c == null) Toast.makeText(context, uiStr(R.string.l_pre_not_icp), Toast.LENGTH_LONG).show()
+            else { file = c; pickedName = fileName(context, uri); controlsFrom = 2 }
+        }
+    }
+    val canShare = includeSettings || controlsFrom != 0
 
     suspend fun build(): Pair<CommunityPreset, String> = withContext(Dispatchers.IO) {
         val token = CommunityPreset.newToken()
-        CommunityPreset.capture(context, shortcut, title, notes, author, includeArgs, (runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""), token) to token
+        val controls = when (controlsFrom) {
+            1 -> CommunityPreset.controlsOfProfile(context, gameProfileId)
+            2 -> file
+            else -> null
+        }
+        CommunityPreset.capture(context, shortcut, title, notes, author, includeArgs, (runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""), token,
+            includeSettings = includeSettings, controls = controls) to token
     }
 
     val saver = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -511,12 +604,26 @@ private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
             label = { Text(uiStr(R.string.l_pre_notes)) }, placeholder = { Text(uiStr(R.string.l_pre_fps_you_get_in_game_settings)) })
         OutlinedTextField(author, { author = it.take(40) }, Modifier.fillMaxWidth(), singleLine = true,
             label = { Text(uiStr(R.string.l_pre_your_name_optional)) })
-        if (hasArgs) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { includeArgs = !includeArgs }) {
+        Text(uiStr(R.string.l_pre_share_what), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { includeSettings = !includeSettings }) {
+            Checkbox(includeSettings, { includeSettings = it })
+            Text(uiStr(R.string.l_pre_share_include_settings), style = MaterialTheme.typography.bodyMedium)
+        }
+        Text(uiStr(R.string.l_pre_onscreen_controls), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ControlsChoice(controlsFrom == 0, uiStr(R.string.l_pre_share_controls_none)) { controlsFrom = 0 }
+        if (gameProfileName != null) ControlsChoice(controlsFrom == 1, uiStr(R.string.l_pre_share_controls_game, gameProfileName)) { controlsFrom = 1 }
+        ControlsChoice(controlsFrom == 2, if (file != null) uiStr(R.string.l_pre_share_controls_from_file, pickedName.ifBlank { file?.optString("name").orEmpty() })
+            else uiStr(R.string.l_pre_share_controls_file)) { if (file != null) controlsFrom = 2 else picker.launch(arrayOf("*/*")) }
+        if (file != null) TextButton(onClick = { picker.launch(arrayOf("*/*")) }) { Text(uiStr(R.string.l_pre_share_controls_other_file)) }
+        if (controlsFrom != 0) Text(uiStr(R.string.l_pre_controls_no_icons), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (!canShare) Text(uiStr(R.string.l_pre_share_nothing), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+
+        if (hasArgs && includeSettings) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { includeArgs = !includeArgs }) {
             Checkbox(includeArgs, { includeArgs = it })
             Text(uiStr(R.string.l_pre_include_launch_arguments_1_s, shortcut.getExtra("execArgs").take(60)), style = MaterialTheme.typography.bodyMedium)
         }
 
-        Button(enabled = !busy, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp), onClick = {
+        Button(enabled = !busy && canShare, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp), onClick = {
             scope.launch {
                 busy = true
                 PresetHub.saveAuthor(context, author)
@@ -544,13 +651,13 @@ private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
         Text(uiStr(R.string.l_pre_publishing_uses_github_github_com_1, PresetHub.REPO),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(enabled = !busy, onClick = {
+            OutlinedButton(enabled = !busy && canShare, onClick = {
                 scope.launch {
                     val b = build(); built = b
                     saver.launch(shortcut.name.replace(Regex("[^A-Za-z0-9 _.-]"), "_") + ".yurnpreset.json")
                 }
             }) { Text(uiStr(R.string.l_pre_save_to_file)) }
-            OutlinedButton(enabled = !busy, onClick = {
+            OutlinedButton(enabled = !busy && canShare, onClick = {
                 scope.launch {
                     val b = build(); built = b
                     shareText(context, "YurNLator preset: ${shortcut.name}", PresetHub.exportText(b.first))
@@ -558,6 +665,14 @@ private fun ShareForm(shortcut: Shortcut, done: () -> Unit) {
             }) { Icon(Icons.Outlined.Share, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(uiStr(R.string.l_pre_send)) }
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun ControlsChoice(selected: Boolean, label: String, onPick: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable(onClick = onPick)) {
+        RadioButton(selected, onClick = onPick)
+        Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

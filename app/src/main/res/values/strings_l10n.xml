@@ -1164,4 +1164,25 @@
     <string name="l_dov_exe">Program (exe)</string>
     <string name="l_dov_dll">Library (DLL)</string>
     <string name="l_dov_add">Add</string>
+    <string name="l_pre_not_preset_nor_icp">That file isn\'t a YurNLator preset or an .icp controls profile</string>
+    <string name="l_pre_not_icp">That file isn\'t a controls profile (.icp)</string>
+    <string name="l_pre_chip_controls">Controls</string>
+    <string name="l_pre_card_with_controls">+ controls: %1$s</string>
+    <string name="l_pre_card_controls_only">Controls only: %1$s</string>
+    <string name="l_pre_onscreen_controls">On-screen controls</string>
+    <string name="l_pre_controls_summary">%1$s · %2$d elements</string>
+    <string name="l_pre_also_set_controls">Also give these controls to the game</string>
+    <string name="l_pre_controls_only_btn">Only the controls</string>
+    <string name="l_pre_controls_set">Controls «%1$s» set for %2$s</string>
+    <string name="l_pre_controls_failed">Couldn\'t add the controls</string>
+    <string name="l_pre_set_controls">Set these controls</string>
+    <string name="l_pre_share_what">What to share</string>
+    <string name="l_pre_share_include_settings">Game settings</string>
+    <string name="l_pre_share_controls_none">No controls</string>
+    <string name="l_pre_share_controls_game">This game\'s: %1$s</string>
+    <string name="l_pre_share_controls_file">From an .icp file…</string>
+    <string name="l_pre_share_controls_from_file">File: %1$s</string>
+    <string name="l_pre_share_controls_other_file">Pick another file</string>
+    <string name="l_pre_controls_no_icons">Your own button pictures aren\'t shared: those buttons show without a picture.</string>
+    <string name="l_pre_share_nothing">Pick the settings, the controls or both</string>
 </resources>

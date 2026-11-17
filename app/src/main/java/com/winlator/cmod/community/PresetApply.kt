@@ -95,8 +95,11 @@ internal object PresetApply {
      * Downloads what's missing and writes the preset's settings to [shortcut].
      * Returns the lines to show the user (what was installed, what was kept).
      */
-    suspend fun apply(context: Context, shortcut: Shortcut, p: CommunityPreset, progress: (String) -> Unit): List<String> {
-        val reqs = check(context, shortcut, p)
+    suspend fun apply(
+        context: Context, shortcut: Shortcut, p: CommunityPreset, withControls: Boolean = true,
+        progress: (String) -> Unit,
+    ): List<String> {
+        val reqs = if (p.settings.isEmpty()) emptyList() else check(context, shortcut, p)
         val report = ArrayList<String>()
         val settings = LinkedHashMap(p.settings)
         val wine = shortcut.container.getWineVersion().orEmpty()
@@ -141,16 +144,54 @@ internal object PresetApply {
 
         progress("Applying…")
         // Backup of what the preset changes, once per apply (an earlier backup is kept on re-apply).
-        if (shortcut.getExtra(BACKUP).isEmpty()) {
-            val backup = JSONObject()
-            for (key in CommunityPreset.ALLOWED_KEYS) backup.put(key, shortcut.getExtra(key, ABSENT))
-            shortcut.putExtra(BACKUP, backup.toString())
-        }
+        backup(shortcut)
         settings.forEach { (k, v) -> if (k in CommunityPreset.ALLOWED_KEYS) shortcut.putExtra(k, v) }
+        val controls = if (withControls && p.controls != null) importControls(context, shortcut, p) else null
         shortcut.putExtra(APPLIED, (p.title.ifBlank { p.id }).take(80) + " · " + p.author.ifBlank { "anonymous" })
         shortcut.saveData()
-        report.add(0, "Applied ${settings.size} settings")
+        if (controls != null) report.add(0, "On-screen controls: $controls")
+        if (settings.isNotEmpty()) report.add(0, "Applied ${settings.size} settings")
         return report
+    }
+
+    /** Backup of what a preset changes, once (an earlier backup is kept on re-apply). */
+    private fun backup(shortcut: Shortcut) {
+        if (shortcut.getExtra(BACKUP).isNotEmpty()) return
+        val backup = JSONObject()
+        for (key in CommunityPreset.ALLOWED_KEYS + CONTROLS) backup.put(key, shortcut.getExtra(key, ABSENT))
+        shortcut.putExtra(BACKUP, backup.toString())
+    }
+
+    private const val CONTROLS = "controlsProfile"
+
+    /**
+     * Adds the preset's controls to this phone's profiles (as "<game> · <preset>", numbered when
+     * taken) and gives them to the game. Returns the new profile's name, null when it failed.
+     * The profile stays in the list after an undo: only the game goes back to its old controls.
+     */
+    fun importControls(context: Context, shortcut: Shortcut, p: CommunityPreset): String? {
+        val src = p.controls ?: return null
+        val manager = com.winlator.cmod.inputcontrols.InputControlsManager(context)
+        val taken = manager.getProfiles(false).map { it.name }.toSet()
+        val base = listOf(p.game.take(40), p.title.ifBlank { src.optString("name") }.take(40))
+            .filter { it.isNotBlank() }.distinct().joinToString(" · ").ifBlank { "Community controls" }
+        var name = base
+        var n = 2
+        while (name in taken) name = "$base (${n++})"
+        val data = JSONObject(src.toString()).put("id", 0).put("name", name)
+        val profile = manager.importProfile(data) ?: return null
+        return profile.name
+            .also { shortcut.putExtra(CONTROLS, profile.id.toString()) }
+    }
+
+    /** Only the controls of [p] for [shortcut] (with the same undo). */
+    fun applyControls(context: Context, shortcut: Shortcut, p: CommunityPreset): String? {
+        backup(shortcut)
+        val name = importControls(context, shortcut, p) ?: return null
+        if (shortcut.getExtra(APPLIED).isEmpty())
+            shortcut.putExtra(APPLIED, (p.title.ifBlank { p.id }).take(80) + " · " + p.author.ifBlank { "anonymous" })
+        shortcut.saveData()
+        return name
     }
 
     private fun keepFor(req: Requirement, keep: (String, String?, Char) -> Unit) {

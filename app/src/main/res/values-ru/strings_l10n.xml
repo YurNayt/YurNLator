@@ -1164,4 +1164,25 @@
     <string name="l_dov_exe">Программа (exe)</string>
     <string name="l_dov_dll">Библиотека (DLL)</string>
     <string name="l_dov_add">Добавить</string>
+    <string name="l_pre_not_preset_nor_icp">Это не пресет YurNLator и не раскладка управления (.icp)</string>
+    <string name="l_pre_not_icp">Это не файл раскладки (.icp)</string>
+    <string name="l_pre_chip_controls">Раскладки</string>
+    <string name="l_pre_card_with_controls">+ раскладка: %1$s</string>
+    <string name="l_pre_card_controls_only">Только раскладка: %1$s</string>
+    <string name="l_pre_onscreen_controls">Экранное управление</string>
+    <string name="l_pre_controls_summary">%1$s · элементов: %2$d</string>
+    <string name="l_pre_also_set_controls">Заодно поставить игре эту раскладку</string>
+    <string name="l_pre_controls_only_btn">Только раскладку</string>
+    <string name="l_pre_controls_set">Раскладка «%1$s» поставлена для %2$s</string>
+    <string name="l_pre_controls_failed">Не удалось добавить раскладку</string>
+    <string name="l_pre_set_controls">Поставить раскладку</string>
+    <string name="l_pre_share_what">Чем поделиться</string>
+    <string name="l_pre_share_include_settings">Настройки игры</string>
+    <string name="l_pre_share_controls_none">Без раскладки</string>
+    <string name="l_pre_share_controls_game">Раскладка игры: %1$s</string>
+    <string name="l_pre_share_controls_file">Из файла .icp…</string>
+    <string name="l_pre_share_controls_from_file">Файл: %1$s</string>
+    <string name="l_pre_share_controls_other_file">Выбрать другой файл</string>
+    <string name="l_pre_controls_no_icons">Свои картинки кнопок не передаются: такие кнопки будут без картинки.</string>
+    <string name="l_pre_share_nothing">Выберите настройки, раскладку или и то, и другое</string>
 </resources>

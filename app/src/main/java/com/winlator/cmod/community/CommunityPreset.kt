@@ -23,7 +23,11 @@ import java.security.SecureRandom
  * File format "yurnlator-preset" v1:
  * {format, version, id, game, exe, steam_appid, title, notes, author, created,
  *  device{model, soc, gpu, android}, app{version}, requires{wine, wine_label, dxvk, vkd3d, box64,
- *  fexcore, driver{id, label, url}}, settings{key: value}, owner_hash}
+ *  fexcore, driver{id, label, url}}, settings{key: value}, owner_hash, controls?}
+ *
+ * [controls] is an on-screen controls profile (.icp) shared with the preset, or instead of
+ * settings: a preset may carry settings, controls or both. Device-only parts of a profile (its
+ * id, custom icon files) are dropped.
  */
 data class CommunityPreset(
     val id: String,
@@ -41,6 +45,7 @@ data class CommunityPreset(
     val requires: Requires,
     val settings: Map<String, String>,
     val ownerHash: String,
+    val controls: JSONObject? = null,
     // From the index, not the file.
     val issue: Int = 0,
     val likes: Int = 0,
@@ -78,7 +83,14 @@ data class CommunityPreset(
         })
         put("settings", JSONObject().apply { settings.toSortedMap().forEach { (k, v) -> put(k, v) } })
         put("owner_hash", ownerHash)
+        controls?.let { put("controls", it) }
     }
+
+    /** The shared controls profile's name, "" when the preset has none. */
+    val controlsName: String get() = controls?.optString("name").orEmpty().ifBlank { if (controls != null) "Controls" else "" }
+
+    /** On-screen elements of the shared controls profile. */
+    val controlsElements: Int get() = controls?.optJSONArray("elements")?.length() ?: 0
 
     /** Short "Adreno 830 · SM8750" style label. */
     val hardware: String get() = listOf(gpu, soc).filter { it.isNotBlank() }.distinct().joinToString(" · ")
@@ -219,9 +231,10 @@ data class CommunityPreset(
         fun capture(
             context: Context, shortcut: Shortcut, title: String, notes: String, author: String,
             includeArgs: Boolean, appVersion: String, token: String,
+            includeSettings: Boolean = true, controls: JSONObject? = null,
         ): CommunityPreset {
             val settings = LinkedHashMap<String, String>()
-            for (key in ALLOWED_KEYS) {
+            if (includeSettings) for (key in ALLOWED_KEYS) {
                 if (key == "execArgs" && !includeArgs) continue
                 val v = effective(shortcut, key) ?: continue
                 settings[key] = if (key == "envVars") scrubEnv(v) else v
@@ -242,8 +255,8 @@ data class CommunityPreset(
                 driverUrl = DriverOrigins.urlFor(context, driverId).orEmpty()
             }
 
-            val wine = shortcut.container.getWineVersion().orEmpty()
-            val wineLabel = runCatching {
+            val wine = if (includeSettings) shortcut.container.getWineVersion().orEmpty() else ""
+            val wineLabel = if (!includeSettings) "" else runCatching {
                 val manager = ContentsManager(context).apply { syncContents() }
                 val info = WineInfo.fromIdentifier(context, manager, wine)
                 ("proton".equals(info.type, true).let { if (it) "Proton " else "Wine " }) + info.fullVersion() + " " + info.arch
@@ -272,6 +285,7 @@ data class CommunityPreset(
                 ),
                 settings = settings,
                 ownerHash = sha256(token),
+                controls = cleanControls(controls),
             )
         }
 
@@ -305,8 +319,52 @@ data class CommunityPreset(
                 ),
                 settings = settings,
                 ownerHash = json.optString("owner_hash"),
+                controls = cleanControls(json.optJSONObject("controls")),
                 issue = issue, likes = likes, comments = comments,
             )
+        }
+
+        private val ELEMENT_KEYS = setOf(
+            "type", "shape", "bindings", "scale", "x", "y", "toggleSwitch", "text", "iconId", "opacity",
+            "customColor", "mouseMoveMode", "turbo", "range", "orientation",
+        )
+
+        /**
+         * A controls profile (.icp) in the form presets carry it: name, cursor speed, theme colour,
+         * elements and controller bindings only. No id (a new one is given on import), no custom
+         * icon files (they are on the author's phone). Null when it isn't a controls profile.
+         */
+        fun cleanControls(src: JSONObject?): JSONObject? {
+            src ?: return null
+            val elements = src.optJSONArray("elements") ?: org.json.JSONArray()
+            val controllers = src.optJSONArray("controllers")
+            if (elements.length() == 0 && (controllers == null || controllers.length() == 0)) return null
+            if (elements.length() > 400 || (controllers?.length() ?: 0) > 16) return null
+            val out = JSONObject()
+            out.put("name", src.optString("name").replace(Regex("[\\u0000-\\u001f/\\\\]"), " ").trim().take(60).ifBlank { "Controls" })
+            out.put("cursorSpeed", src.optDouble("cursorSpeed", 1.0).takeIf { !it.isNaN() } ?: 1.0)
+            if (src.optInt("themeColor", 0) != 0) out.put("themeColor", src.optInt("themeColor"))
+            val cleanElements = org.json.JSONArray()
+            for (i in 0 until elements.length()) {
+                val e = elements.optJSONObject(i) ?: continue
+                val c = JSONObject()
+                e.keys().forEach { k -> if (k in ELEMENT_KEYS) c.put(k, e.get(k)) }
+                if (c.has("type")) cleanElements.put(c)
+            }
+            out.put("elements", cleanElements)
+            if (controllers != null && controllers.length() > 0) out.put("controllers", controllers)
+            return out
+        }
+
+        /** Reads a controls profile from .icp text; null when it isn't one. */
+        fun controlsFromText(text: String): JSONObject? =
+            runCatching { cleanControls(JSONObject(text.trim())) }.getOrNull()
+
+        /** The controls profile [id] on this phone, as a preset carries it. */
+        fun controlsOfProfile(context: Context, id: Int): JSONObject? {
+            if (id <= 0) return null
+            val file = com.winlator.cmod.inputcontrols.ControlsProfile.getProfileFile(context, id)
+            return runCatching { cleanControls(JSONObject(file.readText())) }.getOrNull()
         }
 
         /** Human names for the settings shown in a preset's details. */
