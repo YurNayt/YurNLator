@@ -485,6 +485,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             com.winlator.cmod.ui.LandscapeNavRail.install(this, (androidx.compose.ui.platform.ComposeView) rail);
         }
         rail.setVisibility(landscape ? View.VISIBLE : View.GONE);
+        View mainArea = findViewById(R.id.FLMainArea);
+        if (mainArea != null && mainArea.getLayoutParams() instanceof android.view.ViewGroup.MarginLayoutParams) {
+            android.view.ViewGroup.MarginLayoutParams lp = (android.view.ViewGroup.MarginLayoutParams) mainArea.getLayoutParams();
+            int end = landscape ? Math.round(88 * getResources().getDisplayMetrics().density) : 0;
+            if (lp.getMarginEnd() != end) { lp.setMarginEnd(end); mainArea.setLayoutParams(lp); }
+        }
     }
 
     @Override

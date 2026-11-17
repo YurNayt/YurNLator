@@ -18,17 +18,18 @@
              size or is rebuilt while it slides in and out. -->
         <!-- Landscape: the screens and, on the right, the tabs as a vertical bar (the bottom bar's
              place in portrait). The bar stays put while the screens fade on a tab switch. -->
-        <LinearLayout
+        <!-- A FrameLayout, not a horizontal LinearLayout: its weighted measuring gave the screens
+             an unbounded width once, which crashed Compose's scrolling rows. MainActivity gives
+             the main area a right margin the bar's width while the bar is shown. -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:orientation="horizontal">
+            android:layout_weight="1">
 
         <FrameLayout
             android:id="@+id/FLMainArea"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1">
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -62,10 +63,11 @@
 
         <androidx.compose.ui.platform.ComposeView
             android:id="@+id/LandscapeNavRail"
-            android:layout_width="wrap_content"
+            android:layout_width="88dp"
             android:layout_height="match_parent"
+            android:layout_gravity="end"
             android:visibility="gone" />
-        </LinearLayout>
+        </FrameLayout>
 
         <com.winlator.cmod.ui.WinZBottomNavigationView
             android:id="@+id/BottomNavigation"
