@@ -270,6 +270,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 catch (Throwable t) { android.util.Log.w("EpicSync", "before launch", t); }
                 try { com.winlator.cmod.store.steam.SteamSync.beforeLaunch(this, container, shortcut); }
                 catch (Throwable t) { android.util.Log.w("SteamSync", "before launch", t); }
+                // "In game" on the Steam profile, and a card for each achievement earned in the game.
+                try { com.winlator.cmod.store.steam.SteamPlaying.start(this, shortcut); }
+                catch (Throwable t) { android.util.Log.w("SteamPlaying", "start", t); }
+                try { com.winlator.cmod.store.steam.AchievementWatcher.start(this, findViewById(R.id.FLXServerDisplay), container, shortcut); }
+                catch (Throwable t) { android.util.Log.w("AchievementWatcher", "start", t); }
                 try {
                     setupXEnvironment();
                 } catch (PackageManager.NameNotFoundException e) {
@@ -581,6 +586,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        com.winlator.cmod.store.steam.AchievementWatcher.stop();
+        com.winlator.cmod.store.steam.SteamPlaying.stop();
         if (gameExitWatcher != null) gameExitWatcher.stop();
         lifecycle.destroy();
         super.onDestroy();

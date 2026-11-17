@@ -1185,4 +1185,6 @@
     <string name="l_pre_share_controls_other_file">Выбрать другой файл</string>
     <string name="l_pre_controls_no_icons">Свои картинки кнопок не передаются: такие кнопки будут без картинки.</string>
     <string name="l_pre_share_nothing">Выберите настройки, раскладку или и то, и другое</string>
+    <string name="l_ach_unlocked">Достижение получено</string>
+    <string name="l_sts_show_playing">«В игре» в Steam</string>
 </resources>

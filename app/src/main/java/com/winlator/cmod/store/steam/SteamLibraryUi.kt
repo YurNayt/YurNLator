@@ -254,6 +254,13 @@ private fun Library(status: SteamSession.Status, onSignOut: () -> Unit) {
                 Spacer(Modifier.width(8.dp))
                 Switch(checked = push, onCheckedChange = { push = it; SteamSync.setPushAchievements(context, it) })
             }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.weight(1f))
+                var playing by remember { mutableStateOf(SteamSync.showPlaying(context)) }
+                Text(uiStr(R.string.l_sts_show_playing), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(8.dp))
+                Switch(checked = playing, onCheckedChange = { playing = it; SteamSync.setShowPlaying(context, it) })
+            }
             Text(uiStr(R.string.l_sts_sync_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         when {

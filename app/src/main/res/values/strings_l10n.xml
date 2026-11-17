@@ -1185,4 +1185,6 @@
     <string name="l_pre_share_controls_other_file">Pick another file</string>
     <string name="l_pre_controls_no_icons">Your own button pictures aren\'t shared: those buttons show without a picture.</string>
     <string name="l_pre_share_nothing">Pick the settings, the controls or both</string>
+    <string name="l_ach_unlocked">Achievement unlocked</string>
+    <string name="l_sts_show_playing">«In game» on Steam</string>
 </resources>

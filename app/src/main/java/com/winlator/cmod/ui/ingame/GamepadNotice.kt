@@ -32,6 +32,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -74,7 +76,15 @@ object GamepadNotice {
 
 
     @JvmStatic
-    fun show(root: FrameLayout?, title: String, subtitle: String?) {
+    fun show(root: FrameLayout?, title: String, subtitle: String?) =
+        show(root, title, subtitle, SHOWN_MS, null)
+
+    /**
+     * The same card with another icon (a picture, e.g. an achievement's) and stay; [onGone] runs
+     * on the UI thread once it left (swiped, tapped or timed out).
+     */
+    fun show(root: FrameLayout?, title: String, subtitle: String?, shownMs: Long,
+             picture: android.graphics.Bitmap?, onGone: (() -> Unit)? = null) {
         root ?: return
         root.findViewWithTag<android.view.View>(TAG)?.let { root.removeView(it) }
         val view = ComposeView(root.context)
@@ -85,7 +95,7 @@ object GamepadNotice {
             // content, which showed as a black box around the card (and outlived it).
             val theme = WinlatorThemeManager.currentTheme(root.context)
             MaterialTheme(colorScheme = winlatorColorScheme(theme)) {
-                Notice(title, subtitle) { root.post { root.removeView(view) } }
+                Notice(title, subtitle, shownMs, picture) { root.post { root.removeView(view); onGone?.invoke() } }
             }
         }
         root.addView(view, FrameLayout.LayoutParams(
@@ -95,7 +105,7 @@ object GamepadNotice {
 }
 
 @Composable
-private fun Notice(title: String, subtitle: String?, onGone: () -> Unit) {
+private fun Notice(title: String, subtitle: String?, shownMs: Long, picture: android.graphics.Bitmap?, onGone: () -> Unit) {
     val density = LocalDensity.current
     val topMargin = with(density) { NOTICE_TOP.toPx() }
     val flickPx = with(density) { 500.dp.toPx() }      // px per second
@@ -116,7 +126,7 @@ private fun Notice(title: String, subtitle: String?, onGone: () -> Unit) {
     // Enter: no bounce, nothing pushed it. Then stay, then leave upwards.
     LaunchedEffect(holds) {
         if (holds == 0) y.animateTo(0f, spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow))
-        delay(SHOWN_MS)
+        delay(shownMs)
         if (touching == 0) leave()
     }
 
@@ -174,13 +184,18 @@ private fun Notice(title: String, subtitle: String?, onGone: () -> Unit) {
             Modifier.padding(start = 14.dp, end = 18.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Outlined.SportsEsports, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            if (picture != null) {
+                androidx.compose.foundation.Image(remember(picture) { picture.asImageBitmap() }, null,
+                    Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)))
+            } else {
+                Icon(Icons.Outlined.SportsEsports, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.widthIn(max = 360.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface)
                 if (!subtitle.isNullOrEmpty()) {
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

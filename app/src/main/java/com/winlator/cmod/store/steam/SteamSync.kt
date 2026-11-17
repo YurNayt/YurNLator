@@ -60,7 +60,14 @@ object SteamSync {
     fun pushAchievements(c: Context) = prefs(c).getBoolean("push_achievements", true)
     fun setPushAchievements(c: Context, on: Boolean) = prefs(c).edit().putBoolean("push_achievements", on).apply()
 
-    private fun appIdOf(shortcut: Shortcut?): Int = shortcut?.getExtra("steamAppId", "")?.toIntOrNull() ?: 0
+    /** "In game" on the Steam profile while a Steam-library game runs. On by default. */
+    fun showPlaying(c: Context) = prefs(c).getBoolean("show_playing", true)
+    fun setShowPlaying(c: Context, on: Boolean) = prefs(c).edit().putBoolean("show_playing", on).apply()
+
+    /** Where Goldberg records the achievements earned in the container. */
+    internal fun gseAchievements(container: Container, appId: Int) = File(Paths(container, File("."), appId).gse, "achievements.json")
+
+    internal fun appIdOf(shortcut: Shortcut?): Int = shortcut?.getExtra("steamAppId", "")?.toIntOrNull() ?: 0
 
     private fun installed(context: Context, appId: Int): SteamInstaller.Installed? {
         SteamInstaller.load(context)
@@ -391,7 +398,9 @@ object SteamSync {
 
     /** One achievement of the game, as on the Steam profile. */
     data class Achievement(val name: String, val title: String, val description: String, val icon: String?,
-                           val unlocked: Boolean, val time: Long, val hidden: Boolean)
+                           val unlocked: Boolean, val time: Long, val hidden: Boolean,
+                           /** The coloured (earned) picture, whatever the profile's state. */
+                           val iconEarned: String? = null)
 
     /** The game's achievements with the profile's progress (blocking; null when offline or the game has none). */
     fun achievements(context: Context, appId: Int): List<Achievement>? = runCatching {
@@ -404,7 +413,8 @@ object SteamSync {
             val file = (if (a.isUnlocked) a.icon else a.iconGray)?.takeIf { it.isNotBlank() }
             Achievement(name, a.displayName?.ifBlank { null } ?: name, a.description ?: "",
                 file?.let { "https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/$appId/$it" },
-                a.isUnlocked, a.unlockTimestamp.toLong(), a.hidden)
+                a.isUnlocked, a.unlockTimestamp.toLong(), a.hidden,
+                a.icon?.takeIf { it.isNotBlank() }?.let { "https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/$appId/$it" })
         }.sortedWith(compareByDescending<Achievement> { it.unlocked }.thenByDescending { it.time })
     }.onFailure { Log.w(TAG, "achievements $appId", it) }.getOrNull()?.takeIf { it.isNotEmpty() }
 

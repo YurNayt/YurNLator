@@ -142,6 +142,9 @@ final class GameLifecycle {
                 // A game from the Steam library: changed saves up to Steam Cloud, earned achievements to the profile.
                 try { com.winlator.cmod.store.epic.EpicSync.afterExitAsync(a, a.container, a.shortcut); }
                 catch (Throwable t) { android.util.Log.w("EpicSync", "after exit", t); }
+                com.winlator.cmod.store.steam.AchievementWatcher.stop();
+                try { com.winlator.cmod.store.steam.SteamPlaying.stop(); }
+                catch (Throwable t) { android.util.Log.w("SteamPlaying", "stop", t); }
                 try { com.winlator.cmod.store.steam.SteamSync.afterExitAsync(a, a.container, a.shortcut); }
                 catch (Throwable t) { android.util.Log.w("SteamSync", "after exit", t); }
                 a.preloaderDialog.closeOnUiThread();
