@@ -373,7 +373,8 @@ private fun ApplyLegacyChrome(colors: ColorScheme) {
             val tint = ColorStateList(selectedStates, navColors)
 
             host.findViewById<BottomNavigationView>(R.id.BottomNavigation)?.let { bottom ->
-                ViewCompat.setBackgroundTintList(bottom, ColorStateList.valueOf(surface))
+                // The bar in the page's own colour: no lighter strip under the content.
+                ViewCompat.setBackgroundTintList(bottom, ColorStateList.valueOf(background))
                 bottom.itemIconTintList = tint
                 bottom.itemTextColor = tint
                 bottom.itemRippleColor = ColorStateList.valueOf(colors.primary.copy(alpha = 0.14f).toArgb())

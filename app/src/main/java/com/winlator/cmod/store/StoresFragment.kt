@@ -107,11 +107,10 @@ private fun StoresScreen() {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (landscape) com.winlator.cmod.ui.LandscapeMainNavigation(activity, R.id.main_menu_stores, uiStr(R.string.l_st_stores))
         val s = store?.let { runCatching { Store.valueOf(it) }.getOrNull() }
-        // A store's page has its own header (back arrow, logo): no "Stores" top bar over it, like a
-        // game's page. The picker keeps the bar. (Portrait; landscape draws its own chrome.)
-        val storeOpen = s != null
-        DisposableEffect(activity, storeOpen, landscape) {
-            if (!landscape) activity?.setMainToolbarVisible(!storeOpen)
+        // No "Stores" top bar: the picker's own big title stands in its place, and a store's page
+        // has its own header (back arrow, logo), like a game's page. (Portrait; landscape draws its own chrome.)
+        DisposableEffect(activity, landscape) {
+            if (!landscape) activity?.setMainToolbarVisible(false)
             onDispose { if (!landscape) activity?.setMainToolbarVisible(true) }
         }
         if (s == null) StorePicker { store = it.name } else {
@@ -123,7 +122,7 @@ private fun StoresScreen() {
 
 @Composable
 private fun StorePicker(onPick: (Store) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(uiStr(R.string.l_st_stores), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(uiStr(R.string.l_st_pick_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         StoreCard(Store.STEAM, "Steam", uiStr(R.string.l_st_steam_desc), Color(0xFF1B2838), Color(0xFF66C0F4)) { onPick(Store.STEAM) }

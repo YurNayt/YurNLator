@@ -68,7 +68,7 @@ private fun ThemeChoiceRow(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val preview = winlatorThemePreview(theme)
+    val preview = themeBadge(theme)
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -194,6 +194,21 @@ fun WinlatorThemePreferenceCard(modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/**
+ * The tile next to a theme's name: not the theme's exact colours (the dark ones are all near-black
+ * and looked alike, worst on the white theme) but a clear colour for each, so they tell apart at a
+ * glance: white, charcoal, pure black, and a strong blue / red / purple / green.
+ */
+private fun themeBadge(theme: WinlatorThemeType): ThemePreviewColors = when (theme) {
+    WinlatorThemeType.WHITE -> ThemePreviewColors(Color(0xFFFFFFFF), Color(0xFFE3E5EA), Color(0xFF25272D), Color(0xFFB9BBC2))
+    WinlatorThemeType.BLACK -> ThemePreviewColors(Color(0xFF2E3037), Color(0xFF4A4D57), Color(0xFFF2F2F4), Color(0xFF5A5D68))
+    WinlatorThemeType.AMOLED -> ThemePreviewColors(Color(0xFF000000), Color(0xFF1C1C1C), Color(0xFFFFFFFF), Color(0xFF3A3A3A))
+    WinlatorThemeType.BLUE -> ThemePreviewColors(Color(0xFF1D5CC4), Color(0xFF4A82DE), Color(0xFFD6E6FF), Color(0xFF15468F))
+    WinlatorThemeType.RED -> ThemePreviewColors(Color(0xFFC22F38), Color(0xFFDD5860), Color(0xFFFFDADC), Color(0xFF8E2129))
+    WinlatorThemeType.PURPLE -> ThemePreviewColors(Color(0xFF6E40C9), Color(0xFF8F68DE), Color(0xFFEDE3FF), Color(0xFF4F2D93))
+    WinlatorThemeType.GREEN -> ThemePreviewColors(Color(0xFF21804F), Color(0xFF45A06F), Color(0xFFD2F2DE), Color(0xFF175C39))
 }
 
 internal data class ThemePreviewColors(
