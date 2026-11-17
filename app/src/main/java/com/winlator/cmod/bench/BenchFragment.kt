@@ -240,7 +240,8 @@ private fun BenchScreen(
     if (landscape) com.winlator.cmod.ui.LandscapeMainNavigation(mainActivity, com.winlator.cmod.R.id.main_menu_bench, uiStr(R.string.l_nav_benchmark))
     LazyColumn(
         Modifier.fillMaxWidth().weight(1f),
-        contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
+        // Portrait: no top bar (as on Stores), this title stands in its place.
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = if (landscape) 16.dp else 22.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
             if (!landscape) Text(uiStr(R.string.l_nav_benchmark), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)

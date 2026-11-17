@@ -472,11 +472,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (bottomNavigation != null) bottomNavigation.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
+    /** Tabs whose page starts with its own big title: no top bar over them (portrait). */
+    private static boolean hasOwnTitle(Fragment f) {
+        return f instanceof com.winlator.cmod.store.StoresFragment || f instanceof com.winlator.cmod.bench.BenchFragment;
+    }
+
     public void setMainToolbarVisible(boolean visible) {
-        // The Stores tab has no top bar (its own title stands in for it). The tab left behind
+        // Stores and Benchmark have no top bar (their own title stands in for it). The tab left behind
         // hands the bar back when its screen is disposed, which can come after Stores hid it.
         if (visible && getResources().getConfiguration().orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE
-                && getSupportFragmentManager().findFragmentById(R.id.FLFragmentContainer) instanceof com.winlator.cmod.store.StoresFragment) {
+                && hasOwnTitle(getSupportFragmentManager().findFragmentById(R.id.FLFragmentContainer))) {
             visible = false;
         }
         if (mainToolbar != null) mainToolbar.setVisibility(visible ? View.VISIBLE : View.GONE);
@@ -527,7 +532,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             // title, no jump): back after an editor had hidden it, none on Stores. Portrait only;
             // landscape screens hide it themselves.
             if (mainToolbar != null && getResources().getConfiguration().orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
-                mainToolbar.setVisibility(fragment instanceof com.winlator.cmod.store.StoresFragment ? View.GONE : View.VISIBLE);
+                mainToolbar.setVisibility(hasOwnTitle(fragment) ? View.GONE : View.VISIBLE);
             }
             fragmentManager.beginTransaction()
                     .setReorderingAllowed(true)

@@ -164,7 +164,9 @@ internal fun LibraryRoot(
     }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
+    // Landscape: header and chips in the same place as over the artwork (26 dp in, 12 dp down), so
+    // switching between the two views doesn't move them.
+    Column(Modifier.fillMaxSize().then(if (landscape) Modifier.padding(start = 26.dp, end = 26.dp, top = 12.dp) else Modifier.padding(horizontal = 14.dp))) {
         if (landscape) {
             LibraryLandscapeHeader(
                 activity = activity,
@@ -174,7 +176,7 @@ internal fun LibraryRoot(
             )
             Spacer(Modifier.height(7.dp))
         }
-        Row(Modifier.padding(vertical = 12.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(if (landscape) PaddingValues(bottom = 9.dp) else PaddingValues(vertical = 12.dp)).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(if (landscape) 7.dp else 8.dp)) {
             libraryFilters(items).forEach { option ->
                 LibraryFilterChip(filterLabel(option), option == filter) { filterName = option.name }
             }
@@ -273,7 +275,6 @@ private fun LibraryLandscapeHeader(
         if (activity != null && com.winlator.cmod.ui.settings.DeveloperOptions.bundleFinder(activity)) {
             LibraryTopIcon(Icons.Outlined.Speed, false) { activity.navigateToMainDestination(R.id.main_menu_bench) }
         }
-        LibraryOrientationMenu(activity)
     }
 }
 
