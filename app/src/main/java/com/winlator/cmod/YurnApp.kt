@@ -9,6 +9,20 @@ class YurnApp : Application() {
         super.onCreate()
         CrashReports.install(this)
         com.winlator.cmod.ui.UiStrings.install(this)
+        // Singletons that hold Compose state are created here, outside any composition. Created
+        // lazily by their first reader inside a composition, their state belonged to that
+        // composition's snapshot, and a later frame crashed with "Reading a state that was
+        // created after the snapshot was taken" (seen with the update download's progress).
+        for (init in listOf<() -> Any>(
+            { com.winlator.cmod.core.DownloadTracker.states },
+            { com.winlator.cmod.core.LocalInstalls.revision },
+            { com.winlator.cmod.core.MaliCompat.showAllState },
+            { com.winlator.cmod.contents.WrapperManager.revision },
+            { com.winlator.cmod.contents.ContentFileImport.revision },
+            { com.winlator.cmod.ui.LandscapeNavRail },
+            { com.winlator.cmod.ui.theme.WinlatorThemeManager },
+            { com.winlator.cmod.ui.quickmenu.QuickMenuHost },
+        )) runCatching { init() }
         // A driver that crashed the app while being probed is not loaded here again.
         runCatching { com.winlator.cmod.core.GPUInformation.recoverFromProbeCrash(this) }
         // Performance controls (from Bannerlator): restore anything a killed session left changed,

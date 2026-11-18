@@ -31,7 +31,8 @@ object DownloadTracker {
     }
 
     /** Observable from Compose. Changed on the main thread only. */
-    @JvmField val states = mutableStateMapOf<String, State>()
+    // Made in the global snapshot even if a composition is the first to touch this object.
+    @JvmField val states = androidx.compose.runtime.snapshots.Snapshot.global { mutableStateMapOf<String, State>() }
 
     private val main = Handler(Looper.getMainLooper())
     private val paused = ConcurrentHashMap.newKeySet<String>()
