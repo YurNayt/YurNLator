@@ -63,8 +63,9 @@ object AchievementWatcher {
                     val done = java.util.concurrent.CountDownLatch(1)
                     Handler(Looper.getMainLooper()).post {
                         // In Steam's own look: a game from the Steam library.
-                        com.winlator.cmod.ui.ingame.SteamAchievementToast.show(root, uiStr(R.string.l_ach_unlocked), info.title,
-                            info.description.takeIf { it.isNotBlank() && it != info.title }, picture, SHOWN_MS) { done.countDown() }
+                        com.winlator.cmod.ui.ingame.AchievementToast.show(root, com.winlator.cmod.ui.ingame.AchievementToast.Look.STEAM,
+                            uiStr(R.string.l_ach_unlocked), info.title, info.description.takeIf { it.isNotBlank() && it != info.title },
+                            picture, SHOWN_MS) { done.countDown() }
                     }
                     // The next one once this card is gone (it may be held by a finger for a while).
                     done.await(SHOWN_MS * 4, java.util.concurrent.TimeUnit.MILLISECONDS)

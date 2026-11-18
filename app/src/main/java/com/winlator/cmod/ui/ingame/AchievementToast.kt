@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,34 +60,43 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * An earned Steam achievement, drawn the way the Steam overlay shows one: a dark blue panel in the
- * bottom-right corner with the achievement's picture, Steam's blue caption, the name in white and
- * the description in grey; a light sweeps across it once as it arrives.
+ * An earned achievement in the store's own look, small, in the bottom-right corner: the
+ * achievement's picture, a caption, the name and one line of description.
+ *  - [Look.STEAM]: Steam overlay's dark blue panel, Steam's blue caption, a light sweeping across once.
+ *  - [Look.EPIC]: Epic's near-black rounded card, grey caption in capitals, an XP pill in the tier's colour.
  *
  * It rises from the bottom edge and leaves the same way. Swipe it down (where it came from) to send
  * it off: the finger moves it 1:1, upwards it gives way with resistance, on release a flick or 40 %
  * of its height sends it away with a spring started at the finger's speed, otherwise it springs
- * back with a slight bounce. A tap sends it away. One at a time; only the panel takes touches.
+ * back with a slight bounce. A tap sends it away. One at a time; only the card takes touches.
  */
-object SteamAchievementToast {
-    private const val TAG = "steam_achievement_toast"
+object AchievementToast {
+    private const val TAG = "achievement_toast"
 
-    private val TOP = Color(0xFF2A3B50)
-    private val BOTTOM = Color(0xFF18212D)
-    private val EDGE = Color(0xFF3F5A78)
-    private val CAPTION = Color(0xFF66C0F4)
-    private val TEXT = Color(0xFFFFFFFF)
-    private val DESC = Color(0xFF9AA4AE)
+    class Look(
+        val top: Color, val bottom: Color, val edge: Color, val caption: Color, val text: Color, val desc: Color,
+        val iconBg: Color, val corner: Dp, val iconCorner: Dp, val shine: Boolean, val upperCaption: Boolean,
+    ) {
+        companion object {
+            val STEAM = Look(Color(0xFF2A3B50), Color(0xFF18212D), Color(0xFF3F5A78), Color(0xFF66C0F4), Color.White,
+                Color(0xFF9AA4AE), Color(0xFF233246), 4.dp, 2.dp, shine = true, upperCaption = false)
+            val EPIC = Look(Color(0xFF252529), Color(0xFF1C1C20), Color(0xFF34343A), Color(0xFFA8A8B0), Color.White,
+                Color(0xFF8E8E96), Color(0xFF2E2E34), 10.dp, 6.dp, shine = false, upperCaption = true)
+        }
+    }
 
-    fun show(root: FrameLayout?, caption: String, title: String, description: String?, picture: Bitmap?,
-             shownMs: Long, onGone: (() -> Unit)? = null) {
+    /** [badge]: e.g. "+10 XP" (Epic), drawn as a pill on the right, its dot in [badgeColor]. */
+    fun show(root: FrameLayout?, look: Look, caption: String, title: String, description: String?, picture: Bitmap?,
+             shownMs: Long, badge: String? = null, badgeColor: Color? = null, onGone: (() -> Unit)? = null) {
         root ?: return
         root.findViewWithTag<android.view.View>(TAG)?.let { root.removeView(it) }
         val view = ComposeView(root.context)
         view.tag = TAG
         view.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         view.setContent {
-            Toast(caption, title, description, picture, shownMs) { root.post { root.removeView(view); onGone?.invoke() } }
+            Toast(look, caption, title, description, picture, shownMs, badge, badgeColor) {
+                root.post { root.removeView(view); onGone?.invoke() }
+            }
         }
         root.addView(view, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -94,13 +104,14 @@ object SteamAchievementToast {
     }
 
     @Composable
-    private fun Toast(caption: String, title: String, description: String?, picture: Bitmap?, shownMs: Long, onGone: () -> Unit) {
+    private fun Toast(look: Look, caption: String, title: String, description: String?, picture: Bitmap?, shownMs: Long,
+                      badge: String?, badgeColor: Color?, onGone: () -> Unit) {
         val density = LocalDensity.current
-        val margin = with(density) { 16.dp.toPx() }
+        val margin = with(density) { 12.dp.toPx() }
         val flickPx = with(density) { 500.dp.toPx() }
         var heightPx by remember { mutableIntStateOf(0) }
         val away = { heightPx + margin + with(density) { 12.dp.toPx() } }
-        val y = remember { Animatable(with(density) { 120.dp.toPx() }) }
+        val y = remember { Animatable(with(density) { 96.dp.toPx() }) }
         val shine = remember { Animatable(-0.4f) }
         val scope = rememberCoroutineScope()
         var holds by remember { mutableIntStateOf(0) }
@@ -114,28 +125,29 @@ object SteamAchievementToast {
         LaunchedEffect(holds) {
             if (holds == 0) {
                 y.animateTo(0f, spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow))
-                launch { shine.animateTo(1.4f, tween(900, easing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f))) }
+                if (look.shine) launch { shine.animateTo(1.4f, tween(900, easing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f))) }
             }
             delay(shownMs)
             if (touching == 0) leave()
         }
 
-        val shape = RoundedCornerShape(6.dp)
+        val shape = RoundedCornerShape(look.corner)
         Box(
             Modifier
-                .padding(end = 16.dp, bottom = 16.dp, start = 16.dp, top = 16.dp)
+                .padding(12.dp)
                 .onSizeChanged { heightPx = it.height }
                 .graphicsLayer {
                     translationY = y.value
                     val gone = if (y.value > 0f) (y.value / away()).coerceIn(0f, 1f) else 0f
                     alpha = 1f - gone
                 }
-                .shadow(10.dp, shape)
+                .shadow(8.dp, shape)
                 .clip(shape)
-                .background(Brush.verticalGradient(listOf(TOP, BOTTOM)))
-                .border(1.dp, EDGE.copy(alpha = 0.7f), shape)
+                .background(Brush.verticalGradient(listOf(look.top, look.bottom)))
+                .border(1.dp, look.edge.copy(alpha = 0.7f), shape)
                 .drawWithContent {
                     drawContent()
+                    if (!look.shine) return@drawWithContent
                     // One sweep of light across the panel as it arrives.
                     val x = shine.value * size.width
                     val band = size.width * 0.35f
@@ -175,21 +187,34 @@ object SteamAchievementToast {
                     }
                 }
         ) {
-            Row(Modifier.padding(10.dp).widthIn(max = 380.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = 8.dp, vertical = 7.dp).widthIn(max = 290.dp), verticalAlignment = Alignment.CenterVertically) {
+                val iconShape = RoundedCornerShape(look.iconCorner)
                 if (picture != null) {
-                    Image(remember(picture) { picture.asImageBitmap() }, null, Modifier.size(60.dp).clip(RoundedCornerShape(3.dp)),
+                    Image(remember(picture) { picture.asImageBitmap() }, null, Modifier.size(42.dp).clip(iconShape),
                         contentScale = ContentScale.Crop)
                 } else {
-                    Box(Modifier.size(60.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xFF233246)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.EmojiEvents, null, tint = CAPTION, modifier = Modifier.size(32.dp))
+                    Box(Modifier.size(42.dp).clip(iconShape).background(look.iconBg), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.EmojiEvents, null, tint = look.caption, modifier = Modifier.size(24.dp))
                     }
                 }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(caption, color = CAPTION, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                    Text(title, color = TEXT, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f, fill = false)) {
+                    Text(if (look.upperCaption) caption.uppercase() else caption, color = look.caption,
+                        fontSize = if (look.upperCaption) 9.sp else 10.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+                        letterSpacing = if (look.upperCaption) 0.6.sp else 0.sp, lineHeight = 12.sp)
+                    Text(title, color = look.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
                     if (!description.isNullOrBlank()) {
-                        Text(description, color = DESC, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(description, color = look.desc, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 14.sp)
+                    }
+                }
+                if (!badge.isNullOrBlank()) {
+                    Spacer(Modifier.width(8.dp))
+                    Row(Modifier.clip(RoundedCornerShape(50)).background(look.iconBg).padding(horizontal = 7.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(6.dp).clip(RoundedCornerShape(50)).background(badgeColor ?: look.caption))
+                        Spacer(Modifier.width(4.dp))
+                        Text(badge, color = look.text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                 }
             }

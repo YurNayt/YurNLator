@@ -275,6 +275,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 catch (Throwable t) { android.util.Log.w("SteamPlaying", "start", t); }
                 try { com.winlator.cmod.store.steam.AchievementWatcher.start(this, findViewById(R.id.FLXServerDisplay), container, shortcut); }
                 catch (Throwable t) { android.util.Log.w("AchievementWatcher", "start", t); }
+                try { com.winlator.cmod.store.epic.EpicAchievements.start(this, findViewById(R.id.FLXServerDisplay), shortcut); }
+                catch (Throwable t) { android.util.Log.w("EpicAchievements", "start", t); }
                 try {
                     setupXEnvironment();
                 } catch (PackageManager.NameNotFoundException e) {
@@ -587,6 +589,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         com.winlator.cmod.store.steam.AchievementWatcher.stop();
+        com.winlator.cmod.store.epic.EpicAchievements.stop();
         com.winlator.cmod.store.steam.SteamPlaying.stop();
         if (gameExitWatcher != null) gameExitWatcher.stop();
         lifecycle.destroy();

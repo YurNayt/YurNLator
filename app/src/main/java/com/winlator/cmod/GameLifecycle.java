@@ -143,6 +143,7 @@ final class GameLifecycle {
                 try { com.winlator.cmod.store.epic.EpicSync.afterExitAsync(a, a.container, a.shortcut); }
                 catch (Throwable t) { android.util.Log.w("EpicSync", "after exit", t); }
                 com.winlator.cmod.store.steam.AchievementWatcher.stop();
+                com.winlator.cmod.store.epic.EpicAchievements.stop();
                 try { com.winlator.cmod.store.steam.SteamPlaying.stop(); }
                 catch (Throwable t) { android.util.Log.w("SteamPlaying", "stop", t); }
                 try { com.winlator.cmod.store.steam.SteamSync.afterExitAsync(a, a.container, a.shortcut); }
