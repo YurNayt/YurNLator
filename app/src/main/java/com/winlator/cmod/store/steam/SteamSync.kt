@@ -251,15 +251,45 @@ object SteamSync {
         if (list.isEmpty()) return
         // Names for the emulator (it shows only achievements it knows of).
         val schema = JSONArray()
+        val progress = achievementProgress(cb)
         list.forEach { a ->
             val name = a.name ?: return@forEach
             schema.put(JSONObject().put("name", name).put("hidden", if (a.hidden) 1 else 0)
                 .put("displayName", JSONObject().put("english", a.displayName ?: name))
                 .put("description", JSONObject().put("english", a.description ?: ""))
                 .put("icon", "img/" + (a.icon ?: "steam_default_icon_unlocked.jpg"))
-                .put("icon_gray", "img/" + (a.iconGray ?: "steam_default_icon_locked.jpg")))
+                .put("icon_gray", "img/" + (a.iconGray ?: "steam_default_icon_locked.jpg"))
+                .apply { progress[name]?.let { put("progress", it) } })
         }
-        Goldberg.settingsDirs(inst).forEach { d -> runCatching { d.mkdirs(); File(d, "achievements.json").writeText(schema.toString()) } }
+        // The game's stats too: the emulator refuses a stat it doesn't know (SetStat fails), and
+        // achievements by a stat ("10 clicks") never come without it.
+        val stats = numericStats(cb)
+        val statsJson = JSONArray()
+        stats.values.forEach { st ->
+            statsJson.put(JSONObject().put("name", st.name).put("type", if (st.float) "float" else "int")
+                .put("default", st.default).put("global", "0"))
+        }
+        Goldberg.settingsDirs(inst).forEach { d ->
+            runCatching {
+                d.mkdirs()
+                File(d, "achievements.json").writeText(schema.toString())
+                if (statsJson.length() > 0) File(d, "stats.json").writeText(statsJson.toString())
+            }
+        }
+        // The profile's values as the starting point (the game counts on from there).
+        val statsDir = File(p.gse, "stats")
+        val profileValues = HashMap<Int, Int>().apply { cb.stats.forEach { put(it.statId, it.statValue) } }
+        for ((id, st) in stats) {
+            val v = profileValues[id] ?: continue
+            runCatching {
+                val f = statFile(statsDir, st.name) ?: File(statsDir, st.name)
+                val here = readStat(f)
+                if (here == null || (if (st.float) Float.fromBits(v) > Float.fromBits(here) else v > here)) {
+                    statsDir.mkdirs()
+                    f.writeBytes(java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN).putInt(v).array())
+                }
+            }
+        }
         // What is already earned on the profile, merged with what the emulator recorded here before.
         val file = File(p.gse, "achievements.json")
         val local = runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
@@ -350,7 +380,91 @@ object SteamSync {
         if (sent > 0) toast(context, uiStr(R.string.l_sts_cloud_up, sent))
     }
 
+    /** A number stat of the game's schema (int / float; "permission" ≥ 2 = only its servers may set it). */
+    private class NumStat(val id: Int, val name: String, val float: Boolean, val default: String, val permission: Int)
+
+    private fun numericStats(cb: UserStatsCallback): Map<Int, NumStat> {
+        val out = LinkedHashMap<Int, NumStat>()
+        cb.schemaKeyValues?.get("stats")?.children?.forEach { st ->
+            val id = st.name?.toIntOrNull() ?: return@forEach
+            val type = st.get("type").value
+            if (type != "1" && type != "2") return@forEach
+            val name = st.get("name").value?.takeIf { it.isNotBlank() } ?: return@forEach
+            out[id] = NumStat(id, name, type == "2", st.get("default").value ?: "0", st.get("permission").value?.toIntOrNull() ?: 0)
+        }
+        return out
+    }
+
+    private fun kvToJson(kv: `in`.dragonbra.javasteam.types.KeyValue): Any =
+        if (kv.children.isEmpty()) (kv.value ?: "") else JSONObject().apply { kv.children.forEach { c -> c.name?.let { put(it, kvToJson(c)) } } }
+
+    /** Each achievement's link to a stat ("unlocks when clicks reach 10"), as the emulator reads it. */
+    private fun achievementProgress(cb: UserStatsCallback): Map<String, JSONObject> {
+        val out = HashMap<String, JSONObject>()
+        cb.schemaKeyValues?.get("stats")?.children?.forEach { st ->
+            if (st.get("type").value != "4") return@forEach
+            st.get("bits").children.forEach { bit ->
+                val name = bit.get("name").value ?: return@forEach
+                val pr = bit.get("progress")
+                if (pr.children.isNotEmpty()) (kvToJson(pr) as? JSONObject)?.let { out[name] = it }
+            }
+        }
+        return out
+    }
+
+    /** The emulator's file for a stat (it may keep the name in another case). */
+    private fun statFile(dir: File, name: String): File? =
+        dir.listFiles()?.firstOrNull { it.isFile && it.name.equals(name, ignoreCase = true) }
+
+    private fun readStat(f: File): Int? = runCatching {
+        val b = f.readBytes()
+        if (b.size < 4) null else java.nio.ByteBuffer.wrap(b, 0, 4).order(java.nio.ByteOrder.LITTLE_ENDIAN).int
+    }.getOrNull()
+
+    /** Achievements that only the game's own servers may give (their stat is protected). */
+    private fun protectedAchievements(cb: UserStatsCallback): Set<String> {
+        val out = HashSet<String>()
+        cb.schemaKeyValues?.get("stats")?.children?.forEach { st ->
+            if (st.get("type").value != "4") return@forEach
+            if ((st.get("permission").value?.toIntOrNull() ?: 0) < 2) return@forEach
+            st.get("bits").children.forEach { bit -> bit.get("name").value?.let { out += it } }
+        }
+        return out
+    }
+
+    /**
+     * Number stats the emulator counted higher than the profile has (clicks, kills…): sent to the
+     * profile, where Steam unlocks the achievements tied to them. Returns how many went in.
+     */
+    private fun statsOut(p: Paths): Int {
+        val dir = File(p.gse, "stats")
+        if (!dir.isDirectory) return 0
+        val (us, cb) = userStats(p.appId) ?: return 0
+        val current = HashMap<Int, Int>().apply { cb.stats.forEach { put(it.statId, it.statValue) } }
+        val changed = ArrayList<Stats>()
+        for (st in numericStats(cb).values) {
+            if (st.permission >= 2) continue
+            val v = statFile(dir, st.name)?.let { readStat(it) } ?: continue
+            val cur = current[st.id] ?: 0
+            val higher = if (st.float) Float.fromBits(v) > Float.fromBits(cur) else v > cur
+            if (higher) changed += Stats(st.id, v)
+        }
+        if (changed.isEmpty()) return 0
+        val self = SteamID(SteamSession.steamId)
+        val before = runCatching { cb.getExpandedAchievements() }.getOrDefault(emptyList()).count { it.isUnlocked }
+        val ok = runCatching { us.storeUserStats(p.appId, changed, self, self, cb.crcStats, false).toFuture().get(JOB_S, TimeUnit.SECONDS).result == EResult.OK }
+            .getOrDefault(false)
+        Log.i(TAG, "${p.appId}: ${changed.size} stat(s) to the profile: $ok")
+        if (!ok) return -1
+        // What Steam unlocked by the new values.
+        val after = runCatching { userStats(p.appId)?.second?.getExpandedAchievements()?.count { it.isUnlocked } }.getOrNull() ?: before
+        return maxOf(0, after - before)
+    }
+
     private fun achievementsOut(context: Context, p: Paths) {
+        // Stats first: some achievements come from them alone.
+        val byStats = runCatching { statsOut(p) }.onFailure { Log.w(TAG, "${p.appId}: stats", it) }.getOrDefault(0)
+        if (byStats > 0) toast(context, uiStr(R.string.l_sts_ach_sent, byStats))
         val local = runCatching { JSONObject(File(p.gse, "achievements.json").readText()) }.getOrNull() ?: return
         val earned = local.keys().asSequence().filter { k ->
             val o = local.optJSONObject(k)
@@ -358,6 +472,7 @@ object SteamSync {
         }.toSet()
         if (earned.isEmpty()) return
         val (us, cb) = userStats(p.appId) ?: return
+        val locked = protectedAchievements(cb)
         // apiName -> (stat, bit) from the schema; each achievement is one bit of a stat.
         val bitOf = HashMap<String, Pair<Int, Int>>()
         cb.schemaKeyValues?.get("stats")?.children?.forEach { stat ->
@@ -371,13 +486,19 @@ object SteamSync {
         val current = HashMap<Int, Int>().apply { cb.stats.forEach { put(it.statId, it.statValue) } }
         val changed = HashMap<Int, Int>()
         var count = 0
+        val serverOnly = (earned - already).filter { it in locked }
         for (name in earned - already) {
+            if (name in locked) continue
             val (stat, bit) = bitOf[name] ?: continue
             if (bit !in 0..31) continue
             changed[stat] = (changed[stat] ?: current[stat] ?: 0) or (1 shl bit)
             count++
         }
-        if (changed.isEmpty()) return
+        if (changed.isEmpty()) {
+            // Earned in the game, but Steam takes them from the game's own servers only.
+            if (serverOnly.isNotEmpty()) toast(context, uiStr(R.string.l_sts_ach_server_only, serverOnly.size))
+            return
+        }
         val self = SteamID(SteamSession.steamId)
         val list = changed.map { (id, v) -> Stats(id, v) }
         var ok = runCatching { us.storeUserStats(p.appId, list, self, self, cb.crcStats, false).toFuture().get(JOB_S, TimeUnit.SECONDS).result == EResult.OK }
@@ -394,6 +515,7 @@ object SteamSync {
         }
         Log.i(TAG, "${p.appId}: $count achievement(s) to the profile: $ok")
         if (ok) toast(context, uiStr(R.string.l_sts_ach_sent, count))
+        else toast(context, uiStr(R.string.l_sts_ach_refused, count))
     }
 
     /** One achievement of the game, as on the Steam profile. */

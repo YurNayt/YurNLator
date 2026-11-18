@@ -1190,4 +1190,6 @@
     <string name="l_lib_no_games_yet">Пока нет игр</string>
     <string name="l_lib_add_games_hint">Добавьте игру кнопкой +</string>
     <string name="l_fm_close">Закрыть файловый менеджер</string>
+    <string name="l_sts_ach_server_only">Steam: получено достижений: %1$d, но эта игра выдаёт их только через свои серверы</string>
+    <string name="l_sts_ach_refused">Steam не принял достижения: %1$d</string>
 </resources>

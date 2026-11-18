@@ -1190,4 +1190,6 @@
     <string name="l_lib_no_games_yet">No games yet</string>
     <string name="l_lib_add_games_hint">Add a game with the + button</string>
     <string name="l_fm_close">Close the file manager</string>
+    <string name="l_sts_ach_server_only">Steam: %1$d achievement(s) earned, but this game gives them through its own servers only</string>
+    <string name="l_sts_ach_refused">Steam didn\'t accept %1$d achievement(s)</string>
 </resources>
