@@ -208,14 +208,16 @@ object SteamSync {
         val appId = appIdOf(shortcut)
         if (appId <= 0 || container == null) return
         if (!com.winlator.cmod.store.StoreLaunchPrefs.enabled(context, com.winlator.cmod.store.StoreLaunchPrefs.steam(appId))) return
-        val inst = installed(context, appId) ?: return
+        val inst = installed(context, appId) ?: run { trace(context, "$appId start: not in the Steam library's installs"); return }
         if (!SteamSession.signedIn(context) || !SteamSession.awaitOnline(context, 15_000L)) {
-            Log.i(TAG, "$appId: Steam offline, starting with the local saves")
+            trace(context, "$appId start: Steam offline, starting with the local saves")
             return
         }
         val p = Paths(container, File(inst.dir), appId)
-        runCatching { cloudDown(context, container, p) }.onFailure { Log.w(TAG, "$appId: cloud down", it) }
-        runCatching { achievementsIn(p, inst) }.onFailure { Log.w(TAG, "$appId: achievements", it) }
+        val emu = Goldberg.settingsDirs(inst)
+        trace(context, "$appId start: emulator ${if (emu.isEmpty()) "not in this game" else "in " + emu.size + " folder(s)"}, saves ${p.gse}")
+        runCatching { cloudDown(context, container, p) }.onFailure { trace(context, "$appId cloud down failed: $it") }
+        runCatching { achievementsIn(p, inst) }.onFailure { trace(context, "$appId achievements in failed: $it") }
     }
 
     private fun cloudDown(context: Context, container: Container, p: Paths) {
@@ -236,6 +238,22 @@ object SteamSync {
         for ((f, local) in todo) if (runCatching { download(sc, p.appId, f.name, local) }.getOrDefault(false)) got++
         Log.i(TAG, "${p.appId}: $got/${todo.size} cloud saves downloaded")
         if (got > 0) toast(context, uiStr(R.string.l_sts_cloud_down, got))
+    }
+
+    @Volatile private var traceFile: File? = null
+
+    /**
+     * A line in logs/steam_sync.txt (beside the game logs) as well as logcat: what the cloud and
+     * achievement sync did and why it stopped, readable without a computer.
+     */
+    private fun trace(context: Context, line: String) {
+        Log.i(TAG, line)
+        runCatching {
+            val f = traceFile ?: File(com.winlator.cmod.widget.LogView.getLogFile(context).parentFile, "steam_sync.txt").also { traceFile = it }
+            if (f.length() > 256 * 1024) f.writeText(f.readLines().takeLast(400).joinToString("\n", postfix = "\n"))
+            val time = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT).format(java.util.Date())
+            f.appendText("$time  $line\n")
+        }
     }
 
     private fun userStats(appId: Int): Pair<SteamUserStats, UserStatsCallback>? {
@@ -264,6 +282,7 @@ object SteamSync {
         // The game's stats too: the emulator refuses a stat it doesn't know (SetStat fails), and
         // achievements by a stat ("10 clicks") never come without it.
         val stats = numericStats(cb)
+        traceFile?.let { runCatching { it.appendText("        schema: ${list.size} achievement(s), ${stats.size} stat(s), ${progress.size} tied to a stat\n") } }
         val statsJson = JSONArray()
         stats.values.forEach { st ->
             statsJson.put(JSONObject().put("name", st.name).put("type", if (st.float) "float" else "int")
@@ -315,14 +334,22 @@ object SteamSync {
     fun afterExitAsync(context: Context, container: Container?, shortcut: Shortcut?) {
         val appId = appIdOf(shortcut)
         if (appId <= 0 || container == null) return
-        if (!com.winlator.cmod.store.StoreLaunchPrefs.enabled(context, com.winlator.cmod.store.StoreLaunchPrefs.steam(appId))) return
+        if (!com.winlator.cmod.store.StoreLaunchPrefs.enabled(context, com.winlator.cmod.store.StoreLaunchPrefs.steam(appId))) {
+            trace(context, "$appId exit: Steam turned off for this game"); return
+        }
         val app = context.applicationContext
         Thread({
-            val inst = installed(app, appId) ?: return@Thread
-            if (!SteamSession.signedIn(app) || !SteamSession.awaitOnline(app, 60_000L)) return@Thread
+            val inst = installed(app, appId) ?: run { trace(app, "$appId exit: not in the Steam library's installs"); return@Thread }
+            if (!SteamSession.signedIn(app) || !SteamSession.awaitOnline(app, 60_000L)) { trace(app, "$appId exit: Steam offline, nothing sent"); return@Thread }
             val p = Paths(container, File(inst.dir), appId)
-            runCatching { cloudUp(app, p) }.onFailure { Log.w(TAG, "$appId: cloud up", it) }
-            if (pushAchievements(app)) runCatching { achievementsOut(app, p) }.onFailure { Log.w(TAG, "$appId: achievements", it) }
+            val ach = File(p.gse, "achievements.json")
+            val statsDir = File(p.gse, "stats")
+            trace(app, "$appId exit: achievements.json ${if (ach.isFile) "${ach.length()} B" else "missing"}, stats: " +
+                (statsDir.list()?.joinToString(", ")?.ifBlank { "none" } ?: "none") +
+                ", other files: " + (p.gse.list()?.filter { it != "achievements.json" && it != "stats" }?.take(12)?.joinToString(", ") ?: "no folder"))
+            runCatching { cloudUp(app, p) }.onFailure { trace(app, "$appId cloud up failed: $it") }
+            if (pushAchievements(app)) runCatching { achievementsOut(app, p) }.onFailure { trace(app, "$appId achievements failed: $it") }
+            else trace(app, "$appId exit: sending achievements is off")
         }, "SteamSync").start()
     }
 
@@ -455,6 +482,7 @@ object SteamSync {
         val ok = runCatching { us.storeUserStats(p.appId, changed, self, self, cb.crcStats, false).toFuture().get(JOB_S, TimeUnit.SECONDS).result == EResult.OK }
             .getOrDefault(false)
         Log.i(TAG, "${p.appId}: ${changed.size} stat(s) to the profile: $ok")
+        traceFile?.let { runCatching { it.appendText("        stats ${changed.joinToString { "${it.statId}=${it.statValue}" }} → $ok\n") } }
         if (!ok) return -1
         // What Steam unlocked by the new values.
         val after = runCatching { userStats(p.appId)?.second?.getExpandedAchievements()?.count { it.isUnlocked } }.getOrNull() ?: before
@@ -464,14 +492,16 @@ object SteamSync {
     private fun achievementsOut(context: Context, p: Paths) {
         // Stats first: some achievements come from them alone.
         val byStats = runCatching { statsOut(p) }.onFailure { Log.w(TAG, "${p.appId}: stats", it) }.getOrDefault(0)
+        trace(context, "${p.appId}: stats → ${when { byStats > 0 -> "$byStats achievement(s) unlocked"; byStats < 0 -> "refused"; else -> "nothing new" }}")
         if (byStats > 0) toast(context, uiStr(R.string.l_sts_ach_sent, byStats))
+        if (byStats < 0) toast(context, uiStr(R.string.l_sts_ach_refused, 0))
         val local = runCatching { JSONObject(File(p.gse, "achievements.json").readText()) }.getOrNull() ?: return
         val earned = local.keys().asSequence().filter { k ->
             val o = local.optJSONObject(k)
             o != null && (o.optBoolean("earned", false) || o.optInt("earned", 0) != 0)
         }.toSet()
-        if (earned.isEmpty()) return
-        val (us, cb) = userStats(p.appId) ?: return
+        if (earned.isEmpty()) { trace(context, "${p.appId}: no achievement earned here"); return }
+        val (us, cb) = userStats(p.appId) ?: run { trace(context, "${p.appId}: Steam gave no stats for the game"); return }
         val locked = protectedAchievements(cb)
         // apiName -> (stat, bit) from the schema; each achievement is one bit of a stat.
         val bitOf = HashMap<String, Pair<Int, Int>>()
@@ -494,6 +524,7 @@ object SteamSync {
             changed[stat] = (changed[stat] ?: current[stat] ?: 0) or (1 shl bit)
             count++
         }
+        trace(context, "${p.appId}: earned here ${earned.size}, already on the profile ${already.size}, server-only ${serverOnly.size}, to send ${changed.size} stat(s)")
         if (changed.isEmpty()) {
             // Earned in the game, but Steam takes them from the game's own servers only.
             if (serverOnly.isNotEmpty()) toast(context, uiStr(R.string.l_sts_ach_server_only, serverOnly.size))
@@ -513,7 +544,7 @@ object SteamSync {
             }
             runCatching { apps?.notifyGamesPlayed(emptyList(), `in`.dragonbra.javasteam.enums.EOSType.Windows10) }
         }
-        Log.i(TAG, "${p.appId}: $count achievement(s) to the profile: $ok")
+        trace(context, "${p.appId}: $count achievement(s) to the profile: $ok")
         if (ok) toast(context, uiStr(R.string.l_sts_ach_sent, count))
         else toast(context, uiStr(R.string.l_sts_ach_refused, count))
     }
