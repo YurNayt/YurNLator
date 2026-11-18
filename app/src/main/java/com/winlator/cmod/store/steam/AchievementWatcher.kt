@@ -11,7 +11,6 @@ import com.winlator.cmod.R
 import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.Shortcut
 import com.winlator.cmod.store.StoreNet
-import com.winlator.cmod.ui.ingame.GamepadNotice
 import com.winlator.cmod.ui.uiStr
 import okhttp3.Request
 import org.json.JSONObject
@@ -63,8 +62,9 @@ object AchievementWatcher {
                     Log.i(TAG, "$appId: earned $name")
                     val done = java.util.concurrent.CountDownLatch(1)
                     Handler(Looper.getMainLooper()).post {
-                        GamepadNotice.show(root, uiStr(R.string.l_ach_unlocked) + ": " + info.title,
-                            info.description.ifBlank { null }, SHOWN_MS, picture) { done.countDown() }
+                        // In Steam's own look: a game from the Steam library.
+                        com.winlator.cmod.ui.ingame.SteamAchievementToast.show(root, uiStr(R.string.l_ach_unlocked), info.title,
+                            info.description.takeIf { it.isNotBlank() && it != info.title }, picture, SHOWN_MS) { done.countDown() }
                     }
                     // The next one once this card is gone (it may be held by a finger for a while).
                     done.await(SHOWN_MS * 4, java.util.concurrent.TimeUnit.MILLISECONDS)
