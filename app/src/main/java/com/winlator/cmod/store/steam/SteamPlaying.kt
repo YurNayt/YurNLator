@@ -8,7 +8,8 @@ import `in`.dragonbra.javasteam.steam.handlers.steamapps.GamePlayedInfo
 
 /**
  * "In game" on the Steam profile while a game from the Steam library runs: Steam counts its
- * playtime and friends see it. Said again after every new sign-in (a reconnect mid-game clears
+ * playtime and friends see it (the account is set online for that: a session that only says
+ * "playing" while offline gets the playtime but shows nothing to friends). Said again after every new sign-in (a reconnect mid-game clears
  * it on Steam's side), cleared when the game ends. Like a real Steam client, it takes the
  * account's "playing" slot: a game running on a PC with the same account is told it's playing
  * elsewhere.
@@ -33,6 +34,12 @@ object SteamPlaying {
                     val apps = SteamSession.apps
                     // A new Status object = a new sign-in: say it again.
                     if (s.state == SteamSession.State.ONLINE && apps != null && s !== said) {
+                        // Friends only see a game on an account that is online: this session
+                        // signs in "offline" (as a store, not a client) until it says so.
+                        runCatching {
+                            SteamSession.client?.getHandler(`in`.dragonbra.javasteam.steam.handlers.steamfriends.SteamFriends::class.java)
+                                ?.setPersonaState(`in`.dragonbra.javasteam.enums.EPersonaState.Online)
+                        }.onFailure { Log.w(TAG, "online", it) }
                         runCatching { apps.notifyGamesPlayed(listOf(info(appId)), EOSType.Windows10) }
                             .onSuccess { said = s; Log.i(TAG, "$appId: in game") }
                             .onFailure { Log.w(TAG, "$appId: in game", it) }
