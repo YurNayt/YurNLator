@@ -1,7 +1,27 @@
 {
  "version": 1,
- "updated": 1794951331,
+ "updated": 1794973600,
  "presets": [
+  {
+   "id": "6450f6755295",
+   "game": "Dead Rising 3",
+   "game_key": "deadrising3",
+   "exe": "deadrising3.exe",
+   "title": "Dead Rising 3",
+   "author": "KPH'O'Te",
+   "device": "vivo I2401",
+   "soc": "SM8750",
+   "gpu": "Adreno 830",
+   "created": 1794973589,
+   "app_version": "v1.1.2",
+   "issue": 8,
+   "likes": 0,
+   "comments": 0,
+   "login": "",
+   "controls": "",
+   "has_settings": true,
+   "published": 1794973600
+  },
   {
    "id": "d25834db66f4",
    "game": "GoW",
