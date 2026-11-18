@@ -70,6 +70,9 @@ public class FileManagerFragment extends Fragment {
 
     private RecyclerView recyclerView;
     private TextView tvCurrentPath;
+    /** The path as tappable folders from the drive's root (replaces the plain path text). */
+    private LinearLayout crumbsRow;
+    private android.widget.HorizontalScrollView crumbsScroll;
     private LinearLayout llDriveSelect;
     private LinearLayout driveOptionsPanel;
     private ImageView ivDriveIcon;
@@ -123,8 +126,16 @@ public class FileManagerFragment extends Fragment {
         tvDriveStorage = view.findViewById(R.id.TVDriveStorage);
         pbDriveStorage = view.findViewById(R.id.PBDriveStorage);
 
+        // The arrow leaves the file manager; going up a folder is the back gesture or a tap on a
+        // folder in the path.
         View up = view.findViewById(R.id.BTUpDir);
-        if (up != null) up.setOnClickListener(v -> navigateUp());
+        if (up != null) {
+            up.setContentDescription(UiStrings.get(R.string.l_fm_close));
+            up.setOnClickListener(v -> {
+                if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).leaveSubScreen();
+            });
+        }
+        installBreadcrumbs(view);
         if (llDriveSelect != null) llDriveSelect.setOnClickListener(v -> toggleDriveOptions());
 
         fabPaste = view.findViewById(R.id.fabPaste);
@@ -149,6 +160,8 @@ public class FileManagerFragment extends Fragment {
             if (!startDir.exists()) startDir = Environment.getExternalStorageDirectory();
         }
         if (currentDriveRoot == null || !currentDriveRoot.exists()) currentDriveRoot = inferDriveRoot(startDir);
+        // A start folder outside its drive (e.g. above D:'s Download): the drive's root instead.
+        if (!isWithinRoot(startDir, currentDriveRoot) && currentDriveRoot.isDirectory()) startDir = currentDriveRoot;
 
         loadDirectory(startDir);
         populateDriveOptions();
@@ -540,6 +553,78 @@ public class FileManagerFragment extends Fragment {
         }
     }
 
+    /**
+     * Back gesture inside the file manager: closes the drive list, else goes up a folder within
+     * the drive. False at the drive's root: the screen is left as usual.
+     */
+    public boolean handleBack() {
+        if (driveOptionsPanel != null && driveOptionsPanel.getVisibility() == View.VISIBLE) {
+            collapseDriveOptions();
+            return true;
+        }
+        if (currentDir == null || currentDriveRoot == null || samePath(currentDir, currentDriveRoot)) return false;
+        File parent = currentDir.getParentFile();
+        if (parent == null || !parent.canRead() || !isWithinRoot(parent, currentDriveRoot)) return false;
+        loadDirectory(parent);
+        return true;
+    }
+
+    private void installBreadcrumbs(View view) {
+        tvCurrentPath = view.findViewById(R.id.TVCurrentPath);
+        LinearLayout card = view.findViewById(R.id.FileManagerPathCard);
+        if (card == null) return;
+        if (tvCurrentPath != null) tvCurrentPath.setVisibility(View.GONE);
+        crumbsScroll = new android.widget.HorizontalScrollView(requireContext());
+        crumbsScroll.setHorizontalScrollBarEnabled(false);
+        crumbsRow = new LinearLayout(requireContext());
+        crumbsRow.setOrientation(LinearLayout.HORIZONTAL);
+        crumbsRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        crumbsScroll.addView(crumbsRow, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        card.addView(crumbsScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    }
+
+    /** "D: › Games › Foo": every folder from the drive's root, tap to go there. */
+    private void buildBreadcrumbs(File dir) {
+        if (crumbsRow == null || !isAdded()) return;
+        crumbsRow.removeAllViews();
+        File root = currentDriveRoot != null && isWithinRoot(dir, currentDriveRoot) ? currentDriveRoot : dir;
+        ArrayList<File> chain = new ArrayList<>();
+        for (File f = dir; f != null; f = f.getParentFile()) {
+            chain.add(0, f);
+            if (samePath(f, root)) break;
+        }
+        int muted = WinlatorLegacyTheme.onSurfaceVariant(requireContext());
+        int strong = WinlatorLegacyTheme.onSurface(requireContext());
+        int primary = WinlatorLegacyTheme.primary(requireContext());
+        for (int i = 0; i < chain.size(); i++) {
+            File target = chain.get(i);
+            boolean last = i == chain.size() - 1;
+            if (i > 0) {
+                TextView sep = new TextView(requireContext());
+                sep.setText("›");
+                sep.setTextSize(15);
+                sep.setTextColor(muted);
+                sep.setPadding(dp(2), 0, dp(2), 0);
+                crumbsRow.addView(sep);
+            }
+            TextView crumb = new TextView(requireContext());
+            String label = i == 0 && tvDriveName != null ? tvDriveName.getText().toString() : target.getName();
+            crumb.setText(label);
+            crumb.setTextSize(13);
+            crumb.setMaxLines(1);
+            crumb.setTextColor(last ? strong : muted);
+            if (last) crumb.setTypeface(crumb.getTypeface(), android.graphics.Typeface.BOLD);
+            crumb.setPadding(dp(8), dp(6), dp(8), dp(6));
+            if (!last) {
+                int rippleColor = android.graphics.Color.argb(36, android.graphics.Color.red(primary), android.graphics.Color.green(primary), android.graphics.Color.blue(primary));
+                crumb.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(rippleColor), null, roundedBackground(android.graphics.Color.WHITE, 10)));
+                crumb.setOnClickListener(v -> loadDirectory(target));
+            }
+            crumbsRow.addView(crumb);
+        }
+        if (crumbsScroll != null) crumbsScroll.post(() -> crumbsScroll.fullScroll(View.FOCUS_RIGHT));
+    }
+
     private void navigateUp() {
         if (currentDir == null) return;
         if (currentDriveRoot != null && samePath(currentDir, currentDriveRoot)) {
@@ -563,8 +648,10 @@ public class FileManagerFragment extends Fragment {
 
         currentDir = dir;
         if (currentDriveRoot == null) currentDriveRoot = inferDriveRoot(dir);
-        tvCurrentPath.setText(dir.getAbsolutePath());
-        updateDriveButtonLabel(dir);
+        if (tvCurrentPath != null) tvCurrentPath.setText(dir.getAbsolutePath());
+        // The drive is the one chosen (its root), not guessed from the folder: F: stays F: inside Download.
+        updateDriveButtonLabel(currentDriveRoot != null ? currentDriveRoot : dir);
+        buildBreadcrumbs(dir);
         updateStorageMeter();
 
         File[] files = dir.listFiles();
@@ -1231,8 +1318,9 @@ public class FileManagerFragment extends Fragment {
             }
         }
 
-        iconView.setImageResource(R.drawable.icon_wine);
-        iconView.setImageTintList(ColorStateList.valueOf(WinlatorLegacyTheme.onSurfaceVariant(requireContext())));
+        // Until (or unless) the program's own icon is read: one picture for all programs.
+        iconView.setImageResource(R.drawable.ic_fm_exe);
+        iconView.setImageTintList(ColorStateList.valueOf(0xFF5BA8F5));
         if (!file.getName().toLowerCase(Locale.ENGLISH).endsWith(".exe")) return;
 
         ExeIconExtractor.extractAsync(file, cachedIcon, false, () ->
@@ -1245,6 +1333,58 @@ public class FileManagerFragment extends Fragment {
                     }
                 })
         );
+    }
+
+    private static final java.util.Set<String> ARCHIVES = new java.util.HashSet<>(java.util.Arrays.asList(
+            "zip", "rar", "7z", "tar", "gz", "tgz", "xz", "txz", "bz2", "tbz2", "zst", "tzst", "lz4", "lzma", "cab"));
+    private static final java.util.Set<String> IMAGES = new java.util.HashSet<>(java.util.Arrays.asList(
+            "png", "jpg", "jpeg", "webp", "bmp", "gif", "ico", "heic"));
+
+    private static String extensionOf(File f) {
+        String n = f.getName().toLowerCase(Locale.ENGLISH);
+        int dot = n.lastIndexOf('.');
+        return dot >= 0 ? n.substring(dot + 1) : "";
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return android.graphics.Color.argb(alpha, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color));
+    }
+
+    /**
+     * The tile and picture for a row: folders, archives, on-screen controls (.icp), components
+     * (.wcp, a chip as for drivers), pictures, programs (their own icon, else one for all
+     * programs) and other files, each in its own colour.
+     */
+    private void bindTypeIcon(File file, FileAdapter.ViewHolder h) {
+        android.content.Context c = requireContext();
+        int muted = WinlatorLegacyTheme.onSurfaceVariant(c);
+        int tileNeutral = WinlatorLegacyTheme.surfaceVariant(c);
+        int res;
+        int color;   // icon tint, 0 = the drawable's own colours
+        int tile;
+        String ext = file.isDirectory() ? "" : extensionOf(file);
+        if (file.isDirectory()) {
+            res = R.drawable.ic_fm_folder; color = WinlatorLegacyTheme.primary(c); tile = withAlpha(WinlatorLegacyTheme.primary(c), 34);
+        } else if (isExecutable(file)) {
+            if (h.tile != null) h.tile.setBackground(roundedBackground(tileNeutral, 14));
+            bindExecutableIcon(file, h.ivIcon);
+            return;
+        } else if (ext.equals("icp")) {
+            res = R.drawable.ic_fm_gamepad; color = 0xFF66BB6A; tile = withAlpha(0xFF66BB6A, 40);
+        } else if (ext.equals("wcp")) {
+            res = R.drawable.ic_fm_chip; color = 0xFF4FA3F7; tile = withAlpha(0xFF4FA3F7, 40);
+        } else if (ARCHIVES.contains(ext)) {
+            res = R.drawable.ic_fm_archive; color = 0; tile = withAlpha(0xFFF2A93B, 40);
+        } else if (IMAGES.contains(ext)) {
+            res = R.drawable.ic_fm_image; color = 0xFFEC6F9B; tile = withAlpha(0xFFEC6F9B, 40);
+        } else {
+            res = R.drawable.ic_fm_file; color = muted; tile = tileNeutral;
+        }
+        if (h.tile != null) h.tile.setBackground(roundedBackground(tile, 14));
+        h.ivIcon.setTag(null);
+        h.ivIcon.setImageBitmap(null);
+        h.ivIcon.setImageResource(res);
+        h.ivIcon.setImageTintList(color == 0 ? null : ColorStateList.valueOf(color));
     }
 
     private String modifiedLabel(File file) {
@@ -1289,15 +1429,20 @@ public class FileManagerFragment extends Fragment {
                 return true;
             });
 
+            View card = holder.itemView.findViewById(R.id.FileRowCard);
+            View clickTarget = card != null ? card : holder.itemView;
+            if (card != null) card.setOnLongClickListener(v -> {
+                showFileOptions(file, holder.itemView);
+                return true;
+            });
+            bindTypeIcon(file, holder);
+            if (holder.chevron != null) holder.chevron.setVisibility(file.isDirectory() ? View.VISIBLE : View.GONE);
             if (file.isDirectory()) {
-                setFallbackFileIcon(holder.ivIcon, R.drawable.icon_open);
                 holder.tvDetails.setText(folderDetails(file));
-                holder.itemView.setOnClickListener(v -> loadDirectory(file));
+                clickTarget.setOnClickListener(v -> loadDirectory(file));
             } else {
                 holder.tvDetails.setText(fileDetails(file));
-                if (isExecutable(file)) bindExecutableIcon(file, holder.ivIcon);
-                else setFallbackFileIcon(holder.ivIcon, android.R.drawable.ic_menu_agenda);
-                holder.itemView.setOnClickListener(v -> showFileOptions(file, holder.itemView));
+                clickTarget.setOnClickListener(v -> showFileOptions(file, holder.itemView));
             }
         }
 
@@ -1311,6 +1456,8 @@ public class FileManagerFragment extends Fragment {
             final TextView tvDetails;
             final ImageView ivIcon;
             final ImageView btMenu;
+            final ImageView chevron;
+            final View tile;
 
             ViewHolder(View v) {
                 super(v);
@@ -1318,6 +1465,8 @@ public class FileManagerFragment extends Fragment {
                 tvDetails = v.findViewById(R.id.TVFileDetails);
                 ivIcon = v.findViewById(R.id.IVIcon);
                 btMenu = v.findViewById(R.id.BTFileMenu);
+                chevron = v.findViewById(R.id.IVFileChevron);
+                tile = v.findViewById(R.id.FileRowIconContainer);
             }
         }
     }

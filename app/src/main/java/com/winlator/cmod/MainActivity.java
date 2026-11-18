@@ -276,6 +276,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void onBackPressed() {
         FragmentManager fragmentManager = getSupportFragmentManager();
+        // File manager: back goes up a folder (to the drive's root) before leaving the screen.
+        Fragment current = fragmentManager.findFragmentById(R.id.FLFragmentContainer);
+        if (current instanceof FileManagerFragment && current.isVisible() && ((FileManagerFragment) current).handleBack()) return;
         if (fragmentManager.getBackStackEntryCount() > 0) {
             fragmentManager.popBackStack();
             return;
@@ -297,6 +300,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navigateToMainDestination(R.id.main_menu_containers);
         else
             super.onBackPressed();
+    }
+
+    /** Leaves the file manager / input controls screen to the tab it was opened from. */
+    public void leaveSubScreen() {
+        if (!editInputControls && subScreenParent != 0) {
+            navigateToMainDestination(subScreenParent);
+            return;
+        }
+        if (!editInputControls) navigateToMainDestination(R.id.main_menu_shortcuts);
+        else super.onBackPressed();
     }
 
     private void requestAppPermissions() {

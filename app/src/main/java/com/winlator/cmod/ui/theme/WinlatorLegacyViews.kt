@@ -29,6 +29,18 @@ private fun roundedDrawable(context: Context, color: Int, radiusDp: Float): Grad
         cornerRadius = radiusDp * context.resources.displayMetrics.density
     }
 
+/** A card with a thin outline (like the containers' cards), pressable. */
+internal fun outlinedCard(context: Context, rippleBase: Int, fill: Int, stroke: Int, radiusDp: Float): RippleDrawable {
+    val d = context.resources.displayMetrics.density
+    val rippleColor = Color.argb(28, Color.red(rippleBase), Color.green(rippleBase), Color.blue(rippleBase))
+    val content = GradientDrawable().apply {
+        setColor(fill)
+        cornerRadius = radiusDp * d
+        setStroke(Math.max(1, Math.round(d)), stroke)
+    }
+    return RippleDrawable(ColorStateList.valueOf(rippleColor), content, roundedDrawable(context, Color.WHITE, radiusDp))
+}
+
 private fun roundedRipple(context: Context, color: Int, contentColor: Int, radiusDp: Float): RippleDrawable {
     val rippleColor = Color.argb(28, Color.red(color), Color.green(color), Color.blue(color))
     return RippleDrawable(
@@ -69,11 +81,9 @@ class ThemedFileManagerLayout @JvmOverloads constructor(
         findViewById<View>(R.id.FileManagerHeader)?.setBackgroundColor(bg)
         findViewById<RecyclerView>(R.id.RecyclerViewFiles)?.setBackgroundColor(bg)
         findViewById<View>(R.id.FileManagerDivider)?.setBackgroundColor(outline)
-        findViewById<View>(R.id.FileManagerPathCard)?.background = roundedDrawable(context, surface, 12f)
-        findViewById<View>(R.id.DriveOptionsPanel)?.background = roundedDrawable(context, surface, 12f)
-        findViewById<View>(R.id.FileManagerStorageCard)?.background = roundedDrawable(context, surface, 12f)
-
-        findViewById<TextView>(R.id.TVCurrentPath)?.setTextColor(muted)
+        findViewById<View>(R.id.FileManagerPathCard)?.background = outlinedCard(context, primary, surface, outline, 14f)
+        findViewById<View>(R.id.DriveOptionsPanel)?.background = outlinedCard(context, primary, surface, outline, 14f)
+        findViewById<View>(R.id.FileManagerStorageCard)?.background = outlinedCard(context, primary, surface, outline, 14f)
         findViewById<TextView>(R.id.TVDriveName)?.setTextColor(onBg)
         findViewById<TextView>(R.id.TVDriveStorageLabel)?.setTextColor(muted)
         findViewById<TextView>(R.id.TVDriveStorage)?.setTextColor(onBg)
@@ -89,7 +99,7 @@ class ThemedFileManagerLayout @JvmOverloads constructor(
             button.imageTintList = ColorStateList.valueOf(onBg)
             button.background = ripple(primary, Color.TRANSPARENT)
         }
-        findViewById<View>(R.id.LLDriveSelect)?.background = roundedRipple(context, primary, surface, 14f)
+        findViewById<View>(R.id.LLDriveSelect)?.background = outlinedCard(context, primary, surface, outline, 14f)
 
         findViewById<FloatingActionButton>(R.id.fabPaste)?.let { fab ->
             fab.backgroundTintList = ColorStateList.valueOf(primary)
@@ -121,12 +131,13 @@ class ThemedFileRowLayout @JvmOverloads constructor(
         val primary = WinlatorLegacyTheme.primary(context)
         val outline = WinlatorLegacyTheme.outlineVariant(context)
 
-        background = ripple(primary, Color.TRANSPARENT)
-        findViewById<View>(R.id.FileRowIconContainer)?.background = roundedDrawable(context, surface, 12f)
-        findViewById<View>(R.id.FileRowDivider)?.setBackgroundColor(outline)
+        // The row is an outlined card; its type tile and icon are coloured by the adapter (per
+        // file type, or an .exe's own icon untinted), so they're not touched here.
+        background = null
+        findViewById<View>(R.id.FileRowCard)?.background = outlinedCard(context, primary, surface, outline, 16f)
         findViewById<TextView>(R.id.TVFileName)?.setTextColor(onSurface)
         findViewById<TextView>(R.id.TVFileDetails)?.setTextColor(muted)
-        findViewById<ImageView>(R.id.IVIcon)?.imageTintList = ColorStateList.valueOf(muted)
+        findViewById<ImageView>(R.id.IVFileChevron)?.imageTintList = ColorStateList.valueOf(muted)
         findViewById<ImageView>(R.id.BTFileMenu)?.imageTintList = ColorStateList.valueOf(muted)
     }
 }

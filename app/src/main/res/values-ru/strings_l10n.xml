@@ -1189,4 +1189,5 @@
     <string name="l_sts_show_playing">«В игре» в Steam</string>
     <string name="l_lib_no_games_yet">Пока нет игр</string>
     <string name="l_lib_add_games_hint">Добавьте игру кнопкой +</string>
+    <string name="l_fm_close">Закрыть файловый менеджер</string>
 </resources>

@@ -1,39 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- A file or folder as an outlined card (like the containers'): type tile, name, details, and an
+     arrow on folders. Colours come from ThemedFileRowLayout and the adapter. -->
 <com.winlator.cmod.ui.theme.ThemedFileRowLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:paddingStart="14dp"
-    android:paddingEnd="14dp">
+    android:paddingTop="4dp"
+    android:paddingEnd="14dp"
+    android:paddingBottom="4dp">
 
     <LinearLayout
+        android:id="@+id/FileRowCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:minHeight="72dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingTop="7dp"
-        android:paddingBottom="7dp">
+        android:paddingStart="12dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="10dp">
 
         <FrameLayout
             android:id="@+id/FileRowIconContainer"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:padding="7dp">
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:padding="12dp">
 
             <ImageView
                 android:id="@+id/IVIcon"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_gravity="center"
-                android:scaleType="centerInside"
-                android:src="@android:drawable/ic_menu_view" />
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_fm_file" />
         </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="13dp"
+            android:layout_marginStart="14dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -58,16 +65,18 @@
         </LinearLayout>
 
         <ImageView
+            android:id="@+id/IVFileChevron"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="6dp"
+            android:src="@drawable/ic_fm_chevron"
+            android:visibility="gone" />
+
+        <ImageView
             android:id="@+id/BTFileMenu"
             android:layout_width="1dp"
             android:layout_height="1dp"
             android:visibility="gone" />
     </LinearLayout>
-
-    <View
-        android:id="@+id/FileRowDivider"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginStart="61dp" />
 
 </com.winlator.cmod.ui.theme.ThemedFileRowLayout>
