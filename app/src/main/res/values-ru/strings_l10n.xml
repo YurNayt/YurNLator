@@ -1192,4 +1192,6 @@
     <string name="l_fm_close">Закрыть файловый менеджер</string>
     <string name="l_sts_ach_server_only">Steam: получено достижений: %1$d, но эта игра выдаёт их только через свои серверы</string>
     <string name="l_sts_ach_refused">Steam не принял достижения: %1$d</string>
+    <string name="l_sts_ach_checking">Проверка полученных достижений и передача в Steam…</string>
+    <string name="l_sts_ach_none_new">Достижения: новых для отправки нет</string>
 </resources>

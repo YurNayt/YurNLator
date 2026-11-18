@@ -212,12 +212,29 @@ private fun Library(status: SteamSession.Status, onSignOut: () -> Unit) {
     LaunchedEffect(online) {
         if (online && SteamLibrary.apps.value.isNullOrEmpty()) withContext(Dispatchers.IO) { SteamLibrary.refresh(context) }
     }
+    // Earned achievements not yet on the profile go out when the library opens (no game start needed).
+    val sweep by SteamSync.achievementSweep.collectAsState()
+    LaunchedEffect(online) { if (online) SteamSync.sweepAchievements(context) }
 
     val shown = apps.orEmpty().filter { a ->
         (filter.isBlank() || a.name.contains(filter.trim(), ignoreCase = true)) &&
             (!onlyInstalled || installed.containsKey(a.id) || jobs.containsKey(a.id))
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        sweep?.let { text ->
+            item(key = "achievement-sweep") {
+                androidx.compose.material3.Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (text == uiStr(R.string.l_sts_ach_checking)) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                            Spacer(Modifier.width(10.dp))
+                        }
+                        Text(text, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(when (status.state) {

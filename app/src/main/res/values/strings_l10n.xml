@@ -1192,4 +1192,6 @@
     <string name="l_fm_close">Close the file manager</string>
     <string name="l_sts_ach_server_only">Steam: %1$d achievement(s) earned, but this game gives them through its own servers only</string>
     <string name="l_sts_ach_refused">Steam didn\'t accept %1$d achievement(s)</string>
+    <string name="l_sts_ach_checking">Checking earned achievements and sending them to Steam…</string>
+    <string name="l_sts_ach_none_new">Achievements: nothing new to send</string>
 </resources>

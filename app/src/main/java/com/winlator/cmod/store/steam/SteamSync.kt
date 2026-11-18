@@ -537,19 +537,22 @@ object SteamSync {
         return maxOf(0, after - before)
     }
 
-    private fun achievementsOut(context: Context, p: Paths) {
+    /** Sends what the emulator recorded; returns how many achievements reached the profile. [quiet]: no toasts. */
+    private fun achievementsOut(context: Context, p: Paths, quiet: Boolean = false): Int {
+        fun say(text: String) { if (!quiet) toast(context, text) }
         // Stats first: some achievements come from them alone.
         val byStats = runCatching { statsOut(p) }.onFailure { Log.w(TAG, "${p.appId}: stats", it) }.getOrDefault(0)
         trace(context, "${p.appId}: stats → ${when { byStats > 0 -> "$byStats achievement(s) unlocked"; byStats < 0 -> "refused"; else -> "nothing new" }}")
-        if (byStats > 0) toast(context, uiStr(R.string.l_sts_ach_sent, byStats))
-        if (byStats < 0) toast(context, uiStr(R.string.l_sts_ach_refused, 0))
-        val local = runCatching { JSONObject(File(p.gse, "achievements.json").readText()) }.getOrNull() ?: return
+        if (byStats > 0) say(uiStr(R.string.l_sts_ach_sent, byStats))
+        if (byStats < 0) say(uiStr(R.string.l_sts_ach_refused, 0))
+        val fromStats = maxOf(0, byStats)
+        val local = runCatching { JSONObject(File(p.gse, "achievements.json").readText()) }.getOrNull() ?: return fromStats
         val earned = local.keys().asSequence().filter { k ->
             val o = local.optJSONObject(k)
             o != null && (o.optBoolean("earned", false) || o.optInt("earned", 0) != 0)
         }.toSet()
-        if (earned.isEmpty()) { trace(context, "${p.appId}: no achievement earned here"); return }
-        val (us, cb) = userStats(p.appId) ?: run { trace(context, "${p.appId}: Steam gave no stats for the game"); return }
+        if (earned.isEmpty()) { trace(context, "${p.appId}: no achievement earned here"); return fromStats }
+        val (us, cb) = userStats(p.appId) ?: run { trace(context, "${p.appId}: Steam gave no stats for the game"); return fromStats }
         val locked = protectedAchievements(cb)
         // apiName -> (stat, bit) from the schema; each achievement is one bit of a stat.
         val bitOf = HashMap<String, Pair<Int, Int>>()
@@ -575,8 +578,8 @@ object SteamSync {
         trace(context, "${p.appId}: earned here ${earned.size}, already on the profile ${already.size}, server-only ${serverOnly.size}, to send ${changed.size} stat(s)")
         if (changed.isEmpty()) {
             // Earned in the game, but Steam takes them from the game's own servers only.
-            if (serverOnly.isNotEmpty()) toast(context, uiStr(R.string.l_sts_ach_server_only, serverOnly.size))
-            return
+            if (serverOnly.isNotEmpty()) say(uiStr(R.string.l_sts_ach_server_only, serverOnly.size))
+            return fromStats
         }
         val self = SteamID(SteamSession.steamId)
         val list = changed.map { (id, v) -> Stats(id, v) }
@@ -593,8 +596,54 @@ object SteamSync {
             runCatching { apps?.notifyGamesPlayed(emptyList(), `in`.dragonbra.javasteam.enums.EOSType.Windows10) }
         }
         trace(context, "${p.appId}: $count achievement(s) to the profile: $ok")
-        if (ok) toast(context, uiStr(R.string.l_sts_ach_sent, count))
-        else toast(context, uiStr(R.string.l_sts_ach_refused, count))
+        if (ok) say(uiStr(R.string.l_sts_ach_sent, count))
+        else say(uiStr(R.string.l_sts_ach_refused, count))
+        return fromStats + (if (ok) count else 0)
+    }
+
+    // ── From the Steam library ──────────────────────────────────────────────────
+
+    private val _sweep = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    /** What the check of earned-but-unsent achievements is doing, for the Steam library (null: nothing to show). */
+    val achievementSweep: kotlinx.coroutines.flow.StateFlow<String?> = _sweep
+    @Volatile private var lastSweep = 0L
+
+    /**
+     * Opening the Steam library: achievements the emulator recorded in any container for any
+     * installed game, not yet on the profile (Steam was offline at the exit, the connection
+     * dropped…), go out now, without starting the game. At most every 2 minutes.
+     */
+    fun sweepAchievements(context: Context) {
+        val app = context.applicationContext
+        if (!pushAchievements(app) || !SteamSession.signedIn(app)) return
+        val now = System.currentTimeMillis()
+        if (now - lastSweep < 120_000L) return
+        lastSweep = now
+        Thread({
+            try {
+                SteamInstaller.load(app)
+                val installed = SteamInstaller.installed.value
+                val containers = runCatching { com.winlator.cmod.container.ContainerManager(app).containers }.getOrDefault(emptyList())
+                val todo = ArrayList<Paths>()
+                for (c in containers) for ((appId, inst) in installed) {
+                    if (!com.winlator.cmod.store.StoreLaunchPrefs.enabled(app, com.winlator.cmod.store.StoreLaunchPrefs.steam(appId))) continue
+                    val p = Paths(c, File(inst.dir), appId)
+                    if (File(p.gse, "achievements.json").isFile || File(p.gse, "stats").isDirectory) todo += p
+                }
+                if (todo.isEmpty()) return@Thread
+                _sweep.value = uiStr(R.string.l_sts_ach_checking)
+                if (!SteamSession.awaitOnline(app, 60_000L)) { _sweep.value = null; return@Thread }
+                var sent = 0
+                for (p in todo) sent += runCatching { achievementsOut(app, p, quiet = true) }
+                    .onFailure { trace(app, "${p.appId} library check failed: $it") }.getOrDefault(0)
+                trace(app, "library check: ${todo.size} game(s), $sent achievement(s) sent")
+                _sweep.value = if (sent > 0) uiStr(R.string.l_sts_ach_sent, sent) else uiStr(R.string.l_sts_ach_none_new)
+                Thread.sleep(6_000L)
+            } catch (_: InterruptedException) {
+            } finally {
+                _sweep.value = null
+            }
+        }, "SteamAchievementSweep").apply { isDaemon = true }.start()
     }
 
     /** One achievement of the game, as on the Steam profile. */
