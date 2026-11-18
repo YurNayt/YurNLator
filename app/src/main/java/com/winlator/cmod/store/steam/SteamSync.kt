@@ -217,7 +217,7 @@ object SteamSync {
         val emu = Goldberg.settingsDirs(inst)
         trace(context, "$appId start: emulator ${if (emu.isEmpty()) "not in this game" else "in " + emu.size + " folder(s)"}, saves ${p.gse}")
         runCatching { cloudDown(context, container, p) }.onFailure { trace(context, "$appId cloud down failed: $it") }
-        runCatching { achievementsIn(p, inst) }.onFailure { trace(context, "$appId achievements in failed: $it") }
+        runCatching { achievementsIn(context, p, inst) }.onFailure { trace(context, "$appId achievements in failed: $it") }
     }
 
     private fun cloudDown(context: Context, container: Container, p: Paths) {
@@ -263,18 +263,56 @@ object SteamSync {
         return us to cb
     }
 
-    private fun achievementsIn(p: Paths, inst: SteamInstaller.Installed) {
-        val (_, cb) = userStats(p.appId) ?: return
-        val list: List<AchievementBlocks> = runCatching { cb.getExpandedAchievements() }.getOrDefault(emptyList())
-        if (list.isEmpty()) return
+    /** An achievement of the game with the player's state on the profile. */
+    private class Ach(val name: String, val title: String, val description: String, val icon: String?,
+                      val iconGray: String?, val hidden: Boolean, val unlocked: Boolean, val time: Long)
+
+    /**
+     * The game's achievements: JavaSteam's reading of the schema, else ours (it gave nothing for
+     * some games, e.g. Banana, and with it neither the emulator nor the library knew any).
+     */
+    private fun achList(cb: UserStatsCallback, lang: String? = null): List<Ach> {
+        val expanded = runCatching { if (lang != null) cb.getExpandedAchievements(lang) else cb.getExpandedAchievements() }.getOrNull()
+        if (!expanded.isNullOrEmpty()) return expanded.mapNotNull { a ->
+            val n = a.name ?: return@mapNotNull null
+            Ach(n, a.displayName?.ifBlank { null } ?: n, a.description ?: "", a.icon?.ifBlank { null }, a.iconGray?.ifBlank { null },
+                a.hidden, a.isUnlocked, a.unlockTimestamp.toLong())
+        }
+        val values = HashMap<Int, Int>().apply { cb.stats.forEach { put(it.statId, it.statValue) } }
+        val out = ArrayList<Ach>()
+        fun text(kv: `in`.dragonbra.javasteam.types.KeyValue): String =
+            (lang?.let { kv.get(it).value } ?: kv.get("english").value ?: kv.value ?: "").trim()
+        cb.schemaKeyValues?.get("stats")?.children?.forEach { st ->
+            val id = st.name?.toIntOrNull() ?: return@forEach
+            val type = st.get("type").value?.uppercase(Locale.ROOT)
+            if (type != "4" && type != "ACHIEVEMENTS") return@forEach
+            val v = values[id] ?: 0
+            st.get("bits").children.forEach { bit ->
+                val b = bit.name?.toIntOrNull() ?: return@forEach
+                val name = bit.get("name").value?.takeIf { it.isNotBlank() } ?: return@forEach
+                val d = bit.get("display")
+                out += Ach(name, text(d.get("name")).ifBlank { name }, text(d.get("desc")),
+                    d.get("icon").value?.ifBlank { null }, d.get("icon_gray").value?.ifBlank { null },
+                    d.get("hidden").value == "1", b in 0..31 && (v ushr b) and 1 == 1, 0L)
+            }
+        }
+        return out
+    }
+
+    private fun achievementsIn(context: Context, p: Paths, inst: SteamInstaller.Installed) {
+        val (_, cb) = userStats(p.appId) ?: run { trace(context, "${p.appId}: Steam gave no stats for the game"); return }
+        val list = achList(cb)
+        val progress = achievementProgress(cb)
+        trace(context, "${p.appId}: Steam answered ${runCatching { cb.result }.getOrNull()}, schema " +
+            (if (cb.schemaKeyValues == null) "missing" else "${cb.schemaKeyValues?.get("stats")?.children?.size ?: 0} stat block(s)") +
+            ", ${list.size} achievement(s), ${progress.size} tied to a stat")
         // Names for the emulator (it shows only achievements it knows of).
         val schema = JSONArray()
-        val progress = achievementProgress(cb)
         list.forEach { a ->
-            val name = a.name ?: return@forEach
+            val name = a.name
             schema.put(JSONObject().put("name", name).put("hidden", if (a.hidden) 1 else 0)
-                .put("displayName", JSONObject().put("english", a.displayName ?: name))
-                .put("description", JSONObject().put("english", a.description ?: ""))
+                .put("displayName", JSONObject().put("english", a.title))
+                .put("description", JSONObject().put("english", a.description))
                 .put("icon", "img/" + (a.icon ?: "steam_default_icon_unlocked.jpg"))
                 .put("icon_gray", "img/" + (a.iconGray ?: "steam_default_icon_locked.jpg"))
                 .apply { progress[name]?.let { put("progress", it) } })
@@ -282,7 +320,7 @@ object SteamSync {
         // The game's stats too: the emulator refuses a stat it doesn't know (SetStat fails), and
         // achievements by a stat ("10 clicks") never come without it.
         val stats = numericStats(cb)
-        traceFile?.let { runCatching { it.appendText("        schema: ${list.size} achievement(s), ${stats.size} stat(s), ${progress.size} tied to a stat\n") } }
+        trace(context, "${p.appId}: ${stats.size} number stat(s) for the emulator: " + stats.values.take(8).joinToString { it.name })
         val statsJson = JSONArray()
         stats.values.forEach { st ->
             statsJson.put(JSONObject().put("name", st.name).put("type", if (st.float) "float" else "int")
@@ -291,7 +329,7 @@ object SteamSync {
         Goldberg.settingsDirs(inst).forEach { d ->
             runCatching {
                 d.mkdirs()
-                File(d, "achievements.json").writeText(schema.toString())
+                if (schema.length() > 0) File(d, "achievements.json").writeText(schema.toString())
                 if (statsJson.length() > 0) File(d, "stats.json").writeText(statsJson.toString())
             }
         }
@@ -313,12 +351,13 @@ object SteamSync {
         val file = File(p.gse, "achievements.json")
         val local = runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
         val now = System.currentTimeMillis() / 1000
+        if (list.isEmpty()) return
         list.forEach { a ->
-            val name = a.name ?: return@forEach
+            val name = a.name
             val l = local.optJSONObject(name)
             val earnedHere = l != null && (l.optBoolean("earned", false) || l.optInt("earned", 0) != 0)
-            if (a.isUnlocked || earnedHere) {
-                val t = maxOf(a.unlockTimestamp.toLong(), l?.optLong("earned_time", 0L) ?: 0L).takeIf { it > 0 } ?: now
+            if (a.unlocked || earnedHere) {
+                val t = maxOf(a.time, l?.optLong("earned_time", 0L) ?: 0L).takeIf { it > 0 } ?: now
                 local.put(name, JSONObject().put("earned", true).put("earned_time", t))
             } else if (l == null) {
                 local.put(name, JSONObject().put("earned", false).put("earned_time", 0))
@@ -478,14 +517,14 @@ object SteamSync {
         }
         if (changed.isEmpty()) return 0
         val self = SteamID(SteamSession.steamId)
-        val before = runCatching { cb.getExpandedAchievements() }.getOrDefault(emptyList()).count { it.isUnlocked }
+        val before = achList(cb).count { it.unlocked }
         val ok = runCatching { us.storeUserStats(p.appId, changed, self, self, cb.crcStats, false).toFuture().get(JOB_S, TimeUnit.SECONDS).result == EResult.OK }
             .getOrDefault(false)
         Log.i(TAG, "${p.appId}: ${changed.size} stat(s) to the profile: $ok")
         traceFile?.let { runCatching { it.appendText("        stats ${changed.joinToString { "${it.statId}=${it.statValue}" }} → $ok\n") } }
         if (!ok) return -1
         // What Steam unlocked by the new values.
-        val after = runCatching { userStats(p.appId)?.second?.getExpandedAchievements()?.count { it.isUnlocked } }.getOrNull() ?: before
+        val after = runCatching { userStats(p.appId)?.second?.let { c -> achList(c).count { it.unlocked } } }.getOrNull() ?: before
         return maxOf(0, after - before)
     }
 
@@ -512,7 +551,7 @@ object SteamSync {
                 bit.get("name").value?.takeIf { it.isNotEmpty() }?.let { bitOf[it] = statId to i }
             }
         }
-        val already = runCatching { cb.getExpandedAchievements() }.getOrDefault(emptyList()).filter { it.isUnlocked }.mapNotNull { it.name }.toSet()
+        val already = achList(cb).filter { it.unlocked }.map { it.name }.toSet()
         val current = HashMap<Int, Int>().apply { cb.stats.forEach { put(it.statId, it.statValue) } }
         val changed = HashMap<Int, Int>()
         var count = 0
@@ -559,15 +598,13 @@ object SteamSync {
     fun achievements(context: Context, appId: Int): List<Achievement>? = runCatching {
         if (!SteamSession.awaitOnline(context, 20_000L)) return null
         val (_, cb) = userStats(appId) ?: return null
-        val list = runCatching { cb.getExpandedAchievements(Goldberg.language()) }.getOrNull()?.takeIf { it.isNotEmpty() }
-            ?: cb.getExpandedAchievements()
-        list.mapNotNull { a ->
-            val name = a.name ?: return@mapNotNull null
-            val file = (if (a.isUnlocked) a.icon else a.iconGray)?.takeIf { it.isNotBlank() }
-            Achievement(name, a.displayName?.ifBlank { null } ?: name, a.description ?: "",
+        val list = achList(cb, Goldberg.language()).takeIf { it.isNotEmpty() } ?: achList(cb)
+        list.map { a ->
+            val file = (if (a.unlocked) a.icon else a.iconGray)?.takeIf { it.isNotBlank() }
+            Achievement(a.name, a.title, a.description,
                 file?.let { "https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/$appId/$it" },
-                a.isUnlocked, a.unlockTimestamp.toLong(), a.hidden,
-                a.icon?.takeIf { it.isNotBlank() }?.let { "https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/$appId/$it" })
+                a.unlocked, a.time, a.hidden,
+                a.icon?.let { "https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/$appId/$it" })
         }.sortedWith(compareByDescending<Achievement> { it.unlocked }.thenByDescending { it.time })
     }.onFailure { Log.w(TAG, "achievements $appId", it) }.getOrNull()?.takeIf { it.isNotEmpty() }
 
