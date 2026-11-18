@@ -51,7 +51,25 @@
                 android:focusableInTouchMode="true"
                 android:clickable="true" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/TVCombo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:textSize="13sp"
+            android:textColor="?attr/colorAccent"
+            android:background="?attr/selectableItemBackground"
+            android:visibility="gone" />
     </LinearLayout>
+
+    <ImageButton
+        style="@style/ListMenuButton"
+        android:id="@+id/BTAddKey"
+        android:contentDescription="@string/add_key_to_combo"
+        android:src="@drawable/ui_ic_add" />
 
     <ImageButton
         style="@style/ListMenuButton"

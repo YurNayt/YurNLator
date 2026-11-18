@@ -459,7 +459,7 @@ public class InputControlsView extends View {
                 int keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], sign);
                 ExternalControllerBinding controllerBinding = controller.getControllerBinding(keyCode);
                 if (controllerBinding != null) {
-                    handleInputEvent(controller, controllerBinding.getBinding(), true, value, false);
+                    handleControllerBinding(controller, controllerBinding, true, value, false);
                 }
             } else {
                 // Handle releasing the bindings when the axis returns to deadzone
@@ -467,7 +467,7 @@ public class InputControlsView extends View {
                     int keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], sign);
                     ExternalControllerBinding controllerBinding = controller.getControllerBinding(keyCode);
                     if (controllerBinding != null) {
-                        handleInputEvent(controller, controllerBinding.getBinding(), false, value, false);
+                        handleControllerBinding(controller, controllerBinding, false, value, false);
                     }
                 }
             }
@@ -490,9 +490,9 @@ public class InputControlsView extends View {
         if (binding != null) {
             boolean isPressed = value > ControlElement.STICK_DEAD_ZONE; // Use deadzone or simple > 0
             if (isPressed) {
-                handleInputEvent(controller, binding.getBinding(), true, value, sendUpdate);
+                handleControllerBinding(controller, binding, true, value, sendUpdate);
             } else {
-                handleInputEvent(controller, binding.getBinding(), false, 0, sendUpdate);
+                handleControllerBinding(controller, binding, false, 0, sendUpdate);
             }
         }
     }
@@ -526,13 +526,13 @@ public class InputControlsView extends View {
                 // L2 button
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
                 if (controllerBinding != null) {
-                    handleInputEvent(controller, controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
+                    handleControllerBinding(controller, controllerBinding, controller.state.isPressed(ExternalController.IDX_BUTTON_L2), 0, true);
                 }
 
                 // R2 button
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
                 if (controllerBinding != null) {
-                    handleInputEvent(controller, controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
+                    handleControllerBinding(controller, controllerBinding, controller.state.isPressed(ExternalController.IDX_BUTTON_R2), 0, true);
                 }
 
                 Log.d("InputEvent", "Event source: " + event.getSource());
@@ -757,16 +757,27 @@ public class InputControlsView extends View {
                     int action = event.getAction();
 
                     if (action == KeyEvent.ACTION_DOWN) {
-                        handleInputEvent(controller, controllerBinding.getBinding(), true);
+                        handleControllerBinding(controller, controllerBinding, true, 0, true);
                     }
                     else if (action == KeyEvent.ACTION_UP) {
-                        handleInputEvent(controller, controllerBinding.getBinding(), false);
+                        handleControllerBinding(controller, controllerBinding, false, 0, true);
                     }
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    /** A physical controller button's binding: one key, or a key combination pressed together. */
+    private void handleControllerBinding(ExternalController controller, ExternalControllerBinding cb, boolean down, float value, boolean sendUpdate) {
+        if (cb.getExtras().isEmpty()) {
+            handleInputEvent(controller, cb.getBinding(), down, value, sendUpdate);
+            return;
+        }
+        Binding[] order = cb.pressOrder();
+        if (down) for (Binding b : order) handleInputEvent(controller, b, true, value, sendUpdate);
+        else for (int i = order.length - 1; i >= 0; i--) handleInputEvent(controller, order[i], false, value, sendUpdate);
     }
 
     public void handleInputEvent(Binding binding, boolean isActionDown) {

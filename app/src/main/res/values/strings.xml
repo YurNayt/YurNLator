@@ -698,4 +698,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="motion_expand">Lists opening</string>
     <string name="motion_page">Game page</string>
     <string name="motion_var_list">Variables list</string>
+    <string name="add_key_to_combo">Add a key to press together</string>
+    <string name="combo_keys">Pressed together: %1$s  ✕</string>
+    <string name="combo_clear">Remove the extra keys?</string>
+    <string name="combo_full">Up to %1$d extra keys</string>
 </resources>

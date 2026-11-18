@@ -205,6 +205,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     ExternalControllerBinding controllerBinding = new ExternalControllerBinding();
                     controllerBinding.setKeyCode(controllerBindingJSONObject.getInt("keyCode"));
                     controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));
+                    JSONArray extras = controllerBindingJSONObject.optJSONArray("extras");
+                    if (extras != null) for (int k = 0; k < extras.length(); k++)
+                        controllerBinding.addExtra(Binding.fromString(extras.optString(k)));
                     controller.addControllerBinding(controllerBinding);
                 }
                 controllers.add(controller);

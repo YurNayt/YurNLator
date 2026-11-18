@@ -415,4 +415,8 @@
     <string name="motion_expand">Раскрытие списков</string>
     <string name="motion_page">Страница игры</string>
     <string name="motion_var_list">Список переменных</string>
+    <string name="add_key_to_combo">Добавить клавишу, нажимаемую вместе</string>
+    <string name="combo_keys">Нажимаются вместе: %1$s  ✕</string>
+    <string name="combo_clear">Убрать дополнительные клавиши?</string>
+    <string name="combo_full">Не больше %1$d дополнительных клавиш</string>
 </resources>

@@ -214,8 +214,9 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        // Accept any gamepad button or D-pad keycode
-        if (isGamepadKeyCode(keyCode)) {
+        // Any gamepad button or D-pad keycode, and any other button of a controller (back paddles,
+        // C / Z, BUTTON_1..16: what extra buttons are reported as).
+        if (isControllerKey(keyCode, event)) {
             updateControllerBinding(keyCode, Binding.NONE);
             return true;
         }
@@ -225,10 +226,16 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         // Consume the key up for gamepad buttons
-        if (isGamepadKeyCode(keyCode)) {
+        if (isControllerKey(keyCode, event)) {
             return true;
         }
         return super.onKeyUp(keyCode, event);
+    }
+
+    private boolean isControllerKey(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_UNKNOWN || keyCode == KeyEvent.KEYCODE_BACK) return false;
+        if (isGamepadKeyCode(keyCode) || KeyEvent.isGamepadButton(keyCode)) return true;
+        return event != null && ExternalController.isGameController(event.getDevice());
     }
 
     private boolean isGamepadKeyCode(int keyCode) {
@@ -264,6 +271,8 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
             private final TextView title;
             private final Spinner bindingType;
             private final Spinner binding;
+            private final ImageButton addKeyButton;
+            private final TextView combo;
 
             private ViewHolder(View view) {
                 super(view);
@@ -271,6 +280,8 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
                 this.bindingType = view.findViewById(R.id.SBindingType);
                 this.binding = view.findViewById(R.id.SBinding);
                 this.removeButton = view.findViewById(R.id.BTRemove);
+                this.addKeyButton = view.findViewById(R.id.BTAddKey);
+                this.combo = view.findViewById(R.id.TVCombo);
             }
         }
 
@@ -285,6 +296,18 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
             final ExternalControllerBinding item = controller.getControllerBindingAt(position);
             holder.title.setText(item.toString());
             loadBindingSpinner(holder, item);
+            showCombo(holder, item);
+            holder.addKeyButton.setOnClickListener((view) -> addComboKey(holder, item));
+            holder.combo.setOnClickListener((view) ->
+                    new androidx.appcompat.app.AlertDialog.Builder(ExternalControllerBindingsActivity.this)
+                            .setMessage(R.string.combo_clear)
+                            .setPositiveButton(android.R.string.ok, (d, w) -> {
+                                item.clearExtras();
+                                profile.save();
+                                showCombo(holder, item);
+                            })
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .show());
             holder.removeButton.setOnClickListener((view) -> {
                 controller.removeControllerBinding(item);
                 profile.save();
@@ -296,6 +319,35 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
         @Override
         public final int getItemCount() {
             return controller.getControllerBindingCount();
+        }
+
+        private void showCombo(ViewHolder holder, ExternalControllerBinding item) {
+            String label = item.comboLabel();
+            holder.combo.setVisibility(label.isEmpty() ? View.GONE : View.VISIBLE);
+            holder.combo.setText(getString(R.string.combo_keys, label));
+        }
+
+        /** One more key (or mouse button) pressed together with this button's binding: Ctrl + S, Alt + Tab... */
+        private void addComboKey(ViewHolder holder, ExternalControllerBinding item) {
+            Context ctx = ExternalControllerBindingsActivity.this;
+            if (item.getExtras().size() >= ExternalControllerBinding.MAX_EXTRAS) {
+                android.widget.Toast.makeText(ctx, getString(R.string.combo_full, ExternalControllerBinding.MAX_EXTRAS),
+                        android.widget.Toast.LENGTH_SHORT).show();
+                return;
+            }
+            java.util.ArrayList<Binding> values = new java.util.ArrayList<>();
+            for (Binding b : Binding.keyboardBindingValues()) if (b != Binding.NONE) values.add(b);
+            for (Binding b : Binding.mouseBindingValues()) if (!b.isMouseMove()) values.add(b);
+            String[] labels = new String[values.size()];
+            for (int i = 0; i < labels.length; i++) labels[i] = values.get(i).toString();
+            new androidx.appcompat.app.AlertDialog.Builder(ctx)
+                    .setTitle(R.string.add_key_to_combo)
+                    .setItems(labels, (d, which) -> {
+                        item.addExtra(values.get(which));
+                        profile.save();
+                        showCombo(holder, item);
+                    })
+                    .show();
         }
 
         private void loadBindingSpinner(ViewHolder holder, final ExternalControllerBinding item) {
