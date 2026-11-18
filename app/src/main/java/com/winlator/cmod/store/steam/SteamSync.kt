@@ -246,7 +246,7 @@ object SteamSync {
      * A line in logs/steam_sync.txt (beside the game logs) as well as logcat: what the cloud and
      * achievement sync did and why it stopped, readable without a computer.
      */
-    private fun trace(context: Context, line: String) {
+    internal fun trace(context: Context, line: String) {
         Log.i(TAG, line)
         runCatching {
             val f = traceFile ?: File(com.winlator.cmod.widget.LogView.getLogFile(context).parentFile, "steam_sync.txt").also { traceFile = it }
@@ -379,16 +379,24 @@ object SteamSync {
         val app = context.applicationContext
         Thread({
             val inst = installed(app, appId) ?: run { trace(app, "$appId exit: not in the Steam library's installs"); return@Thread }
-            if (!SteamSession.signedIn(app) || !SteamSession.awaitOnline(app, 60_000L)) { trace(app, "$appId exit: Steam offline, nothing sent"); return@Thread }
+            if (!SteamSession.signedIn(app)) { trace(app, "$appId exit: not signed in to Steam, nothing sent"); return@Thread }
+            // The connection may be coming back (network switch, Steam's own logoff): wait a while.
+            if (!SteamSession.awaitOnline(app, 60_000L)) {
+                trace(app, "$appId exit: Steam offline (${SteamSession.status.value.state} ${SteamSession.status.value.error ?: ""}), waiting up to 5 min")
+                if (!SteamSession.awaitOnline(app, 300_000L)) { trace(app, "$appId exit: Steam still offline, nothing sent"); return@Thread }
+            }
             val p = Paths(container, File(inst.dir), appId)
             val ach = File(p.gse, "achievements.json")
             val statsDir = File(p.gse, "stats")
             trace(app, "$appId exit: achievements.json ${if (ach.isFile) "${ach.length()} B" else "missing"}, stats: " +
                 (statsDir.list()?.joinToString(", ")?.ifBlank { "none" } ?: "none") +
                 ", other files: " + (p.gse.list()?.filter { it != "achievements.json" && it != "stats" }?.take(12)?.joinToString(", ") ?: "no folder"))
-            runCatching { cloudUp(app, p) }.onFailure { trace(app, "$appId cloud up failed: $it") }
+            // Achievements first: small, and a long cloud upload (or a dropped connection in it)
+            // no longer keeps them from going out.
             if (pushAchievements(app)) runCatching { achievementsOut(app, p) }.onFailure { trace(app, "$appId achievements failed: $it") }
             else trace(app, "$appId exit: sending achievements is off")
+            runCatching { cloudUp(app, p) }.onFailure { trace(app, "$appId cloud up failed: $it") }
+            trace(app, "$appId exit: done")
         }, "SteamSync").start()
     }
 
@@ -436,13 +444,14 @@ object SteamSync {
             val c = cloudFiles[name] ?: return@filter true
             !sha1(f).contentEquals(c.sha) && f.lastModified() + 2_000 >= c.time // a newer cloud copy is never overwritten
         }
-        if (todo.isEmpty()) { Log.i(TAG, "${p.appId}: nothing to upload"); return }
+        if (todo.isEmpty()) { trace(context, "${p.appId}: cloud: nothing to upload"); return }
+        trace(context, "${p.appId}: cloud: uploading ${todo.size} file(s)")
         val batch = sc.beginAppUploadBatch(p.appId, "YurNLator (${Build.MODEL})", todo.keys.toList(), emptyList(), 0L, 0L)
             .get(JOB_S, TimeUnit.SECONDS).batchID
         var sent = 0
         for ((name, f) in todo) if (runCatching { upload(sc, p.appId, f, name, batch) }.onFailure { Log.w(TAG, "upload $name", it) }.getOrDefault(false)) sent++
         runCatching { sc.completeAppUploadBatch(p.appId, batch, if (sent == todo.size) EResult.OK else EResult.Fail).get(JOB_S, TimeUnit.SECONDS) }
-        Log.i(TAG, "${p.appId}: $sent/${todo.size} saves uploaded")
+        trace(context, "${p.appId}: cloud: $sent/${todo.size} uploaded")
         if (sent > 0) toast(context, uiStr(R.string.l_sts_cloud_up, sent))
     }
 

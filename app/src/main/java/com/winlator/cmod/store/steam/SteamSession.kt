@@ -198,6 +198,7 @@ object SteamSession {
 
     private fun onDisconnected(cb: DisconnectedCallback) {
         val was = _status.value
+        runCatching { SteamSync.trace(app, "session: disconnected (${if (cb.isUserInitiated) "by us" else "by Steam / network"}), was ${was.state}") }
         _status.value = Status(State.OFFLINE, was.error)
         _licenses.value = emptyList()
         if (reconnecting) {
@@ -247,6 +248,7 @@ object SteamSession {
     }
 
     private fun onLoggedOn(cb: LoggedOnCallback) {
+        runCatching { SteamSync.trace(app, "session: logon ${cb.result}") }
         if (cb.result == EResult.OK) {
             cb.clientSteamID?.let { prefs().edit().putLong("steam_id", it.convertToUInt64()).apply() }
             _status.value = Status(State.ONLINE)
@@ -261,6 +263,7 @@ object SteamSession {
 
     private fun onLoggedOff(cb: LoggedOffCallback) {
         Log.i(TAG, "logged off: ${cb.result}")
+        runCatching { SteamSync.trace(app, "session: logged off by Steam: ${cb.result}") }
         _licenses.value = emptyList()
         if (_status.value.state == State.ONLINE) _status.value = Status(State.CONNECTED, cb.result.name)
         // Another sign-in of this account took over, or Steam restarted: sign in again shortly.
