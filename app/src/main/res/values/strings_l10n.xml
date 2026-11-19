@@ -1198,5 +1198,5 @@
     <string name="l_log_pause">Pause / resume</string>
     <string name="l_pad_pc">PC (keyboard + mouse)</string>
     <string name="pc_layout_fill">Fill as PC Gamepad</string>
-    <string name="pc_layout_fill_confirm">Replace this controller's bindings with the PC Gamepad layout (sticks: WASD and the mouse, A: Space, RT: left click…)?</string>
+    <string name="pc_layout_fill_confirm">Replace this controller\'s bindings with the PC Gamepad layout (sticks: WASD and the mouse, A: Space, RT: left click…)?</string>
 </resources>
