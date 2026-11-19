@@ -1,7 +1,27 @@
 {
  "version": 1,
- "updated": 1794973600,
+ "updated": 1795116438,
  "presets": [
+  {
+   "id": "5641e3013594",
+   "game": "WWE 2K24",
+   "game_key": "wwe2k24",
+   "exe": "wwe2k24_x64.exe",
+   "title": "60 fps wwe 2k24",
+   "author": "EMULIZED",
+   "device": "nubia NX769J",
+   "soc": "SM8650",
+   "gpu": "Adreno 750",
+   "created": 1795116427,
+   "app_version": "v1.1.2",
+   "issue": 9,
+   "likes": 0,
+   "comments": 0,
+   "login": "",
+   "controls": "",
+   "has_settings": true,
+   "published": 1795116438
+  },
   {
    "id": "6450f6755295",
    "game": "Dead Rising 3",
