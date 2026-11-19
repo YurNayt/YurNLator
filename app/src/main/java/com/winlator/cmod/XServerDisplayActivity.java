@@ -799,14 +799,38 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return winHandler;
     }
 
+    private Runnable pendingPadNotice;
+
+    /**
+     * The connected / disconnected card. While the loading screen is up (its own window, above the
+     * game) the card would be hidden under it, so it waits and comes once the loading screen has
+     * gone; only the newest one waits.
+     */
+    private void showPadNotice(String title, String subtitle) {
+        Runnable show = () -> com.winlator.cmod.ui.ingame.GamepadNotice.show(findViewById(R.id.FLXServerDisplay), title, subtitle);
+        boolean waiting = pendingPadNotice != null;
+        pendingPadNotice = show;
+        if (!waiting) flushPadNotice();
+    }
+
+    private void flushPadNotice() {
+        if (pendingPadNotice == null || isFinishing()) { pendingPadNotice = null; return; }
+        if (preloaderDialog != null && preloaderDialog.isShowing()) {
+            timeoutHandler.postDelayed(this::flushPadNotice, 500);
+            return;
+        }
+        Runnable show = pendingPadNotice;
+        pendingPadNotice = null;
+        show.run();
+    }
+
     /** WinHandler: a physical gamepad sent its first input. The on-screen buttons step aside. */
     public void onExternalGamepadActive(String name) {
         runOnUiThread(() -> {
             boolean hid = touchControls != null && touchControls.hideForGamepad();
             String pad = name != null && !name.trim().isEmpty() ? name.trim() : getString(R.string.gamepad_notice_connected);
-            com.winlator.cmod.ui.ingame.GamepadNotice.show(findViewById(R.id.FLXServerDisplay),
-                    getString(R.string.gamepad_notice_connected),
-                    hid ? pad + " · " + getString(R.string.gamepad_notice_osc_hidden) : pad);
+            String subtitle = hid ? pad + " · " + getString(R.string.gamepad_notice_osc_hidden) : pad;
+            showPadNotice(getString(R.string.gamepad_notice_connected), subtitle);
         });
     }
 
@@ -814,8 +838,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     public void onExternalGamepadGone() {
         runOnUiThread(() -> {
             boolean shown = touchControls != null && touchControls.restoreAfterGamepad();
-            com.winlator.cmod.ui.ingame.GamepadNotice.show(findViewById(R.id.FLXServerDisplay),
-                    getString(R.string.gamepad_notice_disconnected),
+            showPadNotice(getString(R.string.gamepad_notice_disconnected),
                     shown ? getString(R.string.gamepad_notice_osc_back) : null);
         });
     }
