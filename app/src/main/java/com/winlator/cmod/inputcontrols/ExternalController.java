@@ -469,7 +469,7 @@ public class ExternalController {
             if (isGameController(device)) {
                 ExternalController controller = new ExternalController();
                 controller.setId(device.getDescriptor());
-                controller.setName(device.getName());
+                controller.setName(displayName(device.getName()));
                 controllers.add(controller);
             }
         }
@@ -489,13 +489,28 @@ public class ExternalController {
                 if (isGameController(device)) {
                     ExternalController controller = new ExternalController();
                     controller.setId(device.getDescriptor());
-                    controller.setName(device.getName());
+                    controller.setName(displayName(device.getName()));
                     controller.deviceId = deviceIds[i];
                     return controller;
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * The pad's name for people. Android joins a pad's parts (buttons, touchpad, motion sensors)
+     * into one device and may name it after a part: a DualShock 4 shows as "Wireless Controller
+     * Touchpad". The part's word is dropped.
+     */
+    public static String displayName(String name) {
+        if (name == null) return null;
+        String n = name.trim();
+        for (String part : new String[]{" Touchpad", " Motion Sensors", " Motion Sensor"}) {
+            if (n.length() > part.length() && n.toLowerCase(java.util.Locale.ROOT).endsWith(part.toLowerCase(java.util.Locale.ROOT)))
+                return n.substring(0, n.length() - part.length()).trim();
+        }
+        return n;
     }
 
     public static boolean isGameController(InputDevice device) {

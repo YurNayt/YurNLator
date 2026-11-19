@@ -154,12 +154,11 @@ public class WinHandler {
 
     private void notePadInput(ExternalController controller) {
         if (!activePads.add(controller.getDeviceId())) return;
-        // One pad can show up as several devices (a DualSense also as "… Touchpad" and "… Motion
-        // Sensors"): only the pad itself names the notice.
-        String n = controller.getName();
-        String low = n != null ? n.toLowerCase(java.util.Locale.ROOT) : "";
-        if (low.contains("touchpad") || low.contains("motion sensor")) return;
-        activity.onExternalGamepadActive(n);
+        // Only devices that are gamepads get here (a separate touchpad or motion-sensor device is
+        // not). Android may name the joined pad after a part ("Wireless Controller Touchpad"):
+        // that name was taken for a touchpad and the notice skipped, so no notice ever came and
+        // the on-screen buttons stayed. The name is cleaned instead.
+        activity.onExternalGamepadActive(ExternalController.displayName(controller.getName()));
     }
 
     public WinHandler(XServerDisplayActivity activity) {
