@@ -419,4 +419,9 @@
     <string name="combo_keys">Нажимаются вместе: %1$s  ✕</string>
     <string name="combo_clear">Убрать дополнительные клавиши?</string>
     <string name="combo_full">Не больше %1$d дополнительных клавиш</string>
+    <string name="stick_mouse_sensitivity">Скорость мыши от стика: %1$s×</string>
+    <string name="stick_dead_zone">Мёртвая зона стиков: %1$d%%</string>
+    <string name="chord_add">+ Сочетание кнопок</string>
+    <string name="chord_press_first">Нажмите кнопку, которую нужно держать</string>
+    <string name="chord_press_second">Теперь нажмите кнопку, которая сработает вместе с %1$s</string>
 </resources>

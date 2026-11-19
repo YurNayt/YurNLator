@@ -198,6 +198,8 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 ExternalController controller = new ExternalController();
                 controller.setId(id);
                 controller.setName(controllerJSONObject.getString("name"));
+                controller.setMouseSensitivity((float) controllerJSONObject.optDouble("mouseSensitivity", 1.0));
+                controller.setDeadZone((float) controllerJSONObject.optDouble("deadZone", 0.15));
 
                 JSONArray controllerBindingsJSONArray = controllerJSONObject.getJSONArray("controllerBindings");
                 for (int j = 0; j < controllerBindingsJSONArray.length(); j++) {
@@ -205,6 +207,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     ExternalControllerBinding controllerBinding = new ExternalControllerBinding();
                     controllerBinding.setKeyCode(controllerBindingJSONObject.getInt("keyCode"));
                     controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));
+                    controllerBinding.setModifier(controllerBindingJSONObject.optInt("modifier", 0));
                     JSONArray extras = controllerBindingJSONObject.optJSONArray("extras");
                     if (extras != null) for (int k = 0; k < extras.length(); k++)
                         controllerBinding.addExtra(Binding.fromString(extras.optString(k)));

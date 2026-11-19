@@ -302,12 +302,13 @@ private fun ProfilePicker(model: InputControlsModel, selectedName: String, callb
 @Composable
 private fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, onClick: () -> Unit) {
     Surface(
+        onClick = onClick,
         modifier = Modifier.size(44.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
     ) {
-        IconButton(onClick = onClick) { Icon(icon, description, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Box(contentAlignment = Alignment.Center) { Icon(icon, description) }
     }
 }
 

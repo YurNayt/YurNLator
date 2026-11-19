@@ -23,6 +23,16 @@ public class ExternalControllerBinding {
     public static final byte AXIS_RZ_POSITIVE = -8;
     private short keyCode;
     private Binding binding = Binding.NONE;
+    /** A chord: this binding fires when [keyCode] is pressed while this button is held (0 = none). */
+    private short modifier;
+
+    public int getModifier() {
+        return modifier;
+    }
+
+    public void setModifier(int modifier) {
+        this.modifier = (short) modifier;
+    }
     /** More keys pressed together with [binding] (a key combination such as Ctrl + S); up to [MAX_EXTRAS]. */
     private final ArrayList<Binding> extras = new ArrayList<>();
     public static final int MAX_EXTRAS = 3;
@@ -92,6 +102,7 @@ public class ExternalControllerBinding {
             JSONObject controllerBindingJSONObject = new JSONObject();
             controllerBindingJSONObject.put("keyCode", keyCode);
             controllerBindingJSONObject.put("binding", binding.name());
+            if (modifier != 0) controllerBindingJSONObject.put("modifier", (int) modifier);
             if (!extras.isEmpty()) {
                 JSONArray a = new JSONArray();
                 for (Binding b : extras) a.put(b.name());
@@ -107,6 +118,11 @@ public class ExternalControllerBinding {
     @NonNull
     @Override
     public String toString() {
+        String own = keyLabel(keyCode);
+        return modifier != 0 ? keyLabel(modifier) + " + " + own : own;
+    }
+
+    public static String keyLabel(int keyCode) {
         switch (keyCode) {
             case AXIS_X_NEGATIVE:
                 return "AXIS X-";

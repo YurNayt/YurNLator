@@ -702,4 +702,9 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="combo_keys">Pressed together: %1$s  ✕</string>
     <string name="combo_clear">Remove the extra keys?</string>
     <string name="combo_full">Up to %1$d extra keys</string>
+    <string name="stick_mouse_sensitivity">Stick → mouse speed: %1$s×</string>
+    <string name="stick_dead_zone">Stick dead zone: %1$d%%</string>
+    <string name="chord_add">+ Button chord</string>
+    <string name="chord_press_first">Press the button to hold</string>
+    <string name="chord_press_second">Now press the button that works together with %1$s</string>
 </resources>

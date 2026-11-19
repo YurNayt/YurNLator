@@ -141,3 +141,32 @@ class ThemedFileRowLayout @JvmOverloads constructor(
         findViewById<ImageView>(R.id.BTFileMenu)?.imageTintList = ColorStateList.valueOf(muted)
     }
 }
+
+/** The app's accent buttons for the older (View) screens: rounded squares like everywhere else. */
+object AccentButtons {
+    private const val RADIUS_DP = 12f
+
+    /** An icon button filled with the accent colour, its icon in the colour that reads on it. */
+    @JvmStatic
+    fun square(button: ImageButton) {
+        val c = button.context
+        button.background = roundedRipple(c, WinlatorLegacyTheme.onPrimary(c), WinlatorLegacyTheme.primary(c), RADIUS_DP)
+        button.imageTintList = ColorStateList.valueOf(WinlatorLegacyTheme.onPrimary(c))
+    }
+
+    /** A text button filled with the accent colour. */
+    @JvmStatic
+    fun filled(view: TextView) {
+        val c = view.context
+        view.background = roundedRipple(c, WinlatorLegacyTheme.onPrimary(c), WinlatorLegacyTheme.primary(c), RADIUS_DP)
+        view.setTextColor(WinlatorLegacyTheme.onPrimary(c))
+    }
+
+    /** An outlined card behind a group of settings. */
+    @JvmStatic
+    fun card(view: View) {
+        val c = view.context
+        view.background = outlinedCard(c, WinlatorLegacyTheme.primary(c), WinlatorLegacyTheme.surface(c),
+            WinlatorLegacyTheme.outlineVariant(c), 16f)
+    }
+}

@@ -75,6 +75,8 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
         actionBar.setDisplayHomeAsUpEnabled(true);
         actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_back);
 
+        setupStickSettings();
+
         emptyTextView = findViewById(R.id.TVEmptyText);
         recyclerView = findViewById(R.id.RecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -232,6 +234,86 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
         return super.onKeyUp(keyCode, event);
     }
 
+    private void setupStickSettings() {
+        com.winlator.cmod.ui.theme.AccentButtons.card(findViewById(R.id.LLStickSettings));
+        int text = com.winlator.cmod.ui.theme.WinlatorLegacyTheme.onSurface(this);
+        int accent = com.winlator.cmod.ui.theme.WinlatorLegacyTheme.primary(this);
+
+        TextView tvSpeed = findViewById(R.id.TVMouseSensitivity);
+        TextView tvDead = findViewById(R.id.TVDeadZone);
+        android.widget.SeekBar sbSpeed = findViewById(R.id.SBMouseSensitivity);
+        android.widget.SeekBar sbDead = findViewById(R.id.SBDeadZone);
+        tvSpeed.setTextColor(text);
+        tvDead.setTextColor(text);
+        for (android.widget.SeekBar sb : new android.widget.SeekBar[]{sbSpeed, sbDead}) {
+            sb.setProgressTintList(android.content.res.ColorStateList.valueOf(accent));
+            sb.setThumbTintList(android.content.res.ColorStateList.valueOf(accent));
+        }
+
+        // Speed 0.2..5 in steps of 0.1; dead zone 0..50 %.
+        sbSpeed.setProgress(Math.round((controller.getMouseSensitivity() - 0.2f) * 10f));
+        sbDead.setProgress(Math.round(controller.getDeadZone() * 100f));
+        Runnable labels = () -> {
+            tvSpeed.setText(getString(R.string.stick_mouse_sensitivity,
+                    String.format(java.util.Locale.ROOT, "%.1f", controller.getMouseSensitivity())));
+            tvDead.setText(getString(R.string.stick_dead_zone, Math.round(controller.getDeadZone() * 100f)));
+        };
+        labels.run();
+        android.widget.SeekBar.OnSeekBarChangeListener listener = new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar sb, int progress, boolean fromUser) {
+                if (sb == sbSpeed) controller.setMouseSensitivity(0.2f + progress / 10f);
+                else controller.setDeadZone(progress / 100f);
+                labels.run();
+            }
+            @Override public void onStartTrackingTouch(android.widget.SeekBar sb) {}
+            @Override public void onStopTrackingTouch(android.widget.SeekBar sb) { profile.save(); }
+        };
+        sbSpeed.setOnSeekBarChangeListener(listener);
+        sbDead.setOnSeekBarChangeListener(listener);
+
+        TextView chord = findViewById(R.id.BTAddChord);
+        com.winlator.cmod.ui.theme.AccentButtons.filled(chord);
+        chord.setOnClickListener((v) -> captureChord());
+    }
+
+    /** A button chord: hold the first button, press the second. Asked for one press at a time. */
+    private void captureChord() {
+        final int[] first = {0};
+        final androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.chord_add)
+                .setMessage(R.string.chord_press_first)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        dialog.setOnKeyListener((d, keyCode, event) -> {
+            if (!isControllerKey(keyCode, event)) return false;
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                if (first[0] == 0) {
+                    first[0] = keyCode;
+                    dialog.setMessage(getString(R.string.chord_press_second, ExternalControllerBinding.keyLabel(keyCode)));
+                }
+                else if (keyCode != first[0]) {
+                    ExternalControllerBinding b = controller.getControllerBinding(keyCode, first[0]);
+                    if (b == null) {
+                        b = new ExternalControllerBinding();
+                        b.setKeyCode(keyCode);
+                        b.setModifier(first[0]);
+                        b.setBinding(Binding.NONE);
+                        controller.addControllerBinding(b);
+                        profile.save();
+                        adapter.notifyDataSetChanged();
+                        updateEmptyTextView();
+                    }
+                    int position = controller.getPosition(b);
+                    recyclerView.scrollToPosition(position);
+                    dialog.dismiss();
+                }
+            }
+            return true;
+        });
+        dialog.show();
+    }
+
     private boolean isControllerKey(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_UNKNOWN || keyCode == KeyEvent.KEYCODE_BACK) return false;
         if (isGamepadKeyCode(keyCode) || KeyEvent.isGamepadButton(keyCode)) return true;
@@ -295,6 +377,8 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
         public void onBindViewHolder(ViewHolder holder, int position) {
             final ExternalControllerBinding item = controller.getControllerBindingAt(position);
             holder.title.setText(item.toString());
+            com.winlator.cmod.ui.theme.AccentButtons.square(holder.addKeyButton);
+            com.winlator.cmod.ui.theme.AccentButtons.square(holder.removeButton);
             loadBindingSpinner(holder, item);
             showCombo(holder, item);
             holder.addKeyButton.setOnClickListener((view) -> addComboKey(holder, item));

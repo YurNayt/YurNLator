@@ -1194,4 +1194,6 @@
     <string name="l_sts_ach_refused">Steam didn\'t accept %1$d achievement(s)</string>
     <string name="l_sts_ach_checking">Checking earned achievements and sending them to Steam…</string>
     <string name="l_sts_ach_none_new">Achievements: nothing new to send</string>
+    <string name="l_log_clear">Clear the log</string>
+    <string name="l_log_pause">Pause / resume</string>
 </resources>

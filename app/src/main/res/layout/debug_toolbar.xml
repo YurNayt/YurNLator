@@ -7,20 +7,22 @@
     <ImageButton
         style="@style/ListMenuButton.Square"
         android:id="@+id/BTCopy"
-        android:src="@drawable/ui_ic_copy"
+        android:src="@drawable/ui_ic_m_copy"
         android:contentDescription="@string/l_log_copy"
         android:layout_marginRight="8dp" />
 
     <ImageButton
         style="@style/ListMenuButton.Square"
         android:id="@+id/BTClear"
-        android:src="@drawable/icon_remove"
+        android:contentDescription="@string/l_log_clear"
+        android:src="@drawable/ui_ic_m_delete"
         android:layout_marginRight="8dp" />
 
     <ImageButton
         style="@style/ListMenuButton.Square"
         android:id="@+id/BTPause"
-        android:src="@drawable/icon_pause"
+        android:contentDescription="@string/l_log_pause"
+        android:src="@drawable/ui_ic_m_pause"
         android:layout_marginRight="8dp" />
 
 </LinearLayout>

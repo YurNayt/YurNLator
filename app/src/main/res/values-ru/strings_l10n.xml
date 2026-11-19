@@ -1194,4 +1194,6 @@
     <string name="l_sts_ach_refused">Steam не принял достижения: %1$d</string>
     <string name="l_sts_ach_checking">Проверка полученных достижений и передача в Steam…</string>
     <string name="l_sts_ach_none_new">Достижения: новых для отправки нет</string>
+    <string name="l_log_clear">Очистить лог</string>
+    <string name="l_log_pause">Пауза / продолжить</string>
 </resources>

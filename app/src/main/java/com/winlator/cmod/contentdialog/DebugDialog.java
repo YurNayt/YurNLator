@@ -41,6 +41,9 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
         llBottomBarPanel.setVisibility(View.VISIBLE);
 
         View toolbarView = LayoutInflater.from(context).inflate(R.layout.debug_toolbar, llBottomBarPanel, false);
+        for (int id : new int[]{R.id.BTCopy, R.id.BTClear, R.id.BTPause})
+            com.winlator.cmod.ui.theme.AccentButtons.square((ImageButton) toolbarView.findViewById(id));
+        if (getPaused()) ((ImageButton) toolbarView.findViewById(R.id.BTPause)).setImageResource(R.drawable.ui_ic_m_play);
         toolbarView.findViewById(R.id.BTCopy).setOnClickListener((v) -> {
             String text = logView.getText(900_000);
             android.content.ClipboardManager cm = (android.content.ClipboardManager)context.getSystemService(Context.CLIPBOARD_SERVICE);
@@ -52,7 +55,7 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
         toolbarView.findViewById(R.id.BTClear).setOnClickListener((v) -> logView.clear());
         toolbarView.findViewById(R.id.BTPause).setOnClickListener((v) -> {
             setPaused(!paused);
-            ((ImageButton)v).setImageResource(getPaused() ? R.drawable.icon_play : R.drawable.icon_pause);
+            ((ImageButton)v).setImageResource(getPaused() ? R.drawable.ui_ic_m_play : R.drawable.ui_ic_m_pause);
         });
         llBottomBarPanel.addView(toolbarView);
         try {

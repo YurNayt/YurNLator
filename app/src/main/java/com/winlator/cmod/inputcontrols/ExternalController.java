@@ -36,6 +36,17 @@ public class ExternalController {
     private String id;
     private int deviceId = -1;
     private final ArrayList<ExternalControllerBinding> controllerBindings = new ArrayList<>();
+    /** Stick → mouse speed (×, 0.2..5) and the sticks' dead zone (0..0.5), set per controller. */
+    private float mouseSensitivity = 1.0f;
+    private float deadZone = 0.15f;
+    /** Buttons held right now, and which binding each held button started (for chords). */
+    public final java.util.HashSet<Integer> heldKeys = new java.util.HashSet<>();
+    public final java.util.HashMap<Integer, ExternalControllerBinding> activeBindings = new java.util.HashMap<>();
+
+    public float getMouseSensitivity() { return mouseSensitivity; }
+    public void setMouseSensitivity(float v) { mouseSensitivity = Math.max(0.2f, Math.min(5f, v)); }
+    public float getDeadZone() { return deadZone; }
+    public void setDeadZone(float v) { deadZone = Math.max(0f, Math.min(0.5f, v)); }
     public final GamepadState state = new GamepadState();
     public final GamepadState remappedState = new GamepadState();
     private XServerDisplayActivity activity;
@@ -106,11 +117,23 @@ public class ExternalController {
         return false;
     }
 
+    /** The button's own binding (not a chord). */
     public ExternalControllerBinding getControllerBinding(int keyCode) {
+        return getControllerBinding(keyCode, 0);
+    }
+
+    public ExternalControllerBinding getControllerBinding(int keyCode, int modifier) {
         for (ExternalControllerBinding controllerBinding : controllerBindings) {
-            if (controllerBinding.getKeyCode() == keyCode) return controllerBinding;
+            if (controllerBinding.getKeyCode() == keyCode && controllerBinding.getModifier() == modifier) return controllerBinding;
         }
         return null;
+    }
+
+    /** Whether [keyCode] takes part in a chord, as either button. */
+    public boolean inChord(int keyCode) {
+        for (ExternalControllerBinding b : controllerBindings)
+            if (b.getModifier() != 0 && (b.getKeyCode() == keyCode || b.getModifier() == keyCode)) return true;
+        return false;
     }
 
     public ExternalControllerBinding getControllerBindingAt(int index) {
@@ -118,7 +141,7 @@ public class ExternalController {
     }
 
     public void addControllerBinding(ExternalControllerBinding controllerBinding) {
-        if (getControllerBinding(controllerBinding.getKeyCode()) == null) controllerBindings.add(controllerBinding);
+        if (getControllerBinding(controllerBinding.getKeyCode(), controllerBinding.getModifier()) == null) controllerBindings.add(controllerBinding);
     }
 
     public int getPosition(ExternalControllerBinding controllerBinding) {
@@ -152,6 +175,8 @@ public class ExternalController {
             JSONObject controllerJSONObject = new JSONObject();
             controllerJSONObject.put("id", id);
             controllerJSONObject.put("name", name);
+            if (mouseSensitivity != 1.0f) controllerJSONObject.put("mouseSensitivity", (double) mouseSensitivity);
+            if (deadZone != 0.15f) controllerJSONObject.put("deadZone", (double) deadZone);
 
             JSONArray controllerBindingsJSONArray = new JSONArray();
             for (ExternalControllerBinding controllerBinding : controllerBindings) controllerBindingsJSONArray.put(controllerBinding.toJSONObject());

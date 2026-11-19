@@ -66,13 +66,15 @@
     </LinearLayout>
 
     <ImageButton
-        style="@style/ListMenuButton"
+        style="@style/ListMenuButton.Square"
         android:id="@+id/BTAddKey"
+        android:layout_marginRight="8dp"
         android:contentDescription="@string/add_key_to_combo"
-        android:src="@drawable/ui_ic_add" />
+        android:src="@drawable/ui_ic_m_add" />
 
     <ImageButton
-        style="@style/ListMenuButton"
+        style="@style/ListMenuButton.Square"
         android:id="@+id/BTRemove"
-        android:src="@drawable/icon_remove" />
+        android:contentDescription="@string/remove"
+        android:src="@drawable/ui_ic_m_delete" />
 </LinearLayout>

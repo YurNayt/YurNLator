@@ -416,29 +416,33 @@ public class InputControlsView extends View {
         return (int)Mathf.roundTo(getHeight(), snappingSize);
     }
 
+    /** Stick → mouse speed of the controller that moves the mouse now (1 for touch controls). */
+    private volatile float mouseMoveScale = 1f;
+    private float mouseRemX, mouseRemY;
+
     private void createMouseMoveTimer() {
         WinHandler winHandler = xServer.getWinHandler();
         if (mouseMoveTimer == null && profile != null) {
-            final float cursorSpeed = profile.getCursorSpeed();
             mouseMoveTimer = new Timer();
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    if (mouseMoveOffset.x != 0 || mouseMoveOffset.y != 0) {// Only move if there's an offset
-                        if (xServer.isRelativeMouseMovement())
-                            winHandler.mouseEvent(MouseEventFlags.MOVE, (int) (mouseMoveOffset.x * cursorSpeed * 10), (int) (mouseMoveOffset.y * cursorSpeed * 10), 0);
-                        else
-                            xServer.injectPointerMoveDelta(
-                                (int) (mouseMoveOffset.x * cursorSpeed * 10),
-                                (int) (mouseMoveOffset.y * cursorSpeed * 10)
-                            );
-                    }
+                    if (mouseMoveOffset.x == 0 && mouseMoveOffset.y == 0) { mouseRemX = mouseRemY = 0; return; }
+                    ControlsProfile p = profile;
+                    float speed = (p != null ? p.getCursorSpeed() : 1f) * mouseMoveScale * 10f;
+                    // Keep the fractions: a light push on the stick still moves, slowly, instead of 0 px.
+                    float fx = mouseMoveOffset.x * speed + mouseRemX;
+                    float fy = mouseMoveOffset.y * speed + mouseRemY;
+                    int dx = (int) fx, dy = (int) fy;
+                    mouseRemX = fx - dx;
+                    mouseRemY = fy - dy;
+                    if (dx == 0 && dy == 0) return;
+                    if (xServer.isRelativeMouseMovement()) winHandler.mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+                    else xServer.injectPointerMoveDelta(dx, dy);
                 }
             }, 0, 1000 / 60); // 60 FPS
         }
     }
-
-
 
     private void processJoystickInput(ExternalController controller) {
         final int[] axes = {
@@ -453,8 +457,11 @@ public class InputControlsView extends View {
         };
 
         for (int i = 0; i < axes.length; i++) {
+            float dz = controller.getDeadZone();
             float value = values[i];
-            if (Math.abs(value) > ControlElement.STICK_DEAD_ZONE) {
+            // Past the dead zone the value starts again from 0, so slow movement is possible.
+            if (i < 4 && Math.abs(value) > dz) value = Math.signum(value) * Math.min(1f, (Math.abs(value) - dz) / (1f - dz));
+            if (Math.abs(values[i]) > (i < 4 ? dz : ControlElement.STICK_DEAD_ZONE)) {
                 byte sign = Mathf.sign(value);
                 int keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], sign);
                 ExternalControllerBinding controllerBinding = controller.getControllerBinding(keyCode);
@@ -747,25 +754,57 @@ public class InputControlsView extends View {
     }
 
     public boolean onKeyEvent(KeyEvent event) {
-        if (profile != null && event.getRepeatCount() == 0) {
-            ExternalController controller = profile.getController(event.getDeviceId());
-            
-            if (controller != null) {
-                ExternalControllerBinding controllerBinding = controller.getControllerBinding(event.getKeyCode());
-                
-                if (controllerBinding != null) {
-                    int action = event.getAction();
+        if (profile == null) return false;
+        ExternalController controller = profile.getController(event.getDeviceId());
+        if (controller == null) return false;
+        int key = event.getKeyCode();
+        int action = event.getAction();
+        if (event.getRepeatCount() > 0)
+            return controller.getControllerBinding(key) != null || controller.activeBindings.containsKey(key);
 
-                    if (action == KeyEvent.ACTION_DOWN) {
-                        handleControllerBinding(controller, controllerBinding, true, 0, true);
-                    }
-                    else if (action == KeyEvent.ACTION_UP) {
-                        handleControllerBinding(controller, controllerBinding, false, 0, true);
-                    }
-                    return true;
-                }
+        if (action == KeyEvent.ACTION_DOWN) {
+            controller.heldKeys.add(key);
+            // A chord (this button while another is held) wins over the button's own binding.
+            ExternalControllerBinding chord = null;
+            for (int i = 0; i < controller.getControllerBindingCount(); i++) {
+                ExternalControllerBinding b = controller.getControllerBindingAt(i);
+                if (b.getKeyCode() == key && b.getModifier() != 0 && isHeld(controller, b.getModifier())) { chord = b; break; }
             }
+            if (chord != null) {
+                // The held button's own action stops while the chord is on.
+                ExternalControllerBinding held = controller.activeBindings.remove(chord.getModifier());
+                if (held != null) handleControllerBinding(controller, held, false, 0, true);
+                ExternalControllerBinding prev = controller.activeBindings.put(key, chord);
+                if (prev != null) handleControllerBinding(controller, prev, false, 0, true);
+                handleControllerBinding(controller, chord, true, 0, true);
+                return true;
+            }
+            ExternalControllerBinding own = controller.getControllerBinding(key);
+            if (own != null) {
+                controller.activeBindings.put(key, own);
+                handleControllerBinding(controller, own, true, 0, true);
+                return true;
+            }
+            return false;
         }
+        else if (action == KeyEvent.ACTION_UP) {
+            controller.heldKeys.remove(key);
+            ExternalControllerBinding active = controller.activeBindings.remove(key);
+            if (active != null) {
+                handleControllerBinding(controller, active, false, 0, true);
+                return true;
+            }
+            // Released after its own action was taken over by a chord: swallow the release too.
+            return controller.getControllerBinding(key) != null;
+        }
+        return false;
+    }
+
+    /** Whether a controller button is held: L2 / R2 also count when they come only as triggers. */
+    private static boolean isHeld(ExternalController controller, int keyCode) {
+        if (controller.heldKeys.contains(keyCode)) return true;
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_L2) return controller.state.isPressed(ExternalController.IDX_BUTTON_L2);
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_R2) return controller.state.isPressed(ExternalController.IDX_BUTTON_R2);
         return false;
     }
 
@@ -868,6 +907,7 @@ public class InputControlsView extends View {
             }
         }
         else {
+            if (binding.isMouseMove()) mouseMoveScale = controller != null ? controller.getMouseSensitivity() : 1f;
             if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
                 if (isActionDown) createMouseMoveTimer();
