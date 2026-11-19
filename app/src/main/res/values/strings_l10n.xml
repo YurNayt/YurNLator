@@ -1115,7 +1115,7 @@
     <string name="l_qm_pad_auto">Auto: XInput. If the game doesn\'t see the gamepad, pick XInput + DirectInput.</string>
     <string name="l_qm_pad_auto_unity">Auto: a Unity game, so DirectInput is added.</string>
     <string name="l_qm_pad_now">Now: %1$s. If the game doesn\'t notice the change, restart it.</string>
-    <string name="l_hint_pad_api">Auto: XInput, plus DirectInput for Unity games. Gamepad not seen: XInput + DirectInput. Doubled presses: XInput.</string>
+    <string name="l_hint_pad_api">Auto: XInput, plus DirectInput for Unity games. Gamepad not seen: XInput + DirectInput. Doubled presses: XInput. PC: the game gets no pad; the pad works as keyboard and mouse (PC Gamepad layout) for games without gamepad support.</string>
     <string name="l_lbl_as_container">As container</string>
     <string name="l_ste_cloud_down">Epic cloud: save files downloaded: %1$d</string>
     <string name="l_ste_cloud_up">Epic cloud: save files uploaded: %1$d</string>
@@ -1196,4 +1196,7 @@
     <string name="l_sts_ach_none_new">Achievements: nothing new to send</string>
     <string name="l_log_clear">Clear the log</string>
     <string name="l_log_pause">Pause / resume</string>
+    <string name="l_pad_pc">PC (keyboard + mouse)</string>
+    <string name="pc_layout_fill">Fill as PC Gamepad</string>
+    <string name="pc_layout_fill_confirm">Replace this controller's bindings with the PC Gamepad layout (sticks: WASD and the mouse, A: Space, RT: left click…)?</string>
 </resources>

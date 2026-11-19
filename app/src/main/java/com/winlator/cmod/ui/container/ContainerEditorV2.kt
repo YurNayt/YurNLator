@@ -1175,7 +1175,7 @@ private fun ContainerCategoryV2(
 
         "Input" -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingsCard {
-                SettingMappedChoice("Gamepad API", s.padApi, linkedMapOf("" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput")) { s.choosePadApi(it) }
+                SettingMappedChoice("Gamepad API", s.padApi, linkedMapOf("" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput", "pc" to "PC (keyboard + mouse)")) { s.choosePadApi(it) }
             }
             SettingsCard {
                 SettingToggle("Sync CPU Topology", s.syncCpu) { s.syncCpu = it }

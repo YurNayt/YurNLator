@@ -117,7 +117,7 @@ internal fun ContainerAdvancedPane(containerId: Int) {
                     container.saveData()
                 }
                 SettingsDivider()
-                SettingMappedChoice("Gamepad API", padApi, linkedMapOf("" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput")) { v ->
+                SettingMappedChoice("Gamepad API", padApi, linkedMapOf("" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput", "pc" to "PC (keyboard + mouse)")) { v ->
                     padApi = v
                     com.winlator.cmod.session.GamepadApi.saveContainer(container, v)
                     container.saveData()

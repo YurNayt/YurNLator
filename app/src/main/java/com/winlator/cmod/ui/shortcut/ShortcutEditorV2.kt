@@ -1027,7 +1027,7 @@ private fun ShortcutCategoryV2(
             SettingsCard {
                 SettingMappedChoice("Controls Profile", s.controlsProfile, profiles) { s.controlsProfile = it; s.extra("controlsProfile", it.takeUnless { id -> id == "0" }) }
                 SettingsDivider()
-                SettingMappedChoice("Gamepad API", s.padApi, linkedMapOf("" to "As container", "auto" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput")) { s.choosePadApi(it) }
+                SettingMappedChoice("Gamepad API", s.padApi, linkedMapOf("" to "As container", "auto" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput", "pc" to "PC (keyboard + mouse)")) { s.choosePadApi(it) }
                 SettingsDivider()
                 SettingToggle("Disable XInput", s.disableXInput) { s.disableXInput = it; s.extra("disableXinput", if (it) "1" else null) }
                 SettingsDivider()

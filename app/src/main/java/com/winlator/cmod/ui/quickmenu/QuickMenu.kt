@@ -848,12 +848,12 @@ private fun GamepadApiCard(bridge: QuickMenuBridge, opened: Int) {
     val unity = remember(opened) { bridge.gamepadUnity() }
     Card {
         Text(uiStr(R.string.l_qm_gamepad_api), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-        Chips(listOf("auto" to uiStr(R.string.l_qm_auto), "xinput" to "XInput", "both" to "XInput + DirectInput"), mode) {
+        Chips(listOf("auto" to uiStr(R.string.l_qm_auto), "xinput" to "XInput", "both" to "XInput + DirectInput", "pc" to "PC"), mode) {
             mode = it
             bridge.setGamepadApi(it)
             dinput = bridge.gamepadDinput()
         }
-        val now = if (dinput) "XInput + DirectInput" else "XInput"
+        val now = if (mode == "pc") uiStr(R.string.l_pad_pc) else if (dinput) "XInput + DirectInput" else "XInput"
         Text(
             (if (mode == "auto") uiStr(if (unity) R.string.l_qm_pad_auto_unity else R.string.l_qm_pad_auto) + "\n" else "") +
                 uiStr(R.string.l_qm_pad_now, now),

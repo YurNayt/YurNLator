@@ -162,6 +162,15 @@ object AccentButtons {
         view.setTextColor(WinlatorLegacyTheme.onPrimary(c))
     }
 
+    /** A text button outlined in the accent colour (a second action beside a filled one). */
+    @JvmStatic
+    fun outlined(view: TextView) {
+        val c = view.context
+        view.background = outlinedCard(c, WinlatorLegacyTheme.primary(c), android.graphics.Color.TRANSPARENT,
+            WinlatorLegacyTheme.primary(c), RADIUS_DP)
+        view.setTextColor(WinlatorLegacyTheme.primary(c))
+    }
+
     /** An outlined card behind a group of settings. */
     @JvmStatic
     fun card(view: View) {
@@ -170,3 +179,4 @@ object AccentButtons {
             WinlatorLegacyTheme.outlineVariant(c), 16f)
     }
 }
+

@@ -23,8 +23,14 @@ public final class InputDispatch {
     private InputDispatch() {}
 
     /** Generic motion for the game; the caller ORs the result with its own dispatch. */
-    public static boolean motion(MotionEvent event, WinHandler winHandler, TouchpadView touchpad) {
-        if (winHandler != null && ExternalController.isGameController(event.getDevice())) winHandler.noteDeviceInput(event.getDeviceId());
+    public static boolean motion(MotionEvent event, InputControlsView controls, WinHandler winHandler, TouchpadView touchpad) {
+        boolean gamepad = ExternalController.isGameController(event.getDevice());
+        if (winHandler != null && gamepad) winHandler.noteDeviceInput(event.getDeviceId());
+        // "PC" mode: the pad's sticks and triggers become keys and the mouse; the game sees no pad.
+        if (gamepad && controls != null && controls.isPcInput()) {
+            controls.onGenericMotionEvent(event);
+            return true;
+        }
         boolean byWinHandler = winHandler != null && winHandler.onGenericMotionEvent(event);
         boolean byTouchpad = touchpad != null && touchpad.onExternalMouseEvent(event);
         return byWinHandler || byTouchpad;
@@ -46,6 +52,11 @@ public final class InputDispatch {
                 || code == KeyEvent.KEYCODE_HOME || code == KeyEvent.KEYCODE_BUTTON_SELECT)) {
             if (!controls.onKeyEvent(event) && winHandler != null && winHandler.onKeyEvent(event) && xServer != null)
                 xServer.keyboard.onKeyEvent(event);
+            return Boolean.TRUE;
+        }
+        if (gamepad && controls.isPcInput()) {
+            // "PC" mode: bound buttons became keys / mouse buttons; the rest go nowhere (no pad in the game).
+            controls.onKeyEvent(event);
             return Boolean.TRUE;
         }
         if (!controls.onKeyEvent(event) && !winHandler.onKeyEvent(event) && xServer.keyboard.onKeyEvent(event)) return Boolean.TRUE;

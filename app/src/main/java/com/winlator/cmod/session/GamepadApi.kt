@@ -17,13 +17,16 @@ import java.io.File
  * container ("" = auto):
  *  - auto:   XInput; DirectInput too for Unity games or when the old input switches ask for it;
  *  - xinput: XInput only;
- *  - both:   XInput and DirectInput.
+ *  - both:   XInput and DirectInput;
+ *  - pc:     no pad at all, the pad drives the keyboard and mouse (for keyboard-only games).
  */
 object GamepadApi {
     const val KEY = "padApi"
     const val AUTO = "auto"
     const val XINPUT = "xinput"
     const val BOTH = "both"
+    /** No pad for the game: the pad is keyboard + mouse (inputcontrols/PcInput). */
+    const val PC = "pc"
 
     /** The stored choice, shortcut first: "auto", "xinput" or "both". */
     @JvmStatic
@@ -49,7 +52,7 @@ object GamepadApi {
     /** Whether this launch shows the DirectInput pad. */
     @JvmStatic
     fun dinputShown(lc: LaunchConfig): Boolean = when (lc.padApi) {
-        XINPUT -> false
+        XINPUT, PC -> false
         BOTH -> true
         else -> legacyDinput(lc.inputType, lc.exclusiveXInput) || lc.isUnityGame
     }
@@ -57,7 +60,7 @@ object GamepadApi {
     /** What [mode] would show for this game once saved with [save] (old per-game switches gone). */
     @JvmStatic
     fun dinputShownFor(mode: String, container: Container, unity: Boolean): Boolean = when (mode) {
-        XINPUT -> false
+        XINPUT, PC -> false
         BOTH -> true
         else -> legacyDinput(container.getInputType(), container.isExclusiveXInput()) || unity
     }

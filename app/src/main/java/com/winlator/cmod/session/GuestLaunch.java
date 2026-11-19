@@ -41,7 +41,7 @@ public final class GuestLaunch {
         log.accept("[YurNLator" + ver + "] launch: " + guestExecutable);
         if (shortcut != null) log.accept("[YurNLator] shortcut path: " + shortcut.path);
         log.accept("[YurNLator] gamepad: " + lc.getPadApi() + (lc.isUnityGame() ? ", Unity game" : "")
-                + " -> XInput" + (GamepadApi.dinputShown(lc) ? " + DirectInput" : " only"));
+                + (GamepadApi.PC.equals(lc.getPadApi()) ? " -> PC (keyboard + mouse)" : " -> XInput" + (GamepadApi.dinputShown(lc) ? " + DirectInput" : " only")));
         // What actually runs the x86 code and with which settings: launched from the file manager
         // there is no shortcut, so only the container's emulator / preset / variables apply.
         try {

@@ -42,6 +42,8 @@ public class ExternalController {
     /** Buttons held right now, and which binding each held button started (for chords). */
     public final java.util.HashSet<Integer> heldKeys = new java.util.HashSet<>();
     public final java.util.HashMap<Integer, ExternalControllerBinding> activeBindings = new java.util.HashMap<>();
+    /** Key / mouse-button bindings down right now (each goes down and up once). */
+    public final java.util.HashSet<ExternalControllerBinding> pressedBindings = new java.util.HashSet<>();
 
     public float getMouseSensitivity() { return mouseSensitivity; }
     public void setMouseSensitivity(float v) { mouseSensitivity = Math.max(0.2f, Math.min(5f, v)); }

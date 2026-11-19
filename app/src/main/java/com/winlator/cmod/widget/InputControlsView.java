@@ -409,6 +409,7 @@ public class InputControlsView extends View {
     protected void onDetachedFromWindow() {
         if (mouseMoveTimer != null)
             mouseMoveTimer.cancel();
+        mouseMoveTimer = null;
         super.onDetachedFromWindow();
     }
 
@@ -422,7 +423,7 @@ public class InputControlsView extends View {
 
     private void createMouseMoveTimer() {
         WinHandler winHandler = xServer.getWinHandler();
-        if (mouseMoveTimer == null && profile != null) {
+        if (mouseMoveTimer == null && xServer != null) {
             mouseMoveTimer = new Timer();
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
@@ -463,6 +464,8 @@ public class InputControlsView extends View {
             if (i < 4 && Math.abs(value) > dz) value = Math.signum(value) * Math.min(1f, (Math.abs(value) - dz) / (1f - dz));
             if (Math.abs(values[i]) > (i < 4 ? dz : ControlElement.STICK_DEAD_ZONE)) {
                 byte sign = Mathf.sign(value);
+                ExternalControllerBinding opposite = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], (byte) -sign));
+                if (opposite != null && controller.pressedBindings.contains(opposite)) handleControllerBinding(controller, opposite, false, 0, false);
                 int keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], sign);
                 ExternalControllerBinding controllerBinding = controller.getControllerBinding(keyCode);
                 if (controllerBinding != null) {
@@ -507,24 +510,13 @@ public class InputControlsView extends View {
 
 
 
-    @Override
-    public boolean dispatchGenericMotionEvent(MotionEvent event) {
-        Log.d("InputControlsView", "dispatchGenericMotionEvent called. Source: " + event.getSource());
-        return super.dispatchGenericMotionEvent(event);
-    }
 
 
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
-
-        Log.d("InputControlsView", "Motion event received. Source: " + event.getSource());
-        Log.d("InputControlsView", "Device ID: " + event.getDeviceId());
-        Log.d("InputControlsView", "Profile is " + (profile != null ? "set" : "null"));
-
-
-        if (!editMode && profile != null) {
+        if (!editMode && (profile != null || pcInput)) {
             // Retrieve the associated controller for this event
-            ExternalController controller = profile.getController(event.getDeviceId());
+            ExternalController controller = controllerFor(event.getDeviceId());
 
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
                 // Process L2 and R2 button bindings
@@ -541,10 +533,6 @@ public class InputControlsView extends View {
                 if (controllerBinding != null) {
                     handleControllerBinding(controller, controllerBinding, controller.state.isPressed(ExternalController.IDX_BUTTON_R2), 0, true);
                 }
-
-                Log.d("InputEvent", "Event source: " + event.getSource());
-                Log.d("InputEvent", "Device ID: " + event.getDeviceId());
-                Log.d("InputEvent", "Action: " + event.getAction());
 
                 // Process joystick inputs for mouse movement and other bindings
                 processJoystickInput(controller);
@@ -754,8 +742,8 @@ public class InputControlsView extends View {
     }
 
     public boolean onKeyEvent(KeyEvent event) {
-        if (profile == null) return false;
-        ExternalController controller = profile.getController(event.getDeviceId());
+        if (editMode || (profile == null && !pcInput)) return false;
+        ExternalController controller = controllerFor(event.getDeviceId());
         if (controller == null) return false;
         int key = event.getKeyCode();
         int action = event.getAction();
@@ -808,8 +796,53 @@ public class InputControlsView extends View {
         return false;
     }
 
-    /** A physical controller button's binding: one key, or a key combination pressed together. */
+    /** "PC" gamepad mode (GamepadApi.PC): pads become keyboard + mouse with the PC Gamepad layout. */
+    private volatile boolean pcInput;
+    private final java.util.HashMap<Integer, ExternalController> pcControllers = new java.util.HashMap<>();
+
+    public boolean isPcInput() {
+        return pcInput;
+    }
+
+    public void setPcInput(boolean on) {
+        if (pcInput == on) return;
+        pcInput = on;
+        if (!on) {
+            for (ExternalController c : pcControllers.values()) releaseAll(c);
+            pcControllers.clear();
+        }
+    }
+
+    /** The pad's bindings: the profile's own for it if it has any, else the PC layout in PC mode. */
+    private ExternalController controllerFor(int deviceId) {
+        ExternalController own = profile != null ? profile.getController(deviceId) : null;
+        if (own != null && (own.getControllerBindingCount() > 0 || !pcInput)) return own;
+        if (!pcInput) return null;
+        ExternalController pc = pcControllers.get(deviceId);
+        if (pc == null) {
+            pc = com.winlator.cmod.inputcontrols.PcInput.controllerFor(deviceId);
+            if (pc != null) pcControllers.put(deviceId, pc);
+        }
+        return pc;
+    }
+
+    /** Lets go of everything a pad holds (keys, buttons, the mouse's movement). */
+    private void releaseAll(ExternalController c) {
+        for (ExternalControllerBinding b : new java.util.ArrayList<>(c.pressedBindings)) handleControllerBinding(c, b, false, 0, true);
+        c.pressedBindings.clear();
+        c.activeBindings.clear();
+        mouseMoveOffset.set(0, 0);
+    }
+
+    /** A physical controller button's binding: one key, or a key combination pressed together.
+     *  Keys and mouse buttons go down and up once (a stick or trigger reports many times while
+     *  held; repeating the press made games see extra clicks); mouse movement and gamepad
+     *  bindings follow every value. */
     private void handleControllerBinding(ExternalController controller, ExternalControllerBinding cb, boolean down, float value, boolean sendUpdate) {
+        Binding main = cb.getBinding();
+        if (main != Binding.NONE && !main.isMouseMove() && !main.isGamepad()) {
+            if (down ? !controller.pressedBindings.add(cb) : !controller.pressedBindings.remove(cb)) return;
+        }
         if (cb.getExtras().isEmpty()) {
             handleInputEvent(controller, cb.getBinding(), down, value, sendUpdate);
             return;

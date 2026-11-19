@@ -281,6 +281,22 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
         TextView chord = findViewById(R.id.BTAddChord);
         com.winlator.cmod.ui.theme.AccentButtons.filled(chord);
         chord.setOnClickListener((v) -> captureChord());
+
+        // The "PC" gamepad mode's layout as a starting point to change.
+        TextView fillPc = findViewById(R.id.BTFillPc);
+        com.winlator.cmod.ui.theme.AccentButtons.outlined(fillPc);
+        fillPc.setOnClickListener((v) -> new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setMessage(R.string.pc_layout_fill_confirm)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    com.winlator.cmod.inputcontrols.PcInput.fill(controller);
+                    controller.setMouseSensitivity(2.0f);
+                    profile.save();
+                    sbSpeed.setProgress(Math.round((controller.getMouseSensitivity() - 0.2f) * 10f));
+                    adapter.notifyDataSetChanged();
+                    updateEmptyTextView();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show());
     }
 
     /** A button chord: hold the first button, press the second. Asked for one press at a time. */

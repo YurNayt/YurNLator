@@ -516,6 +516,9 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
     @Override public void setGamepadApi(String mode) {
         if (a.container == null) return;
         com.winlator.cmod.session.GamepadApi.save(a.container, a.shortcut, mode);
+        if (a.inputControlsView != null)
+            a.inputControlsView.setPcInput(com.winlator.cmod.session.GamepadApi.PC.equals(
+                    com.winlator.cmod.session.GamepadApi.mode(a.container, a.shortcut)));
         boolean show = com.winlator.cmod.session.GamepadApi.dinputShownFor(mode, a.container, gamepadUnity());
         if (show != gamepadDinput()) {
             padDinput = show;

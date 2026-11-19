@@ -466,6 +466,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         dxwrapper = lc.getDxwrapper();
         String dxwrapperConfig = lc.getDxwrapperConfig();
         winHandler.setInputType((byte) lc.getInputType());
+        if (inputControlsView != null) inputControlsView.setPcInput(com.winlator.cmod.session.GamepadApi.PC.equals(lc.getPadApi()));
         lc_all = lc.getLcAll();
 
         Intent intent = getIntent();
@@ -708,6 +709,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 cursorLock ? (view, event) -> { handleCapturedPointer(event); return true; } : null);
         touchpadView = touchViews.touchpad;
         inputControlsView = touchViews.controls;
+        if (launchConfig != null) inputControlsView.setPcInput(com.winlator.cmod.session.GamepadApi.PC.equals(launchConfig.getPadApi()));
 
         boolean isTimeoutEnabled = preferences.getBoolean("touchscreen_timeout_enabled", false);
         if (isTimeoutEnabled) {
@@ -764,7 +766,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
         // Gamepads and mice: ui/ingame/InputDispatch.
-        boolean ours = com.winlator.cmod.ui.ingame.InputDispatch.motion(event, winHandler, touchpadView);
+        boolean ours = com.winlator.cmod.ui.ingame.InputDispatch.motion(event, inputControlsView, winHandler, touchpadView);
         return super.dispatchGenericMotionEvent(event) || ours;
     }
 

@@ -1115,7 +1115,7 @@
     <string name="l_qm_pad_auto">Авто: XInput. Если игра не видит геймпад — выберите XInput + DirectInput.</string>
     <string name="l_qm_pad_auto_unity">Авто: игра на Unity, поэтому добавлен DirectInput.</string>
     <string name="l_qm_pad_now">Сейчас: %1$s. Если игра не заметила смену — перезапустите её.</string>
-    <string name="l_hint_pad_api">Авто: XInput, для Unity-игр ещё DirectInput. Геймпад не виден — XInput + DirectInput. Нажатия двоятся — XInput.</string>
+    <string name="l_hint_pad_api">Авто: XInput, для Unity-игр ещё DirectInput. Геймпад не виден — XInput + DirectInput. Нажатия двоятся — XInput. PC: игра не видит геймпад, он работает как клавиатура и мышь (раскладка PC Gamepad) — для игр без поддержки геймпада.</string>
     <string name="l_lbl_as_container">Как в контейнере</string>
     <string name="l_ste_cloud_down">Облако Epic: скачано файлов сохранений: %1$d</string>
     <string name="l_ste_cloud_up">Облако Epic: отправлено файлов сохранений: %1$d</string>
@@ -1196,4 +1196,7 @@
     <string name="l_sts_ach_none_new">Достижения: новых для отправки нет</string>
     <string name="l_log_clear">Очистить лог</string>
     <string name="l_log_pause">Пауза / продолжить</string>
+    <string name="l_pad_pc">PC (клавиатура и мышь)</string>
+    <string name="pc_layout_fill">Заполнить как PC Gamepad</string>
+    <string name="pc_layout_fill_confirm">Заменить назначения этого контроллера раскладкой PC Gamepad (стики: WASD и мышь, A: пробел, RT: левый клик…)?</string>
 </resources>
