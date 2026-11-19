@@ -93,10 +93,38 @@ public class InputControlsFragment extends Fragment {
         ((AppCompatActivity) requireActivity()).getSupportActionBar().setTitle(R.string.input_controls);
     }
 
+    /** Controllers that connect or leave while this screen is open show up at once. */
+    private final android.hardware.input.InputManager.InputDeviceListener deviceListener =
+            new android.hardware.input.InputManager.InputDeviceListener() {
+        @Override public void onInputDeviceAdded(int deviceId) { refreshSoon(); }
+        @Override public void onInputDeviceRemoved(int deviceId) { refreshSoon(); }
+        @Override public void onInputDeviceChanged(int deviceId) { refreshSoon(); }
+    };
+    private final android.os.Handler refreshHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable refreshRunnable = this::refreshCompose;
+
+    /** A pad's devices (pad, touchpad, motion sensors) arrive one by one and get their sources a
+     *  moment later: refresh now and once more after they settle. */
+    private void refreshSoon() {
+        refreshHandler.removeCallbacks(refreshRunnable);
+        refreshHandler.post(refreshRunnable);
+        refreshHandler.postDelayed(refreshRunnable, 800);
+    }
+
     @Override
     public void onStart() {
         super.onStart();
         refreshCompose();
+        android.hardware.input.InputManager im = (android.hardware.input.InputManager) requireContext().getSystemService(Context.INPUT_SERVICE);
+        if (im != null) im.registerInputDeviceListener(deviceListener, refreshHandler);
+    }
+
+    @Override
+    public void onStop() {
+        android.hardware.input.InputManager im = (android.hardware.input.InputManager) requireContext().getSystemService(Context.INPUT_SERVICE);
+        if (im != null) im.unregisterInputDeviceListener(deviceListener);
+        refreshHandler.removeCallbacksAndMessages(null);
+        super.onStop();
     }
 
     @Override

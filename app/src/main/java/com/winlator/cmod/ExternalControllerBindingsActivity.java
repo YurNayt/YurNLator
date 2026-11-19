@@ -74,6 +74,12 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
         actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_back);
+        // The bar in the app's colours: it was a light bar with a white title nobody could read.
+        int barText = com.winlator.cmod.ui.theme.WinlatorLegacyTheme.onSurface(this);
+        toolbar.setBackgroundColor(com.winlator.cmod.ui.theme.WinlatorLegacyTheme.surface(this));
+        toolbar.setTitleTextColor(barText);
+        if (toolbar.getNavigationIcon() != null) toolbar.getNavigationIcon().setTint(barText);
+        getWindow().getDecorView().setBackgroundColor(com.winlator.cmod.ui.theme.WinlatorLegacyTheme.surface(this));
 
         setupStickSettings();
 

@@ -15,8 +15,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:layout_marginRight="8dp">
+        android:orientation="vertical">
 
         <TextView
             android:id="@+id/TVTitle"
@@ -29,6 +28,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <Spinner
@@ -50,6 +50,19 @@
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:clickable="true" />
+            <ImageButton
+                style="@style/ListMenuButton.Square"
+                android:id="@+id/BTAddKey"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="8dp"
+                android:contentDescription="@string/add_key_to_combo"
+                android:src="@drawable/ui_ic_m_add" />
+
+            <ImageButton
+                style="@style/ListMenuButton.Square"
+                android:id="@+id/BTRemove"
+                android:contentDescription="@string/remove"
+                android:src="@drawable/ui_ic_m_delete" />
         </LinearLayout>
 
         <TextView
@@ -65,16 +78,4 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <ImageButton
-        style="@style/ListMenuButton.Square"
-        android:id="@+id/BTAddKey"
-        android:layout_marginRight="8dp"
-        android:contentDescription="@string/add_key_to_combo"
-        android:src="@drawable/ui_ic_m_add" />
-
-    <ImageButton
-        style="@style/ListMenuButton.Square"
-        android:id="@+id/BTRemove"
-        android:contentDescription="@string/remove"
-        android:src="@drawable/ui_ic_m_delete" />
 </LinearLayout>

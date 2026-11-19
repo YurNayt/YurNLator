@@ -24,6 +24,7 @@ public final class InputDispatch {
 
     /** Generic motion for the game; the caller ORs the result with its own dispatch. */
     public static boolean motion(MotionEvent event, WinHandler winHandler, TouchpadView touchpad) {
+        if (winHandler != null && ExternalController.isGameController(event.getDevice())) winHandler.noteDeviceInput(event.getDeviceId());
         boolean byWinHandler = winHandler != null && winHandler.onGenericMotionEvent(event);
         boolean byTouchpad = touchpad != null && touchpad.onExternalMouseEvent(event);
         return byWinHandler || byTouchpad;
@@ -37,6 +38,7 @@ public final class InputDispatch {
     public static Boolean key(KeyEvent event, DrawerLayout drawer, InputControlsView controls, WinHandler winHandler, XServer xServer) {
         int code = event.getKeyCode();
         boolean gamepad = ExternalController.isGameController(event.getDevice());
+        if (gamepad && winHandler != null) winHandler.noteDeviceInput(event.getDeviceId());
         if (drawer != null && drawer.isDrawerOpen(GravityCompat.START) && code != KeyEvent.KEYCODE_BACK
                 && code != KeyEvent.KEYCODE_BUTTON_MODE && code != KeyEvent.KEYCODE_BUTTON_SELECT && !gamepad)
             return null;

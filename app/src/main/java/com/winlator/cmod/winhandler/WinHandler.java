@@ -137,6 +137,21 @@ public class WinHandler {
         }
     }
 
+    private final android.os.Handler connectHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+
+    private void checkNewDevice(int deviceId) {
+        ExternalController c = ExternalController.getController(deviceId);
+        if (c != null && c.getDeviceId() == deviceId) notePadInput(c);
+    }
+
+    /** Any input from a gamepad, whoever handles it (the controls' bindings or the game): the
+     *  connect notice comes with or without an on-screen overlay. */
+    public void noteDeviceInput(int deviceId) {
+        if (deviceId <= 0 || activePads.contains(deviceId)) return;
+        ExternalController c = getController(deviceId);
+        if (c != null) notePadInput(c);
+    }
+
     private void notePadInput(ExternalController controller) {
         if (!activePads.add(controller.getDeviceId())) return;
         // One pad can show up as several devices (a DualSense also as "… Touchpad" and "… Motion
@@ -154,9 +169,11 @@ public class WinHandler {
             @Override
             public void onInputDeviceAdded(int deviceId) {
                 // The notice (and the on-screen buttons stepping aside) as soon as a pad connects,
-                // not at its first button press.
-                ExternalController c = ExternalController.getController(deviceId);
-                if (c != null) notePadInput(c);
+                // not at its first button press. A Bluetooth pad often arrives before it says it
+                // is a gamepad, so it is looked at again a little later too.
+                checkNewDevice(deviceId);
+                connectHandler.postDelayed(() -> checkNewDevice(deviceId), 400);
+                connectHandler.postDelayed(() -> checkNewDevice(deviceId), 1500);
             }
 
             @Override
@@ -166,9 +183,11 @@ public class WinHandler {
             }
 
             @Override
-            public void onInputDeviceChanged(int deviceId) {}
+            public void onInputDeviceChanged(int deviceId) {
+                checkNewDevice(deviceId);
+            }
         };
-        inputManager.registerInputDeviceListener(inputDeviceListener, null);
+        inputManager.registerInputDeviceListener(inputDeviceListener, connectHandler);
         preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
         for (int i = 0; i < MAX_CONTROLLERS; i++) {
             vibrationEnabledSlots[i] = preferences.getBoolean("vibration_slot_" + i, true);
@@ -699,6 +718,7 @@ public class WinHandler {
     }
 
     public void closeFakeInputWriter() {
+        connectHandler.removeCallbacksAndMessages(null);
         if (inputManager != null && inputDeviceListener != null) {
             inputManager.unregisterInputDeviceListener(inputDeviceListener);
         }
