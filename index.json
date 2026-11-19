@@ -1,7 +1,27 @@
 {
  "version": 1,
- "updated": 1795116438,
+ "updated": 1795116662,
  "presets": [
+  {
+   "id": "cbf62478a339",
+   "game": "WWE 2K24",
+   "game_key": "wwe2k24",
+   "exe": "wwe2k24_x64.exe",
+   "title": "stable 60nfps wwe 2k24",
+   "author": "EMULIZED",
+   "device": "nubia NX769J",
+   "soc": "SM8650",
+   "gpu": "Adreno 750",
+   "created": 1795116650,
+   "app_version": "v1.1.2",
+   "issue": 10,
+   "likes": 0,
+   "comments": 0,
+   "login": "",
+   "controls": "PC Gamepad",
+   "has_settings": true,
+   "published": 1795116662
+  },
   {
    "id": "5641e3013594",
    "game": "WWE 2K24",
