@@ -7,6 +7,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
@@ -158,7 +165,8 @@ object UpdateNotice {
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                // A little below the top edge, clear of the screen's own title.
+                .padding(start = 12.dp, end = 12.dp, top = 28.dp, bottom = 8.dp)
                 .onSizeChanged { heightPx = it.height }
                 .graphicsLayer { translationY = y.value }
                 .pointerInput(Unit) {
@@ -180,50 +188,57 @@ object UpdateNotice {
                     }
                 },
             shape = RoundedCornerShape(16.dp),
-            color = scheme.surfaceContainerHigh,
+            // See-through, so what is underneath still shows.
+            color = scheme.surfaceContainerHigh.copy(alpha = 0.78f),
             border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant),
             shadowElevation = 8.dp,
         ) {
-            Column(Modifier.padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(38.dp).background(scheme.primaryContainer, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.SystemUpdate, null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(21.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(uiStr(R.string.l_upd_notice_title, update.version), style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        Text(
-                            when (val st = step) {
-                                Step.Offer -> uiStr(R.string.l_upd_notice_text) + String.format(java.util.Locale.US, " · %.1f MB", update.size / 1048576.0)
-                                Step.Downloading -> uiStr(R.string.l_upd_downloading)
-                                is Step.Ready -> uiStr(R.string.l_upd_ready)
-                                Step.Failed -> uiStr(R.string.l_upd_download_failed)
-                            },
-                            style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 2
-                        )
-                    }
+            // The picture runs the card's full height; title, state and the buttons or the
+            // download's progress sit to its right.
+            Row(Modifier.height(IntrinsicSize.Min).padding(10.dp)) {
+                Box(
+                    Modifier.fillMaxHeight().defaultMinSize(minHeight = 88.dp).aspectRatio(1f, matchHeightConstraintsFirst = true)
+                        .background(scheme.primaryContainer.copy(alpha = 0.9f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Outlined.SystemUpdate, null, tint = scheme.onPrimaryContainer, modifier = Modifier.fillMaxSize(0.5f))
                 }
-                when (val st = step) {
-                    Step.Downloading -> DownloadProgress(AppUpdater.DOWNLOAD_KEY, Modifier.padding(top = 10.dp, end = 4.dp))
-                    else -> Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { leave() },
-                            colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant)) { Text(uiStr(R.string.l_upd_later)) }
-                        Spacer(Modifier.width(6.dp))
-                        when (st) {
-                            Step.Offer, Step.Failed -> Button(onClick = {
-                                step = Step.Downloading
-                                scope.launch { finished(AppUpdater.startDownload(context, update).await()) }
-                            }) { Text(uiStr(R.string.l_upd_update)) }
-                            is Step.Ready -> {
-                                if (!AppUpdater.canInstall(context)) {
-                                    OutlinedButton(onClick = { AppUpdater.openInstallPermission(context) }) { Text(uiStr(R.string.l_upd_allow)) }
-                                    Spacer(Modifier.width(6.dp))
-                                }
-                                Button(onClick = { AppUpdater.install(context, st.apk) }) { Text(uiStr(R.string.l_upd_install)) }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f).padding(top = 2.dp)) {
+                    Text(uiStr(R.string.l_upd_notice_title, update.version), style = MaterialTheme.typography.titleMedium,
+                        fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text(
+                        when (step) {
+                            Step.Offer -> uiStr(R.string.l_upd_notice_text) + String.format(java.util.Locale.US, " · %.1f MB", update.size / 1048576.0)
+                            Step.Downloading -> uiStr(R.string.l_upd_downloading)
+                            is Step.Ready -> uiStr(R.string.l_upd_ready)
+                            Step.Failed -> uiStr(R.string.l_upd_download_failed)
+                        },
+                        style = MaterialTheme.typography.bodyMedium, fontSize = 15.sp, color = scheme.onSurfaceVariant, maxLines = 2
+                    )
+                    when (val st = step) {
+                        Step.Downloading -> DownloadProgress(AppUpdater.DOWNLOAD_KEY, Modifier.padding(top = 10.dp, end = 4.dp, bottom = 4.dp))
+                        else -> Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { leave() },
+                                colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant)) {
+                                Text(uiStr(R.string.l_upd_later), fontSize = 15.sp)
                             }
-                            else -> {}
+                            Spacer(Modifier.width(6.dp))
+                            when (st) {
+                                Step.Offer, Step.Failed -> Button(onClick = {
+                                    step = Step.Downloading
+                                    scope.launch { finished(AppUpdater.startDownload(context, update).await()) }
+                                }) { Text(uiStr(R.string.l_upd_update), fontSize = 15.sp) }
+                                is Step.Ready -> {
+                                    if (!AppUpdater.canInstall(context)) {
+                                        OutlinedButton(onClick = { AppUpdater.openInstallPermission(context) }) { Text(uiStr(R.string.l_upd_allow)) }
+                                        Spacer(Modifier.width(6.dp))
+                                    }
+                                    Button(onClick = { AppUpdater.install(context, st.apk) }) { Text(uiStr(R.string.l_upd_install), fontSize = 15.sp) }
+                                }
+                                else -> {}
+                            }
                         }
                     }
                 }
