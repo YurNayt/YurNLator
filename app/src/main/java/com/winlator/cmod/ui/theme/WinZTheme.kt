@@ -10,12 +10,14 @@ import androidx.appcompat.widget.Toolbar
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
@@ -315,6 +317,19 @@ fun WinlatorTheme(content: @Composable () -> Unit) {
 
 @Composable
 fun WinZTheme(content: @Composable () -> Unit) = WinlatorTheme(content)
+
+/**
+ * The app's colours and type for something drawn over a screen (a banner, a toast): no background
+ * of its own. [WinlatorTheme] fills its whole area with the screen colour, which put an opaque
+ * rectangle behind a see-through card.
+ */
+@Composable
+fun WinZOverlayTheme(content: @Composable () -> Unit) {
+    val colors = winlatorColorScheme(WinlatorThemeManager.currentTheme())
+    MaterialTheme(colorScheme = colors, typography = WinlatorTypography, shapes = WinlatorShapes) {
+        CompositionLocalProvider(LocalContentColor provides colors.onSurface) { content() }
+    }
+}
 
 @Composable
 private fun HideSystemBars(theme: WinlatorThemeType) {

@@ -172,7 +172,7 @@ object UpdateNotice {
             handler.removeCallbacks(tick)
         }
         val close = { root.post { root.removeView(view); if (!preview) showing = false } }
-        view.setContent { WinZTheme { Banner(update, look, preview) { close() } } }
+        view.setContent { com.winlator.cmod.ui.theme.WinZOverlayTheme { Banner(update, look, preview) { close() } } }
         val metrics = activity.resources.displayMetrics
         val width = (metrics.widthPixels * look.widthPercent.coerceIn(30, 100) / 100f).toInt()
         val vertical = when (look.place) { "bottom" -> android.view.Gravity.BOTTOM; "center" -> android.view.Gravity.CENTER_VERTICAL; else -> android.view.Gravity.TOP }
