@@ -346,6 +346,7 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             // About is last; its version line unlocks the developer options (tap it five times).
             item("about-title") { SectionTitle(uiStr(R.string.l_set_about)) }
             item("update") { AppUpdatePreferenceCard() }
+            item("update_banner") { UpdateBannerTuningCard() }
             item("about") {
                 NavigationRow(Icons.Outlined.Info, uiStr(R.string.l_set_about_2), null) {
                     activity?.showAboutDialog { devOptions = DeveloperOptions.enabled(context); activity?.updateBenchTab() }

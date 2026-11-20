@@ -5,6 +5,9 @@ import android.view.ViewGroup
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.preference.PreferenceManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -110,17 +113,71 @@ object UpdateNotice {
         }, "UpdateNotice").apply { isDaemon = true }.start()
     }
 
-    private fun show(activity: Activity, update: AppUpdater.Update) {
+    /** Shows the banner with a made-up update, to try its look (Settings → Update notice look). */
+    @JvmStatic
+    fun preview(activity: Activity) {
         val root = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
+        root.findViewWithTag<android.view.View>(TAG)?.let { root.removeView(it) }
+        show(activity, AppUpdater.Update("dev 999", "", 600L * 1048576, "", ""), preview = true)
+    }
+
+    private const val TAG = "update_banner"
+
+    /** How the banner looks and where it comes from; tunable in Settings while its final look is chosen. */
+    class Look(
+        /** top, bottom, left, right: the edge it slides in from. */
+        val from: String,
+        /** top, center, bottom: where it rests. */
+        val place: String,
+        val marginDp: Int, val widthPercent: Int, val pictureDp: Int, val pictureFull: Boolean,
+        val textPercent: Int, val opacityPercent: Int, val cornerDp: Int,
+    ) {
+        fun save(context: android.content.Context) {
+            PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putString("upd_banner_from", from).putString("upd_banner_place", place)
+                .putInt("upd_banner_margin", marginDp).putInt("upd_banner_width", widthPercent)
+                .putInt("upd_banner_picture", pictureDp).putBoolean("upd_banner_picture_full", pictureFull)
+                .putInt("upd_banner_text", textPercent).putInt("upd_banner_opacity", opacityPercent)
+                .putInt("upd_banner_corner", cornerDp).apply()
+        }
+
+        fun copy(from: String = this.from, place: String = this.place, marginDp: Int = this.marginDp,
+                 widthPercent: Int = this.widthPercent, pictureDp: Int = this.pictureDp, pictureFull: Boolean = this.pictureFull,
+                 textPercent: Int = this.textPercent, opacityPercent: Int = this.opacityPercent, cornerDp: Int = this.cornerDp) =
+            Look(from, place, marginDp, widthPercent, pictureDp, pictureFull, textPercent, opacityPercent, cornerDp)
+
+        companion object {
+            val DEFAULT = Look("top", "top", 28, 100, 88, true, 100, 78, 16)
+            fun load(context: android.content.Context): Look {
+                val p = PreferenceManager.getDefaultSharedPreferences(context)
+                val d = DEFAULT
+                return Look(p.getString("upd_banner_from", d.from) ?: d.from, p.getString("upd_banner_place", d.place) ?: d.place,
+                    p.getInt("upd_banner_margin", d.marginDp), p.getInt("upd_banner_width", d.widthPercent),
+                    p.getInt("upd_banner_picture", d.pictureDp), p.getBoolean("upd_banner_picture_full", d.pictureFull),
+                    p.getInt("upd_banner_text", d.textPercent), p.getInt("upd_banner_opacity", d.opacityPercent),
+                    p.getInt("upd_banner_corner", d.cornerDp))
+            }
+        }
+    }
+
+    private fun show(activity: Activity, update: AppUpdater.Update, preview: Boolean = false) {
+        val root = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
+        val look = Look.load(activity)
         val view = ComposeView(activity)
-        showing = true
-        done = true
-        handler.removeCallbacks(tick)
-        val close = { root.post { root.removeView(view); showing = false } }
-        view.setContent { WinZTheme { Banner(update) { close() } } }
-        // Only the banner's own height at the top: the screen below stays usable.
-        root.addView(view, android.widget.FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP))
+        view.tag = TAG
+        if (!preview) {
+            showing = true
+            done = true
+            handler.removeCallbacks(tick)
+        }
+        val close = { root.post { root.removeView(view); if (!preview) showing = false } }
+        view.setContent { WinZTheme { Banner(update, look, preview) { close() } } }
+        val metrics = activity.resources.displayMetrics
+        val width = (metrics.widthPixels * look.widthPercent.coerceIn(30, 100) / 100f).toInt()
+        val vertical = when (look.place) { "bottom" -> android.view.Gravity.BOTTOM; "center" -> android.view.Gravity.CENTER_VERTICAL; else -> android.view.Gravity.TOP }
+        // Only the banner's own size: the screen around it stays usable.
+        root.addView(view, android.widget.FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.WRAP_CONTENT,
+            vertical or android.view.Gravity.CENTER_HORIZONTAL))
     }
 
     private sealed class Step {
@@ -131,27 +188,34 @@ object UpdateNotice {
     }
 
     /**
-     * A card that slides down from the top edge over whatever is on screen. Swipe it up (where it
-     * came from) to put it away: the finger moves it 1:1, downwards it gives way with resistance;
-     * a flick or a third of its height sends it off with a spring at the finger's speed, otherwise
-     * it springs back.
+     * The card slides in from [Look.from] and leaves the same way. Swipe it towards that edge to put
+     * it away: the finger moves it 1:1, the other way it gives way with resistance; a flick or a
+     * third of its size sends it off with a spring at the finger's speed, otherwise it springs back.
      */
     @Composable
-    private fun Banner(update: AppUpdater.Update, onGone: () -> Unit) {
+    private fun Banner(update: AppUpdater.Update, look: Look, preview: Boolean, onGone: () -> Unit) {
         val context = androidx.compose.ui.platform.LocalContext.current
         val density = androidx.compose.ui.platform.LocalDensity.current
         val scope = androidx.compose.runtime.rememberCoroutineScope()
-        var heightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-        val hiddenY = { -(heightPx + with(density) { 48.dp.toPx() }) }
-        val y = remember { androidx.compose.animation.core.Animatable(with(density) { -200.dp.toPx() }) }
+        val horizontal = look.from == "left" || look.from == "right"
+        // The direction (+1 / -1) along the axis towards the edge it came from.
+        val toEdge = if (look.from == "top" || look.from == "left") -1f else 1f
+        var sizePx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+        val screenPx = with(density) {
+            val m = context.resources.displayMetrics
+            (if (horizontal) m.widthPixels else m.heightPixels).toFloat()
+        }
+        val hidden = { toEdge * (if (sizePx > 0) sizePx + with(density) { (look.marginDp + 48).dp.toPx() } else screenPx) }
+        val offset = remember { androidx.compose.animation.core.Animatable(toEdge * screenPx) }
         var step by remember { mutableStateOf<Step>(Step.Offer) }
 
         androidx.compose.runtime.LaunchedEffect(Unit) {
-            y.animateTo(0f, androidx.compose.animation.core.spring(0.8f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
+            offset.snapTo(hidden())
+            offset.animateTo(0f, androidx.compose.animation.core.spring(0.8f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
         }
         fun leave(velocity: Float = 0f) {
             scope.launch {
-                y.animateTo(hiddenY(), androidx.compose.animation.core.spring(1f, androidx.compose.animation.core.Spring.StiffnessMediumLow), velocity)
+                offset.animateTo(hidden(), androidx.compose.animation.core.spring(1f, androidx.compose.animation.core.Spring.StiffnessMediumLow), velocity)
                 onGone()
             }
         }
@@ -161,52 +225,60 @@ object UpdateNotice {
         }
 
         val scheme = MaterialTheme.colorScheme
+        val t = look.textPercent.coerceIn(60, 200) / 100f
+        val edgePad = look.marginDp.coerceIn(0, 300).dp
+        val pad = when (look.place) {
+            "bottom" -> Modifier.navigationBarsPadding().padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = edgePad)
+            "center" -> Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            else -> Modifier.statusBarsPadding().padding(start = 12.dp, end = 12.dp, top = edgePad, bottom = 8.dp)
+        }
+        val drag = Modifier.pointerInput(horizontal) {
+            val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+            var total = 0f
+            val fling = with(density) { 500.dp.toPx() }
+            val onEnd: () -> Unit = {
+                val v = tracker.calculateVelocity().let { if (horizontal) it.x else it.y }
+                if (v * toEdge > fling || offset.value * toEdge > sizePx / 3f) leave(v)
+                else { scope.launch { offset.animateTo(0f, androidx.compose.animation.core.spring(0.8f, androidx.compose.animation.core.Spring.StiffnessMedium), v) } }
+            }
+            val onDrag: (androidx.compose.ui.input.pointer.PointerInputChange, Float) -> Unit = { change, amount ->
+                change.consume()
+                total += amount
+                tracker.addPosition(change.uptimeMillis, if (horizontal) androidx.compose.ui.geometry.Offset(total, 0f) else androidx.compose.ui.geometry.Offset(0f, total))
+                // Towards its edge: 1:1. The other way: a fifth.
+                scope.launch { offset.snapTo(if (total * toEdge < 0f) total * 0.2f else total) }
+                Unit
+            }
+            val start: (androidx.compose.ui.geometry.Offset) -> Unit = { tracker.resetTracking(); total = offset.value; scope.launch { offset.stop() } }
+            if (horizontal) detectHorizontalDragGestures(onDragStart = start, onDragEnd = onEnd, onDragCancel = { scope.launch { offset.animateTo(0f) } }) { c, a -> onDrag(c, a) }
+            else detectVerticalDragGestures(onDragStart = start, onDragEnd = onEnd, onDragCancel = { scope.launch { offset.animateTo(0f) } }) { c, a -> onDrag(c, a) }
+        }
+        val shape = RoundedCornerShape(look.cornerDp.coerceIn(0, 40).dp)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
-                // A little below the top edge, clear of the screen's own title.
-                .padding(start = 12.dp, end = 12.dp, top = 28.dp, bottom = 8.dp)
-                .onSizeChanged { heightPx = it.height }
-                .graphicsLayer { translationY = y.value }
-                .pointerInput(Unit) {
-                    val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
-                    var total = 0f
-                    detectVerticalDragGestures(
-                        onDragStart = { tracker.resetTracking(); total = y.value; scope.launch { y.stop() } },
-                        onDragEnd = {
-                            val v = tracker.calculateVelocity().y
-                            if (v < -with(density) { 500.dp.toPx() } || y.value < -heightPx / 3f) leave(v)
-                            else scope.launch { y.animateTo(0f, androidx.compose.animation.core.spring(0.8f, androidx.compose.animation.core.Spring.StiffnessMedium), v) }
-                        },
-                        onDragCancel = { scope.launch { y.animateTo(0f) } }
-                    ) { change, amount ->
-                        change.consume()
-                        total += amount
-                        tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, total))
-                        scope.launch { y.snapTo(if (total > 0f) total * 0.2f else total) }
-                    }
-                },
-            shape = RoundedCornerShape(16.dp),
+                .then(pad)
+                .onSizeChanged { sizePx = if (horizontal) it.width else it.height }
+                .graphicsLayer { if (horizontal) translationX = offset.value else translationY = offset.value }
+                .then(drag),
+            shape = shape,
             // See-through, so what is underneath still shows.
-            color = scheme.surfaceContainerHigh.copy(alpha = 0.78f),
+            color = scheme.surfaceContainerHigh.copy(alpha = look.opacityPercent.coerceIn(10, 100) / 100f),
             border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant),
             shadowElevation = 8.dp,
         ) {
-            // The picture runs the card's full height; title, state and the buttons or the
-            // download's progress sit to its right.
-            Row(Modifier.height(IntrinsicSize.Min).padding(10.dp)) {
-                Box(
-                    Modifier.fillMaxHeight().defaultMinSize(minHeight = 88.dp).aspectRatio(1f, matchHeightConstraintsFirst = true)
-                        .background(scheme.primaryContainer.copy(alpha = 0.9f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
+            Row(Modifier.height(IntrinsicSize.Min).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                val picture = if (look.pictureFull)
+                    Modifier.fillMaxHeight().defaultMinSize(minHeight = look.pictureDp.coerceIn(24, 200).dp).aspectRatio(1f, matchHeightConstraintsFirst = true)
+                else Modifier.size(look.pictureDp.coerceIn(24, 200).dp)
+                Box(picture.background(scheme.primaryContainer.copy(alpha = 0.9f), RoundedCornerShape((look.cornerDp * 3 / 4).coerceIn(0, 30).dp)),
+                    contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.SystemUpdate, null, tint = scheme.onPrimaryContainer, modifier = Modifier.fillMaxSize(0.5f))
                 }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f).padding(top = 2.dp)) {
                     Text(uiStr(R.string.l_upd_notice_title, update.version), style = MaterialTheme.typography.titleMedium,
-                        fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        fontSize = (18 * t).sp, lineHeight = (22 * t).sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     Text(
                         when (step) {
                             Step.Offer -> uiStr(R.string.l_upd_notice_text) + String.format(java.util.Locale.US, " · %.1f MB", update.size / 1048576.0)
@@ -214,7 +286,8 @@ object UpdateNotice {
                             is Step.Ready -> uiStr(R.string.l_upd_ready)
                             Step.Failed -> uiStr(R.string.l_upd_download_failed)
                         },
-                        style = MaterialTheme.typography.bodyMedium, fontSize = 15.sp, color = scheme.onSurfaceVariant, maxLines = 2
+                        style = MaterialTheme.typography.bodyMedium, fontSize = (15 * t).sp, lineHeight = (19 * t).sp,
+                        color = scheme.onSurfaceVariant, maxLines = 2
                     )
                     when (val st = step) {
                         Step.Downloading -> DownloadProgress(AppUpdater.DOWNLOAD_KEY, Modifier.padding(top = 10.dp, end = 4.dp, bottom = 4.dp))
@@ -222,20 +295,21 @@ object UpdateNotice {
                             verticalAlignment = Alignment.CenterVertically) {
                             TextButton(onClick = { leave() },
                                 colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant)) {
-                                Text(uiStr(R.string.l_upd_later), fontSize = 15.sp)
+                                Text(uiStr(R.string.l_upd_later), fontSize = (15 * t).sp)
                             }
                             Spacer(Modifier.width(6.dp))
                             when (st) {
                                 Step.Offer, Step.Failed -> Button(onClick = {
+                                    if (preview) { leave(); return@Button }
                                     step = Step.Downloading
                                     scope.launch { finished(AppUpdater.startDownload(context, update).await()) }
-                                }) { Text(uiStr(R.string.l_upd_update), fontSize = 15.sp) }
+                                }) { Text(uiStr(R.string.l_upd_update), fontSize = (15 * t).sp) }
                                 is Step.Ready -> {
                                     if (!AppUpdater.canInstall(context)) {
                                         OutlinedButton(onClick = { AppUpdater.openInstallPermission(context) }) { Text(uiStr(R.string.l_upd_allow)) }
                                         Spacer(Modifier.width(6.dp))
                                     }
-                                    Button(onClick = { AppUpdater.install(context, st.apk) }) { Text(uiStr(R.string.l_upd_install), fontSize = 15.sp) }
+                                    Button(onClick = { AppUpdater.install(context, st.apk) }) { Text(uiStr(R.string.l_upd_install), fontSize = (15 * t).sp) }
                                 }
                                 else -> {}
                             }
