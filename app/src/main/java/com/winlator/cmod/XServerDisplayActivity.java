@@ -626,6 +626,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void setupWineSystemFiles() {
         String wrapperId = DxWrapperFiles.wrapperId(this.dxwrapper, dxwrapperConfig.get("version"),
                 dxwrapperConfig.get("vkd3dVersion"), dxwrapperConfig.get("ddrawrapper"));
+        // A game on a memory card whose container has no drive for that card yet (added before,
+        // or moved to another container): give the card a drive before Wine looks for the game.
+        if (shortcut != null) {
+            try { com.winlator.cmod.core.ExternalDrives.ensureMappedFor(container, shortcut.path); }
+            catch (Throwable t) { android.util.Log.w("ExternalDrives", "launch", t); }
+        }
         new com.winlator.cmod.session.PrefixSetup(this, imageFs, wineInfo, container, launchConfig, xServer.screenInfo,
                 waylandMode, firstTimeBoot, onExtractFileListener, dxWrapperFiles()).run(wrapperId, envVars);
     }

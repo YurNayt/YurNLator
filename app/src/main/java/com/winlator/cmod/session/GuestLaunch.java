@@ -71,10 +71,10 @@ public final class GuestLaunch {
         if ("fexcore".equalsIgnoreCase(lc.getEmulator())) {
             String ver = shortcut != null ? shortcut.getExtra("fexcoreVersion", container.getFEXCoreVersion()) : container.getFEXCoreVersion();
             EnvVars preset = com.winlator.cmod.fexcore.FEXCorePresetManager.getEnvVars(context, lc.getFexcorePreset());
-            return "32-bit emulator: FEXCore " + ver + ", preset " + lc.getFexcorePreset() + " (" + preset + ")";
+            return "x86 emulator (64-bit games: FEXCore arm64ec; 32-bit: FEXCore) " + ver + ", preset " + lc.getFexcorePreset() + " (" + preset + ")";
         }
         String ver = shortcut != null ? shortcut.getExtra("box64Version", container.getBox64Version()) : container.getBox64Version();
-        return "32-bit emulator: WOWBox64 " + ver + ", preset " + lc.getBox64Preset();
+        return "x86 emulator (64-bit games: FEXCore arm64ec; 32-bit: WOWBox64 " + ver + ", preset " + lc.getBox64Preset() + ")";
     }
 
     /** The variables the launch adds: game fixes, the user's own, OpenGL, then the defaults. */

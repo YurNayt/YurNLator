@@ -750,6 +750,9 @@ public class FileManagerFragment extends Fragment {
     }
 
     private boolean ensureExternalStorageMapped(Container container, File file) {
+        // Cards seen as /mnt/media_rw/<id> too (core/ExternalDrives): those were taken for internal
+        // storage, no drive was added and the game failed with "path not found".
+        if (true) return com.winlator.cmod.core.ExternalDrives.ensureMapped(container, file);
         File volumeRoot = getRemovableStorageRoot(file);
         if (volumeRoot == null) return true;
 
