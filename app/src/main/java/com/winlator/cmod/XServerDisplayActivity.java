@@ -710,6 +710,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         touchpadView = touchViews.touchpad;
         inputControlsView = touchViews.controls;
         if (launchConfig != null) inputControlsView.setPcInput(com.winlator.cmod.session.GamepadApi.PC.equals(launchConfig.getPadApi()));
+        inputControlsView.setPcMouseSpeed(com.winlator.cmod.inputcontrols.PcInput.speed(container, shortcut));
 
         boolean isTimeoutEnabled = preferences.getBoolean("touchscreen_timeout_enabled", false);
         if (isTimeoutEnabled) {

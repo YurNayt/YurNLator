@@ -132,6 +132,9 @@ interface QuickMenuBridge {
     /** The game is built on Unity (auto mode adds DirectInput). */
     fun gamepadUnity(): Boolean = false
     fun setGamepadApi(mode: String) {}
+    /** PC gamepad mode: right-stick (mouse) speed, 0.2..5. [commit]: the change is finished, save it. */
+    fun pcMouseSpeed(): Float = 2f
+    fun setPcMouseSpeed(speed: Float, commit: Boolean) {}
     fun vibrationSettings()
 
     // Tasks

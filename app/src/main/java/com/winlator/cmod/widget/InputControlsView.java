@@ -800,8 +800,16 @@ public class InputControlsView extends View {
     private volatile boolean pcInput;
     private final java.util.HashMap<Integer, ExternalController> pcControllers = new java.util.HashMap<>();
 
+    private volatile float pcMouseSpeed = com.winlator.cmod.inputcontrols.PcInput.DEFAULT_SPEED;
+
     public boolean isPcInput() {
         return pcInput;
+    }
+
+    /** Right-stick (mouse) speed in PC mode; changes pads already in use at once. */
+    public void setPcMouseSpeed(float speed) {
+        pcMouseSpeed = speed;
+        for (ExternalController c : pcControllers.values()) c.setMouseSensitivity(speed);
     }
 
     public void setPcInput(boolean on) {
@@ -820,7 +828,7 @@ public class InputControlsView extends View {
         if (!pcInput) return null;
         ExternalController pc = pcControllers.get(deviceId);
         if (pc == null) {
-            pc = com.winlator.cmod.inputcontrols.PcInput.controllerFor(deviceId);
+            pc = com.winlator.cmod.inputcontrols.PcInput.controllerFor(deviceId, pcMouseSpeed);
             if (pc != null) pcControllers.put(deviceId, pc);
         }
         return pc;

@@ -122,6 +122,11 @@ internal fun ContainerAdvancedPane(containerId: Int) {
                     com.winlator.cmod.session.GamepadApi.saveContainer(container, v)
                     container.saveData()
                 }
+                if (padApi == com.winlator.cmod.session.GamepadApi.PC) {
+                    com.winlator.cmod.ui.settings.PcStickSpeedSetting(com.winlator.cmod.inputcontrols.PcInput.containerSpeed(container)) {
+                        com.winlator.cmod.inputcontrols.PcInput.save(container, null, it)
+                    }
+                }
             }
 
             else -> SettingsCard {

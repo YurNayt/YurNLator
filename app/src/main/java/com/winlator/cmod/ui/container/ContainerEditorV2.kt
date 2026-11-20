@@ -238,6 +238,8 @@ private class ContainerEditorStateV2(
     var dinput by mutableStateOf(editing?.let { (it.inputType and WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()) != 0 } ?: false)
     /** GamepadApi container choice: "" auto, "xinput", "both" (sets the old switches above). */
     var padApi by mutableStateOf(editing?.let { com.winlator.cmod.session.GamepadApi.containerChoice(it) } ?: "")
+    var pcSpeed by mutableStateOf(editing?.let { com.winlator.cmod.inputcontrols.PcInput.containerSpeed(it) }
+        ?: com.winlator.cmod.inputcontrols.PcInput.DEFAULT_SPEED)
     fun choosePadApi(v: String) {
         padApi = v
         val both = v == com.winlator.cmod.session.GamepadApi.BOTH
@@ -526,6 +528,8 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         if (state.dinput) inputType = inputType or WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()
         container.setInputType(inputType)
         container.putExtra(com.winlator.cmod.session.GamepadApi.KEY, state.padApi.ifEmpty { null })
+        if (state.pcSpeed != com.winlator.cmod.inputcontrols.PcInput.DEFAULT_SPEED || container.getExtra(com.winlator.cmod.inputcontrols.PcInput.SPEED_KEY, "").isNotEmpty())
+            container.putExtra(com.winlator.cmod.inputcontrols.PcInput.SPEED_KEY, String.format(java.util.Locale.ROOT, "%.1f", state.pcSpeed))
         container.setStartupSelection(state.startup.toByte())
         com.winlator.cmod.session.AdminRun.setContainer(container, state.runAsAdmin)
         container.setBox64Version(state.boxVersion)
@@ -1176,6 +1180,8 @@ private fun ContainerCategoryV2(
         "Input" -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingsCard {
                 SettingMappedChoice("Gamepad API", s.padApi, linkedMapOf("" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput", "pc" to "PC (keyboard + mouse)")) { s.choosePadApi(it) }
+                if (s.padApi == com.winlator.cmod.session.GamepadApi.PC)
+                    com.winlator.cmod.ui.settings.PcStickSpeedSetting(s.pcSpeed) { s.pcSpeed = it }
             }
             SettingsCard {
                 SettingToggle("Sync CPU Topology", s.syncCpu) { s.syncCpu = it }

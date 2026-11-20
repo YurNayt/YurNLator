@@ -1028,6 +1028,10 @@ private fun ShortcutCategoryV2(
                 SettingMappedChoice("Controls Profile", s.controlsProfile, profiles) { s.controlsProfile = it; s.extra("controlsProfile", it.takeUnless { id -> id == "0" }) }
                 SettingsDivider()
                 SettingMappedChoice("Gamepad API", s.padApi, linkedMapOf("" to "As container", "auto" to "Auto", "xinput" to "XInput", "both" to "XInput + DirectInput", "pc" to "PC (keyboard + mouse)")) { s.choosePadApi(it) }
+                if (com.winlator.cmod.session.GamepadApi.mode(s.container, s.shortcut) == com.winlator.cmod.session.GamepadApi.PC || s.padApi == com.winlator.cmod.session.GamepadApi.PC)
+                    com.winlator.cmod.ui.settings.PcStickSpeedSetting(com.winlator.cmod.inputcontrols.PcInput.speed(s.container, s.shortcut)) {
+                        com.winlator.cmod.inputcontrols.PcInput.save(s.container, s.shortcut, it)
+                    }
                 SettingsDivider()
                 SettingToggle("Disable XInput", s.disableXInput) { s.disableXInput = it; s.extra("disableXinput", if (it) "1" else null) }
                 SettingsDivider()

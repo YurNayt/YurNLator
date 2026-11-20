@@ -860,6 +860,19 @@ private fun GamepadApiCard(bridge: QuickMenuBridge, opened: Int) {
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+    if (mode == "pc") {
+        // PC mode: the right stick is the mouse; its speed, felt at once and saved for this game.
+        val min = com.winlator.cmod.inputcontrols.PcInput.MIN_SPEED
+        val span = com.winlator.cmod.inputcontrols.PcInput.MAX_SPEED - min
+        var speed by remember(opened) { mutableStateOf(bridge.pcMouseSpeed()) }
+        StepSlider(uiStr(R.string.l_pc_stick_speed), (speed - min) / span,
+            com.winlator.cmod.inputcontrols.PcInput.format(speed), step = 0.1f / span,
+            onChange = { f ->
+                speed = ((min + f * span) * 10f).roundToInt() / 10f
+                bridge.setPcMouseSpeed(speed, false)
+            },
+            onCommit = { bridge.setPcMouseSpeed(speed, true) })
+    }
 }
 
 // ---------- Tasks ----------

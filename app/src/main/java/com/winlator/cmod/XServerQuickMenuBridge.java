@@ -506,6 +506,15 @@ final class XServerQuickMenuBridge implements QuickMenuBridge, OnGetProcessInfoL
         return a.container != null ? com.winlator.cmod.session.GamepadApi.mode(a.container, a.shortcut) : "auto";
     }
 
+    @Override public float pcMouseSpeed() {
+        return com.winlator.cmod.inputcontrols.PcInput.speed(a.container, a.shortcut);
+    }
+
+    @Override public void setPcMouseSpeed(float speed, boolean commit) {
+        if (a.inputControlsView != null) a.inputControlsView.setPcMouseSpeed(speed);
+        if (commit && a.container != null) com.winlator.cmod.inputcontrols.PcInput.save(a.container, a.shortcut, speed);
+    }
+
     @Override public boolean gamepadUnity() { return a.launchConfig != null && a.launchConfig.isUnityGame(); }
 
     @Override public boolean gamepadDinput() {

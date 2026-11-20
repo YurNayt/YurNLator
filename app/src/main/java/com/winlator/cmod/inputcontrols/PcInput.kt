@@ -2,6 +2,8 @@ package com.winlator.cmod.inputcontrols
 
 import android.view.InputDevice
 import android.view.KeyEvent
+import com.winlator.cmod.container.Container
+import com.winlator.cmod.container.Shortcut
 
 /**
  * "PC" gamepad mode: for games that only know keyboard and mouse. A physical gamepad is turned
@@ -17,6 +19,36 @@ import android.view.KeyEvent
  * The same layout fills such a profile as a starting point ([fill]) for those who want to change it.
  */
 object PcInput {
+    /** Right-stick (mouse) speed: per game, else per container; 0.2..5, 2 when not set. */
+    const val SPEED_KEY = "pcMouseSpeed"
+    const val DEFAULT_SPEED = 2.0f
+    const val MIN_SPEED = 0.2f
+    const val MAX_SPEED = 5.0f
+
+    private fun parse(v: String?): Float? = v?.toFloatOrNull()?.coerceIn(MIN_SPEED, MAX_SPEED)
+
+    @JvmStatic
+    fun containerSpeed(container: Container): Float = parse(container.getExtra(SPEED_KEY, "")) ?: DEFAULT_SPEED
+
+    /** The game's own speed, or null when it follows the container. */
+    @JvmStatic
+    fun shortcutSpeed(shortcut: Shortcut?): Float? = parse(shortcut?.getExtra(SPEED_KEY))
+
+    @JvmStatic
+    fun speed(container: Container?, shortcut: Shortcut?): Float =
+        shortcutSpeed(shortcut) ?: container?.let { containerSpeed(it) } ?: DEFAULT_SPEED
+
+    @JvmStatic
+    fun format(v: Float): String = String.format(java.util.Locale.ROOT, "%.1f×", v)
+
+    /** Saves for the game when there is one (the quick menu in a game), else for the container. */
+    @JvmStatic
+    fun save(container: Container, shortcut: Shortcut?, v: Float) {
+        val text = String.format(java.util.Locale.ROOT, "%.1f", v.coerceIn(MIN_SPEED, MAX_SPEED))
+        if (shortcut != null) { shortcut.putExtra(SPEED_KEY, text); shortcut.saveData() }
+        else { container.putExtra(SPEED_KEY, text); container.saveData() }
+    }
+
     private val LAYOUT: List<Pair<Int, String>> = listOf(
         ExternalControllerBinding.AXIS_Y_NEGATIVE.toInt() to "KEY_W",
         ExternalControllerBinding.AXIS_X_NEGATIVE.toInt() to "KEY_A",
@@ -46,13 +78,13 @@ object PcInput {
 
     /** A controller for [deviceId] with the PC layout; null when it is not a gamepad. */
     @JvmStatic
-    fun controllerFor(deviceId: Int): ExternalController? {
+    fun controllerFor(deviceId: Int, speed: Float): ExternalController? {
         val device = InputDevice.getDevice(deviceId) ?: return null
         if (!ExternalController.isGameController(device)) return null
         val c = ExternalController()
         c.setId(device.descriptor)
         c.setName(ExternalController.displayName(device.name))
-        c.setMouseSensitivity(2.0f)
+        c.setMouseSensitivity(speed)
         fill(c)
         return c
     }

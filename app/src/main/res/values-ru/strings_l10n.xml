@@ -1199,4 +1199,10 @@
     <string name="l_pad_pc">PC (клавиатура и мышь)</string>
     <string name="pc_layout_fill">Заполнить как PC Gamepad</string>
     <string name="pc_layout_fill_confirm">Заменить назначения этого контроллера раскладкой PC Gamepad (стики: WASD и мышь, A: пробел, RT: левый клик…)?</string>
+    <string name="l_pc_stick_speed">Скорость правого стика (мышь)</string>
+    <string name="l_pc_stick_speed_hint">Режим PC: как быстро правый стик двигает мышь и обзор.</string>
+    <string name="l_upd_notice_title">Новая версия %1$s</string>
+    <string name="l_upd_notice_text">Вышла новая версия YurNLator.</string>
+    <string name="l_upd_update">Обновить</string>
+    <string name="l_upd_later">Позже</string>
 </resources>

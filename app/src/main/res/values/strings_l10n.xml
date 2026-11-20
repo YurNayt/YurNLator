@@ -1199,4 +1199,10 @@
     <string name="l_pad_pc">PC (keyboard + mouse)</string>
     <string name="pc_layout_fill">Fill as PC Gamepad</string>
     <string name="pc_layout_fill_confirm">Replace this controller\'s bindings with the PC Gamepad layout (sticks: WASD and the mouse, A: Space, RT: left click…)?</string>
+    <string name="l_pc_stick_speed">Right stick speed (mouse)</string>
+    <string name="l_pc_stick_speed_hint">PC mode: how fast the right stick moves the mouse and camera.</string>
+    <string name="l_upd_notice_title">New version %1$s</string>
+    <string name="l_upd_notice_text">A new YurNLator version is out.</string>
+    <string name="l_upd_update">Update</string>
+    <string name="l_upd_later">Later</string>
 </resources>

@@ -95,9 +95,10 @@ private sealed class UiState {
     object DownloadFailed : UiState()
 }
 
+/** [start]: download and install this update at once (from the "new version" notice). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppUpdateSheet(onDismiss: () -> Unit) {
+internal fun AppUpdateSheet(start: AppUpdater.Update? = null, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var dev by remember { mutableStateOf(AppUpdater.devChannel(context)) }
@@ -111,10 +112,17 @@ private fun AppUpdateSheet(onDismiss: () -> Unit) {
         state = if (apk != null) UiState.Ready(apk) else UiState.DownloadFailed
         if (apk != null && AppUpdater.canInstall(context)) AppUpdater.install(context, apk)
     }
+    var started by remember { mutableStateOf(false) }
     LaunchedEffect(dev) {
         // Reopened while the update is downloading: show that download, don't start another.
         val running = AppUpdater.runningDownload()
-        if (running != null) { state = UiState.Downloading; finished(running.await()) } else check()
+        if (running != null) { state = UiState.Downloading; finished(running.await()) }
+        else if (start != null && !started) {
+            started = true
+            state = UiState.Downloading
+            finished(AppUpdater.startDownload(context, start).await())
+        }
+        else check()
     }
 
     MotionSheet(onDismissRequest = onDismiss) { _ ->
