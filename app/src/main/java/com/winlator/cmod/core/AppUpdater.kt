@@ -195,8 +195,11 @@ object AppUpdater {
                 val a = nums.getOrElse(i) { 0 }; val b = o.nums.getOrElse(i) { 0 }
                 if (a != b) return a > b
             }
+            // Test builds are numbered after the release they follow (1.1.3 is out, then
+            // 1.1.3-dev.N), so a test build is newer than the release with the same number:
+            // someone on 1.1.3-dev.344 is not offered 1.1.3.
             return when {
-                dev == null && o.dev != null -> true
+                dev != null && o.dev == null -> true
                 dev != null && o.dev != null -> dev > o.dev
                 else -> false
             }
