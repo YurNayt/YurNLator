@@ -51,6 +51,13 @@ public final class GuestLaunch {
             if (shortcut != null) {
                 String sv = shortcut.getExtra("envVars").trim();
                 log.accept("[YurNLator] shortcut variables: " + (sv.isEmpty() ? "none" : sv));
+                // Per-program DLL choices (game settings -> Expert: DLL for single programs).
+                StringBuilder dov = new StringBuilder();
+                for (ProgramDllOverrides.Entry e : ProgramDllOverrides.read(shortcut)) {
+                    if (dov.length() > 0) dov.append(", ");
+                    dov.append(e.getExe()).append(": ").append(e.getDll()).append('=').append(e.getMode().isEmpty() ? "disabled" : e.getMode());
+                }
+                log.accept("[YurNLator] program DLL overrides: " + (dov.length() == 0 ? "none" : dov));
             }
         } catch (Throwable t) { android.util.Log.w("GuestLaunch", "emulator line", t); }
 
