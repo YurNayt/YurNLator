@@ -33,8 +33,9 @@ import com.winlator.cmod.ui.theme.WinZTheme
 import com.winlator.cmod.ui.uiStr
 
 /**
- * "A new version is out": on start the app asks GitHub (at most every 6 hours) whether its channel
- * (stable, or test builds when chosen in Settings → Update) has something newer. If so a card with
+ * "A new version is out": on start and on coming back to the app, GitHub is asked (at most every
+ * 30 minutes) whether the update channel (stable or test builds, Settings → Update; until chosen,
+ * the kind installed) has something newer. If so a card with
  * the version and its notes offers Update (downloads and installs right there) or Later (that
  * version stays quiet for a day).
  */
@@ -42,15 +43,17 @@ object UpdateNotice {
     private const val PREF_LAST = "yurn_update_notice_last"
     private const val PREF_SNOOZE_VERSION = "yurn_update_notice_snooze_version"
     private const val PREF_SNOOZE_UNTIL = "yurn_update_notice_snooze_until"
-    private const val EVERY_MS = 6L * 3600 * 1000
+    /** Not more often than this; each start and each return to the app asks once it has passed. */
+    private const val EVERY_MS = 30L * 60 * 1000
     private const val SNOOZE_MS = 24L * 3600 * 1000
     @Volatile private var checking = false
+    @Volatile private var showing = false
 
     @JvmStatic
     fun maybeShow(activity: Activity) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(activity)
         val now = System.currentTimeMillis()
-        if (checking || now - prefs.getLong(PREF_LAST, 0L) < EVERY_MS) return
+        if (checking || showing || now - prefs.getLong(PREF_LAST, 0L) < EVERY_MS) return
         if (AppUpdater.runningDownload() != null) return
         checking = true
         val app = activity.applicationContext
@@ -72,7 +75,8 @@ object UpdateNotice {
     private fun show(activity: Activity, update: AppUpdater.Update) {
         val root = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
         val view = ComposeView(activity)
-        val close = { root.post { root.removeView(view) } }
+        showing = true
+        val close = { root.post { root.removeView(view); showing = false } }
         view.setContent {
             WinZTheme {
                 Notice(update, onLater = {

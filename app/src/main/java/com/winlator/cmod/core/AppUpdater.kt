@@ -46,8 +46,13 @@ object AppUpdater {
 
     val flavor: String get() = BuildConfig.FLAVOR
 
-    fun devChannel(context: Context): Boolean =
-        PreferenceManager.getDefaultSharedPreferences(context).getBoolean(PREF_DEV, false)
+    /** Test builds when chosen in Settings → Update; until a choice is made, whatever is installed
+     *  (someone on a test build hears about the next test build, not about the older release). */
+    fun devChannel(context: Context): Boolean {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        return if (prefs.contains(PREF_DEV)) prefs.getBoolean(PREF_DEV, false)
+               else installedVersion(context).contains("dev", ignoreCase = true)
+    }
 
     fun setDevChannel(context: Context, on: Boolean) =
         PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean(PREF_DEV, on).apply()

@@ -106,6 +106,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // "A new version is out" also when coming back to an app left open (UpdateNotice limits how often).
+        getWindow().getDecorView().postDelayed(() -> {
+            if (!isFinishing()) com.winlator.cmod.ui.settings.UpdateNotice.maybeShow(this);
+        }, 2500);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -128,8 +137,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onCreate(savedInstanceState);
         // Last crash (also from the game screen), once, with Share / Copy for testers.
         getWindow().getDecorView().post(() -> com.winlator.cmod.core.CrashReports.checkOnLaunch(this));
-        // "A new version is out", once the screen has settled.
-        getWindow().getDecorView().postDelayed(() -> com.winlator.cmod.ui.settings.UpdateNotice.maybeShow(this), 2500);
         applyImmersiveMode();
 
         if (!sharedPreferences.getBoolean(OnboardingActivity.PREF_ONBOARDING_COMPLETE, false)) {
