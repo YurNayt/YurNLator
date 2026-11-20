@@ -146,6 +146,20 @@ object UpdateNotice {
         }
         val close = { root.post { root.removeView(view); if (!preview) showing = false } }
         view.setContent { com.winlator.cmod.ui.theme.WinZOverlayTheme { Banner(update, look, preview) { close() } } }
+        // Only the banner's own size: the screen around it stays usable.
+        root.addView(view, place(activity, look))
+        // The main screen handles turning itself (no restart): place the banner again when it turns.
+        val relayout = android.view.View.OnLayoutChangeListener { _, l, t, r, b, ol, ot, or_, ob ->
+            if (r - l != or_ - ol || b - t != ob - ot) root.post { if (view.parent === root) view.layoutParams = place(activity, look) }
+        }
+        root.addOnLayoutChangeListener(relayout)
+        view.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: android.view.View) {}
+            override fun onViewDetachedFromWindow(v: android.view.View) { root.removeOnLayoutChangeListener(relayout) }
+        })
+    }
+
+    private fun place(activity: Activity, look: Look): android.widget.FrameLayout.LayoutParams {
         val res = activity.resources
         val dm = res.displayMetrics
         val cfg = res.configuration
@@ -159,8 +173,7 @@ object UpdateNotice {
             android.view.Gravity.TOP or (if (right) android.view.Gravity.END else android.view.Gravity.CENTER_HORIZONTAL))
         // On its side the main screen has its tab bar on the right (ui/LandscapeNavRail, 88 dp).
         if (right) params.marginEnd = ((if (landscape) 88 + 10 else 16) * dp).toInt()
-        // Only the banner's own size: the screen around it stays usable.
-        root.addView(view, params)
+        return params
     }
 
     private sealed class Step {
