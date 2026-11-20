@@ -136,7 +136,7 @@ object UpdateNotice {
             PreferenceManager.getDefaultSharedPreferences(context).edit()
                 .putString("upd_banner_from", from).putString("upd_banner_place", place)
                 .putInt("upd_banner_margin", marginDp).putInt("upd_banner_width", widthPercent)
-                .putInt("upd_banner_picture", pictureDp).putBoolean("upd_banner_picture_full", pictureFull)
+                .putInt("upd_banner_picture", pictureDp).putBoolean("upd_banner_picture_text", pictureFull)
                 .putInt("upd_banner_text", textPercent).putInt("upd_banner_opacity", opacityPercent)
                 .putInt("upd_banner_corner", cornerDp).apply()
         }
@@ -147,13 +147,14 @@ object UpdateNotice {
             Look(from, place, marginDp, widthPercent, pictureDp, pictureFull, textPercent, opacityPercent, cornerDp)
 
         companion object {
-            val DEFAULT = Look("top", "top", 28, 100, 88, true, 100, 78, 16)
+            /** Chosen on the phone: from the top, 30 dp down, 90 % wide, text 90 %, 60 % opaque. */
+            val DEFAULT = Look("top", "top", 30, 90, 46, true, 90, 60, 16)
             fun load(context: android.content.Context): Look {
                 val p = PreferenceManager.getDefaultSharedPreferences(context)
                 val d = DEFAULT
                 return Look(p.getString("upd_banner_from", d.from) ?: d.from, p.getString("upd_banner_place", d.place) ?: d.place,
                     p.getInt("upd_banner_margin", d.marginDp), p.getInt("upd_banner_width", d.widthPercent),
-                    p.getInt("upd_banner_picture", d.pictureDp), p.getBoolean("upd_banner_picture_full", d.pictureFull),
+                    p.getInt("upd_banner_picture", d.pictureDp), p.getBoolean("upd_banner_picture_text", d.pictureFull),
                     p.getInt("upd_banner_text", d.textPercent), p.getInt("upd_banner_opacity", d.opacityPercent),
                     p.getInt("upd_banner_corner", d.cornerDp))
             }
@@ -265,18 +266,23 @@ object UpdateNotice {
             // See-through, so what is underneath still shows.
             color = scheme.surfaceContainerHigh.copy(alpha = look.opacityPercent.coerceIn(10, 100) / 100f),
             border = androidx.compose.foundation.BorderStroke(1.dp, scheme.outlineVariant),
-            shadowElevation = 8.dp,
+            // A shadow under a see-through card shows through it and makes it look solid.
+            shadowElevation = if (look.opacityPercent >= 100) 8.dp else 0.dp,
         ) {
-            Row(Modifier.height(IntrinsicSize.Min).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)) {
+            // The picture stands beside the title and the line under it, exactly as tall as the two
+            // (or [Look.pictureDp] when "by text height" is off); the buttons or the download's
+            // progress run below, under the text.
+            Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
                 val picture = if (look.pictureFull)
-                    Modifier.fillMaxHeight().defaultMinSize(minHeight = look.pictureDp.coerceIn(24, 200).dp).aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true)
                 else Modifier.size(look.pictureDp.coerceIn(24, 200).dp)
                 Box(picture.background(scheme.primaryContainer.copy(alpha = 0.9f), RoundedCornerShape((look.cornerDp * 3 / 4).coerceIn(0, 30).dp)),
                     contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.SystemUpdate, null, tint = scheme.onPrimaryContainer, modifier = Modifier.fillMaxSize(0.5f))
                 }
                 Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f).padding(top = 2.dp)) {
+                Column(Modifier.weight(1f)) {
                     Text(uiStr(R.string.l_upd_notice_title, update.version), style = MaterialTheme.typography.titleMedium,
                         fontSize = (18 * t).sp, lineHeight = (22 * t).sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     Text(
@@ -289,30 +295,31 @@ object UpdateNotice {
                         style = MaterialTheme.typography.bodyMedium, fontSize = (15 * t).sp, lineHeight = (19 * t).sp,
                         color = scheme.onSurfaceVariant, maxLines = 2
                     )
-                    when (val st = step) {
-                        Step.Downloading -> DownloadProgress(AppUpdater.DOWNLOAD_KEY, Modifier.padding(top = 10.dp, end = 4.dp, bottom = 4.dp))
-                        else -> Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { leave() },
-                                colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant)) {
-                                Text(uiStr(R.string.l_upd_later), fontSize = (15 * t).sp)
-                            }
-                            Spacer(Modifier.width(6.dp))
-                            when (st) {
-                                Step.Offer, Step.Failed -> Button(onClick = {
-                                    if (preview) { leave(); return@Button }
-                                    step = Step.Downloading
-                                    scope.launch { finished(AppUpdater.startDownload(context, update).await()) }
-                                }) { Text(uiStr(R.string.l_upd_update), fontSize = (15 * t).sp) }
-                                is Step.Ready -> {
-                                    if (!AppUpdater.canInstall(context)) {
-                                        OutlinedButton(onClick = { AppUpdater.openInstallPermission(context) }) { Text(uiStr(R.string.l_upd_allow)) }
-                                        Spacer(Modifier.width(6.dp))
-                                    }
-                                    Button(onClick = { AppUpdater.install(context, st.apk) }) { Text(uiStr(R.string.l_upd_install), fontSize = (15 * t).sp) }
+                }
+            }
+                when (val st = step) {
+                    Step.Downloading -> DownloadProgress(AppUpdater.DOWNLOAD_KEY, Modifier.padding(top = 10.dp, end = 4.dp, bottom = 4.dp))
+                    else -> Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { leave() },
+                            colors = ButtonDefaults.textButtonColors(contentColor = scheme.onSurfaceVariant)) {
+                            Text(uiStr(R.string.l_upd_later), fontSize = (15 * t).sp)
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        when (st) {
+                            Step.Offer, Step.Failed -> Button(onClick = {
+                                if (preview) { leave(); return@Button }
+                                step = Step.Downloading
+                                scope.launch { finished(AppUpdater.startDownload(context, update).await()) }
+                            }) { Text(uiStr(R.string.l_upd_update), fontSize = (15 * t).sp) }
+                            is Step.Ready -> {
+                                if (!AppUpdater.canInstall(context)) {
+                                    OutlinedButton(onClick = { AppUpdater.openInstallPermission(context) }) { Text(uiStr(R.string.l_upd_allow)) }
+                                    Spacer(Modifier.width(6.dp))
                                 }
-                                else -> {}
+                                Button(onClick = { AppUpdater.install(context, st.apk) }) { Text(uiStr(R.string.l_upd_install), fontSize = (15 * t).sp) }
                             }
+                            else -> {}
                         }
                     }
                 }

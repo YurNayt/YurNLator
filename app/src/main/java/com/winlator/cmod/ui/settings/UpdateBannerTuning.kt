@@ -77,10 +77,10 @@ fun UpdateBannerTuningCard() {
             Tune("Отступ от края", look.marginDp, 0, 200, "dp") { set(look.copy(marginDp = it)) }
             Tune("Ширина", look.widthPercent, 40, 100, "%") { set(look.copy(widthPercent = it)) }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Картинка на всю высоту", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Text("Картинка по высоте текста", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 Switch(look.pictureFull, { set(look.copy(pictureFull = it)) })
             }
-            Tune(if (look.pictureFull) "Картинка, не меньше" else "Размер картинки", look.pictureDp, 24, 200, "dp") {
+            Tune("Размер картинки (если не по высоте текста)", look.pictureDp, 24, 200, "dp") {
                 set(look.copy(pictureDp = it))
             }
             Tune("Размер текста", look.textPercent, 60, 200, "%") { set(look.copy(textPercent = it)) }
@@ -93,7 +93,7 @@ fun UpdateBannerTuningCard() {
             }
             Text(
                 "Сейчас: выезжает ${look.from}, стоит ${look.place}, отступ ${look.marginDp} dp, ширина ${look.widthPercent}%, " +
-                    "картинка ${look.pictureDp} dp${if (look.pictureFull) " (на всю высоту)" else ""}, текст ${look.textPercent}%, " +
+                    "картинка ${look.pictureDp} dp${if (look.pictureFull) " (по высоте текста)" else ""}, текст ${look.textPercent}%, " +
                     "непрозрачность ${look.opacityPercent}%, углы ${look.cornerDp} dp",
                 Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
