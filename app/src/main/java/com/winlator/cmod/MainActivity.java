@@ -108,10 +108,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onResume() {
         super.onResume();
-        // "A new version is out" also when coming back to an app left open (UpdateNotice limits how often).
-        getWindow().getDecorView().postDelayed(() -> {
-            if (!isFinishing()) com.winlator.cmod.ui.settings.UpdateNotice.maybeShow(this);
-        }, 2500);
+        // "A new version is out": asked at start, then every 30 minutes while in front.
+        com.winlator.cmod.ui.settings.UpdateNotice.onResume(this);
+    }
+
+    @Override
+    protected void onPause() {
+        com.winlator.cmod.ui.settings.UpdateNotice.onPause();
+        super.onPause();
     }
 
     @Override
