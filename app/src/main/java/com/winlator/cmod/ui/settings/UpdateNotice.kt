@@ -113,57 +113,30 @@ object UpdateNotice {
         }, "UpdateNotice").apply { isDaemon = true }.start()
     }
 
-    /** Shows the banner with a made-up update, to try its look (Settings → Update notice look). */
-    @JvmStatic
-    fun preview(activity: Activity) {
-        val root = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
-        root.findViewWithTag<android.view.View>(TAG)?.let { root.removeView(it) }
-        show(activity, AppUpdater.Update("dev 999", "", 600L * 1048576, "", ""), preview = true)
-    }
-
     private const val TAG = "update_banner"
+    /** Gone by itself after this long when nothing was touched. */
+    private const val SHOWN_MS = 5_000L
 
-    /** How the banner looks and where it comes from; tunable in Settings while its final look is chosen. */
+    /** The banner's look, as chosen on the phone while it was tuned (dev 353–355). */
     class Look(
-        /** top, bottom, left, right: the edge it slides in from. */
-        val from: String,
-        /** top, center, bottom: where it rests. */
-        val place: String,
+        val from: String, val place: String,
         val marginDp: Int, val widthPercent: Int, val pictureDp: Int, val pictureFull: Boolean,
         val textPercent: Int, val opacityPercent: Int, val cornerDp: Int,
     ) {
-        fun save(context: android.content.Context) {
-            PreferenceManager.getDefaultSharedPreferences(context).edit()
-                .putString("upd_banner_from", from).putString("upd_banner_place", place)
-                .putInt("upd_banner_margin", marginDp).putInt("upd_banner_width", widthPercent)
-                .putInt("upd_banner_picture", pictureDp).putBoolean("upd_banner_picture_text", pictureFull)
-                .putInt("upd_banner_text", textPercent).putInt("upd_banner_opacity", opacityPercent)
-                .putInt("upd_banner_corner", cornerDp).apply()
-        }
-
-        fun copy(from: String = this.from, place: String = this.place, marginDp: Int = this.marginDp,
-                 widthPercent: Int = this.widthPercent, pictureDp: Int = this.pictureDp, pictureFull: Boolean = this.pictureFull,
-                 textPercent: Int = this.textPercent, opacityPercent: Int = this.opacityPercent, cornerDp: Int = this.cornerDp) =
-            Look(from, place, marginDp, widthPercent, pictureDp, pictureFull, textPercent, opacityPercent, cornerDp)
-
         companion object {
-            /** Chosen on the phone: from the top, 30 dp down, 90 % wide, text 90 %, 60 % opaque. */
-            val DEFAULT = Look("top", "top", 30, 90, 46, true, 90, 60, 16)
-            fun load(context: android.content.Context): Look {
-                val p = PreferenceManager.getDefaultSharedPreferences(context)
-                val d = DEFAULT
-                return Look(p.getString("upd_banner_from", d.from) ?: d.from, p.getString("upd_banner_place", d.place) ?: d.place,
-                    p.getInt("upd_banner_margin", d.marginDp), p.getInt("upd_banner_width", d.widthPercent),
-                    p.getInt("upd_banner_picture", d.pictureDp), p.getBoolean("upd_banner_picture_text", d.pictureFull),
-                    p.getInt("upd_banner_text", d.textPercent), p.getInt("upd_banner_opacity", d.opacityPercent),
-                    p.getInt("upd_banner_corner", d.cornerDp))
-            }
+            val FINAL = Look("top", "top", 30, 90, 46, true, 100, 100, 16)
         }
     }
 
+    /**
+     * Where the banner stands: a phone held upright, at the top in the middle; a phone on its side and
+     * any tablet, at the top on the right (left of the side tab bar when it is shown). Always the
+     * width it has on an upright phone (90 % of the short side; on a tablet at most 460 dp), never
+     * stretched across a wide screen.
+     */
     private fun show(activity: Activity, update: AppUpdater.Update, preview: Boolean = false) {
         val root = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
-        val look = Look.load(activity)
+        val look = Look.FINAL
         val view = ComposeView(activity)
         view.tag = TAG
         if (!preview) {
@@ -173,12 +146,21 @@ object UpdateNotice {
         }
         val close = { root.post { root.removeView(view); if (!preview) showing = false } }
         view.setContent { com.winlator.cmod.ui.theme.WinZOverlayTheme { Banner(update, look, preview) { close() } } }
-        val metrics = activity.resources.displayMetrics
-        val width = (metrics.widthPixels * look.widthPercent.coerceIn(30, 100) / 100f).toInt()
-        val vertical = when (look.place) { "bottom" -> android.view.Gravity.BOTTOM; "center" -> android.view.Gravity.CENTER_VERTICAL; else -> android.view.Gravity.TOP }
+        val res = activity.resources
+        val dm = res.displayMetrics
+        val cfg = res.configuration
+        val dp = dm.density
+        val tablet = cfg.smallestScreenWidthDp >= 600
+        val landscape = cfg.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        var width = (minOf(dm.widthPixels, dm.heightPixels) * look.widthPercent / 100f).toInt()
+        if (tablet) width = minOf(width, (460 * dp).toInt())
+        val right = tablet || landscape
+        val params = android.widget.FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.Gravity.TOP or (if (right) android.view.Gravity.END else android.view.Gravity.CENTER_HORIZONTAL))
+        // On its side the main screen has its tab bar on the right (ui/LandscapeNavRail, 88 dp).
+        if (right) params.marginEnd = ((if (landscape) 88 + 10 else 16) * dp).toInt()
         // Only the banner's own size: the screen around it stays usable.
-        root.addView(view, android.widget.FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.WRAP_CONTENT,
-            vertical or android.view.Gravity.CENTER_HORIZONTAL))
+        root.addView(view, params)
     }
 
     private sealed class Step {
@@ -214,10 +196,18 @@ object UpdateNotice {
             offset.snapTo(hidden())
             offset.animateTo(0f, androidx.compose.animation.core.spring(0.8f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
         }
+        // Gone by itself after 5 s; a touch (a drag, a button) keeps it.
+        var touched by remember { mutableStateOf(false) }
         fun leave(velocity: Float = 0f) {
             scope.launch {
                 offset.animateTo(hidden(), androidx.compose.animation.core.spring(1f, androidx.compose.animation.core.Spring.StiffnessMediumLow), velocity)
                 onGone()
+            }
+        }
+        androidx.compose.runtime.LaunchedEffect(touched, step) {
+            if (!touched && step == Step.Offer) {
+                kotlinx.coroutines.delay(SHOWN_MS)
+                leave()
             }
         }
         fun finished(apk: java.io.File?) {
@@ -229,9 +219,9 @@ object UpdateNotice {
         val t = look.textPercent.coerceIn(60, 200) / 100f
         val edgePad = look.marginDp.coerceIn(0, 300).dp
         val pad = when (look.place) {
-            "bottom" -> Modifier.navigationBarsPadding().padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = edgePad)
-            "center" -> Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-            else -> Modifier.statusBarsPadding().padding(start = 12.dp, end = 12.dp, top = edgePad, bottom = 8.dp)
+            "bottom" -> Modifier.navigationBarsPadding().padding(top = 8.dp, bottom = edgePad)
+            "center" -> Modifier.padding(vertical = 8.dp)
+            else -> Modifier.statusBarsPadding().padding(top = edgePad, bottom = 8.dp)
         }
         val drag = Modifier.pointerInput(horizontal) {
             val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
@@ -250,7 +240,7 @@ object UpdateNotice {
                 scope.launch { offset.snapTo(if (total * toEdge < 0f) total * 0.2f else total) }
                 Unit
             }
-            val start: (androidx.compose.ui.geometry.Offset) -> Unit = { tracker.resetTracking(); total = offset.value; scope.launch { offset.stop() } }
+            val start: (androidx.compose.ui.geometry.Offset) -> Unit = { touched = true; tracker.resetTracking(); total = offset.value; scope.launch { offset.stop() } }
             if (horizontal) detectHorizontalDragGestures(onDragStart = start, onDragEnd = onEnd, onDragCancel = { scope.launch { offset.animateTo(0f) } }) { c, a -> onDrag(c, a) }
             else detectVerticalDragGestures(onDragStart = start, onDragEnd = onEnd, onDragCancel = { scope.launch { offset.animateTo(0f) } }) { c, a -> onDrag(c, a) }
         }
