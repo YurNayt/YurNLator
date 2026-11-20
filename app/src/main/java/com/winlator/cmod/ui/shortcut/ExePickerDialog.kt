@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -94,13 +94,15 @@ fun ExePickerDialog(container: Container, start: File?, onPick: (File) -> Unit, 
                     val dirs = all.filter { it.isDirectory }.sortedBy { it.name.lowercase(Locale.ROOT) }
                     val files = all.filter { it.isFile && it.extension.lowercase(Locale.ROOT) in RUNNABLE }
                         .sortedBy { it.name.lowercase(Locale.ROOT) }
-                    dirs + files
+                    // The phone's shared storage can list the same entry twice: once is enough.
+                    (dirs + files).distinctBy { it.absolutePath }
                 }
                 LazyColumn(Modifier.weight(1f).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (!atRoot) item {
                         Entry(Icons.Outlined.Folder, "..", null, current = false) { up() }
                     }
-                    items(entries, key = { it.absolutePath }) { f ->
+                    // Keyed by position too: the list's own keys must never clash (a clash closes the app).
+                    itemsIndexed(entries, key = { i, f -> "$i:${f.absolutePath}" }) { _, f ->
                         if (f.isDirectory) Entry(Icons.Outlined.Folder, f.name, null, current = false) { dir = f }
                         else Entry(Icons.Outlined.SportsEsports, f.name, String.format(Locale.US, "%.1f MB", f.length() / 1048576.0),
                             current = f.absolutePath == start?.absolutePath) { onPick(f) }
