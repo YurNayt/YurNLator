@@ -346,6 +346,12 @@ private fun SettingsScreen(model: SettingsModel, callbacks: SettingsCallbacks) {
             // About is last; its version line unlocks the developer options (tap it five times).
             item("about-title") { SectionTitle(uiStr(R.string.l_set_about)) }
             item("update") { AppUpdatePreferenceCard() }
+            // Test builds only: the "new version" banner on demand, to check its look and place.
+            if (com.winlator.cmod.core.AppUpdater.installedVersion(context).contains("dev", ignoreCase = true)) item("update_preview") {
+                NavigationRow(Icons.Outlined.Info, "Показать уведомление об обновлении (тест)", null) {
+                    activity?.let { com.winlator.cmod.ui.settings.UpdateNotice.preview(it) }
+                }
+            }
             item("about") {
                 NavigationRow(Icons.Outlined.Info, uiStr(R.string.l_set_about_2), null) {
                     activity?.showAboutDialog { devOptions = DeveloperOptions.enabled(context); activity?.updateBenchTab() }

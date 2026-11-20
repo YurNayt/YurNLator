@@ -114,6 +114,14 @@ object UpdateNotice {
     }
 
     private const val TAG = "update_banner"
+
+    /** Shows the banner with a made-up update ("dev 999"), to check how it looks (test builds). */
+    @JvmStatic
+    fun preview(activity: Activity) {
+        val root = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
+        root.findViewWithTag<android.view.View>(TAG)?.let { root.removeView(it) }
+        show(activity, AppUpdater.Update("dev 999", "", 600L * 1048576, "", ""), preview = true)
+    }
     /** Gone by itself after this long when nothing was touched. */
     private const val SHOWN_MS = 5_000L
 
