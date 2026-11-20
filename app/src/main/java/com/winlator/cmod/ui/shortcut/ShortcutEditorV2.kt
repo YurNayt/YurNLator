@@ -78,6 +78,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
@@ -681,6 +683,7 @@ private fun ShortcutCategoryV2(
     when (category) {
         "General" -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingsCard { SettingText("Name", s.name) { s.name = it } }
+            ExecutableCard(s)
             SettingsCard {
                 val currentLabel = environmentLabel(s.container)
                 if (containers.size > 1) {
@@ -1116,6 +1119,36 @@ private fun SharpnessSliderV2(label: String, value: String, onChanged: (String) 
             valueRange = 0f..100f
         )
     }
+}
+
+/** Which program the entry starts, and a way to pick another (a launcher instead of the game…). */
+@Composable
+private fun ExecutableCard(s: ShortcutEditorStateV2) {
+    val context = LocalContext.current
+    var picking by remember { mutableStateOf(false) }
+    var exe by remember { mutableStateOf(ShortcutExe.current(s.shortcut)) }
+    var shown by remember { mutableStateOf(exe?.let { ShortcutExe.windowsPath(s.container, it) } ?: s.shortcut.path.orEmpty().trim('"')) }
+    SettingsCard {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(uiStr(R.string.l_sc_executable), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(shown.substringAfterLast('\\').substringAfterLast('/'), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(shown, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.size(8.dp))
+            OutlinedButton(onClick = { picking = true }) { Text(uiStr(R.string.l_sc_change)) }
+        }
+    }
+    if (picking) ExePickerDialog(s.container, exe, onPick = { f ->
+        picking = false
+        if (ShortcutExe.change(s.shortcut, f)) {
+            exe = f
+            shown = ShortcutExe.windowsPath(s.container, f)
+            android.widget.Toast.makeText(context, uiStr(R.string.l_sc_exe_changed, f.name), android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }) { picking = false }
 }
 
 @Composable

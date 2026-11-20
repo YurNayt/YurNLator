@@ -1202,7 +1202,12 @@
     <string name="l_pc_stick_speed">Скорость правого стика (мышь)</string>
     <string name="l_pc_stick_speed_hint">Режим PC: как быстро правый стик двигает мышь и обзор.</string>
     <string name="l_upd_notice_title">Новая версия %1$s</string>
-    <string name="l_upd_notice_text">Вышла новая версия YurNLator.</string>
+    <string name="l_upd_notice_text">Доступно обновление</string>
     <string name="l_upd_update">Обновить</string>
     <string name="l_upd_later">Позже</string>
+    <string name="l_sc_executable">Запускаемый файл</string>
+    <string name="l_sc_change">Изменить</string>
+    <string name="l_sc_pick_exe">Выбор запускаемого файла</string>
+    <string name="l_sc_pick_exe_empty">Здесь нет папок и программ</string>
+    <string name="l_sc_exe_changed">Теперь игра запускает %1$s</string>
 </resources>

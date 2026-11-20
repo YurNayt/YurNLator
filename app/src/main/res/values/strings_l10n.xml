@@ -1202,7 +1202,12 @@
     <string name="l_pc_stick_speed">Right stick speed (mouse)</string>
     <string name="l_pc_stick_speed_hint">PC mode: how fast the right stick moves the mouse and camera.</string>
     <string name="l_upd_notice_title">New version %1$s</string>
-    <string name="l_upd_notice_text">A new YurNLator version is out.</string>
+    <string name="l_upd_notice_text">Update available</string>
     <string name="l_upd_update">Update</string>
     <string name="l_upd_later">Later</string>
+    <string name="l_sc_executable">Program to start</string>
+    <string name="l_sc_change">Change</string>
+    <string name="l_sc_pick_exe">Choose the program</string>
+    <string name="l_sc_pick_exe_empty">No folders or programs here</string>
+    <string name="l_sc_exe_changed">The game now starts %1$s</string>
 </resources>
