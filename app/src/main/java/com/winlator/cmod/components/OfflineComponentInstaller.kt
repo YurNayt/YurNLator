@@ -53,7 +53,7 @@ object OfflineComponentInstaller {
     /** Installers that are their own setup program (NSIS, InnoSetup, IExpress): nothing inside is a package to lay out. */
     private val RUNS_OWN_SETUP = setOf(
         "K-Lite", "ffdshow", "lavfilters702", "lavfilters741", "quicktime72", "dirac", "webview2", "aairruntime",
-        "gfw", "ie8_kb2936068", "art2k7min", "vcredist6sp6", "VulkanRT", "jet40", "mdac28", "oalinst",
+        "gfw", "ie8_kb2936068", "art2k7min", "vcredist6sp6", "jet40", "mdac28", "oalinst",
         "dotnet20", "dotnet20sp1", "dotnet35", "dotnet35sp1",
     )
     /** The steps a recording makes redundant: everything that places files or edits the registry. */
@@ -138,6 +138,42 @@ object OfflineComponentInstaller {
             false // innoextract isn't bundled in YurNLator (yet)
 
         override fun canOpen(archive: File): Boolean = false
+    }
+
+    /**
+     * The Vulkan Runtime (LunarG's NSIS setup) laid out as its setup does: the 64-bit loader and
+     * vulkaninfo in system32, the 32-bit ones in syswow64 (each also under its -1-999-0-0-0 name),
+     * and its entry in Programs. Wine keeps running its own vulkan-1 (the one DXVK and VKD3D are
+     * made for): the files are there for games and launchers that check for the runtime.
+     */
+    private fun layoutVulkanRt(exe: File, stage: Stage): String? {
+        val files = runCatching { com.winlator.cmod.components.offline.NsisPayload.peFiles(exe) }
+            .getOrElse { return "VulkanRT: ${it.message}" }
+        // The setup's own plug-ins (System.dll, AccessControl.dll) are small; the loaders are not.
+        val big = files.filter { it.bytes.size > 200_000 }
+        val dll64 = big.firstOrNull { it.x64 && it.dll }
+        val exe64 = big.firstOrNull { it.x64 && !it.dll }
+        val dll32 = big.firstOrNull { it.x86 && it.dll }
+        val exe32 = big.firstOrNull { it.x86 && !it.dll }
+        if (dll64 == null || dll32 == null) return "VulkanRT: the loader is not in the installer"
+        val sys32 = File(stage.drive, "windows/system32").apply { mkdirs() }
+        val wow64 = File(stage.drive, "windows/syswow64").apply { mkdirs() }
+        for ((dir, dll, tool) in listOf(Triple(sys32, dll64, exe64), Triple(wow64, dll32, exe32))) {
+            File(dir, "vulkan-1.dll").writeBytes(dll.bytes)
+            File(dir, "vulkan-1-999-0-0-0.dll").writeBytes(dll.bytes)
+            if (tool != null) {
+                File(dir, "vulkaninfo.exe").writeBytes(tool.bytes)
+                File(dir, "vulkaninfo-1-999-0-0-0.exe").writeBytes(tool.bytes)
+            }
+        }
+        stage.overrides["vulkan-1"] = "builtin"
+        val version = "1.3.283.0"
+        val uninstall = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VulkanRT$version"
+        stage.registry += RegValue("HKLM", uninstall, "DisplayName", "sz", "Vulkan Run Time Libraries $version")
+        stage.registry += RegValue("HKLM", uninstall, "DisplayVersion", "sz", version)
+        stage.registry += RegValue("HKLM", uninstall, "Publisher", "sz", "LunarG, Inc.")
+        stage.registry += RegValue("HKLM", uninstall, "InstallLocation", "sz", "C:\\Program Files\\VulkanRT\\$version")
+        return null
     }
 
     /** Where one component is put together before it goes into the prefix. */
@@ -243,6 +279,11 @@ object OfflineComponentInstaller {
                     if (!ComponentDownload.file(url, file) { f -> if (f >= 0) part(f * 0.5f) }) return "download failed: $name"
                     checksumNote(step, file, stage)
                     onStage("installing $name")
+                    if (c.name == "VulkanRT") {
+                        try { layoutVulkanRt(file, stage)?.let { return it } } finally { file.delete() }
+                        done++
+                        continue
+                    }
                     try {
                         val result = engine.install(file, stage.root, work) { f, text ->
                             if (f >= 0) part(0.5f + f.toFloat() * 0.5f)

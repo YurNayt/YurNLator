@@ -26,6 +26,16 @@ fun KeepDialogFullscreen() {
         }
         window?.let { w ->
             WindowCompat.setDecorFitsSystemWindows(w, false)
+            // A dialog window stops below the status bar by default. Once the bars come back (the
+            // keyboard opens, a swipe) the screen beneath showed through that strip (the
+            // container's title over the Windows components list): reach the top edge instead;
+            // the content keeps itself clear of the bars with its own padding.
+            w.attributes = w.attributes.also { a ->
+                if (android.os.Build.VERSION.SDK_INT >= 30) a.fitInsetsTypes = 0
+                if (android.os.Build.VERSION.SDK_INT >= 28)
+                    a.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+            w.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN)
             WindowInsetsControllerCompat(w, w.decorView).apply {
                 hide(WindowInsetsCompat.Type.systemBars())
                 systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
