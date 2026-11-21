@@ -389,6 +389,31 @@
                 android:id="@+id/SHudMode"
                 android:layout_width="match_parent" />
 
+            <CheckBox
+                android:id="@+id/cbShowFPS"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Показывать FPS"
+                android:checked="true" />
+
+            <CheckBox
+                android:id="@+id/cbShowCPU"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Показывать загрузку CPU" />
+
+            <CheckBox
+                android:id="@+id/cbShowGPU"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Показывать загрузку GPU" />
+
+            <CheckBox
+                android:id="@+id/cbShowRAM"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Показывать использование RAM" />
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
