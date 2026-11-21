@@ -735,7 +735,17 @@ public class ContainerDetailFragment extends Fragment implements DXVKConfigDialo
                 String wincomponents = getWinComponents(view);
                 String drives = getDrives(view);
                 int hudMode = sHudMode.getSelectedItemPosition();
-                boolean showFPS = hudMode != 0;
+                // Находим наши новые галочки в XML
+                CheckBox cbShowFPS = view.findViewById(R.id.cbShowFPS);
+                CheckBox cbShowCPU = view.findViewById(R.id.cbShowCPU);
+                CheckBox cbShowGPU = view.findViewById(R.id.cbShowGPU);
+                CheckBox cbShowRAM = view.findViewById(R.id.cbShowRAM);
+                // Считываем их состояние. 
+                // Если HUD выключен (hudMode == 0), то все галочки считаем выключенными.
+                boolean showFPS = (hudMode != 0) && cbShowFPS.isChecked();
+                boolean showCPU = (hudMode != 0) && cbShowCPU.isChecked();
+                boolean showGPU = (hudMode != 0) && cbShowGPU.isChecked();
+                boolean showRAM = (hudMode != 0) && cbShowRAM.isChecked();
                 boolean fullscreenStretched = cbFullscreenStretched.isChecked();
                 boolean exclusiveXInput = cbExclusiveXInput.isChecked();
                 String cpuList = cpuListView.getCheckedCPUListAsString();
@@ -781,6 +791,10 @@ public class ContainerDetailFragment extends Fragment implements DXVKConfigDialo
                     container.setDrives(drives);
                     container.setShowFPS(showFPS);
                     container.putExtra("hudMode", String.valueOf(hudMode));
+                    container.putExtra("hud_show_fps", String.valueOf(showFPS));
+                    container.putExtra("hud_show_cpu", String.valueOf(showCPU));
+                    container.putExtra("hud_show_gpu", String.valueOf(showGPU));
+                    container.putExtra("hud_show_ram", String.valueOf(showRAM));
                     container.setFullscreenStretched(fullscreenStretched);
                     container.setExclusiveXInput(exclusiveXInput);
                     container.setInputType(finalInputType);
