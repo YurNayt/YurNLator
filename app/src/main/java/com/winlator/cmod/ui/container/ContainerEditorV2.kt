@@ -157,6 +157,10 @@ private class ContainerEditorStateV2(
     var hudMode by mutableIntStateOf(
         editing?.getExtra("hudMode", if (editing.isShowFPS) "1" else "0")?.toIntOrNull() ?: 0
     )
+    var showFps by mutableStateOf(editing?.getExtra("hud_show_fps", "true") != "false")
+    var showCpu by mutableStateOf(editing?.getExtra("hud_show_cpu", "true") != "false")
+    var showGpu by mutableStateOf(editing?.getExtra("hud_show_gpu", "true") != "false")
+    var showRam by mutableStateOf(editing?.getExtra("hud_show_ram", "true") != "false")
     var locale by mutableStateOf(
         editing?.getLC_ALL().orEmpty().ifBlank {
             if (editing == null) {
@@ -334,7 +338,7 @@ private class ContainerEditorStateV2(
     }
 
     fun fingerprint(): String = listOf(
-        name, screen, audio, oboeProfile, oboeApi, oboeAdaptive, oboeExclusive, hudMode, locale, soundFont,
+        name, screen, audio, oboeProfile, oboeApi, oboeAdaptive, oboeExclusive, hudMode, showFps, showCpu, showGpu, showRam, locale, soundFont,
         fullscreen, desktopTheme, desktopBackground, wallpaperStamp, mouseWarp,
         renderer, rendererPresentMode, rendererDriver, filterMode, surfaceFormat, trueDisplayX, displayBackend,
         displayXPerformanceMode, displayXPresentAtRefreshRate, graphicsDriver, graphicsConfig,
@@ -540,6 +544,10 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         container.setMidiSoundFont(state.soundFont)
         container.setLC_ALL(state.locale)
         container.putExtra("hudMode", state.hudMode.toString())
+        container.putExtra("hud_show_fps", state.showFps.toString())
+        container.putExtra("hud_show_cpu", state.showCpu.toString())
+        container.putExtra("hud_show_gpu", state.showGpu.toString())
+        container.putExtra("hud_show_ram", state.showRam.toString())
         container.putExtra("mouseWarpOverride", state.mouseWarp)
         container.putExtra(MediaDecoder.KEY_BACKEND, state.decoder)
         container.putExtra(MediaDecoder.KEY_SOFTWARE_DECODING, if (state.softwareDecoding) "1" else "0")
@@ -885,6 +893,15 @@ private fun ContainerCategoryV2(
                 SettingChoice("Performance HUD", hudLabel, hudEntries) {
                     s.hudMode = when (it) { "MangoHud" -> 3; "Bannerlator" -> 4; "YurNLator" -> 2; else -> 0 }
                 }
+                // 🔥 НАШ НОВЫЙ БЛОК: Галочки для YurNLator HUD
+                if (s.hudMode == 2) {
+                    SettingsDivider()
+                    SettingToggle("Показывать FPS", s.showFps) { s.showFps = it }
+                    SettingToggle("Показывать CPU", s.showCpu) { s.showCpu = it }
+                    SettingToggle("Показывать GPU", s.showGpu) { s.showGpu = it }
+                    SettingToggle("Показывать RAM", s.showRam) { s.showRam = it }
+                }
+                // 🔥 КОНЕЦ НОВОГО БЛОКА
                 SettingsDivider()
                 // Loaded hidden with the games, so the quick menu can switch MangoHud on any time (a small cost).
                 SettingToggle("Keep MangoHud ready", s.mangoPreload) { s.mangoPreload = it }
