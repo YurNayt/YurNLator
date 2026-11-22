@@ -917,7 +917,7 @@ private fun ContainerCategoryV2(
                     s.hudMode = when (it) { "MangoHud" -> 3; "Bannerlator" -> 4; "YurNLator" -> 2; else -> 0 }
                 }
                 if (s.hudMode == 2) {
-                     SettingsCard {
+    SettingsCard {
         var hudExpanded by remember { mutableStateOf(false) }
         Surface(
             onClick = { hudExpanded = !hudExpanded },
@@ -946,18 +946,21 @@ private fun ContainerCategoryV2(
                     SettingToggle("Show RAM", s.showRam) { s.showRam = it }
                     SettingToggle("Show Renderer", s.showRenderer) { s.showRenderer = it }
                     SettingToggle("Show GPU Name", s.showGpuName) { s.showGpuName = it }
-}
                     SettingToggle("Show CPU Temp", s.showCpuTemp) { s.showCpuTemp = it }
+                    SettingToggle("Show Battery Temp", s.showBatteryTemp) { s.showBatteryTemp = it }
+                    SettingToggle("Show Charge State", s.showChargeState) { s.showChargeState = it }
                     SettingToggle("Show CPU Clock", s.showCpuClock) { s.showCpuClock = it }
                     SettingToggle("Show GPU Temp", s.showGpuTemp) { s.showGpuTemp = it }
-        }
-                    SettingToggle("Show Battery Temp", s.showBatteryTemp) { s.showBatteryTemp = it }
                     SettingToggle("Show GPU Clock", s.showGpuClock) { s.showGpuClock = it }
-                    SettingToggle("Show Charge State", s.showChargeState) { s.showChargeState = it }
+                    SettingToggle("1% and 0.1% lows", s.showLows) { s.showLows = it }
+                }
+            }
+        }
     }
-                SettingsDivider()
-                // Loaded hidden with the games, so the quick menu can switch MangoHud on any time (a small cost).
-                SettingToggle("Keep MangoHud ready", s.mangoPreload) { s.mangoPreload = it }
+}
+SettingsDivider()
+// Loaded hidden with the games, so the quick menu can switch MangoHud on any time (a small cost).
+SettingToggle("Keep MangoHud ready", s.mangoPreload) { s.mangoPreload = it }
             }
             SettingsCard {
                 SettingChoice("Locale (LC_ALL)", localeDisplayValue(s.locale), localeEntries) {
