@@ -948,6 +948,7 @@ private fun ContainerCategoryV2(
                     SettingToggle("Show GPU Temp", s.showGpuTemp) { s.showGpuTemp = it }
                     SettingToggle("Show GPU Clock", s.showGpuClock) { s.showGpuClock = it }
                     SettingToggle("1% и 0.1% lows", s.showLows) { s.showLows = it }
+                }   
                 }
                 SettingsDivider()
                 // Loaded hidden with the games, so the quick menu can switch MangoHud on any time (a small cost).
