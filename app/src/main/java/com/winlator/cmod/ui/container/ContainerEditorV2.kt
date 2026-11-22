@@ -917,21 +917,21 @@ private fun ContainerCategoryV2(
                     s.hudMode = when (it) { "MangoHud" -> 3; "Bannerlator" -> 4; "YurNLator" -> 2; else -> 0 }
                 }
                 if (s.hudMode == 2) {
-                    SettingsCard()
+                    SettingsCard{
                     var hudExpanded by remember { mutableStateOf(false) }
-                    SurFace(
+                    Surface(
                         onClick = { hudExpanded = !hudExpanded },
                         color = Color.Transparent,
-                        modifier = Modifier.fullMaxWidth()
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp)) {
-                     Text("HUD Settings", style = MaterialTheme.typography.titleMedium, fontWeight = fontWeight.Medium)
-                      ROM(
-                        modifier = Modifier.fullMaxWidth()
+                     Text("HUD Settings", style = MaterialTheme.typography.LablelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                      Row(
+                        modifier = Modifier.fillMaxWidth()
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Show metrics", style = MaterialTheme.typography.bodyLarge)
+                        Text("Show metrics", style = MaterialTheme.typography.titleMedium, frontWright = FrontWeight.Medium)
                         Icon(
                             imageVector = if (hudExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                             contentDescription = null
