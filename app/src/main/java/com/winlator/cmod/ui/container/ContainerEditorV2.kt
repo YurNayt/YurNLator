@@ -170,6 +170,7 @@ private class ContainerEditorStateV2(
     var showCpuClock by mutableStateOf(editing?.getExtra("hud_show_cpu_clock", "true") != "false")
     var showGpuTemp by mutableStateOf(editing?.getExtra("hud_show_gpu_temp", "true") != "false")
     var showGpuClock by mutableStateOf(editing?.getExtra("hud_show_gpu_clock", "true") != "false")
+    var showLows by mutableStateOf(editing?.getExtra("hud_show_lows", "true") != "false")
     var locale by mutableStateOf(
         editing?.getLC_ALL().orEmpty().ifBlank {
             if (editing == null) {
@@ -347,7 +348,7 @@ private class ContainerEditorStateV2(
     }
 
     fun fingerprint(): String = listOf(
-        name, screen, audio, oboeProfile, oboeApi, oboeAdaptive, oboeExclusive, hudMode, showFps, showCpu, showGpu, showBatt, showRam, showRenderer, showGpuName, showCpuTemp, showBatteryTemp, showChargeState, showCpuClock, showGpuTemp, showGpuClock, locale, soundFont,
+        name, screen, audio, oboeProfile, oboeApi, oboeAdaptive, oboeExclusive, hudMode, showFps, showCpu, showGpu, showBatt, showRam, showRenderer, showGpuName, showCpuTemp, showBatteryTemp, showChargeState, showCpuClock, showGpuTemp, showGpuClock, showLows, locale, soundFont,
         fullscreen, desktopTheme, desktopBackground, wallpaperStamp, mouseWarp,
         renderer, rendererPresentMode, rendererDriver, filterMode, surfaceFormat, trueDisplayX, displayBackend,
         displayXPerformanceMode, displayXPresentAtRefreshRate, graphicsDriver, graphicsConfig,
@@ -566,6 +567,7 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         container.putExtra("hud_show_cpu_clock", state.showCpuClock.toString())
         container.putExtra("hud_show_gpu_temp", state.showGpuTemp.toString())
         container.putExtra("hud_show_gpu_clock", state.showGpuClock.toString())
+        container.putExtra("hud_show_lows", state.showLows.toString())
         container.putExtra("mouseWarpOverride", state.mouseWarp)
         container.putExtra(MediaDecoder.KEY_BACKEND, state.decoder)
         container.putExtra(MediaDecoder.KEY_SOFTWARE_DECODING, if (state.softwareDecoding) "1" else "0")
@@ -927,6 +929,7 @@ private fun ContainerCategoryV2(
                     SettingToggle("Показывать CPU Clock", s.showCpuClock) { s.showCpuClock = it }
                     SettingToggle("Показывать GPU Temp", s.showGpuTemp) { s.showGpuTemp = it }
                     SettingToggle("Показывать GPU Clock", s.showGpuClock) { s.showGpuClock = it }
+                    SettingToggle("1% и 0.1% lows", s.showLows) { s.showLows = it }
                 }
                 // 🔥 КОНЕЦ НОВОГО БЛОКА
                 SettingsDivider()
