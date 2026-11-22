@@ -160,7 +160,17 @@ private class ContainerEditorStateV2(
     var showFps by mutableStateOf(editing?.getExtra("hud_show_fps", "true") != "false")
     var showCpu by mutableStateOf(editing?.getExtra("hud_show_cpu", "true") != "false")
     var showGpu by mutableStateOf(editing?.getExtra("hud_show_gpu", "true") != "false")
+    var showBatt by mutableStateOf(editing?.getExtra("hud_show_batt", "true") != "false")
     var showRam by mutableStateOf(editing?.getExtra("hud_show_ram", "true") != "false")
+    var showRenderer by mutableStateOf(editing?.getExtra("hud_show_renderer", "true") != "false")
+    var showGpuName by mutableStateOf(editing?.getExtra("hud_show_gpu_name", "true") != "false")
+    var showCpuTemp by mutableStateOf(editing?.getExtra("hud_show_cpu_temp", "true") != "false")
+    var showBatteryTemp by mutableStateOf(editing?.getExtra("hud_show_battery_temp", "true") != "false")
+    var showChargeState by mutableStateOf(editing?.getExtra("hud_show_charge_state", "true") != "false")
+    var showCpuClock by mutableStateOf(editing?.getExtra("hud_show_cpu_clock", "true") != "false")
+    var showGpuTemp by mutableStateOf(editing?.getExtra("hud_show_gpu_temp", "true") != "false")
+    var showGpuClock by mutableStateOf(editing?.getExtra("hud_show_gpu_clock", "true") != "false")
+    var showLows by mutableStateOf(editing?.getExtra("hud_show_lows", "true") != "false")
     var locale by mutableStateOf(
         editing?.getLC_ALL().orEmpty().ifBlank {
             if (editing == null) {
@@ -338,7 +348,7 @@ private class ContainerEditorStateV2(
     }
 
     fun fingerprint(): String = listOf(
-        name, screen, audio, oboeProfile, oboeApi, oboeAdaptive, oboeExclusive, hudMode, showFps, showCpu, showGpu, showRam, locale, soundFont,
+        name, screen, audio, oboeProfile, oboeApi, oboeAdaptive, oboeExclusive, hudMode, showFps, showCpu, showGpu, showBatt, showRam, showRenderer, showGpuName, showCpuTemp, showBatteryTemp, showChargeState, showCpuClock, showGpuTemp, showGpuClock, showLows, locale, soundFont,
         fullscreen, desktopTheme, desktopBackground, wallpaperStamp, mouseWarp,
         renderer, rendererPresentMode, rendererDriver, filterMode, surfaceFormat, trueDisplayX, displayBackend,
         displayXPerformanceMode, displayXPresentAtRefreshRate, graphicsDriver, graphicsConfig,
@@ -547,7 +557,17 @@ internal fun ContainerEditorV2(editId: Int?, onBack: () -> Unit, onCreated: () -
         container.putExtra("hud_show_fps", state.showFps.toString())
         container.putExtra("hud_show_cpu", state.showCpu.toString())
         container.putExtra("hud_show_gpu", state.showGpu.toString())
+        container.putExtra("hud_show_batt", state.showBatt.toString())
         container.putExtra("hud_show_ram", state.showRam.toString())
+        container.putExtra("hud_show_renderer", state.showRenderer.toString())
+        container.putExtra("hud_show_gpu_name", state.showGpuName.toString())
+        container.putExtra("hud_show_cpu_temp", state.showCpuTemp.toString())
+        container.putExtra("hud_show_battery_temp", state.showBatteryTemp.toString())
+        container.putExtra("hud_show_charge_state", state.showChargeState.toString())
+        container.putExtra("hud_show_cpu_clock", state.showCpuClock.toString())
+        container.putExtra("hud_show_gpu_temp", state.showGpuTemp.toString())
+        container.putExtra("hud_show_gpu_clock", state.showGpuClock.toString())
+        container.putExtra("hud_show_lows", state.showlows.toString())
         container.putExtra("mouseWarpOverride", state.mouseWarp)
         container.putExtra(MediaDecoder.KEY_BACKEND, state.decoder)
         container.putExtra(MediaDecoder.KEY_SOFTWARE_DECODING, if (state.softwareDecoding) "1" else "0")
