@@ -917,27 +917,28 @@ private fun ContainerCategoryV2(
                     s.hudMode = when (it) { "MangoHud" -> 3; "Bannerlator" -> 4; "YurNLator" -> 2; else -> 0 }
                 }
                 if (s.hudMode == 2) {
-                    SettingsCard{
-                    var hudExpanded by remember { mutableStateOf(false) }
-                    Surface(
-                        onClick = { hudExpanded = !hudExpanded },
-                        color = Color.Transparent,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp)) {
-                     Text("HUD Settings", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                      Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Show metrics", style = MaterialTheme.typography.titleMedium, frontWeight = FontWeight.Medium)
-                        Icon(
-                            imageVector = if (hudExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = null
-                       )
-               }
-              if (hudExpanded) {
+                     SettingsCard {
+        var hudExpanded by remember { mutableStateOf(false) }
+        Surface(
+            onClick = { hudExpanded = !hudExpanded },
+            color = Color.Transparent,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp)) {
+                Text("HUD Settings", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Show metrics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                    Icon(
+                        imageVector = if (hudExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null
+                    )
+                }
+                if (hudExpanded) {
+                    SettingsDivider()
                     SettingToggle("Show FPS", s.showFps) { s.showFps = it }
                     SettingToggle("Show CPU", s.showCpu) { s.showCpu = it }
                     SettingToggle("Show GPU", s.showGpu) { s.showGpu = it }
@@ -945,17 +946,15 @@ private fun ContainerCategoryV2(
                     SettingToggle("Show RAM", s.showRam) { s.showRam = it }
                     SettingToggle("Show Renderer", s.showRenderer) { s.showRenderer = it }
                     SettingToggle("Show GPU Name", s.showGpuName) { s.showGpuName = it }
+}
                     SettingToggle("Show CPU Temp", s.showCpuTemp) { s.showCpuTemp = it }
-                    SettingToggle("Show Battery Temp", s.showBatteryTemp) { s.showBatteryTemp = it }
-                    SettingToggle("Show Power", s.showChargeState) { s.showChargeState = it }
                     SettingToggle("Show CPU Clock", s.showCpuClock) { s.showCpuClock = it }
                     SettingToggle("Show GPU Temp", s.showGpuTemp) { s.showGpuTemp = it }
+        }
+                    SettingToggle("Show Battery Temp", s.showBatteryTemp) { s.showBatteryTemp = it }
                     SettingToggle("Show GPU Clock", s.showGpuClock) { s.showGpuClock = it }
-                    SettingToggle("1% и 0.1% lows", s.showLows) { s.showLows = it }
-                }
-                }    
-                }   
-                }
+                    SettingToggle("Show Charge State", s.showChargeState) { s.showChargeState = it }
+    }
                 SettingsDivider()
                 // Loaded hidden with the games, so the quick menu can switch MangoHud on any time (a small cost).
                 SettingToggle("Keep MangoHud ready", s.mangoPreload) { s.mangoPreload = it }
