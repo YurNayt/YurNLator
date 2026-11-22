@@ -1,7 +1,27 @@
 {
  "version": 1,
- "updated": 1795142304,
+ "updated": 1795349441,
  "presets": [
+  {
+   "id": "41a2646f2cf0",
+   "game": "Battlefield 1",
+   "game_key": "battlefield1",
+   "exe": "bf1.exe",
+   "title": "Battlefield 1",
+   "author": "",
+   "device": "LENOVO TB322FC",
+   "soc": "SM8750P",
+   "gpu": "Adreno 830",
+   "created": 1795349427,
+   "app_version": "v1.1.3",
+   "issue": 12,
+   "likes": 0,
+   "comments": 0,
+   "login": "",
+   "controls": "",
+   "has_settings": true,
+   "published": 1795349441
+  },
   {
    "id": "6a5045e81b42",
    "game": "Grand Theft Auto V",
