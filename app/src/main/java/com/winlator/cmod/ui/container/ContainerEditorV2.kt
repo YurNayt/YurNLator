@@ -916,6 +916,24 @@ private fun ContainerCategoryV2(
                 // 🔥 НАШ НОВЫЙ БЛОК: Галочки для YurNLator HUD
                 if (s.hudMode == 2) {
                     SettingsDivider()
+                    // Заголовок-кнопка для раскрытия списка
+                    var hudExpanded by remember { mutableStateOf(false) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { hudExpanded = !hudExpanded }
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Настройки HUD", style = MaterialTheme.typography.bodyLarge)
+                        Icon(
+                            imageVector = if (hudExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null
+                       )
+               }
+              // Раскрывающийся список галочек
+              if (hudExpanded) {
                     SettingToggle("Показывать FPS", s.showFps) { s.showFps = it }
                     SettingToggle("Показывать CPU", s.showCpu) { s.showCpu = it }
                     SettingToggle("Показывать GPU", s.showGpu) { s.showGpu = it }
