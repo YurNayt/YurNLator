@@ -916,10 +916,8 @@ private fun ContainerCategoryV2(
                 SettingChoice("Performance HUD", hudLabel, hudEntries) {
                     s.hudMode = when (it) { "MangoHud" -> 3; "Bannerlator" -> 4; "YurNLator" -> 2; else -> 0 }
                 }
-                // 🔥 НАШ НОВЫЙ БЛОК: Галочки для YurNLator HUD
                 if (s.hudMode == 2) {
                     SettingsDivider()
-                    // Заголовок-кнопка для раскрытия списка
                     var hudExpanded by remember { mutableStateOf(false) }
                     Row(
                         modifier = Modifier
@@ -935,7 +933,6 @@ private fun ContainerCategoryV2(
                             contentDescription = null
                        )
                }
-              // Раскрывающийся список галочек
               if (hudExpanded) {
                     SettingToggle("Show FPS", s.showFps) { s.showFps = it }
                     SettingToggle("Show CPU", s.showCpu) { s.showCpu = it }
@@ -952,7 +949,6 @@ private fun ContainerCategoryV2(
                     SettingToggle("Show GPU Clock", s.showGpuClock) { s.showGpuClock = it }
                     SettingToggle("1% и 0.1% lows", s.showLows) { s.showLows = it }
                 }
-                // 🔥 КОНЕЦ НОВОГО БЛОКА
                 SettingsDivider()
                 // Loaded hidden with the games, so the quick menu can switch MangoHud on any time (a small cost).
                 SettingToggle("Keep MangoHud ready", s.mangoPreload) { s.mangoPreload = it }
