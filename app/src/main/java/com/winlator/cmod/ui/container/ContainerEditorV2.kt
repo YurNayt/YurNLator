@@ -937,19 +937,19 @@ private fun ContainerCategoryV2(
                }
               // Раскрывающийся список галочек
               if (hudExpanded) {
-                    SettingToggle("Показывать FPS", s.showFps) { s.showFps = it }
-                    SettingToggle("Показывать CPU", s.showCpu) { s.showCpu = it }
-                    SettingToggle("Показывать GPU", s.showGpu) { s.showGpu = it }
-                    SettingToggle("Показывать Battery", s.showBatt) { s.showBatt = it }
-                    SettingToggle("Показывать RAM", s.showRam) { s.showRam = it }
-                    SettingToggle("Показывать Renderer", s.showRenderer) { s.showRenderer = it }
-                    SettingToggle("Показывать GPU Name", s.showGpuName) { s.showGpuName = it }
-                    SettingToggle("Показывать CPU Temp", s.showCpuTemp) { s.showCpuTemp = it }
-                    SettingToggle("Показывать Battery Temp", s.showBatteryTemp) { s.showBatteryTemp = it }
-                    SettingToggle("Показывать Power", s.showChargeState) { s.showChargeState = it }
-                    SettingToggle("Показывать CPU Clock", s.showCpuClock) { s.showCpuClock = it }
-                    SettingToggle("Показывать GPU Temp", s.showGpuTemp) { s.showGpuTemp = it }
-                    SettingToggle("Показывать GPU Clock", s.showGpuClock) { s.showGpuClock = it }
+                    SettingToggle("Show FPS", s.showFps) { s.showFps = it }
+                    SettingToggle("Show CPU", s.showCpu) { s.showCpu = it }
+                    SettingToggle("Show GPU", s.showGpu) { s.showGpu = it }
+                    SettingToggle("Show Battery", s.showBatt) { s.showBatt = it }
+                    SettingToggle("Show RAM", s.showRam) { s.showRam = it }
+                    SettingToggle("Show Renderer", s.showRenderer) { s.showRenderer = it }
+                    SettingToggle("Show GPU Name", s.showGpuName) { s.showGpuName = it }
+                    SettingToggle("Show CPU Temp", s.showCpuTemp) { s.showCpuTemp = it }
+                    SettingToggle("Show Battery Temp", s.showBatteryTemp) { s.showBatteryTemp = it }
+                    SettingToggle("Show Power", s.showChargeState) { s.showChargeState = it }
+                    SettingToggle("Show CPU Clock", s.showCpuClock) { s.showCpuClock = it }
+                    SettingToggle("Show GPU Temp", s.showGpuTemp) { s.showGpuTemp = it }
+                    SettingToggle("Show GPU Clock", s.showGpuClock) { s.showGpuClock = it }
                     SettingToggle("1% и 0.1% lows", s.showLows) { s.showLows = it }
                 }
                 // 🔥 КОНЕЦ НОВОГО БЛОКА
