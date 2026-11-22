@@ -925,13 +925,13 @@ private fun ContainerCategoryV2(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp)) {
-                     Text("HUD Settings", style = MaterialTheme.typography.LablelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                     Text("HUD Settings", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                       Row(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Show metrics", style = MaterialTheme.typography.titleMedium, frontWright = FrontWeight.Medium)
+                        Text("Show metrics", style = MaterialTheme.typography.titleMedium, frontWeight = FontWeight.Medium)
                         Icon(
                             imageVector = if (hudExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                             contentDescription = null
@@ -952,6 +952,8 @@ private fun ContainerCategoryV2(
                     SettingToggle("Show GPU Temp", s.showGpuTemp) { s.showGpuTemp = it }
                     SettingToggle("Show GPU Clock", s.showGpuClock) { s.showGpuClock = it }
                     SettingToggle("1% и 0.1% lows", s.showLows) { s.showLows = it }
+                }
+                }    
                 }   
                 }
                 SettingsDivider()
