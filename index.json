@@ -1,7 +1,27 @@
 {
  "version": 1,
- "updated": 1795349441,
+ "updated": 1795822807,
  "presets": [
+  {
+   "id": "9554273a78df",
+   "game": "alanwake",
+   "game_key": "alanwake",
+   "exe": "alanwake.exe",
+   "title": "",
+   "author": "",
+   "device": "Xiaomi 22021211RG",
+   "soc": "SM8250",
+   "gpu": "Adreno 650",
+   "created": 1795822797,
+   "app_version": "v1.1.4",
+   "issue": 13,
+   "likes": 0,
+   "comments": 0,
+   "login": "",
+   "controls": "",
+   "has_settings": true,
+   "published": 1795822807
+  },
   {
    "id": "41a2646f2cf0",
    "game": "Battlefield 1",
